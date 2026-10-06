@@ -175,3 +175,16 @@ export function fileForTarget(
   );
   return matches.length === 1 ? { path: matches[0].path, page: linkedPage(subpath) } : null;
 }
+
+/**
+ * Words selected on a PDF page as a Markdown quote that says where they came
+ * from: each line of the selection quoted as the page drew it, then the page's
+ * link, so the note keeps the words and the way back (Obsidian reads it too).
+ */
+export function quoteWithLink(text: string, link: string): string {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  return [...lines.map((l) => `> ${l}`), `> — ${link}`].join("\n");
+}

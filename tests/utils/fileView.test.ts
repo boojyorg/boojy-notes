@@ -11,6 +11,7 @@ import {
   linkedPage,
   pageLink,
   pageWidth,
+  quoteWithLink,
   readFileView,
   sameZoom,
   stepZoom,
@@ -127,5 +128,13 @@ describe("links to a file and its pages", () => {
     expect(fileForTarget("dup.pdf", vault)).toBeNull();
     expect(fileForTarget("Lecture 3", vault)).toBeNull();
     expect(fileForTarget("Lecture 3.md", vault)).toBeNull();
+  });
+});
+
+describe("quoteWithLink", () => {
+  it("quotes each line as the page drew it, then the page's link", () => {
+    expect(quoteWithLink("  Joint angles in,\n\npose out  \n", "[[Lecture 3.pdf#page=2]]")).toBe(
+      "> Joint angles in,\n> pose out\n> — [[Lecture 3.pdf#page=2]]",
+    );
   });
 });

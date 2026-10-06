@@ -86,6 +86,9 @@ export function useAppKeyboard({
   goForward,
   canBack,
   canForward,
+  // A PDF open: its page's link into the note it was opened from (⌥⌘L), and that note's name.
+  linkPageInNote,
+  linkPageTo,
 }) {
   const latest = useRef(null);
   latest.current = {
@@ -123,6 +126,8 @@ export function useAppKeyboard({
     openRecentlyDeleted,
     goBack,
     goForward,
+    linkPageInNote,
+    linkPageTo,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -192,6 +197,14 @@ export function useAppKeyboard({
       // the platform's Save key keeps the note as it is now in its history.
       // Ctrl+Cmd+S, Go to Sidebar, is claimed above.
       // Option+Cmd+S opens the note's Version History (Option makes `ß`, so the
+      // ⌥⌘L (Ctrl+Alt+L elsewhere): a PDF's page linked into the note it was
+      // opened from. The physical key, as ⌥ changes the character on a Mac.
+      if (mod && e.altKey && !e.shiftKey && e.code === "KeyL") {
+        if (!L.linkPageTo) return;
+        e.preventDefault();
+        L.linkPageInNote?.();
+        return;
+      }
       // physical key is matched). Mac only: Ctrl+Alt+S elsewhere is Go to Sidebar.
       if (e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && e.code === "KeyS") {
         if (!L.activeNote) return;
@@ -307,6 +320,7 @@ export function useAppKeyboard({
         sourceView: !!sourceView,
         canBack: !!canBack,
         canForward: !!canForward,
+        linkPageTo: linkPageTo ?? null,
       });
     };
     let timer = null;
@@ -333,7 +347,17 @@ export function useAppKeyboard({
       document.removeEventListener("focusout", soon);
       document.removeEventListener("selectionchange", soon);
     };
-  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible, sourceView, canBack, canForward]);
+  }, [
+    activeNote,
+    canUndo,
+    canRedo,
+    noteData,
+    sidebarVisible,
+    sourceView,
+    canBack,
+    canForward,
+    linkPageTo,
+  ]);
 }
 
 /** -1 for Back, 1 for Forward, 0 for any other key. */
@@ -494,6 +518,8 @@ function runMenuCommand(id, L, titleRef) {
       return L.goBack?.();
     case "forward":
       return L.goForward?.();
+    case "linkPage":
+      return L.linkPageInNote?.();
   }
   if (!note) return;
   switch (id) {

@@ -5,7 +5,7 @@ import { ACTUAL_SIZE, FIT_PAGE } from "../utils/fileView";
 import { resolveAttachmentUrl } from "../utils/attachmentUrl";
 import { otherFileKind } from "../utils/otherFiles";
 import { OtherFileIcon } from "./Icons";
-import PdfView from "./PdfView";
+import PdfView, { type PdfActions } from "./PdfView";
 import { SHOW_IN_FOLDER_LABEL, SmallButton } from "./settings/SettingsPrimitives";
 
 /** Room round a picture, so a fitted one never touches the pane's edges. */
@@ -144,12 +144,14 @@ export default function FileView({
   view,
   openFile,
   revealFile,
+  actions,
 }: {
   view: FileViewState;
   openFile: () => void;
   revealFile: () => void;
+  actions?: PdfActions;
 }) {
-  if (view.kind === "pdf") return <PdfView key={view.rel} view={view} />;
+  if (view.kind === "pdf") return <PdfView key={view.rel} view={view} actions={actions} />;
   if (view.kind === "picture") return <PictureView key={view.rel} view={view} />;
   return <FileCard view={view} openFile={openFile} revealFile={revealFile} />;
 }

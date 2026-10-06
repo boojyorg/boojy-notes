@@ -43,7 +43,7 @@ The stack is centred at the editor's foot, clear of the sidebar. `toasts.spec.ts
   selector(::-webkit-scrollbar)`.
 - State rules set `background-color`, never `background` (it resets the clip).
 - The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the centred path).
-- `.editor-scroll` stays a class: three components query it.
+- `.editor-scroll` stays a class: components query it.
 
 ## Icons: Lucide only
 
@@ -89,7 +89,6 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 ## Settings, setup and UI scale
 
 - Settings is one pane on the palette's surface. Accent never marks the chosen pill.
-  Switching never asks.
 - **Spelling: a Mac's system chooses the language**, so that row opens Keyboard settings, never a
   dead control; elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
 - **Interface size is one segmented control; every press applies at once** — no timer (a debounce overwrote newer values). The figure is an editable
@@ -125,7 +124,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - `NotePath`: folders (secondary, clickable) / name (primary, weight 500, editable, never
   accent). A root note shows its name alone.
 - **The empty name's placeholder is CSS on the DOM**, never a class from debounced state; the
-  field keeps the placeholder's width for the rest of an editing session in which it showed.
+  field keeps the placeholder's width while editing.
 - **Where it sits is CSS; what it shows is JavaScript.** Sticky band with `chromePathInset()`
   and `CHROME_PATH_RIGHT_INSET`; two flex spacers centre it on the pane when it fits, never
   over a control. What fits is measured by an invisible twin (`utils/pathCrumbs.ts`).
@@ -191,7 +190,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 - `SearchPalette.tsx` (Cmd+P, Search button, tag click): opens fresh; Escape closes at once.
   One-line rows; an excerpt only when the title doesn't explain the hit. Empty: **Recent**
-  (`utils/recentNotes.ts`, per vault, never on the note).
+  (`utils/recentNotes.ts`, per vault).
 - **A result is a note, a folder (own name, two at most) or a file (never the attachment
   store)**, in one order: `orderResults` (a note or file named as well as a folder stays
   first). `#` lists tags, nested (`nestTags`). A tag (exact set) or folder (subfolders in) is a
@@ -210,6 +209,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - PDF.js draws it (loaded on first use), one scale for every page, its words a `.pdf-text`
   layer. ⌘± stays the UI scale. Zoom and page are kept per file, off the vault.
 - Its controls stand left of the ··· and the path ends before them (`chromePathRightInset`).
+- **Link Page in Note** (⌥⌘L): the page's link at the left note's cursor, written as the picker's.
 
 ## Narrow desktop is still desktop
 

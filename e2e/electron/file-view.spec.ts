@@ -343,3 +343,82 @@ test("the path holds still as a PDF opens from a note: no frame drawn short or g
     await h.close();
   }
 });
+
+/** Select page `n`'s words, as a drag across them would. */
+const selectPageText = (page: Page, n: number) =>
+  page.evaluate((n) => {
+    const layer = document.querySelector(
+      `[data-testid='pdf-pages'] [data-pdf-page="${n}"] .pdf-text`,
+    );
+    const range = document.createRange();
+    range.selectNodeContents(layer as Node);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }, n);
+const clipboard = (h: Awaited<ReturnType<typeof launchApp>>) =>
+  h.app.evaluate(({ clipboard }) => clipboard.readText());
+
+test("right-click on selected words: Copy, and Copy as Quote ends with the page's link", async () => {
+  const h = await launchApp(seed, { prepare });
+  try {
+    await openFileRow(h.page, "Lecture 3.pdf");
+    await h.page.keyboard.press("ArrowRight");
+    await expect.poll(() => drawn(h.page, 2)).toBe(true);
+    await expect(h.page.locator("[data-pdf-page='2'] .pdf-text span").first()).toBeAttached();
+    await selectPageText(h.page, 2);
+    await h.page.locator("[data-pdf-page='2'] .pdf-text span").first().click({ button: "right" });
+    const menu = h.page.getByTestId("pdf-menu");
+    await expect(menu.getByRole("menuitem")).toHaveText([
+      "Copy",
+      "Copy as Quote",
+      "Copy Link to This Page",
+    ]);
+    await menu.getByRole("menuitem", { name: "Copy as Quote" }).click();
+    await expect
+      .poll(() => clipboard(h))
+      .toBe("> Forward kinematics\n> Joint angles in, pose out\n> — [[Lecture 3.pdf#page=2]]");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("Link Page in Note puts the page's link where the note's cursor was, by ··· and by ⌥⌘L", async () => {
+  const h = await launchApp(
+    { ...seed, "Uni/COMP329.md": "Overview.\n\nSlides here\n" },
+    { prepare },
+  );
+  try {
+    await expandAllFolders(h.page);
+    await h.openNote("COMP329");
+    // The cursor at the end of "Slides here", then over to the PDF.
+    await h.page.locator("[data-block-id]", { hasText: "Slides here" }).click();
+    await h.page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowRight" : "End");
+    await openFileRow(h.page, "Lecture 3.pdf");
+    await expect.poll(() => drawn(h.page, 1)).toBe(true);
+    await h.page.keyboard.press("ArrowRight");
+    await h.page.keyboard.press("ArrowRight");
+    await expect(pageField(h.page)).toHaveValue("3");
+    await h.page.getByRole("button", { name: "File actions" }).click();
+    await h.page.getByRole("menuitem", { name: "Link Page in “COMP329”" }).click();
+    await expect(h.page.getByRole("textbox", { name: "Note title" })).toHaveText("COMP329");
+    await expect
+      .poll(() => h.vault.read("Uni/COMP329.md"))
+      .toBe("Overview.\n\nSlides here [[Lecture 3.pdf#page=3]]\n");
+
+    // Again, from the keyboard: the cursor stayed after the link.
+    await openFileRow(h.page, "Lecture 3.pdf");
+    await expect(pageField(h.page)).toHaveValue("3");
+    await expect.poll(() => drawn(h.page, 3)).toBe(true);
+    await h.page.keyboard.press("ArrowRight");
+    await expect(pageField(h.page)).toHaveValue("4");
+    await h.page.keyboard.press(`${MOD}+Alt+KeyL`);
+    await expect
+      .poll(() => h.vault.read("Uni/COMP329.md"))
+      .toBe("Overview.\n\nSlides here [[Lecture 3.pdf#page=3]] [[Lecture 3.pdf#page=4]]\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

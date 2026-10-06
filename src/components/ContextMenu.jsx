@@ -15,8 +15,13 @@ import {
   TrashIcon,
   HistoryIcon,
   LinkIcon,
+  OpenNoteIcon,
 } from "./Icons";
 import { SHOW_IN_FOLDER_LABEL } from "./settings/SettingsPrimitives";
+import { isMac } from "../utils/platform";
+
+/** Link Page in Note's key, as the menu bar's accelerator shows it. */
+const LINK_PAGE_KEY = isMac ? "⌥⌘L" : "Ctrl+Alt+L";
 import { shortcutLabel } from "./Tooltip";
 import { useSettings } from "../context/SettingsContext";
 import Menu, { MenuRule } from "./Menu";
@@ -243,6 +248,16 @@ const ContextMenu = memo(function ContextMenu({
     { label: "Copy Path", icon: <CopyIcon />, rule: true, action: run(v.copyPath) },
     ...(v.copyPageLink
       ? [{ label: "Copy Link to This Page", icon: <LinkIcon />, action: run(v.copyPageLink) }]
+      : []),
+    ...(v.linkInNote
+      ? [
+          {
+            label: `Link Page in “${v.linkNoteName}”`,
+            icon: <OpenNoteIcon />,
+            hint: LINK_PAGE_KEY,
+            action: run(() => v.linkInNote(v.page)),
+          },
+        ]
       : []),
     { label: "Delete", icon: <TrashIcon />, rule: true, action: run(v.trash) },
   ];

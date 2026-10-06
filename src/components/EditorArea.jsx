@@ -193,6 +193,8 @@ const EditorArea = memo(
     fileView = null,
     onOpenFileDefault,
     onRevealFile,
+    // A viewed PDF's right-click: copy, quote, its page's link, link into a note.
+    fileActions,
   }) {
     const rhythm = useRhythm();
     const {
@@ -1546,7 +1548,12 @@ const EditorArea = memo(
             )}
           </div>
         ) : fileView ? (
-          <FileView view={fileView} openFile={onOpenFileDefault} revealFile={onRevealFile} />
+          <FileView
+            view={fileView}
+            openFile={onOpenFileDefault}
+            revealFile={onRevealFile}
+            actions={fileActions}
+          />
         ) : (
           <div
             style={{

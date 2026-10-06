@@ -5,6 +5,84 @@ import type { FileViewState } from "../hooks/useFileView";
 import { cssZoom } from "../utils/domHelpers";
 import { loadPdfLib } from "../utils/pdfDocument";
 import { PANEL_MS, panelTransition } from "../tokens/motion";
+import { quoteWithLink } from "../utils/fileView";
+import { menuAnchorFor } from "../utils/contextSelection";
+import { CopyIcon, LinkIcon, OpenNoteIcon, SlashCommandIcon } from "./Icons";
+import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
+
+/** What a PDF's right-click can do beyond the page itself (BoojyNotes' viewed-file actions). */
+export interface PdfActions {
+  /** Puts `text` on the clipboard and says `said`. */
+  copy: (text: string, said: string) => void;
+  /** `[[name.pdf#page=N]]` for page `n`. */
+  pageLink: (n: number) => string;
+  /** Puts page `n`'s link in the note last left for this file, at its cursor; null when there is none. */
+  linkInNote: ((n: number) => void) | null;
+  /** That note's name, for the row's label. */
+  linkNoteName: string | null;
+}
+
+/**
+ * A PDF's right-click: Copy and Copy as Quote for selected words (the quote
+ * ends with the page's link), then the page's link, and putting it in the
+ * note you came from. Never focused, as the editor's menu is, so the
+ * selection stays the selection. Rows that cannot act are left out.
+ */
+function PdfTextMenu({
+  at,
+  actions,
+  onClose,
+}: {
+  at: { anchor: MenuAnchor; text: string; page: number };
+  actions: PdfActions;
+  onClose: () => void;
+}) {
+  const run = (fn: () => void) => () => {
+    onClose();
+    fn();
+  };
+  const link = actions.pageLink(at.page);
+  const items: MenuItem[] = [
+    ...(at.text
+      ? [
+          { label: "Copy", icon: <CopyIcon />, action: run(() => actions.copy(at.text, "Copied")) },
+          {
+            label: "Copy as Quote",
+            icon: <SlashCommandIcon name="text-quote" />,
+            action: run(() =>
+              actions.copy(quoteWithLink(at.text, link), `Copied a quote from page ${at.page}`),
+            ),
+          },
+        ]
+      : []),
+    {
+      label: "Copy Link to This Page",
+      icon: <LinkIcon />,
+      rule: !!at.text,
+      action: run(() => actions.copy(link, `Copied a link to page ${at.page}`)),
+    },
+    ...(actions.linkInNote && actions.linkNoteName
+      ? [
+          {
+            label: `Link Page in “${actions.linkNoteName}”`,
+            icon: <OpenNoteIcon />,
+            action: run(() => actions.linkInNote?.(at.page)),
+          },
+        ]
+      : []),
+  ];
+  return (
+    <Menu
+      label="Page"
+      idPrefix="pdf-menu"
+      testId="pdf-menu"
+      anchor={at.anchor}
+      onClose={onClose}
+      items={items}
+      takesFocus={false}
+    />
+  );
+}
 
 /** Room round the pages: either side, and above the first and below the last. */
 export const PAGE_MARGIN_X = 48;
@@ -292,7 +370,7 @@ function PageColumnPanel({ view }: { view: FileViewState }) {
  * take the keys as they open, as a note's text takes the caret); ↑/↓ scroll.
  * A pinch or ⌘-scroll zooms the PDF, never the app (⌘± is the UI scale).
  */
-export default function PdfView({ view }: { view: FileViewState }) {
+export default function PdfView({ view, actions }: { view: FileViewState; actions?: PdfActions }) {
   const { theme } = useTheme();
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const [pane, setPane] = useState<HTMLDivElement | null>(null);
@@ -399,6 +477,26 @@ export default function PdfView({ view }: { view: FileViewState }) {
     if (n !== pageRef.current) setPageFromScroll(n);
   };
 
+  // Right-click: the words selected on a page (and the page they start on),
+  // or the page under the pointer.
+  const [menu, setMenu] = useState<{ anchor: MenuAnchor; text: string; page: number } | null>(null);
+  const onContextMenu = (e: React.MouseEvent) => {
+    if (!actions || !scroller) return;
+    e.preventDefault();
+    const pageOf = (node: Node | null) => {
+      const el = node instanceof Element ? node : node?.parentElement;
+      const n = Number(el?.closest("[data-pdf-page]")?.getAttribute("data-pdf-page"));
+      return n > 0 ? n : null;
+    };
+    const sel = window.getSelection();
+    const selected =
+      sel && !sel.isCollapsed && scroller.contains(sel.anchorNode) ? sel.toString().trim() : "";
+    const page =
+      (selected && pageOf(sel?.anchorNode ?? null)) || pageOf(e.target as Node) || view.page;
+    const range = selected && sel?.rangeCount ? sel.getRangeAt(0) : null;
+    setMenu({ anchor: menuAnchorFor(range, e.clientX, e.clientY), text: selected, page });
+  };
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
     const next =
@@ -438,6 +536,7 @@ export default function PdfView({ view }: { view: FileViewState }) {
         tabIndex={0}
         onScroll={onScroll}
         onKeyDown={onKeyDown}
+        onContextMenu={onContextMenu}
         style={{
           flex: 1,
           minWidth: 0,
@@ -471,6 +570,7 @@ export default function PdfView({ view }: { view: FileViewState }) {
             />
           ))}
       </div>
+      {menu && actions && <PdfTextMenu at={menu} actions={actions} onClose={() => setMenu(null)} />}
     </div>
   );
 }
