@@ -8,8 +8,11 @@
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import { expect, type Page, test } from "@playwright/test";
-import { expandAllFolders, launchApp, MOD } from "./harness";
+import { expandAllFolders, launchApp, MOD, setWidth } from "./harness";
 import { makePdf } from "./pdfFixture";
+
+const BACK = process.platform === "darwin" ? "Meta+BracketLeft" : "Alt+ArrowLeft";
+const FORWARD = process.platform === "darwin" ? "Meta+BracketRight" : "Alt+ArrowRight";
 
 const SLIDES = makePdf([
   ["Lecture 3: Kinematics", "COMP329 Robotics"],
@@ -105,10 +108,10 @@ test("Back from a note returns to the PDF at the page it was left on", async () 
 
     await h.openNote("COMP329");
     await expect(h.page.getByTestId("pdf-pages")).toHaveCount(0);
-    await h.page.keyboard.press(`${MOD}+BracketLeft`);
+    await h.page.keyboard.press(BACK);
     await expect(h.page.getByTestId("pdf-pages")).toBeVisible();
     await expect(pageField(h.page)).toHaveValue("3");
-    await h.page.keyboard.press(`${MOD}+BracketRight`);
+    await h.page.keyboard.press(FORWARD);
     await expect(h.page.getByRole("textbox", { name: "Note title" })).toHaveText("COMP329");
     expect(h.pageErrors).toEqual([]);
   } finally {
@@ -320,6 +323,9 @@ test("the path holds still as a PDF opens from a note: no frame drawn short or g
   const h = await launchApp(seed, { prepare });
   try {
     await expandAllFolders(h.page);
+    // Narrow, as CI's screens are: the page column's toggle doesn't fit, and
+    // the fitted zoom is two digits, not the 100% the figure is held at.
+    await setWidth(h, 800);
     await h.openNote("COMP329");
     await expandAllFolders(h.page);
     await h.page.evaluate(() => {
@@ -356,8 +362,9 @@ const selectPageText = (page: Page, n: number) =>
     sel?.removeAllRanges();
     sel?.addRange(range);
   }, n);
+// Windows' clipboard holds text with CRLF line ends; the lines are what count.
 const clipboard = (h: Awaited<ReturnType<typeof launchApp>>) =>
-  h.app.evaluate(({ clipboard }) => clipboard.readText());
+  h.app.evaluate(({ clipboard }) => clipboard.readText()).then((t) => t.replace(/\r\n/g, "\n"));
 
 test("right-click on selected words: Copy, and Copy as Quote ends with the page's link", async () => {
   const h = await launchApp(seed, { prepare });

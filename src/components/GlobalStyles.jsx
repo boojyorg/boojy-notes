@@ -576,6 +576,21 @@ ${tagPillCss(theme)}
           background: ${theme.codeSelection};
           -webkit-text-fill-color: transparent;
         }
+        /* A figure in the file's controls (the zoom, the page count) takes the
+           room of its widest value, drawn unseen behind it, so the controls
+           keep their width and the centred path beside them never moves. A
+           pseudo-element, so the text read is only the figure. */
+        .held-figure {
+          display: inline-grid;
+        }
+        .held-figure::before {
+          content: attr(data-widest);
+          visibility: hidden;
+        }
+        .held-figure::before,
+        .held-figure > * {
+          grid-area: 1 / 1;
+        }
         /* A PDF page's words, laid invisibly over its picture so they can be
            selected and copied (PDF.js's TextLayer, its own rules trimmed to
            what this app draws: no search highlights). Each span is placed and

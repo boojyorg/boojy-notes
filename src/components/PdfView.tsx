@@ -377,7 +377,8 @@ export default function PdfView({ view, actions }: { view: FileViewState; action
   const { setPaneWidth } = view;
 
   // The whole pane's width, column included: whether the column still fits.
-  useEffect(() => {
+  // Read before the first paint, so a toggle that won't fit is never drawn.
+  useLayoutEffect(() => {
     if (!pane) return;
     const measure = () => setPaneWidth(pane.clientWidth);
     measure();

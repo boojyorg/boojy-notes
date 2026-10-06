@@ -231,7 +231,12 @@ function PageField({ view }: { view: FileViewState }) {
           outlineColor: ACCENT.text,
         }}
       />
-      <span>of {view.pageCount || "–"}</span>
+      <span>
+        of{" "}
+        <span className="held-figure" data-widest="00">
+          <span>{view.pageCount || "–"}</span>
+        </span>
+      </span>
       {tip.shown && (
         <Tooltip
           label="Go to page"
@@ -269,6 +274,13 @@ export default function FileControls({ view }: { view: FileViewState }) {
       setControlsWidth(0);
     };
   }, [root, setControlsWidth]);
+  // The toggle comes and goes with the pane's width, which is first measured
+  // in the same commit (PdfView): read again before that paint, not a frame
+  // after it, so the path is never drawn against a toggle that has gone.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the toggle's coming and going is the trigger
+  useLayoutEffect(() => {
+    if (root) setControlsWidth(root.offsetWidth);
+  }, [root, setControlsWidth, view.columnFits]);
 
   if (view.kind === "card") return null;
   const pdf = view.kind === "pdf";
@@ -311,8 +323,12 @@ export default function FileControls({ view }: { view: FileViewState }) {
           whiteSpace: "nowrap",
         }}
       >
-        {/* Held in place, unseen, until the page is measured: no 100% that turns into 118%. */}
-        <span style={{ visibility: view.zoomKnown ? "visible" : "hidden" }}>{view.zoomLabel}</span>
+        {/* Unseen until the page is measured: no 100% that turns into 118%. */}
+        <span className="held-figure" data-widest="100%" style={{ justifyItems: "end" }}>
+          <span style={{ visibility: view.zoomKnown ? "visible" : "hidden" }}>
+            {view.zoomLabel}
+          </span>
+        </span>
         <ChevronDownIcon size={13} />
       </ChromeButton>
       {menu && <ZoomMenu view={view} anchor={menu} onClose={() => setMenu(null)} />}
