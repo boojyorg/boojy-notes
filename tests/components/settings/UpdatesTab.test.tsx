@@ -69,7 +69,11 @@ describe("UpdatesTab", () => {
     const states: Array<[typeof mocks.settings.updateStatus, string, RegExp]> = [
       [{ state: "idle" }, "Check for updates", /Checks for updates when the app starts/],
       [{ state: "checking" }, "Checking…", /Checking for updates/],
-      [{ state: "up-to-date" }, "Check for updates", /Up to date · v\d+\.\d+\.\d+ is the latest/],
+      [
+        { state: "up-to-date" },
+        "Check for updates",
+        /Up to date · v\d+\.\d+\.\d+(-[\w.]+)? is the latest/,
+      ],
       [{ state: "downloading", percent: 42 }, "Downloading…", /Downloading update · 42%/],
       [
         { state: "downloaded", version: "9.9.9" },
