@@ -16,6 +16,13 @@ name: Rebuild boojy.org
 on:
   release:
     types: [published]
+  # Called by release.yml once it has published a tag's release: a release
+  # published with a workflow's token fires no `published` event.
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
 
 # Posts to a deploy hook and never touches the repository.
 permissions: {}
@@ -38,7 +45,7 @@ jobs:
 
       - name: Wait for the new version on boojy.org
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           # The macOS asset name embeds the version, so its link only appears once the
           # site has been rebuilt against this release (not the fallback).

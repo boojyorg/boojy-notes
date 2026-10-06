@@ -135,8 +135,9 @@ Each has caused a real bug.
 
 ## Release
 
-The version source is `package.json`; never hardcode one. Mechanics and the draft-release trap:
-CI rule. Every release runs the docs pass: shipped items leave `docs/BACKLOG.md` for
+The version source is `package.json`; never hardcode one. The release PR writes the docs and
+the version, and the tag `v<version>` on its green merge commit publishes it (CI rule). Every
+release runs the docs pass: shipped items leave `docs/BACKLOG.md` for
 `CHANGELOG.md`; re-read the README Status and the backlog's Direction; bump the backlog's
 last-reviewed date; update the Notes row in the suite `README.md` and `VISION.md`; run
 `/suite-sync`.
