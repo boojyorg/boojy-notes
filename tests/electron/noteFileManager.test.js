@@ -12,7 +12,9 @@ vi.mock("electron", () => ({
   nativeImage: {},
 }));
 
-const { readAllNotes, setIndexDir, indexPath } = await import("../../electron/noteFileManager.js");
+const { readAllNotes, setIndexDir, indexPath, getIdIndex, loadIndex, saveIndex } = await import(
+  "../../electron/noteFileManager.js"
+);
 
 let notesDir;
 let indexDir;
@@ -672,5 +674,38 @@ describe("relocateNote — an outside rename or move is the same note", () => {
     readAllNotes(notesDir); // the rebuild after a delete: the stale entry goes
     fs.writeFileSync(path.join(notesDir, "Later.md"), "Alpha body.\n");
     expect(relocateNote(path.join(notesDir, "Alpha.md"), notesDir)).toBeNull();
+  });
+});
+
+describe("saveIndex", () => {
+  // Called from file events and every note operation: a failed save (another
+  // copy of the app renaming the same temp file away, a full disk) must never
+  // become an uncaught exception in the main process.
+  afterEach(() => vi.restoreAllMocks());
+  const blockedDir = () => {
+    const file = path.join(indexDir, "not-a-directory");
+    fs.writeFileSync(file, "");
+    return path.join(file, "note-indexes");
+  };
+
+  it("never throws, and the next save writes what it could not", () => {
+    loadIndex(notesDir);
+    getIdIndex()["note-1"] = "A.md";
+    setIndexDir(blockedDir());
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(saveIndex(notesDir)).toBe(false);
+
+    setIndexDir(indexDir);
+    expect(saveIndex(notesDir)).toBe(true);
+    expect(JSON.parse(fs.readFileSync(indexPath(notesDir), "utf-8"))).toEqual({ "note-1": "A.md" });
+  });
+
+  it("keeps a pre-0.5 index in the vault until it has been saved elsewhere", () => {
+    const legacy = path.join(notesDir, ".boojy-index.json");
+    fs.writeFileSync(legacy, JSON.stringify({ "note-1": "A.md" }));
+    setIndexDir(blockedDir());
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(loadIndex(notesDir)).toEqual({ "note-1": "A.md" });
+    expect(fs.existsSync(legacy)).toBe(true);
   });
 });

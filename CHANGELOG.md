@@ -8,6 +8,7 @@
 
 ### Bug Fixes
 
+- **No error box when the note list can't be saved** — If the app couldn't save its own record of which file is which note (a full disk, for instance), a "JavaScript error" box appeared. It now tries again with the next change, and the legacy copy of that record inside an old vault is kept until the new one is safely saved.
 - **A note put back from the Trash always comes back** — Deleting a note and putting it back from the Finder's Trash straight away, while the Mac was busy, could leave the note missing from the sidebar even though its file was back in the folder. It now reappears however quickly you put it back.
 - **A size typed in Settings after Escape now applies** — In Settings → Interface size, pressing Escape while typing a size, then typing another, ignored the second one until you tried a third time. It now applies the first time.
 - **A space typed in a callout's title or a table cell stays** — Since v0.14.0, pausing for a moment after typing a space in a callout's title or a table cell made the space vanish, so the next word joined the last (`Heads up` became `Headsup`). The space now stays, however long you pause.

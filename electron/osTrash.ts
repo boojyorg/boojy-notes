@@ -282,11 +282,7 @@ export async function trashManagedNote(
   if (!fs.existsSync(filePath)) {
     // Stale index entry for a file already gone — heal it and report benign.
     delete idIndex[noteId];
-    try {
-      saveIndex(notesDir);
-    } catch (error) {
-      console.error("Failed to persist the note index after a stale-entry cleanup", error);
-    }
+    saveIndex(notesDir);
     return { trashed: false, missing: true };
   }
 
