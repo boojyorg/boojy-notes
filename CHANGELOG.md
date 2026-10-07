@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+
+- **Boojy Notes is in Beta** — From v0.15.0 the desktop app is complete enough for ordinary daily use, on macOS, Windows and Linux. What's next: having the same notes on your phone.
+
 ## v0.15.0 — 2026-10-07
 
 ### Features
