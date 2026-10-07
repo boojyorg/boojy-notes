@@ -1,16 +1,17 @@
 # Boojy Notes — Backlog
 
 Direction, what is left to do and what is known to be broken. Shipped work goes in
-`CHANGELOG.md`, never here. The philosophy: finish Beta, daily-drive Boojy Notes, and let
-observed friction decide what deserves to exist next. Nothing is added because it sounds
+`CHANGELOG.md`, never here. The philosophy: daily-drive Boojy Notes, and let observed friction
+decide what deserves to exist next. Nothing is added because it sounds
 plausible.
 
-**Stages.** Early access (now, since v0.7.0 on 2026-09-11): signed, published builds anyone
-can download from boojy.org, with rough edges said out loud. Beta (next): the desktop app feels
-complete for daily use; the release requirements below are what it waits for. Early access
-issues bad enough to fix before anything else sit in their own short list below.
+**Stages.** Early access (v0.7.0 to v0.14.0, 2026-09-11 to 2026-10-06): signed, published
+builds anyone can download from boojy.org, with rough edges said out loud. **Beta (now, since
+v0.15.0 on 2026-10-07):** the desktop app is complete enough for daily use; the release
+requirements it waited for are met (below). Problems bad enough to fix before anything else sit
+in their own short list below.
 
-Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
+Three tiers, kept apart. **Release requirements** were what Beta waited for (met). **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
 Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-07,
 the v0.15.0 release pass; before that 2026-09-30, the whole-product pass (Tyr marked 89 features
@@ -38,7 +39,7 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety 7.5 (since then, 2026-10-07: the corpus
   run passed, every note of Obsidian's help vault, `~/Documents/Vault` and the daily vault saving
   back unchanged, and the rename and temporary-file crash windows are closed; nothing left); repo and tests holds at 7.5 (left: the hook-dependency audit and the small lint
-  warnings, the two flaky macOS tests, Actions pinned by SHA). **The order:** Beta, a cloud design document (where notes live, encryption, accounts, cost
+  warnings, the two flaky macOS tests, Actions pinned by SHA). **The order:** Beta (reached 2026-10-07), a cloud design document (where notes live, encryption, accounts, cost
   limits; no code), the groundwork (stable block ids, the web build storing Markdown), sync
   between desktop and the phone's web build, **writing offline on the phone from day one**,
   then an installable Android app on the same editor; a public launch after that.
@@ -93,40 +94,24 @@ Product calls for Tyr; each trades conventional Markdown meaning against byte pr
   item rather than folded into the paragraph) is a setext underline outside too, and no blank
   is written for it, so the file keeps meaning a heading there. One decision, two `it.fails`.
 
-## Early access: fix now
+## Fix now
 
-Problems early access users can hit today. Each is small and comes before the Beta work.
+Problems Beta users can hit today. Each is small and comes before anything else.
 
 Nothing open.
 
-## Beta: release requirements
+## Beta: release requirements (met)
 
-Beta starts when the local desktop app feels complete enough for ordinary daily use that
-missing core features no longer limit it. Worked one item at a time, each judged live. This
-list is the product scope the release waits for; the CI gates and any serious data-loss bug
-found on the way gate it as well, without needing a line here.
-
-- [ ] **Daily use feels reliable.** "A bit buggy" is the first reason Tyr still opens Obsidian
-  (2026-09-24), ahead of any missing feature. The input is a friction log in the vault, one line
-  for anything that felt off however vague; each entry is reproduced in the real app
-  (`BOOJY_TRACE`, the files rule) before it is fixed, and a review pass follows only if the log
-  shows a pattern.
-- [ ] **Visual polish and a Windows smoke test.** Walked through on Tyr's Windows PC on
-  2026-10-05 (`pnpm dev`): an unreadable note, spelling, bold after a double-click, device names,
-  a pasted screenshot, the Recycle Bin and Recently Deleted, a Notepad edit, an Explorer rename,
-  a OneDrive vault, Alt+F4 straight after typing and typed spaces all held; the menu strip's
-  pointer switching was fixed then. Left: the published installer and SmartScreen's words. Windows and Linux spell-check
-  dictionaries download from Google's CDN on first launch (no
-  `setSpellCheckerDictionaryDownloadURL`), now said in boojy.org/privacy (2026-10-07).
-- [ ] **Fix the release path.** v0.7.0 (2026-09-11) published the daily-driver line as early
-  access, the first tag since v0.5.0, and the first signed and notarised macOS build (the signing and
-  notarisation secrets are set; the two traps the first run hit are in the CI rule and
-  `docs/private/code-signing.md`). Testers and boojy.org only ever see the last *published*
-  release, so Beta too is a tag and a published release, never a build that lives only in
-  `/Applications`; every release runs the docs pass in `AGENTS.md` and the draft-release steps
-  in the CI rule. A tag now publishes itself (2026-10-06): one draft opened before the builds,
-  checked, published and marked latest; a tag on a commit without a green CI run is refused.
-  Left: the first real release to prove it (boojy.org and Check for Updates show it).
+Met on 2026-10-07 with v0.15.0, Tyr's call. **Daily use feels reliable**: the friction log in
+the vault keeps going, each entry reproduced in the real app (`BOOJY_TRACE`, the files rule)
+before it is fixed. **The Windows smoke test** passed on Tyr's PC (2026-10-05, `pnpm dev`) and on
+the published installer in the VM: SmartScreen says "Windows protected your PC … Unknown
+publisher", and More info, then Run anyway, is said on boojy.org. The installer is unsigned;
+Azure Artifact Signing (about $10 a month) is open only to organisations in the UK, an OV
+certificate costs a few hundred pounds a year, and neither removes the warning at once. Revisit
+before a public launch. The install took about two minutes in the VM: time it on a real PC.
+**A tag publishes itself**: v0.15.0 was the first (13 minutes from tag to boojy.org). Still to
+confirm: Check for Updates on the Mac offering it.
 
 ## Beta: candidates
 
