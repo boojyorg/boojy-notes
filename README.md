@@ -21,7 +21,8 @@ One promise sits under all of it: editing part of a file must not rewrite the re
 - A Markdown view (Cmd+/) that shows and edits the note as its file
 - Spell checking as you write, with suggestions and Add to dictionary on right-click
 - Version history for every note, with save points on Cmd+S, and Recently Deleted for 30 days
-- More than one storage location, including folders in iCloud Drive or Dropbox, and other files (PDFs, slides) shown beside your notes
+- More than one storage location, including folders in iCloud Drive or Dropbox, and other files shown beside your notes
+- PDFs and pictures open in the note's place, with page links (`[[Slides.pdf#page=12]]`) and Copy as Quote
 - One note open at a time
 - Light, Dark and System appearance, and quiet motion that respects Reduce Motion
 - macOS, Windows and Linux
@@ -59,7 +60,7 @@ Built with React 19 and Vite 8, Electron 44 for the desktop shell, Vitest and Pl
 
 ## Status
 
-Boojy Notes is in early access ahead of its first desktop Beta: v0.14.0 was published on 2026-10-06, for macOS, Windows and Linux, and is the build [boojy.org](https://boojy.org) offers; an installed copy from v0.8.0 onward updates itself to it. Beta starts when the local desktop app feels complete enough for ordinary daily use that I no longer feel limited by missing core features. It's getting close, but it isn't there yet. I use it every day, and what I bump into decides what gets finished next.
+Boojy Notes is in early access ahead of its first desktop Beta: v0.15.0 was published on 2026-10-07, for macOS, Windows and Linux, and is the build [boojy.org](https://boojy.org) offers; an installed copy from v0.8.0 onward updates itself to it. Beta starts when the local desktop app feels complete enough for ordinary daily use that I no longer feel limited by missing core features. It's getting close, but it isn't there yet. I use it every day, and what I bump into decides what gets finished next.
 
 Several things were built and then removed to keep the product small: cloud sync and sign-in, PDF and DOCX export, tabs and split view, native mobile. Each is listed under Removed in [CHANGELOG.md](CHANGELOG.md), and Git keeps the code if a direction is ever reconsidered.
 
