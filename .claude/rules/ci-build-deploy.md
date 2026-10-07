@@ -35,14 +35,15 @@ Rule + one reason. Incidents and measurements are in git; command details in
   `xcrun notarytool history --key <p8> --key-id <id> --issuer <uuid>`.
 - **The macOS target is `dmg` and `zip`.** The DMG is the website download; the zip is the only
   thing `MacUpdater` can install from.
-- **Releases land as drafts, sometimes two per tag** with the assets split between them, named
-  after `package.json`'s version (so an rc tag with the version bumped fills the real drafts).
-  Drafts are invisible to the website and the updater. After every tag push: `gh release list`,
-  merge the assets into one release, publish it, delete the leftover draft.
-- Publishing a release fires `site-rebuild.yml` (the boojy.org deploy hook; skips if the secret
-  is absent), which then polls boojy.org/notes/ for up to 10 minutes for the release's macOS
-  download link and fails if it never appears. A red run means the site is still showing the old
-  version: see `boojy-web/docs/WEBSITE-VERSION-UPDATES.md`.
+- **A tag publishes itself.** `prepare` refuses a tag that isn't `v` + `package.json`'s version
+  or whose commit has no green CI run, then opens one draft with the CHANGELOG headlines
+  (`release-notes.mjs`); every build uploads into it (left to the builds, two raced).
+  `publish` renames the dotted `Boojy.Notes-` asset, checks the 14
+  files and each `latest*.yml` sha512, publishes, then sends `make_latest` alone (with
+  `draft=false` it is dropped). A `-rc` version is checked and left a draft.
+- The workflow's token fires no `published` event, so `release.yml` calls `site-rebuild.yml`
+  (a hand-published release fires it), which polls boojy.org/notes/ 10 minutes for the macOS
+  link; red means the site shows the old version (`boojy-web/docs/WEBSITE-VERSION-UPDATES.md`).
 - Every job carries `timeout-minutes` sized from actuals (a stalled job once ran six hours).
   `release.yml` is sized loose on purpose: Apple's notarisation queue is the variable.
 

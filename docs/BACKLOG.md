@@ -123,10 +123,9 @@ found on the way gate it as well, without needing a line here.
   `docs/private/code-signing.md`). Testers and boojy.org only ever see the last *published*
   release, so Beta too is a tag and a published release, never a build that lives only in
   `/Applications`; every release runs the docs pass in `AGENTS.md` and the draft-release steps
-  in the CI rule. Left open: pre-create the release before the matrix and auto-publish when
-  both jobs pass, retiring the manual draft merge (electron-builder already uploads into an
-  existing draft of the version's name, so pre-creating one is most of the fix); and whether a
-  tag may be cut from a commit that never passed CI.
+  in the CI rule. A tag now publishes itself (2026-10-06): one draft opened before the builds,
+  checked, published and marked latest; a tag on a commit without a green CI run is refused.
+  Left: the first real release to prove it (boojy.org and Check for Updates show it).
 
 ## Beta: candidates
 
