@@ -60,6 +60,22 @@ function quoteIndent(raw) {
   return m ? m[1] : null;
 }
 
+/**
+ * A callout's marker line as the app writes it. The title is the rest of the
+ * line: a newline in it would end the callout, so one is written as a space.
+ */
+function calloutHeader(block) {
+  const type = block.calloutTypeRaw || block.calloutType || "note";
+  const title = (block.title || "").replace(/\n/g, " ");
+  return `${block.indentStr || ""}> [!${type}]${block.calloutFold || ""} ${title}`.trimEnd();
+}
+
+/** What a callout's marker line says, so an edit to any of it is noticed. */
+const calloutKey = (block) =>
+  [block.calloutTypeRaw || block.calloutType, block.calloutFold || "", block.title || ""].join(
+    "\u0000",
+  );
+
 // ─── Paragraph structure ───
 // Blocks represent Markdown structure, not source lines. A paragraph block
 // holds every adjacent plain line of the source joined by "\n" (soft breaks).
@@ -357,15 +373,18 @@ export function blocksToMarkdown(blocks) {
             `${block.lead ?? ""}${px ? `![${alt}|${px}](${src})` : `![${alt}](${src})`}${block.trail ?? ""}`,
           );
         } else {
+          const target = `${src}${block.subpath ?? ""}`;
           lines.push(
-            `${block.lead ?? ""}${px ? `![[${src}|${px}]]` : `![[${src}]]`}${block.trail ?? ""}`,
+            `${block.lead ?? ""}${px ? `![[${target}|${px}]]` : `![[${target}]]`}${block.trail ?? ""}`,
           );
         }
         break;
       }
-      case "file":
-        lines.push(`${block.lead ?? ""}![[${block.src || ""}]]${block.trail ?? ""}`);
+      case "file": {
+        const size = block.widthPx != null ? `|${block.widthPx}` : "";
+        lines.push(`${block.lead ?? ""}![[${block.src || ""}${size}]]${block.trail ?? ""}`);
         break;
+      }
       case "frontmatter":
         lines.push("---");
         if (block.text || !block.frontmatterSource?.empty) lines.push(block.text || "");
@@ -421,17 +440,14 @@ export function blocksToMarkdown(blocks) {
         break;
       }
       case "callout": {
-        const cType = block.calloutTypeRaw || block.calloutType || "note";
-        const fold = block.calloutFold || "";
-        // The title is the rest of the marker line: a newline in it would
-        // end the callout, so one is written as a space.
-        const title = (block.title || "").replace(/\n/g, " ");
-        lines.push(`> [!${cType}]${fold} ${title}`.trimEnd());
+        const source = block.headerSource;
+        lines.push(source && source.key === calloutKey(block) ? source.line : calloutHeader(block));
         if (block.text) {
+          const indent = block.indentStr || "";
           const bodyLines = block.text.split("\n");
           const marks = quoteMarksFor(block, bodyLines.length);
           bodyLines.forEach((bodyLine, k) => {
-            lines.push(`${marks[k]}${bodyLine}`);
+            lines.push(`${indent}${marks[k]}${bodyLine}`);
           });
         }
         break;
@@ -639,21 +655,26 @@ export function markdownToBlocks(md) {
       continue;
     }
 
-    // 3. Callout (> [!type] ...)
-    if (/^>\s*\[!(\w+)\]/.test(line)) {
-      const calloutMatch = line.match(/^>\s*\[!(\w+)\]([+-])?\s*(.*)/);
+    // 3. Callout (> [!type] ...). Indented up to three spaces, as a quote may
+    // be (and as Obsidian reads it); every line of it carries that indent.
+    const calloutIndent = quoteIndent(raw);
+    const calloutLine = calloutIndent === null ? null : raw.slice(calloutIndent.length);
+    if (calloutLine !== null && /^>\s*\[!(\w+)\]/.test(calloutLine)) {
+      const calloutMatch = calloutLine.match(/^>\s*\[!(\w+)\]([+-])?\s*(.*)/);
       // The type as written (`[!WARNING]` stays capitals); looked up in lowercase.
       const rawType = calloutMatch[1];
       const calloutFold = calloutMatch[2] || "";
-      const title = calloutMatch[3] || "";
+      const title = calloutMatch[3].trim();
       const calloutType = CALLOUT_ALIASES[rawType.toLowerCase()] || "note";
       const bodyLines = [];
       const marks = [];
       i++;
-      while (i < lines.length && /^>\s?/.test(lines[i])) {
-        if (/^>\s*\[!\w+\][+-]?\s/.test(lines[i]) || /^>\s*\[!\w+\][+-]?$/.test(lines[i])) break;
-        marks.push(lines[i].match(/^>\s?/)[0]);
-        bodyLines.push(lines[i].replace(/^>\s?/, ""));
+      const indent = calloutIndent ?? "";
+      while (i < lines.length && quoteIndent(lines[i]) === indent) {
+        const rest = lines[i].slice(indent.length);
+        if (/^>\s*\[!\w+\][+-]?(\s|$)/.test(rest)) break;
+        marks.push(rest.match(/^>\s?/)[0]);
+        bodyLines.push(rest.replace(/^>\s?/, ""));
         i++;
       }
       const callout = {
@@ -666,6 +687,11 @@ export function markdownToBlocks(md) {
         text: bodyLines.join("\n"),
       };
       if (marks.some((mark) => mark !== "> ")) callout.quoteMarks = marks;
+      if (indent) callout.indentStr = indent;
+      // The marker line as written (a space after the type, two before the
+      // title, a non-breaking one), while type, fold and title are unchanged.
+      if (raw !== calloutHeader(callout))
+        callout.headerSource = { line: raw, key: calloutKey(callout) };
       blocks.push(callout);
       continue;
     }
@@ -736,20 +762,24 @@ export function markdownToBlocks(md) {
     if (wikiEmbedMatch) {
       const filename = wikiEmbedMatch[1];
       const widthPx = wikiEmbedMatch[2] ? parseInt(wikiEmbedMatch[2], 10) : null;
+      // The file's own name, before any `#subpath` (`shot.png#interface`, a
+      // CSS hook in Obsidian; `slides.pdf#page=3`): its extension says what
+      // the embed is. Read with the subpath, `.png#interface` was no picture.
+      const hash = filename.indexOf("#");
+      const file = hash < 0 ? filename : filename.slice(0, hash);
       const ext =
-        filename.lastIndexOf(".") !== -1
-          ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
-          : "";
+        file.lastIndexOf(".") !== -1 ? file.slice(file.lastIndexOf(".")).toLowerCase() : "";
       if (IMAGE_EXTENSIONS.has(ext)) {
         const width = widthPx ? Math.min(Math.max(Math.round(widthPx / 7), 10), 100) : 100;
         const imgBlock = {
           id: `md-${++_parseBlockId}`,
           type: "image",
-          src: filename,
-          alt: filename.replace(/\.[^.]+$/, ""),
+          src: file,
+          alt: file.replace(/\.[^.]+$/, ""),
           width,
           text: "",
         };
+        if (hash >= 0) imgBlock.subpath = filename.slice(hash);
         // Keep the file's exact px when serialising from width% would write a
         // different value (rounding drift) or drop the suffix (width ≥ 100%)
         if (widthPx != null && !(width < 100 && Math.round(width * 7) === widthPx)) {
@@ -764,6 +794,8 @@ export function markdownToBlocks(md) {
           filename: filename,
           size: null,
           text: "",
+          // Obsidian's size for an embedded file (`![[clip.mp4|300]]`), kept.
+          ...(widthPx != null ? { widthPx } : {}),
         });
       } else {
         const headingMatch = filename.match(/^(.+?)#(.+)$/);

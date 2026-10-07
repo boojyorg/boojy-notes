@@ -62,3 +62,36 @@ export const KNOWN_INLINE = [
 
 /** The known rewrite a document holds, by name, or null. */
 export const knownRewrite = (doc) => KNOWN.find(([, holds]) => holds(doc))?.[0] ?? null;
+
+/**
+ * Whether `after` differs from `before` only by blank lines put in straight
+ * above a `---` (the sanctioned rewrite). A document merely holding the
+ * pattern proves nothing about its change: on Obsidian's Help vault, every
+ * file filed under it (a `---` in a YAML example) had been changed for some
+ * other reason.
+ */
+function onlyBlanksAboveDividers(before, after) {
+  const a = lines(before);
+  const b = lines(after);
+  const divider = (x) => /^ {0,3}---[ \t]*$/.test(x ?? "");
+  let i = 0;
+  let j = 0;
+  while (i < a.length || j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+    } else if (b[j] === "" && divider(b[j + 1]) && b[j + 1] === a[i]) {
+      j++;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * The known rewrite that explains the whole change from `before` to
+ * `after`, by name, or null: the corpus counts a file apart only then.
+ */
+export const explainedRewrite = (before, after) =>
+  onlyBlanksAboveDividers(before, after) ? knownRewrite(before) : null;

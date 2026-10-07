@@ -74,6 +74,8 @@ interface CalloutBlock extends BlockBase {
   calloutTypeRaw?: string;
   calloutFold?: string;
   title?: string;
+  /** The marker line as written, reused while type, fold and title (its `key`) are unchanged. */
+  headerSource?: { line: string; key: string };
 }
 
 interface ImageBlock extends BlockBase {
@@ -81,6 +83,8 @@ interface ImageBlock extends BlockBase {
   src?: string;
   alt?: string;
   width?: number;
+  /** What follows the file's name in the link (`#interface`), kept as written. */
+  subpath?: string;
 }
 
 interface FileBlock extends BlockBase {
@@ -88,6 +92,8 @@ interface FileBlock extends BlockBase {
   filename?: string;
   size?: number | null;
   src?: string;
+  /** Obsidian's size for an embedded file (`![[clip.mp4|300]]`), kept as written. */
+  widthPx?: number;
 }
 
 interface EmbedBlock extends BlockBase {
