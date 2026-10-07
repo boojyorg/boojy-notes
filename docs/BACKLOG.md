@@ -12,8 +12,8 @@ issues bad enough to fix before anything else sit in their own short list below.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-06,
-the v0.14.0 release pass; before that 2026-09-30, the whole-product pass (Tyr marked 89 features
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-07,
+the v0.15.0 release pass; before that 2026-09-30, the whole-product pass (Tyr marked 89 features
 from Apple Notes, Obsidian and Notion). Items marked *review §n* come from the whole-app review of
 2026-09-07, whose fixes shipped in v0.7.0.
 
@@ -227,7 +227,7 @@ none blocks the release. The shared question comes first because three candidate
   into a note that writes a link to it. Every file operation must be
   right for a non-note file too; an attachment stays open-only, because a rename rewrites no
   links. A Finder change reaches the tree on window focus; watching them is a later step if
-  that proves slow to notice. Built-in viewers are later still (Future).
+  that proves slow to notice. PDFs and pictures open in the app since v0.15.0.
 - **Quick capture and a `boojy-notes://` link.** Wanted (Tyr, 2026-09-24): a global shortcut
   from anywhere on the Mac makes an ordinary new note, the same creation as Cmd+N (no inbox, no
   quick-note type). A `boojy-notes://new?title=…&text=…` scheme is the one door for it, a
