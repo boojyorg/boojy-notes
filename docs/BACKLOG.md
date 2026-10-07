@@ -114,9 +114,9 @@ found on the way gate it as well, without needing a line here.
   2026-10-05 (`pnpm dev`): an unreadable note, spelling, bold after a double-click, device names,
   a pasted screenshot, the Recycle Bin and Recently Deleted, a Notepad edit, an Explorer rename,
   a OneDrive vault, Alt+F4 straight after typing and typed spaces all held; the menu strip's
-  pointer switching was fixed then. Left: the published installer and SmartScreen's words. Windows spell-check
+  pointer switching was fixed then. Left: the published installer and SmartScreen's words. Windows and Linux spell-check
   dictionaries download from Google's CDN on first launch (no
-  `setSpellCheckerDictionaryDownloadURL`); a line in a privacy statement or a self-hosted URL.
+  `setSpellCheckerDictionaryDownloadURL`), now said in boojy.org/privacy (2026-10-07).
 - [ ] **Fix the release path.** v0.7.0 (2026-09-11) published the daily-driver line as early
   access, the first tag since v0.5.0, and the first signed and notarised macOS build (the signing and
   notarisation secrets are set; the two traps the first run hit are in the CI rule and
@@ -234,7 +234,7 @@ none blocks the release. The shared question comes first because three candidate
   location and the moment an empty note becomes a file are undecided for every entry point. Not
   accepted: deriving the title from the first line.
 - **For friends at Beta.** A keyboard shortcuts sheet (a screen reached from Help or Settings),
-  a way to report a problem, a short privacy statement (soon), and a first-run explainer (a
+  a way to report a problem, and a first-run explainer (a
   welcome note or a short tour, undecided). Custom shortcuts come in Beta, once the defaults
   are good (2026-09-30).
 - **Find in note, as good as a code editor's.** Cmd+F finds and replaces (it opens as it was
