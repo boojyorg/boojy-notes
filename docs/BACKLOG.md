@@ -37,9 +37,7 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   after sync. Files and safety keeps its bar because sync multiplies outside edits and renames.
   **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety 7.5 (left: the corpus run
   on two outside vaults, the rename and temporary-file crash windows); repo and tests holds at 7.5 (left: the hook-dependency audit and the small lint
-  warnings, the two flaky macOS tests, Actions pinned by SHA). **The order:** a one-hour test of
-  the web build on the phone (Android keyboards type by composition, which several editor rules
-  assume away), Beta, a cloud design document (where notes live, encryption, accounts, cost
+  warnings, the two flaky macOS tests, Actions pinned by SHA). **The order:** Beta, a cloud design document (where notes live, encryption, accounts, cost
   limits; no code), the groundwork (stable block ids, the web build storing Markdown), sync
   between desktop and the phone's web build, **writing offline on the phone from day one**,
   then an installable Android app on the same editor; a public launch after that.
@@ -544,6 +542,14 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   recommended; local-file behaviour is explicitly deferred. The spec keeps web outside the
   product promise until then. The ~200 lines of localStorage/IndexedDB note persistence stay
   meanwhile: they are what lets `pnpm dev:web` survive a reload during visual iteration.
+- **The editor works on a phone** (2026-10-06: the web build in Chrome on a Pixel 8a, Gboard
+  with suggestions and two languages). Typing, voice, typed headings, bold, italic and lists,
+  Enter and Backspace all held, so the phone work is layout, touch and storage, not the editor.
+  Found: a long-press is a `contextmenu`, which opens the app's desktop menu instead of
+  Android's selection bar, and its Paste cannot read a browser's clipboard (leave a touch
+  long-press to the system); the block grip shows on touch; the desktop layout puts the sidebar
+  over half the screen. Test layout in a phone-sized Chromium, the keyboard on the real phone
+  (USB debugging, `chrome://inspect`); an emulator's typed input skips the keyboard's composition.
 - **Mobile shell** unchosen. One relationship to keep in view: the editor is `contentEditable`
   on the browser's Selection and Range APIs, so a shell that keeps the browser DOM (Capacitor
   and the like) can reuse it, and a shell that does not (full React Native, Flutter) means
