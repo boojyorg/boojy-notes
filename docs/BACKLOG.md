@@ -365,12 +365,9 @@ here and in `tests/utils/knownRewrites.js`.
   timer, so the residue is a redundant write when two overlap and a theoretical mid-write kill
   if the quit handshake completes while a blur write is in flight (the atomic rename keeps the
   last complete file).
-- [ ] **Rename crash window** — a crash between unlink and index save re-IDs the note; a crash
-  before unlink leaves a visible duplicate that needs manual cleanup.
 - [ ] **A crashed renderer burns the quit handshake's 2 s cap** — the flush listener now removes
   itself and a destroyed window is checked, so nothing accumulates on rapid Cmd+W then Cmd+Q;
   what is left is that a renderer that has already died still holds the quit for the cap.
-- [ ] **Orphaned `.*.tmp` files** after a crash followed by a rename.
 - [ ] **Wikilink rename does not update referrers** — rename `Beta` to `Gamma` and `[[Beta]]`
   elsewhere stays as written and draws dashed. The rename is a new file plus an unlink, so
   Obsidian's own link update never runs either. Fixed by Backlinks (Beta candidates): links

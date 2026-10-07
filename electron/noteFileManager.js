@@ -3,7 +3,8 @@ import { trace } from "./trace.js";
 import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { writeFileAtomic } from "./atomicWrite.js";
+import { renameWithRetry, writeFileAtomic } from "./atomicWrite.js";
+import { recoverLeftoverTemps } from "./leftoverTemps.js";
 import * as history from "./history.js";
 import { isOffloaded, offloadedAmong, readDownloading } from "./offloaded.js";
 import { isSameEntry, isSkippedName, vaultKey } from "./vaultFs.js";
@@ -162,15 +163,15 @@ function assertVaultPresent(notesDir) {
 }
 
 /**
- * Where a note's file goes on this write, and whether the write is a rename
- * of the note's own file to a name the volume considers the same (a
- * case-only or Unicode-normalisation change). Pure decision; no writes.
+ * Where a note's file goes on this write: its own name, a name the volume
+ * considers the same as its file's (a case-only or Unicode-normalisation
+ * change, renamed onto), or a free one. Pure decision; no writes.
  */
 function resolveWritePath(targetPath, existingPath) {
-  if (existingPath === targetPath) return { finalPath: targetPath, sameFile: false };
+  if (existingPath === targetPath) return { finalPath: targetPath };
   if (existingPath && fs.existsSync(targetPath) && isSameEntry(existingPath, targetPath))
-    return { finalPath: targetPath, sameFile: true };
-  return { finalPath: ensureUniqueFilePath(targetPath, existingPath), sameFile: false };
+    return { finalPath: targetPath };
+  return { finalPath: ensureUniqueFilePath(targetPath, existingPath) };
 }
 
 // ─── Note ID index ───
@@ -565,6 +566,9 @@ function readAllNotes(notesDir) {
 
   loadIndex(notesDir);
   history.openVault(notesDir);
+  // A save the app died in the middle of: its temp file, gone if superseded,
+  // otherwise kept as a recovered note the walk below lists.
+  recoverLeftoverTemps(notesDir);
 
   // Notes whose indexed file is gone, by the text their history last kept.
   _adoptable.clear();
@@ -691,51 +695,46 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
       note.content?.blocks?.length ?? 0,
     );
 
-    const { finalPath, sameFile } = resolveWritePath(targetPath, existingPath);
+    const { finalPath } = resolveWritePath(targetPath, existingPath);
 
     // Ensure directory exists
     fs.mkdirSync(path.dirname(finalPath), { recursive: true });
 
-    // A case-only rename of the note's own file: move the directory entry
-    // first, so the new casing is what the volume records (writing over the
-    // old entry would keep its name), and skip the old-file removal below,
-    // which would delete the file just written. chokidar reports the move as
-    // an unlink of the old name and an add of the new;
-    // the add is the write's own echo, the unlink is claimed here.
-    if (sameFile) {
+    // A rename or a move renames the note's own file first, then writes the
+    // new text into it: the operating system's rename is all or nothing, so
+    // at every instant the note is one file, under one name, never two and
+    // never none. Writing the new file and then unlinking the old one left a
+    // duplicate if the app died in between, and a note with a new id (its
+    // history cut loose) if it died before the index was saved. The index is
+    // saved straight after the rename; a crash before even that still keeps
+    // the id, since the file holds the text its history last kept (a note
+    // renamed while the app was closed). A case-only rename goes the same way,
+    // so the volume records the new casing. chokidar reports the move as an
+    // unlink of the old name (claimed here) and an add of the new (the
+    // write's own echo). The directory it leaves stays, however empty.
+    if (existingPath && existingPath !== finalPath && fs.existsSync(existingPath)) {
       watcher.claimUnlink(existingPath);
       try {
-        fs.renameSync(existingPath, finalPath);
+        renameWithRetry(existingPath, finalPath);
       } catch (error) {
         watcher.releaseUnlinkClaim(existingPath);
         throw error;
       }
+      _idIndex[note.id] = path.relative(
+        notesDir,
+        path.join(path.dirname(finalPath), realBasename(finalPath)),
+      );
+      saveIndex(notesDir);
     }
 
     // Serialize — just markdown body, no frontmatter; restore the file's
     // original line-ending style (content.eol is set by parseNoteFile)
     const bodyMd = applyEol(blocksToMarkdown(note.content?.blocks || []), note.content?.eol);
 
-    // A rename away from the note's file keeps that file's permission bits;
-    // every other write keeps the target's own (or makes a file the ordinary way).
-    writeFileAtomic(finalPath, bodyMd, existingPath && !sameFile ? existingPath : finalPath);
+    writeFileAtomic(finalPath, bodyMd);
     // Claimed after the write: a claim describes bytes that are on disk. The
     // handler is synchronous, so no watcher event can arrive in between.
     watcher.claimWrite(finalPath, bodyMd);
-
-    // On rename, remove the old file only after the new one is safely on disk —
-    // a crash in between leaves a duplicate (recoverable), never a missing note.
-    // The directory it leaves stays, however empty: a folder is a directory
-    // the user made, and only an explicit folder removal takes one away.
-    if (existingPath && existingPath !== finalPath && !sameFile) {
-      watcher.claimUnlink(existingPath);
-      try {
-        fs.unlinkSync(existingPath);
-      } catch {
-        // Already gone, so no unlink of the app's is coming; a later one is real.
-        watcher.releaseUnlinkClaim(existingPath);
-      }
-    }
 
     // Index and report the entry the volume actually holds. On disk the
     // basename is the note's title; `readAllNotes` reads it back as such.
