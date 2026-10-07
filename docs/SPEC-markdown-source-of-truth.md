@@ -53,6 +53,12 @@ above it is the one it was read under. Moved under another block, copied or dupl
 written unindented, as the app writes any embed: kept, a tab after a blank line would make it a
 code block to every other reader.
 
+A callout keeps its marker line as written (a space after the type, two before the title, a
+non-breaking one) until its type, fold or title is edited, and may be indented up to three spaces,
+as a quote may, every line of it carrying the indent. An embed's `#subpath`
+(`![[shot.png#interface|300]]`, `![[slides.pdf#page=3]]`) is part of its link, never of its
+file's extension, and a file embed's size (`![[clip.mp4|300]]`) is kept.
+
 ## The enforceable core: the round-trip rule
 
 > Every block MUST losslessly round-trip: **block → markdown → block**, producing an identical

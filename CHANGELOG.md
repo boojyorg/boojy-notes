@@ -12,6 +12,7 @@
 
 ### Bug Fixes
 
+- **Obsidian's picture sizes and callout spacing survive an edit** — A picture linked with a `#` part and a size, as Obsidian's own help writes them (`![[screenshot.png#interface|300]]`), showed as a file card and lost its size the first time you edited the note, so Obsidian then drew it full size. It now shows as the picture it is and keeps its size. A callout's first line keeps its spacing (a space after `[!tip]`, two before the title), a callout indented by a space stays one callout, and a video or other file embedded with a size keeps it. Checked against every note in Obsidian's help vault, in every language: all 6,387 now save back unchanged.
 - **No error box when the note list can't be saved** — If the app couldn't save its own record of which file is which note (a full disk, for instance), a "JavaScript error" box appeared. It now tries again with the next change, and the legacy copy of that record inside an old vault is kept until the new one is safely saved.
 - **A note put back from the Trash always comes back** — Deleting a note and putting it back from the Finder's Trash straight away, while the Mac was busy, could leave the note missing from the sidebar even though its file was back in the folder. It now reappears however quickly you put it back.
 - **A size typed in Settings after Escape now applies** — In Settings → Interface size, pressing Escape while typing a size, then typing another, ignored the second one until you tried a third time. It now applies the first time.

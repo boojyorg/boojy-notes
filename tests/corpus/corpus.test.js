@@ -7,7 +7,7 @@ import {
   detectEol,
   markdownToBlocks,
 } from "../../src/utils/markdown.js";
-import { knownRewrite } from "../utils/knownRewrites.js";
+import { explainedRewrite } from "../utils/knownRewrites.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // A CORPUS OF REAL NOTES, run by hand
@@ -16,8 +16,8 @@ import { knownRewrite } from "../utils/knownRewrites.js";
 //
 // Every `.md` under the folder goes through load → save as the desktop path
 // does, read only (nothing is written). A file whose bytes change fails the
-// run, unless the change is a rewrite already on record (knownRewrites.js),
-// which is counted apart. Skipped without BOOJY_CORPUS, so CI never needs one.
+// run, unless the change is a rewrite already on record (knownRewrites.js)
+// and nothing else, which is counted apart. Skipped without BOOJY_CORPUS, so CI never needs one.
 // Point it at a real vault, a clone of a public one, or the CommonMark spec's
 // examples saved one per file; what it finds becomes a minimal fixture in
 // tests/fixtures/preservation/.
@@ -67,7 +67,7 @@ describe.skipIf(!root)("a corpus of real notes (BOOJY_CORPUS)", () => {
       const once = save(raw);
       if (save(once) !== once) unstable.push(path.relative(root, file));
       if (once === raw) continue;
-      const why = knownRewrite(raw);
+      const why = explainedRewrite(raw, once);
       if (why) known.set(why, (known.get(why) ?? 0) + 1);
       else changed.push({ file: path.relative(root, file), ...firstChange(raw, once) });
     }
