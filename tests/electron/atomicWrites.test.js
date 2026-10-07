@@ -74,6 +74,45 @@ describe("write-note — crash-safe writes", () => {
     expect(fs.existsSync(path.join(notesDir, "Old Title.md"))).toBe(false);
   });
 
+  // A rename moves the note's own file, then writes into it: the note is one
+  // file at every instant, and the index follows it before the text does.
+  const notes = () => fs.readdirSync(notesDir).filter((f) => f.endsWith(".md"));
+  const indexed = () => JSON.parse(fs.readFileSync(indexPath(notesDir), "utf-8"))["note-1-aaaa"];
+  const renameTo = (title, text) =>
+    writeNote({ id: "note-1-aaaa", title, content: { blocks: [{ type: "p", text }] } });
+
+  it("a rename that fails changes nothing: the note keeps its file, its text and its index entry", () => {
+    renameTo("Old Title", "Old text");
+    const rename = vi.spyOn(fs, "renameSync").mockImplementationOnce(() => {
+      throw Object.assign(new Error("busy"), { code: "EIO" });
+    });
+    try {
+      expect(() => renameTo("New Title", "New text")).toThrow("busy");
+    } finally {
+      rename.mockRestore();
+    }
+    expect(notes()).toEqual(["Old Title.md"]);
+    expect(fs.readFileSync(path.join(notesDir, "Old Title.md"), "utf-8")).toBe("Old text");
+    expect(indexed()).toBe("Old Title.md");
+  });
+
+  it("a crash after the rename, before the new text lands, leaves one file, at the new name, under its id", () => {
+    renameTo("Old Title", "Old text");
+    const realWrite = fs.writeSync;
+    const write = vi.spyOn(fs, "writeSync").mockImplementation((fd, data, ...rest) => {
+      if (data === "New text") throw new Error("crash");
+      return realWrite(fd, data, ...rest);
+    });
+    try {
+      expect(() => renameTo("New Title", "New text")).toThrow("crash");
+    } finally {
+      write.mockRestore();
+    }
+    expect(notes()).toEqual(["New Title.md"]);
+    expect(fs.readFileSync(path.join(notesDir, "New Title.md"), "utf-8")).toBe("Old text");
+    expect(indexed()).toBe("New Title.md");
+  });
+
   it("never overwrites a different note's file on title collision", () => {
     writeNote({
       id: "note-1-aaaa",

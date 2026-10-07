@@ -709,3 +709,18 @@ describe("saveIndex", () => {
     expect(fs.existsSync(legacy)).toBe(true);
   });
 });
+
+describe("readAllNotes — a save the app died in", () => {
+  it("lists a leftover temp file that may hold the last save as a recovered note", () => {
+    const tmp = path.join(notesDir, ".~Plan.md.tmp");
+    fs.writeFileSync(tmp, "the last save\n");
+    const hourAgo = new Date(Date.now() - 3_600_000);
+    fs.utimesSync(tmp, hourAgo, hourAgo);
+
+    const titles = Object.values(readAllNotes(notesDir)).map((n) => n.title);
+
+    expect(titles).toHaveLength(1);
+    expect(titles[0]).toMatch(/^Plan \(recovered \d{4}-\d{2}-\d{2}\)$/);
+    expect(fs.existsSync(tmp)).toBe(false);
+  });
+});

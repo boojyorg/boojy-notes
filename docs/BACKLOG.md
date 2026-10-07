@@ -35,9 +35,9 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   the release requirements below and files and safety at 8/10; the other rows of the scorecard
   and the Beta candidates (Word import, PDF export, the public-face batch, backlinks) wait until
   after sync. Files and safety keeps its bar because sync multiplies outside edits and renames.
-  **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety 7.5 (left: the rename and
-  temporary-file crash windows; the corpus run passed on 2026-10-07: every note of Obsidian's
-  help vault, `~/Documents/Vault` and the daily vault saves back unchanged); repo and tests holds at 7.5 (left: the hook-dependency audit and the small lint
+  **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety 7.5 (since then, 2026-10-07: the corpus
+  run passed, every note of Obsidian's help vault, `~/Documents/Vault` and the daily vault saving
+  back unchanged, and the rename and temporary-file crash windows are closed; nothing left); repo and tests holds at 7.5 (left: the hook-dependency audit and the small lint
   warnings, the two flaky macOS tests, Actions pinned by SHA). **The order:** Beta, a cloud design document (where notes live, encryption, accounts, cost
   limits; no code), the groundwork (stable block ids, the web build storing Markdown), sync
   between desktop and the phone's web build, **writing offline on the phone from day one**,
@@ -365,12 +365,9 @@ here and in `tests/utils/knownRewrites.js`.
   timer, so the residue is a redundant write when two overlap and a theoretical mid-write kill
   if the quit handshake completes while a blur write is in flight (the atomic rename keeps the
   last complete file).
-- [ ] **Rename crash window** — a crash between unlink and index save re-IDs the note; a crash
-  before unlink leaves a visible duplicate that needs manual cleanup.
 - [ ] **A crashed renderer burns the quit handshake's 2 s cap** — the flush listener now removes
   itself and a destroyed window is checked, so nothing accumulates on rapid Cmd+W then Cmd+Q;
   what is left is that a renderer that has already died still holds the quit for the cap.
-- [ ] **Orphaned `.*.tmp` files** after a crash followed by a rename.
 - [ ] **Wikilink rename does not update referrers** — rename `Beta` to `Gamma` and `[[Beta]]`
   elsewhere stays as written and draws dashed. The rename is a new file plus an unlink, so
   Obsidian's own link update never runs either. Fixed by Backlinks (Beta candidates): links
