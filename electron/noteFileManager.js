@@ -270,6 +270,15 @@ function getIdIndex() {
 const _identity = new Map(); // id → { dev, ino, hash }
 const hashOf = (text) => crypto.createHash("sha1").update(text).digest("hex");
 
+/** Whether the file holds exactly `text`; `known` is its text when already read. Unreadable is no. */
+function holds(filePath, known, text) {
+  try {
+    return (known ?? fs.readFileSync(filePath, "utf-8")) === text;
+  } catch {
+    return false;
+  }
+}
+
 function recordIdentity(id, stat, raw) {
   _identity.set(id, { dev: stat.dev, ino: stat.ino, hash: hashOf(raw) });
 }
@@ -712,7 +721,8 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // so the volume records the new casing. chokidar reports the move as an
     // unlink of the old name (claimed here) and an add of the new (the
     // write's own echo). The directory it leaves stays, however empty.
-    if (existingPath && existingPath !== finalPath && fs.existsSync(existingPath)) {
+    const renaming = existingPath && existingPath !== finalPath && fs.existsSync(existingPath);
+    if (renaming) {
       watcher.claimUnlink(existingPath);
       try {
         renameWithRetry(existingPath, finalPath);
@@ -731,7 +741,11 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // original line-ending style (content.eol is set by parseNoteFile)
     const bodyMd = applyEol(blocksToMarkdown(note.content?.blocks || []), note.content?.eol);
 
-    writeFileAtomic(finalPath, bodyMd);
+    // A rename that leaves the text as it was is the rename alone. Rewriting
+    // the same bytes swaps a new file in under the new name, and a sync client
+    // takes that for a new file and the old one deleted: in Dropbox the note
+    // lost its id, its version history, and a phone saw no rename.
+    if (!(renaming && holds(finalPath, diskBody, bodyMd))) writeFileAtomic(finalPath, bodyMd);
     // Claimed after the write: a claim describes bytes that are on disk. The
     // handler is synchronous, so no watcher event can arrive in between.
     watcher.claimWrite(finalPath, bodyMd);
