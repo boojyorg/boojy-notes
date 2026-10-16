@@ -160,45 +160,33 @@ export function caretLength(el) {
 }
 
 /**
- * Paints the spaces HTML would collapse as U+00A0, as Chromium does while
- * typing: one at a line's start or end, and every one after another space.
- * A collapsed space has no caret position of its own, so the next keystroke
- * typed after a repainted trailing space joined the word before it
- * (`w01w02`). The read-back turns these into the plain spaces they were
- * (`settleTypedSpaces`), so the painter must only be used on a block whose
- * saved text holds no U+00A0 of its own.
+ * A repaint puts a line's text back as plain spaces, and HTML hides a plain
+ * space at the end of a line: the caret then sits after nothing, and the next
+ * keystroke joins the word before it (`w01w02`). Chromium types that space as
+ * U+00A0 so it shows. After a repaint, the one space just before the caret,
+ * at the end of its line, is put back the way Chromium typed it; nothing
+ * else is touched, so no line holds a character typing could not have put
+ * there. The read-back turns it into the plain space it is
+ * (`settleTypedSpaces`). Returns whether it changed the line.
  */
-export function showCollapsedSpaces(el) {
+export function showSpaceBeforeCaret(el) {
+  const sel = window.getSelection();
+  if (!sel?.isCollapsed || !el.contains(sel.anchorNode)) return false;
+  const node = sel.anchorNode;
+  const offset = sel.anchorOffset;
+  if (node.nodeType !== Node.TEXT_NODE || node.data[offset - 1] !== " ") return false;
+  if (offset < node.data.length) return false;
+  // The line ends here: nothing but a line break, or the block's end, follows.
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
-  const runs = []; // text nodes and line breaks, in order
-  let node;
-  while ((node = walker.nextNode())) {
-    if (node.nodeType === Node.TEXT_NODE ? !inAnchor(node) && !isIcon(node) : isBr(node))
-      runs.push(node);
+  walker.currentNode = node;
+  let next;
+  while ((next = walker.nextNode())) {
+    if (isBr(next)) break;
+    if (next.nodeType === Node.TEXT_NODE && next.data !== "" && !inAnchor(next)) return false;
   }
-  const lineEnd = (i) => i + 1 >= runs.length || runs[i + 1].nodeType !== Node.TEXT_NODE;
-  let before = "\n"; // the character before this one on the line; a line starts after "\n"
-  runs.forEach((run, i) => {
-    if (run.nodeType !== Node.TEXT_NODE) {
-      before = "\n";
-      return;
-    }
-    const chars = [...run.data];
-    const next = runs[i + 1]?.nodeType === Node.TEXT_NODE ? runs[i + 1].data[0] : "\n";
-    chars.forEach((ch, j) => {
-      if (ch !== " ") {
-        before = ch;
-        return;
-      }
-      const after = j + 1 < chars.length ? chars[j + 1] : lineEnd(i) ? "\n" : next;
-      if (before === " " || before === "\n" || after === "\n" || after === undefined) {
-        chars[j] = " ";
-      }
-      before = " ";
-    });
-    const painted = chars.join("");
-    if (painted !== run.data) run.data = painted;
-  });
+  node.data = `${node.data.slice(0, offset - 1)}\u00a0`;
+  sel.collapse(node, offset);
+  return true;
 }
 
 /** The link (`<a>` or wikilink span) inside `el` that `node` sits in, if any. */
