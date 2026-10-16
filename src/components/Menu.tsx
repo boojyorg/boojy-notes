@@ -335,7 +335,7 @@ export default function Menu({
             >
               {item.label}
             </span>
-            {item.hint && (
+            {item.hint && !isPhone && (
               <span style={{ color: TEXT.muted, fontSize: 12, marginLeft: 16, flexShrink: 0 }}>
                 {item.hint}
               </span>

@@ -328,7 +328,8 @@ export default function NotePath({
     );
   };
   const spacer = (basis) => ({
-    flexGrow: 1,
+    // A phone's name too long for the row takes all of it, on two lines.
+    flexGrow: isPhone && form.truncated ? 0 : 1,
     flexShrink: basis > 0 ? BIAS_SHRINK : 0,
     flexBasis: basis > 0 ? basis : 0,
     minWidth: 0,
@@ -344,7 +345,9 @@ export default function NotePath({
         top: 0,
         zIndex: Z.PATH_ROW,
         flexShrink: 0,
-        height: CHROME_TOP + CHROME_BOX,
+        // The phone lets a long name take a second line (below), so the row
+        // grows with it there; the desktop's is one control high.
+        [isPhone ? "minHeight" : "height"]: CHROME_TOP + CHROME_BOX,
         boxSizing: "border-box",
         paddingTop: CHROME_TOP,
         paddingLeft: padLeft,
@@ -379,7 +382,7 @@ export default function NotePath({
           position: "relative",
           display: "flex",
           alignItems: "center",
-          height: CHROME_BOX,
+          [isPhone ? "minHeight" : "height"]: CHROME_BOX,
           minWidth: 0,
         }}
       >
