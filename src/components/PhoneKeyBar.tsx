@@ -3,7 +3,7 @@ import { useTheme } from "../hooks/useTheme";
 import { TOUCH } from "../constants/layout";
 import { sendCommand } from "../phone/commands";
 import {
-  BackIcon,
+  CloseIcon,
   FormatIcon,
   HeadingIcon,
   RedoIcon,
@@ -11,15 +11,19 @@ import {
   TextStyleIcon,
   UndoIcon,
 } from "./Icons";
-import { type BarMode, barModeAfterSelection, kindCommand } from "../phone/keyBar";
+import { type BarMode, barModeAfterSelection, headingCommand, kindCommand } from "../phone/keyBar";
 
 /**
  * The phone's bar above the keyboard: what the desktop does with keys and its
  * selection toolbar, in one row of touch targets. Three rows share the place:
  *
  *   blocks   ↶ ↷ H • 1. ☐ ⊞ / Aa   while typing
- *   format   ‹ ↶ ↷ B I S ▮ <> ⛓    Aa, or a selection (which opens it itself)
- *   heading  ‹ H1 … H6 Text         H
+ *   format   ↶ ↷ B I S ▮ <> ⛓ ✕    Aa, or a selection (which opens it itself)
+ *   heading  ↶ ↷ H1 … H6 ✕          H
+ *
+ * Undo and redo never move, and the ✕ that closes a row stands where Aa
+ * opened it. The level a line already has is lit; tapping it makes the line
+ * text again, as a lit list button does.
  *
  * Every button sends the desktop menu bar's command (`sendCommand`), so it
  * does what its key does; table and `/` are the slash menu's. A press never
@@ -128,7 +132,7 @@ export default function PhoneKeyBar({
     button("undo", "Undo", <UndoIcon />, run("undo")),
     button("redo", "Redo", <RedoIcon />, run("redo")),
   ];
-  const back = button("back", "Back", <BackIcon size={20} />, show("blocks"));
+  const close = button("close", "Close", <CloseIcon size={18} />, show("blocks"));
   const kind = (k: string, label: string, glyph: ReactNode) =>
     button(k, label, glyph, run(kindCommand(k, active.kind)), active.kind === k);
 
@@ -155,7 +159,6 @@ export default function PhoneKeyBar({
       button("format", "Text style", <TextStyleIcon />, show("format", true)),
     ],
     format: [
-      back,
       ...history,
       ...(["bold", "italic", "strikethrough", "highlight", "code", "link"] as const).map((f) =>
         button(
@@ -166,31 +169,23 @@ export default function PhoneKeyBar({
           active.formats.has(f),
         ),
       ),
+      close,
     ],
     heading: [
-      back,
+      ...history,
       ...[1, 2, 3, 4, 5, 6].map((n) =>
         button(
           `h${n}`,
           `Heading ${n}`,
           `H${n}`,
           () => {
-            run(`h${n}`)();
+            run(headingCommand(n, active.kind))();
             setMode("blocks");
           },
           active.kind === `h${n}`,
         ),
       ),
-      button(
-        "body",
-        "Text",
-        "Text",
-        () => {
-          run("body")();
-          setMode("blocks");
-        },
-        active.kind === "p",
-      ),
+      close,
     ],
   };
 

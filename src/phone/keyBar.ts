@@ -22,3 +22,8 @@ export function kindCommand(
   const command = kind === "checkbox" ? "todo" : kind;
   return current === kind ? "body" : command;
 }
+
+/** A heading level, or text again when the line already has that level. */
+export function headingCommand(level: number, current: string | null) {
+  return current === `h${level}` ? "body" : `h${level}`;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { barModeAfterSelection, kindCommand } from "../../src/phone/keyBar";
+import { barModeAfterSelection, headingCommand, kindCommand } from "../../src/phone/keyBar";
 
 describe("the bar above the keyboard follows the selection", () => {
   it("shows the text styles while text is selected, from any row", () => {
@@ -30,5 +30,16 @@ describe("a list or task button", () => {
   it("turns a line already of that kind back into text", () => {
     expect(kindCommand("bullet", "bullet")).toBe("body");
     expect(kindCommand("checkbox", "checkbox")).toBe("body");
+  });
+});
+
+describe("a heading level", () => {
+  it("makes the line that level", () => {
+    expect(headingCommand(2, "p")).toBe("h2");
+    expect(headingCommand(5, "h1")).toBe("h5");
+  });
+
+  it("turns a line already at that level back into text", () => {
+    expect(headingCommand(3, "h3")).toBe("body");
   });
 });
