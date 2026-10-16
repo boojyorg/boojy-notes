@@ -187,7 +187,7 @@ class Pass {
       if (!here) continue;
       let file: RemoteFile;
       try {
-        file = await this.remote.move(there.path, here.path);
+        file = await this.remote.move(there.id, here.path);
       } catch (error) {
         if (!(error instanceof RemoteConflictError || error instanceof RemoteNotFoundError)) {
           throw error;

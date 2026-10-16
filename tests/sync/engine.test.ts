@@ -208,6 +208,20 @@ describe("renames", () => {
     expectBoth(env, { "A.md": "a new note", "Moved.md": "alpha" });
   });
 
+  it("moves the renamed note itself, not a new note the Mac just put at its old name", async () => {
+    const env = await started({ "A.md": "alpha" });
+    env.phone.files.set("B.md", env.phone.files.get("A.md") as Uint8Array);
+    env.phone.files.delete("A.md");
+    // After the phone's listing, before its move: the Mac renames A and makes a new A.
+    env.dropbox.before("move", async () => {
+      env.dropbox.macMove("A.md", "C.md");
+      await env.dropbox.macWrite("A.md", "a new note");
+    });
+    await env.settle();
+    await env.settle(); // the pass Dropbox's long-poll asks for after the Mac's change
+    expectBoth(env, { "A.md": "a new note", "B.md": "alpha" });
+  });
+
   it("never overwrites a conflicted copy: a second clash the same day gets -2", async () => {
     const env = await started({ "A.md": "alpha" });
     env.phone.type("A.md", "phone 1");

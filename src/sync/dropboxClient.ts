@@ -190,9 +190,10 @@ export function createDropboxRemote({
       return toFile((await res.json()) as Metadata);
     },
 
-    async move(from, to) {
+    async move(id, to) {
+      // Dropbox takes an `id:` wherever it takes a path.
       const result = await rpc<{ metadata: Metadata }>("files/move_v2", {
-        from_path: full(from),
+        from_path: id,
         to_path: full(to),
         autorename: false,
       });

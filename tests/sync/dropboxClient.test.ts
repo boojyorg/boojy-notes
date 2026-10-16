@@ -147,18 +147,18 @@ describe("createDropboxRemote", () => {
     expect(sent).toHaveLength(0);
   });
 
-  it("moves without renaming, and reports a missing source", async () => {
+  it("moves a file by its id, without renaming, and reports a missing source", async () => {
     const { remote, sent } = remoteWith(
       json({ metadata: fileMeta("/Test/B.md") }),
       error(409, "from_lookup/not_found/.."),
     );
-    expect((await remote.move("A.md", "B.md")).path).toBe("B.md");
+    expect((await remote.move("id:a1", "B.md")).path).toBe("B.md");
     expect(sent[0].body).toEqual({
-      from_path: "/Test/A.md",
+      from_path: "id:a1",
       to_path: "/Test/B.md",
       autorename: false,
     });
-    await expect(remote.move("A.md", "B.md")).rejects.toBeInstanceOf(RemoteNotFoundError);
+    await expect(remote.move("id:a1", "B.md")).rejects.toBeInstanceOf(RemoteNotFoundError);
   });
 
   it("deletes only the revision it saw", async () => {

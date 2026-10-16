@@ -234,11 +234,12 @@ export class FakeDropbox implements Remote {
     return file;
   }
 
-  async move(from: string, to: string) {
+  async move(id: string, to: string) {
     await this.enter("move");
-    if (!this.files.has(keyOf(from))) throw new RemoteNotFoundError(from);
+    const file = [...this.files.values()].find((f) => f.id === id);
+    if (!file) throw new RemoteNotFoundError(id);
     if (this.files.has(keyOf(to))) throw new RemoteConflictError(to);
-    this.macMove(from, to);
+    this.macMove(file.path, to);
     this.leave("move");
     return this.meta(this.files.get(keyOf(to)) as StoredFile);
   }

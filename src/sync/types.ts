@@ -49,8 +49,12 @@ export interface Remote {
   download(path: string): Promise<{ file: RemoteFile; bytes: Uint8Array }>;
   /** Throws RemoteConflictError when the mode's condition fails. */
   upload(path: string, bytes: Uint8Array, mode: WriteMode): Promise<RemoteFile>;
-  /** Throws RemoteNotFoundError, or RemoteConflictError when `to` exists. */
-  move(from: string, to: string): Promise<RemoteFile>;
+  /**
+   * Moves the file whose Dropbox id is `id` (wherever it now is) to `to`: by
+   * id, never by its old path, which the Mac may have given to a new file
+   * since. Throws RemoteNotFoundError, or RemoteConflictError when `to` exists.
+   */
+  move(id: string, to: string): Promise<RemoteFile>;
   /** Deletes only if the file is still at `rev`, else RemoteConflictError. */
   remove(path: string, rev: string): Promise<void>;
   /** Succeeds when the folder already exists. */
