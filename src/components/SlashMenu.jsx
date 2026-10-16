@@ -15,6 +15,10 @@ import { SlashCommandIcon } from "./Icons";
 const ICON_COL = 20;
 const ROW_PAD_Y = isPhone ? (TOUCH - ICON_COL) / 2 : 7;
 const MENU_WIDTH = 300;
+/** On the phone: the long-press menu's width, so a label and its hint read as one row. */
+const PHONE_MENU_W = 270;
+/** Air the phone keeps between the menu and the screen's right edge. */
+const PHONE_EDGE = 12;
 /**
  * The typed-shortcut hint at the right of a row. Mono so `#`, `##`, `###` read
  * as syntax rather than a smudge; muted, and it stays muted on the selected row,
@@ -52,8 +56,9 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
   if (!slashMenu) return null;
 
   // The phone's room is the band between the note's header and the bar above
-  // the keyboard: the menu takes its side of the line, up to four and a half
-  // rows (the half says the list scrolls), and never covers either edge.
+  // the keyboard: the menu fills its side of the line, scrolling past that,
+  // and never covers either edge. It stands under the text's left edge at the
+  // long-press menu's width, rather than across the screen.
   const phone = isPhone ? phonePlace(slashMenu.rect) : null;
 
   return (
@@ -74,8 +79,8 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
           position: "fixed",
           ...(phone
             ? {
-                left: 12,
-                right: 12,
+                left: phone.left,
+                width: PHONE_MENU_W,
                 maxHeight: phone.height,
                 overflowY: "auto",
                 ...(phone.side === "below" ? { top: phone.top } : { bottom: phone.bottom }),
@@ -143,7 +148,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                 </div>
                 <div
                   style={{
-                    fontSize: isPhone ? 15 : 13,
+                    fontSize: 13,
                     fontWeight: 500,
                     color: TEXT.primary,
                     flex: 1,
@@ -190,12 +195,18 @@ function phonePlace(rect) {
     lineBottom,
     bandTop: head ? head.getBoundingClientRect().bottom : 0,
     bandBottom: bar ? bar.getBoundingClientRect().top : window.innerHeight,
-    cap: (4.5 * TOUCH + 2 * MENU_PAD) * zoom,
+    cap: Number.POSITIVE_INFINITY,
     gap,
   });
+  const screen = window.innerWidth / zoom;
   return {
     side: room.side,
     height: room.height / zoom,
+    // Under the text's left edge, pulled in to keep the right edge clear.
+    left: Math.max(
+      PHONE_EDGE,
+      Math.min(rect.left / zoom - MENU_PAD - 8, screen - PHONE_MENU_W - PHONE_EDGE),
+    ),
     top: (lineBottom + gap) / zoom,
     bottom: (window.innerHeight - rect.top + gap) / zoom,
   };

@@ -965,16 +965,57 @@ export default function BoojyNotes() {
     const table = SLASH_COMMANDS.find((c) => c.id === "table");
     editorHandlers.executeSlashCommand(activeNote, index, table);
   };
+  // A `/` the bar typed is the bar's, not the writer's: if the menu closes
+  // without a choice, it goes again, with the line the bar made for it.
+  const barSlash = useRef(null);
   const openSlashHere = () => {
     const index = caretBlockIndex();
     if (index < 0) return;
     const block = noteDataRef.current[activeNote].content.blocks[index];
     // Typed, as the key would be, so the menu opens and filters as it does.
     const type = () => document.execCommand("insertText", false, "/");
-    if (block.type === "p" && !block.text) return type();
+    if (block.type === "p" && !block.text) {
+      barSlash.current = { noteId: activeNote, blockId: block.id, made: false };
+      return type();
+    }
     blockOps.insertBlockAfter(activeNote, index);
+    barSlash.current = { noteId: activeNote, blockId: focusBlockId.current, made: true };
     setTimeout(type, 60);
   };
+  const slashWasOpen = useRef(false);
+  useEffect(() => {
+    if (slashMenu) {
+      slashWasOpen.current = true;
+      return;
+    }
+    if (!slashWasOpen.current) return;
+    slashWasOpen.current = false;
+    const typed = barSlash.current;
+    barSlash.current = null;
+    if (!typed) return;
+    const blocks = noteDataRef.current[typed.noteId]?.content?.blocks ?? [];
+    const index = blocks.findIndex((b) => b.id === typed.blockId);
+    const el = blockRefs.current[typed.blockId];
+    // A choice replaced the line or emptied it; the writer's own text stays.
+    // The ref, not the DOM: a choice is in it at once, the paint a frame later.
+    if (index < 0 || !el || !blocks[index].text?.startsWith("/")) return;
+    if (typed.made && index > 0) {
+      blockOps.deleteBlock(typed.noteId, index);
+      const above = blocks[index - 1].id;
+      requestAnimationFrame(() => {
+        const prev = blockRefs.current[above];
+        if (prev) placeCaret(prev, caretLength(prev));
+      });
+      return;
+    }
+    // Taken back as typing is, so the read-back stays the editor's own.
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand("delete");
+  }, [slashMenu, noteDataRef, blockOps]);
 
   // ── Ghost note (draft) effects ────────────────────────────────────────
   useEffect(() => {
