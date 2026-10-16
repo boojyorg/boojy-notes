@@ -34,7 +34,7 @@ A quiet surface (`BG.elevated`, primary text) with **one coloured glyph that car
 meaning**; never an accent fill. `done` fades (a click dismisses); `notice`, `warning`, `error`
 wait for their × (a timed save failure is one nobody saw). **Notices about one condition share
 a key, the newer replacing the older, and end when it stops being true** (`writeRecovered`).
-The stack is centred at the editor's foot, clear of the sidebar. `toasts.spec.ts`.
+`toasts.spec.ts`.
 
 ## Scrollbars
 
@@ -59,8 +59,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone.
 - **Windows and Linux: `WindowStrip` above the Mac's row** (`hasWindowStrip`): File, Edit,
   Format, View open the real menus (`popup-menu`); one open, the pointer on another name opens
-  it. Window and Help are the Mac's. The system's buttons are the
-  overlay; each column's colour, the divider through it; no title. Fixed chrome stands
+  it. Window and Help are the Mac's. The system's buttons are the overlay. Fixed chrome stands
   `WINDOW_STRIP_H` lower.
 - **A drag rectangle must never lie under a control earlier in the DOM**: Chromium applies
   regions in DOM order, so a later `drag` overrides an earlier `no-drag`. Regions stand down while a popup is open; a surface that floats into the row (the
@@ -157,8 +156,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   drop zone (`data-drop-zone`).
 - **The row shows the storage location's name** (its folder's, or a label; code: vault). It
   and ⌘O open `VaultMenu`, a switcher; Settings manages. **Both A–Z (`vaultEntries`).** A
-  Settings row: glyph, name, path cut in the middle, the open one's tick, ··· on hover (darkens,
-  no box); a click switches. Its menu leaves out what cannot work. `vault-switcher.spec.ts`.
+  Settings row's menu leaves out what cannot work. `vault-switcher.spec.ts`.
 - **A file that is not a note** follows its folder's notes, extension muted; a click shows it
   in the note's place; menu Open in Default App, Show in Finder, Delete; never
   renamed or dragged. The attachment store is the root's last row.
@@ -206,14 +204,16 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 - **A PDF, a picture, or a card for any other file stands where the note would** (`FileView`,
   `useFileView`); no note, not even a draft, is open meanwhile. `file-view.spec.ts`.
-- PDF.js draws it (loaded on first use), one scale for every page, its words a `.pdf-text`
-  layer. ⌘± stays the UI scale. Zoom and page are kept per file, off the vault.
+- PDF.js draws it, one scale for every page. ⌘± stays the UI scale; zoom and page are per file.
 - Its controls stand left of the ··· and the path ends before them (`chromePathRightInset`).
 - **Link Page in Note** (⌥⌘L): the page's link at the left note's cursor, written as the picker's.
 
-## Narrow desktop is still desktop
+## Narrow desktop is desktop; the phone, two screens
 
-- **No touch layout, no overlay sidebar**: every device gets the desktop layout.
+- **No touch layout, no overlay sidebar** at any desktop width.
+- **The phone is Home (the sidebar, full width) or the note, never both**; else the desktop's
+  rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits
+  for a hover. The keyboard bar sends menu-bar commands (`phone/commands.ts`). `tests/phone/`.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
   is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems**, centred under the
   name; margins go first, then gutters.
