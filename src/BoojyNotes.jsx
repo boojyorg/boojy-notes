@@ -64,6 +64,8 @@ import { wikilinkStatus } from "./utils/wikilinkTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isPhone, isWeb } from "./utils/platform";
 import { usePhoneScreens } from "./phone/usePhoneScreens";
+import PhoneKeyBar from "./components/PhoneKeyBar";
+import { SLASH_COMMANDS } from "./constants/data";
 import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
 import { fileFromHistoryKey, fileHistoryKey, useNoteHistory } from "./hooks/useNoteHistory";
@@ -938,6 +940,42 @@ export default function BoojyNotes() {
     }, [noteDataRef, activeNote, hideSidebar]),
   });
 
+  // The phone's bar above the keyboard: a table, or the slash menu, at the
+  // caret's block. Both are the slash menu's own, which acts on a block that
+  // holds nothing but its `/`, so a block with text gets a fresh one below it.
+  const caretBlockIndex = () => {
+    const sel = window.getSelection();
+    const node = sel?.anchorNode;
+    const el = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+    const id = el?.closest?.("[data-editor] [data-block-id]")?.getAttribute("data-block-id");
+    const blocks = noteDataRef.current[activeNote]?.content?.blocks ?? [];
+    return id ? blocks.findIndex((b) => b.id === id) : -1;
+  };
+  const emptyLineHere = () => {
+    const index = caretBlockIndex();
+    if (index < 0) return -1;
+    const block = noteDataRef.current[activeNote].content.blocks[index];
+    if (block.type === "p" && !block.text) return index;
+    blockOps.insertBlockAfter(activeNote, index);
+    return index + 1;
+  };
+  const insertTableHere = () => {
+    const index = emptyLineHere();
+    if (index < 0) return;
+    const table = SLASH_COMMANDS.find((c) => c.id === "table");
+    editorHandlers.executeSlashCommand(activeNote, index, table);
+  };
+  const openSlashHere = () => {
+    const index = caretBlockIndex();
+    if (index < 0) return;
+    const block = noteDataRef.current[activeNote].content.blocks[index];
+    // Typed, as the key would be, so the menu opens and filters as it does.
+    const type = () => document.execCommand("insertText", false, "/");
+    if (block.type === "p" && !block.text) return type();
+    blockOps.insertBlockAfter(activeNote, index);
+    setTimeout(type, 60);
+  };
+
   // ── Ghost note (draft) effects ────────────────────────────────────────
   useEffect(() => {
     if (fsLoading) return;
@@ -1619,6 +1657,9 @@ export default function BoojyNotes() {
               showToast={showToast}
             />
           </EditorProvider>
+          {isPhone && (
+            <PhoneKeyBar editorRef={editorRef} onTable={insertTableHere} onSlash={openSlashHere} />
+          )}
         </div>
       </div>
 

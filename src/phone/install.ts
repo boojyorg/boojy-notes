@@ -1,3 +1,4 @@
+import { onCommand } from "./commands";
 import { capacitorFiles } from "./files";
 import { createPhoneSync } from "./phoneSync";
 import { createPhoneVault } from "./phoneVault";
@@ -23,7 +24,11 @@ export async function installPhone() {
   let sync: ReturnType<typeof createPhoneSync> | null = null;
   const vault = createPhoneVault(files, { onLocalChange: () => sync?.localChanged() });
   sync = createPhoneSync(files, vault.store);
-  (window as unknown as { boojyPhoneAPI: unknown }).boojyPhoneAPI = vault.api;
+  // The vault's file calls, and the menu bar's command channel (the bar above the keyboard sends on it).
+  (window as unknown as { boojyPhoneAPI: unknown }).boojyPhoneAPI = {
+    ...vault.api,
+    onMenuCommand: onCommand,
+  };
 
   if (!(await sync.signedIn())) await signInScreen(sync.signIn);
   await sync.start();

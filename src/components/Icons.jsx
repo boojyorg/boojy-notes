@@ -59,6 +59,10 @@ import {
   GripVertical as LuGripVertical,
   Highlighter as LuHighlighter,
   Heading1 as LuHeading1,
+  Heading as LuHeading,
+  Undo2 as LuUndo2,
+  Redo2 as LuRedo2,
+  ALargeSmall as LuALargeSmall,
   Heading2 as LuHeading2,
   Heading3 as LuHeading3,
   Heading4 as LuHeading4,
@@ -203,6 +207,11 @@ export const MinusIcon = contentIcon(LuMinus);
 export const ArrowUpToLineIcon = navIcon(LuArrowUpToLine);
 export const ArrowDownToLineIcon = navIcon(LuArrowDownToLine);
 export const ArrowLeftToLineIcon = navIcon(LuArrowLeftToLine);
+/** The phone's bar above the keyboard: history, the heading row, text styles. */
+export const UndoIcon = navIcon(LuUndo2, 20);
+export const RedoIcon = navIcon(LuRedo2, 20);
+export const HeadingIcon = navIcon(LuHeading, 20);
+export const TextStyleIcon = navIcon(LuALargeSmall, 22);
 /** The phone's way back from a note to Home. */
 export const BackIcon = navIcon(LuChevronLeft, 22);
 export const ArrowRightToLineIcon = navIcon(LuArrowRightToLine);
