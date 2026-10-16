@@ -25,6 +25,7 @@ import {
   Bold as LuBold,
   Check as LuCheck,
   ChevronDown as LuChevronDown,
+  ChevronLeft as LuChevronLeft,
   ChevronRight as LuChevronRight,
   CircleAlert as LuCircleAlert,
   Clock as LuClock,
@@ -202,6 +203,8 @@ export const MinusIcon = contentIcon(LuMinus);
 export const ArrowUpToLineIcon = navIcon(LuArrowUpToLine);
 export const ArrowDownToLineIcon = navIcon(LuArrowDownToLine);
 export const ArrowLeftToLineIcon = navIcon(LuArrowLeftToLine);
+/** The phone's way back from a note to Home. */
+export const BackIcon = navIcon(LuChevronLeft, 22);
 export const ArrowRightToLineIcon = navIcon(LuArrowRightToLine);
 /** Context-menu action glyphs — nav stroke: 1.5 reads too light beside the
  *  12.5px menu labels. Also Recently Deleted's row. */

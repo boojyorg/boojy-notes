@@ -168,6 +168,7 @@ const EditorArea = memo(
     openNote: openNoteProp,
     // The sidebar's press-and-hold drag, for the rows of the path's popup.
     onPathRowPointerDown,
+    onShowFolder,
     onEditorClick,
     onTitleBlur,
     // Edit → Find… and Find and Replace…: the menu opens the bar through this.
@@ -1129,6 +1130,7 @@ const EditorArea = memo(
             activeNote={activeNote}
             onOpenNote={openNoteProp}
             onRowPointerDown={onPathRowPointerDown}
+            onShowFolder={onShowFolder}
           >
             {deletedNote ? (
               <span data-deleted-title style={{ color: theme.TEXT.primary }}>

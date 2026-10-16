@@ -50,6 +50,9 @@ export function LayoutProvider({ children }) {
   /** Make the sidebar visible without toggling it away if it already is. */
   const revealSidebar = useCallback(() => setCollapsed(false), []);
 
+  /** The phone's other screen: the note, with Home (the sidebar) put away. */
+  const hideSidebar = useCallback(() => setCollapsed(true), []);
+
   /**
    * The Markdown view (SourceView): the note shown as its file. App-wide while
    * it is on, so the next note opens in it too; never saved, so every launch
@@ -76,6 +79,7 @@ export function LayoutProvider({ children }) {
       fullScreen,
       toggleSidebar,
       revealSidebar,
+      hideSidebar,
       sourceView,
       setSourceView,
       chromeBg,
@@ -93,6 +97,7 @@ export function LayoutProvider({ children }) {
       fullScreen,
       toggleSidebar,
       revealSidebar,
+      hideSidebar,
       sourceView,
       chromeBg,
       editorBg,

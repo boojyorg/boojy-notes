@@ -257,6 +257,13 @@ export default function GlobalStyles() {
         .sidebar-section-header.menu-open .sidebar-section-action {
           opacity: 0.55;
         }
+        /* The phone has no hover. The Notes row's New folder and Sort show at
+           rest; a row's own ··· and New note never do (a long-press opens the
+           row's menu); and a tapped row keeps no pill, since a touch leaves
+           :hover on whatever it last touched. */
+        html.is-phone .sidebar-section-action { opacity: 0.55; }
+        html.is-phone .sidebar-note-more, html.is-phone .sidebar-folder-actions { display: none !important; }
+        html.is-phone .sidebar-row:hover:not(.is-held) { background-color: transparent; }
         /* The vault's name: muted at rest, and the controls' own grey and
            ink on hover, keyboard focus, or while its menu is open. */
         .sidebar-vault-label {

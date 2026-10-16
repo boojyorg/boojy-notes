@@ -20,6 +20,7 @@ vi.mock("../../src/context/NoteDataContext", () => ({
 }));
 // jsdom reports no platform; the labels are tested on a Mac here and both ways below.
 vi.mock("../../src/utils/platform", () => ({
+  isPhone: false,
   isMac: true,
   isElectronMac: false,
   hasWindowStrip: false,

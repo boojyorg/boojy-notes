@@ -2,14 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { flushSync } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
-import { isElectronMac } from "../utils/platform";
+import { isElectronMac, isPhone } from "../utils/platform";
 import { panelTransition } from "../tokens/motion";
 import { pickCrumbForm } from "../utils/pathCrumbs";
 import { crumbScope } from "../utils/pathTree";
 import { cssZoom } from "../utils/domHelpers";
 import {
   CHROME_TOP,
-  CHROME_BTN,
+  CHROME_BOX,
   chromePathRightInset,
   ChromeButton,
   chromePathInset,
@@ -99,7 +99,7 @@ export const NAME_WEIGHT = 500;
  *  the 32px box, same hover), so its 7px of box either side of
  *  the glyph is most of its air before the name; the gap adds a touch more. */
 const ROOT_GLYPH_GAP = 2;
-const ROOT_GLYPH_W = CHROME_BTN + ROOT_GLYPH_GAP;
+const ROOT_GLYPH_W = CHROME_BOX + ROOT_GLYPH_GAP;
 
 /**
  * Measure the band and the twin and pick the form. Runs on mount, whenever
@@ -123,7 +123,7 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
       const zoom = cssZoom(band);
       // A root note's glyph sits in front of the name and takes its room; a
       // style value, so scaled up to the measured pixels it is compared with.
-      const glyphW = n === 0 ? ROOT_GLYPH_W * zoom : 0;
+      const glyphW = n === 0 && !isPhone ? ROOT_GLYPH_W * zoom : 0;
       const widths = {
         parents: Array.from({ length: n }, (_, i) => w(i)),
         sep: w(n),
@@ -176,6 +176,8 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
  * @param {(e: import("react").PointerEvent<HTMLElement>) => void} [props.onRowPointerDown]
  *   the sidebar's press-and-hold drag, so the popup's rows can be dragged onto its folders
  * @param {number} [props.rightControlsW] a viewed file's controls' width, left of the ···
+ * @param {(folder: string | null) => void} [props.onShowFolder] the phone's crumb:
+ *   Home, that folder open and the note marked, in place of the popup
  * @param {import("react").ReactNode} props.children the title field
  */
 export default function NotePath({
@@ -189,6 +191,7 @@ export default function NotePath({
   onRowPointerDown,
   // A viewed file's controls left of the ···, measured: the band ends before them.
   rightControlsW = 0,
+  onShowFolder,
   // The pane keeps a scrollbar lane at its right (a note); a viewed file's does not.
   lane = true,
   children,
@@ -309,7 +312,13 @@ export default function NotePath({
         aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={(e) => openMenu(index, e.currentTarget)}
+        onClick={(e) =>
+          // The phone has Home for browsing: a crumb goes there, its folder
+          // open (the `…` is the root), rather than drawing the tree small.
+          isPhone && onShowFolder
+            ? onShowFolder(index < 0 ? null : parents.slice(0, index + 1).join("/"))
+            : openMenu(index, e.currentTarget)
+        }
         onMouseEnter={lift}
         onMouseLeave={rest(open)}
         style={crumbStyle(open)}
@@ -335,7 +344,7 @@ export default function NotePath({
         top: 0,
         zIndex: Z.PATH_ROW,
         flexShrink: 0,
-        height: CHROME_TOP + CHROME_BTN,
+        height: CHROME_TOP + CHROME_BOX,
         boxSizing: "border-box",
         paddingTop: CHROME_TOP,
         paddingLeft: padLeft,
@@ -370,7 +379,7 @@ export default function NotePath({
           position: "relative",
           display: "flex",
           alignItems: "center",
-          height: CHROME_BTN,
+          height: CHROME_BOX,
           minWidth: 0,
         }}
       >
@@ -394,7 +403,8 @@ export default function NotePath({
             const at = parents.length - form.keep + i;
             return [crumb(at, folder, "note-path-folder", undefined), sep(`sep-${at}`)];
           })}
-          {parents.length === 0 && rootGlyph}
+          {/* The phone's ‹ is the way to the root, so the glyph would only take the name's room. */}
+          {parents.length === 0 && !isPhone && rootGlyph}
           <span
             style={{
               display: "flex",

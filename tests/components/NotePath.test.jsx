@@ -13,6 +13,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 vi.mock("../../src/utils/platform", () => ({
+  isPhone: false,
   isElectronMac: false,
   isMac: true,
   hasWindowStrip: false,

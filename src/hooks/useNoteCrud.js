@@ -286,7 +286,9 @@ export function useNoteCrud({
       _draft: true,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
-    open(id);
+    // Made because nothing is open, not because anyone asked: the phone
+    // stays on whichever screen it shows.
+    setActiveNote(id, { show: false });
     return id;
   };
 

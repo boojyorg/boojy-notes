@@ -15,7 +15,8 @@ import { useMenuKeys } from "../hooks/useMenuKeys";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { Z } from "../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS, TOUCH } from "../constants/layout";
+import { isPhone } from "../utils/platform";
 import { cssZoom } from "../utils/domHelpers";
 import { restingSize } from "../utils/menuPosition";
 import { CheckIcon, ChevronRightIcon } from "./Icons";
@@ -302,18 +303,20 @@ export default function Menu({
               // shows on the one left out.
               border: 0,
               borderRadius: MENU_ROW_RADIUS,
-              padding: "7px 10px",
+              // On the phone a row is a touch target, its label body-sized.
+              minHeight: isPhone ? TOUCH : undefined,
+              padding: isPhone ? "0 14px" : "7px 10px",
               cursor: item.disabled ? "default" : "pointer",
               // The glyph takes the row's ink, so Delete's goes red with it.
               color: item.disabled ? TEXT.muted : item.danger ? SEMANTIC.error : TEXT.primary,
-              fontSize: 12.5,
+              fontSize: isPhone ? 15 : 12.5,
               fontWeight: item.choice ? 500 : undefined,
               fontFamily: "inherit",
               textAlign: "left",
               transition: "background var(--motion-fast)",
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: isPhone ? 12 : 8,
             }}
           >
             {item.icon && (
