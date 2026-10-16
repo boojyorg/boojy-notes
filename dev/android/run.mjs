@@ -2,7 +2,8 @@
  * `pnpm android`: builds the phone's web bundle, copies it into the Android
  * project, installs the debug app on the phone connected by USB and opens it.
  * Dev only (proof of concept, Dropbox sync step 2). Needs the Android SDK
- * (ANDROID_HOME) and a JDK 21, found with macOS's java_home.
+ * (ANDROID_HOME) and a JDK 21, found with macOS's java_home. With a phone and
+ * an emulator both connected, ANDROID_SERIAL names the one (`adb devices`).
  */
 import { execFileSync } from "node:child_process";
 import path from "node:path";
