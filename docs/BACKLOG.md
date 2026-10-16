@@ -39,10 +39,11 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety 7.5 (since then, 2026-10-07: the corpus
   run passed, every note of Obsidian's help vault, `~/Documents/Vault` and the daily vault saving
   back unchanged, and the rename and temporary-file crash windows are closed; nothing left); repo and tests holds at 7.5 (left: the hook-dependency audit and the small lint
-  warnings, the two flaky macOS tests, Actions pinned by SHA). **The order:** Beta (reached 2026-10-07), a cloud design document (where notes live, encryption, accounts, cost
-  limits; no code), the groundwork (stable block ids, the web build storing Markdown), sync
-  between desktop and the phone's web build, **writing offline on the phone from day one**,
-  then an installable Android app on the same editor; a public launch after that.
+  warnings, the two flaky macOS tests, Actions pinned by SHA). **The order** (the sync design, 2026-10-15): Beta (reached 2026-10-07); Dropbox sync on
+  desktop and an installable Android app on the same editor, **writing offline on the phone
+  from day one**; then a web app; a public launch after that. Boojy Cloud is weighed once
+  Dropbox's limits are known. One requirement carries over from the earlier plan: a remote
+  update never disrupts typing or loses unsaved edits (stable block ids are one possible fix).
 - **Local-first; the cloud is opt-in.** Nothing leaves the machine unless you turn sync on,
   and a device that never signs in loses nothing. **Hosting must stay cheap to run**: a design
   that could cost $1,000 a month is the wrong design, so quotas, size caps and a budget alarm
@@ -508,20 +509,23 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ### Platforms, sync and accounts
 
-- **Sync: provider-synced folders first.** Evaluate Google Drive for desktop and iCloud Drive
-  holding the vault locally, with the provider transferring files while the app edits them,
-  before any Connect button or account. Offline placeholders, external changes, conflicts,
-  renames and deletion need verification per provider; mobile access varies. One sync mechanism
-  per collection, never overlapping. A direct Drive integration (authorisation, transfer,
-  change tracking, recovery) is a larger later feature that free Boojy Cloud may make
-  unnecessary; Drive authorisation is distinct from Google sign-in. CloudKit is an architecture
-  to assess for Apple devices, not general access to iCloud Drive folders.
+- **Sync: Dropbox first, by device** (decided 2026-10-15). Desktop never talks to Dropbox: the
+  vault sits in `Dropbox/Apps/Boojy Notes/<vault>/` and Dropbox's own app syncs it (app-folder
+  permission only; moving a vault in is by hand for now). The phone connects to Dropbox
+  directly with Boojy's sync engine (`src/sync`: local, Dropbox and the last-synced record
+  compared; a clash keeps both, an edit beats a delete, the phone never deletes a folder).
+  Proof of concept step 1 passed its live checks on 2026-10-16 (branch
+  `poc/dropbox-sync-engine`); step 2 is the Pixel. Other providers wait: Google Drive's full
+  access needs restricted-scope verification. One sync mechanism per collection, never
+  overlapping. Found live: Dropbox's Mac app can stop syncing while saying it is up to date,
+  so Boojy may need to notice a synced vault gone quiet.
 - **Web storage** needs its own design discussion. User-selected local folder (real files where
   the browser supports it; support and permission persistence vary, not a foundation for
   mobile, Safari or Firefox), browser-managed storage (offline without a folder; not visible,
   quota-bound, lost with site data), or cloud with offline storage (consistent across devices;
   needs accounts, sync, conflict recovery and a service). Cloud with offline capability was
-  recommended; local-file behaviour is explicitly deferred. The spec keeps web outside the
+  recommended; local-file behaviour is explicitly deferred. Since the sync design (2026-10-15)
+  the web app could also use Dropbox directly. The spec keeps web outside the
   product promise until then. The ~200 lines of localStorage/IndexedDB note persistence stay
   meanwhile: they are what lets `pnpm dev:web` survive a reload during visual iteration.
 - **The editor works on a phone** (2026-10-06: the web build in Chrome on a Pixel 8a, Gboard
@@ -532,32 +536,32 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   long-press to the system); the block grip shows on touch; the desktop layout puts the sidebar
   over half the screen. Test layout in a phone-sized Chromium, the keyboard on the real phone
   (USB debugging, `chrome://inspect`); an emulator's typed input skips the keyboard's composition.
-- **Mobile shell** unchosen. One relationship to keep in view: the editor is `contentEditable`
-  on the browser's Selection and Range APIs, so a shell that keeps the browser DOM (Capacitor
-  and the like) can reuse it, and a shell that does not (full React Native, Flutter) means
-  rebuilding the editor. Which of those to accept is part of the unchosen decision. Keyboard,
-  selection, attachments, filesystem access and background sync need real-device evaluation.
-  The web build working well on a phone comes before any app (Direction). Drawer versus
+- **Mobile shell: Capacitor or similar recommended**, to be confirmed in sync step 2. The
+  editor is `contentEditable` on the browser's Selection and Range APIs, so a shell that keeps
+  the browser DOM can reuse it, and one that does not (full React Native, Flutter) means
+  rebuilding the editor. Keyboard, selection, attachments, filesystem access and background
+  sync need real-device evaluation. The phone's layout is a separate design session after the
+  sync proof of concept. Drawer versus
   two-screen navigation was explored on 2026-04-06 and left undecided; the two-screen touch
   layout has since been removed. The earlier Capacitor spec, mobile
   spec, navigation exploration and release strategy are archived in `docs/private/archive/` as
   reference, not plan. **Tyr's phone is Android** (a Pixel 8a), and a good phone app would
-  double his use (2026-09-30). The phone comes first as the web build in Chrome, then as an
-  installable app on the same editor; the web app needs the cloud's storage, so the two move
-  together (Direction). Tablets: no ink or
+  double his use (2026-09-30). The phone comes first as an installable Android app on the same
+  editor (one vault, chosen at sign-in; attachments all downloaded at first; no version history
+  beyond Dropbox's own); the browser stays a development and test surface until the web app
+  (Direction). Tablets: no ink or
   sketching; handwriting to text comes from iPadOS Scribble in any text field (verify in the
   shell).
 - **Accounts: email-only** when accounts are needed (codes or links; session length open).
   Local desktop use never requires one.
-- **Encryption undecided; Tyr leans end-to-end** (privacy, 2026-09-30), with a detailed
-  comparison (cost, ease, what users value) before building. Local-first softens its worst
-  cost: a lost key loses the cloud copy, not the notes on the desktop. End-to-end (privacy; against it, recovery, new-device setup,
-  browser access and implementation cost, and an email recovery flow cannot recover a lost key)
-  against service-managed (simpler; more provider access and trust). No privacy or recovery
-  promise before the approach is chosen and verified. **Private or encrypted notes in a local
+- **Encryption: none in Dropbox, end-to-end in Boojy Cloud** (2026-10-15). In Dropbox, notes
+  stay readable Markdown with no toggle, and the app says plainly that Dropbox can read them.
+  Boojy Cloud encrypts contents and file names from its first version (suite `VISION.md` §7);
+  local-first softens its worst cost, since a lost key loses the cloud copy, not the notes on
+  the desktop. **Private or encrypted notes in a local
   vault: not now** (2026-09-24). An encrypted file is no longer an ordinary file anyone can open,
   search cannot read it, and Obsidian cannot either; FileVault already covers a lost laptop.
-  Revisit alongside the cloud encryption decision.
+  Revisit with Boojy Cloud.
 - **Free hosting.** When a quota is reached: local writing continues, nothing is deleted, the
   app distinguishes saved locally from synced. Still needed: account management, abuse
   controls, history accounting, a sustainable hosting budget. The September 2026 research
