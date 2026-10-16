@@ -95,7 +95,9 @@ test("an Obsidian-style note opens as its structure, and an edit leaves the rest
       "loose item",
       "quoted",
       "lazy quote line",
-      "Hard break here\nafter the break.",
+      // The hard break's second space is painted as U+00A0, so both keep a caret
+      // position (showCollapsedSpaces); the file keeps its plain spaces (below).
+      "Hard break here \u00a0\nafter the break.",
       "Edit me.",
     ]);
 

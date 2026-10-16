@@ -9,6 +9,7 @@ import {
   caretIntoTextRoot,
   selectionIntoTextRoots,
   caretLength,
+  showCollapsedSpaces,
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
   caretOutOfTagEnd,
@@ -871,5 +872,35 @@ describe("focusSidebar and focusNote — into the tree and back", () => {
     window.getSelection().removeAllRanges();
     focusNote();
     expect(document.activeElement.hasAttribute("data-title")).toBe(true);
+  });
+});
+
+describe("showCollapsedSpaces — a repainted space keeps its place", () => {
+  const paint = (html) => {
+    const el = document.createElement("p");
+    el.innerHTML = html;
+    showCollapsedSpaces(el);
+    return el.innerHTML;
+  };
+
+  it("shows a space at the end of the line, where the next word is typed", () => {
+    expect(paint("Start. w01 ")).toBe("Start. w01&nbsp;");
+  });
+
+  it("shows a space at the start of a line and the second of two", () => {
+    expect(paint(" a  b")).toBe("&nbsp;a &nbsp;b");
+  });
+
+  it("treats a soft break as a line's end and start", () => {
+    expect(paint("one <br> two")).toBe("one&nbsp;<br>&nbsp;two");
+  });
+
+  it("follows the line across formatting", () => {
+    expect(paint("<strong>bold </strong>")).toBe("<strong>bold&nbsp;</strong>");
+    expect(paint("a <em> b</em>")).toBe("a <em>&nbsp;b</em>");
+  });
+
+  it("leaves single spaces between words alone", () => {
+    expect(paint("one two <em>three</em> four")).toBe("one two <em>three</em> four");
   });
 });

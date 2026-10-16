@@ -2,7 +2,7 @@ import { memo, useRef, useLayoutEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { headingStyle, isHeadingType, useRhythm } from "../tokens/rhythm";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
-import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
+import { getCaretOffset, placeCaret, caretLength, showCollapsedSpaces } from "../utils/domHelpers";
 import { trace } from "../utils/trace";
 import { latestBlock } from "../hooks/useOwnedField";
 import { useEmptyMark } from "../hooks/useEmptyMark";
@@ -163,6 +163,8 @@ const EditableBlock = memo(
     // lose the keystroke. Replacing
     // innerHTML collapses a caret inside the block to its start, so the
     // offset is remembered first and the caret put back, clamped to the text.
+    // A space HTML would collapse is painted as Chromium types it, or the
+    // next keystroke after a trailing space joins the word before it.
     useLayoutEffect(() => {
       const el = elRef.current;
       if (!el || block.text === undefined) return;
@@ -183,6 +185,7 @@ const EditableBlock = memo(
         el.innerHTML = "<br>";
       } else {
         el.innerHTML = inlineMarkdownToHtml(text, noteTitleSet);
+        if (!text.includes("\u00a0")) showCollapsedSpaces(el);
       }
       if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
     }, [syncGen, noteTitleSet]); // deliberately not exhaustive: the signals, never a keystroke

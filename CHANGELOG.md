@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Bug Fixes
+
+- **A space at the end of a line no longer goes missing** — If a note was renamed outside Boojy Notes while you typed in it (by Dropbox, say, or in Finder), the space you had just typed could vanish, joining the next word to the last. It now stays.
+
 ### Improvements
 
 - **Boojy Notes is in Beta** — From v0.15.0 the desktop app is complete enough for ordinary daily use, on macOS, Windows and Linux. What's next: having the same notes on your phone.

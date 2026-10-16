@@ -159,6 +159,48 @@ export function caretLength(el) {
   return n;
 }
 
+/**
+ * Paints the spaces HTML would collapse as U+00A0, as Chromium does while
+ * typing: one at a line's start or end, and every one after another space.
+ * A collapsed space has no caret position of its own, so the next keystroke
+ * typed after a repainted trailing space joined the word before it
+ * (`w01w02`). The read-back turns these into the plain spaces they were
+ * (`settleTypedSpaces`), so the painter must only be used on a block whose
+ * saved text holds no U+00A0 of its own.
+ */
+export function showCollapsedSpaces(el) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  const runs = []; // text nodes and line breaks, in order
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.nodeType === Node.TEXT_NODE ? !inAnchor(node) && !isIcon(node) : isBr(node))
+      runs.push(node);
+  }
+  const lineEnd = (i) => i + 1 >= runs.length || runs[i + 1].nodeType !== Node.TEXT_NODE;
+  let before = "\n"; // the character before this one on the line; a line starts after "\n"
+  runs.forEach((run, i) => {
+    if (run.nodeType !== Node.TEXT_NODE) {
+      before = "\n";
+      return;
+    }
+    const chars = [...run.data];
+    const next = runs[i + 1]?.nodeType === Node.TEXT_NODE ? runs[i + 1].data[0] : "\n";
+    chars.forEach((ch, j) => {
+      if (ch !== " ") {
+        before = ch;
+        return;
+      }
+      const after = j + 1 < chars.length ? chars[j + 1] : lineEnd(i) ? "\n" : next;
+      if (before === " " || before === "\n" || after === "\n" || after === undefined) {
+        chars[j] = " ";
+      }
+      before = " ";
+    });
+    const painted = chars.join("");
+    if (painted !== run.data) run.data = painted;
+  });
+}
+
 /** The link (`<a>` or wikilink span) inside `el` that `node` sits in, if any. */
 function enclosingLink(node, el) {
   const link = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node)?.closest(
