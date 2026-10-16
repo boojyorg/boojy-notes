@@ -7,6 +7,8 @@ import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS, TOUCH } from "../constants/layout";
 import { isPhone } from "../utils/platform";
 import { filterSlashCommands } from "../constants/data";
+import { cssZoom } from "../utils/domHelpers";
+import { menuRoom } from "../phone/menuRoom";
 import { SlashCommandIcon } from "./Icons";
 
 /** Row height is icon (20) + 7px above and below; a touch target on the phone. */
@@ -49,6 +51,11 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
 
   if (!slashMenu) return null;
 
+  // The phone's room is the band between the note's header and the bar above
+  // the keyboard: the menu takes its side of the line, up to four and a half
+  // rows (the half says the list scrolls), and never covers either edge.
+  const phone = isPhone ? phonePlace(slashMenu.rect) : null;
+
   return (
     <>
       <div
@@ -65,14 +72,24 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
         aria-label="Slash commands"
         style={{
           position: "fixed",
-          top: pos?.top ?? (slashMenu.rect.bottom ?? slashMenu.rect.top) + 4,
-          left: pos?.left ?? slashMenu.rect.left,
+          ...(phone
+            ? {
+                left: 12,
+                right: 12,
+                maxHeight: phone.height,
+                overflowY: "auto",
+                ...(phone.side === "below" ? { top: phone.top } : { bottom: phone.bottom }),
+              }
+            : {
+                top: pos?.top ?? (slashMenu.rect.bottom ?? slashMenu.rect.top) + 4,
+                left: pos?.left ?? slashMenu.rect.left,
+              }),
           zIndex: Z.DROPDOWN,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
           borderRadius: MENU_RADIUS,
           padding: MENU_PAD,
-          minWidth: MENU_WIDTH,
+          minWidth: phone ? undefined : MENU_WIDTH,
           boxShadow: theme.modalShadow,
         }}
       >
@@ -156,4 +173,30 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
       </div>
     </>
   );
+}
+
+/**
+ * The phone's place for the menu, as styles: measured in the viewport's
+ * pixels and divided by the UI scale, as every measured distance is.
+ */
+function phonePlace(rect) {
+  const zoom = cssZoom(document.documentElement) || 1;
+  const head = document.querySelector('[data-testid="note-path-row"]');
+  const bar = document.querySelector('[data-testid="phone-key-bar"]');
+  const gap = 4 * zoom;
+  const lineBottom = rect.bottom ?? rect.top;
+  const room = menuRoom({
+    lineTop: rect.top,
+    lineBottom,
+    bandTop: head ? head.getBoundingClientRect().bottom : 0,
+    bandBottom: bar ? bar.getBoundingClientRect().top : window.innerHeight,
+    cap: (4.5 * TOUCH + 2 * MENU_PAD) * zoom,
+    gap,
+  });
+  return {
+    side: room.side,
+    height: room.height / zoom,
+    top: (lineBottom + gap) / zoom,
+    bottom: (window.innerHeight - rect.top + gap) / zoom,
+  };
 }
