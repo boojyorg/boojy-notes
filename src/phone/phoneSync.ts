@@ -20,8 +20,10 @@ import type { FileOps } from "./files";
  * fixed to `test` for now; the first version will choose it at sign-in.
  *
  * Sync runs while the app is open: on opening and on coming back to the
- * front, a moment after a save, when the network returns, and whenever
- * Dropbox's long-poll says the vault changed.
+ * front, a moment after a save, whenever Dropbox's long-poll says the vault
+ * changed, and when Dropbox can be reached again after it could not. The web
+ * view's `online` event is not relied on: on Android it did not fire after
+ * aeroplane mode. A pass that fails is tried again a little later.
  */
 
 const APP_KEY = "fupgkw6riwb8yrj"; // The Boojy Notes app key, which is public.
@@ -30,6 +32,7 @@ const VAULT = "test";
 const SECRETS = "state/dropbox.json";
 const PENDING = "state/sign-in.json";
 const SAVE_DELAY_MS = 1500;
+const RETRY_MS = 15_000;
 
 const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
 const decode = (bytes: Uint8Array | null) =>
@@ -93,8 +96,13 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
       log(`pass done in ${Date.now() - started} ms${result.again ? ", another to follow" : ""}`);
       return result;
     });
+    let retry: ReturnType<typeof setTimeout> | undefined;
     request = () => {
-      runner.request().catch((error) => log("pass failed:", error?.message ?? error));
+      clearTimeout(retry);
+      runner.request().catch((error) => {
+        log("pass failed:", error?.message ?? error);
+        retry = setTimeout(request, RETRY_MS);
+      });
     };
 
     let active = true;
@@ -104,23 +112,28 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
     });
     window.addEventListener("online", () => request());
     request();
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
     // Dropbox answers a long-poll when the vault changes; each answer asks for a pass.
     (async () => {
+      let unreachable = false;
       for (;;) {
         try {
           const record = await local.loadRecord();
           const cursor = record ? JSON.parse(record).cursor : null;
-          if (!active || !cursor || !navigator.onLine) {
-            await new Promise((r) => setTimeout(r, 5000));
+          if (!active || !cursor) {
+            await wait(5000);
             continue;
           }
           const { changes, backoff } = await remote.longpoll(cursor);
-          if (changes) request();
-          if (backoff) await new Promise((r) => setTimeout(r, backoff * 1000));
+          // Reachable again: what was saved meanwhile goes up now.
+          if (changes || unreachable) request();
+          unreachable = false;
+          if (backoff) await wait(backoff * 1000);
         } catch (error) {
-          log("long-poll failed:", (error as Error)?.message ?? error);
-          await new Promise((r) => setTimeout(r, 10_000));
+          if (!unreachable) log("long-poll failed:", (error as Error)?.message ?? error);
+          unreachable = true;
+          await wait(10_000);
         }
       }
     })();
