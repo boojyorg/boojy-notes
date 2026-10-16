@@ -95,7 +95,8 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - A save keeps the mode, on macOS xattrs and birthtime (`cp -p`); a symlink is written
   through. `file-mode.spec.ts`.
 - **A rename moves the file first**, then the index, then the text: one file at every instant,
-  its id kept through a crash. A leftover `.~Name.md.tmp` goes if superseded, else becomes a
+  its id kept through a crash. **Unchanged text is not rewritten**: a sync client takes the
+  swapped-in file for a new one (Dropbox gave it a new id). A leftover `.~Name.md.tmp` goes if superseded, else becomes a
   `(recovered <date>)` note. `atomicWrites.test.js`, `leftoverTemps.test.ts`.
 
 ## Attachments

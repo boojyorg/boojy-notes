@@ -416,6 +416,30 @@ describe("write-note — the returned title is the basename on disk", () => {
     expect(fs.readFileSync(path.join(notesDir, "Draft-2.md"), "utf-8")).toBe("mine");
   });
 
+  // Renaming "Mac" in Boojy (2026-10-15): the rename and then a rewrite of the
+  // same bytes swapped a new file in, and Dropbox gave the note a new id.
+  it("renames the file and writes nothing when the text is unchanged", () => {
+    writeNote(note("n-ren", "Mac", null, "mine"));
+    const before = fs.statSync(path.join(notesDir, "Mac.md"));
+
+    writeNote(note("n-ren", "Macaroni", null, "mine"));
+    writeNote(note("n-ren", "Macaroni", "Pasta", "mine"));
+
+    const after = fs.statSync(path.join(notesDir, "Pasta", "Macaroni.md"));
+    expect(after.ino).toBe(before.ino);
+    expect(fs.readFileSync(path.join(notesDir, "Pasta", "Macaroni.md"), "utf-8")).toBe("mine");
+    expect(fs.readdirSync(notesDir)).toEqual(["Pasta"]);
+  });
+
+  it("still writes the new text when a rename comes with an edit", () => {
+    writeNote(note("n-ren2", "Old", null, "before"));
+
+    writeNote(note("n-ren2", "New", null, "after"));
+
+    expect(fs.readdirSync(notesDir)).toEqual(["New.md"]);
+    expect(fs.readFileSync(path.join(notesDir, "New.md"), "utf-8")).toBe("after");
+  });
+
   it("renames its own file when only the letter case changes", () => {
     const first = writeNote(note("n-case", "meeting", null, "mine"));
     expect(first.title).toBe("meeting");
