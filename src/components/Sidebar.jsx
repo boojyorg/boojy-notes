@@ -91,7 +91,8 @@ const HEADER_NUDGE = 4;
 // the popup is this tree drawn small. Rows are inset from both sidebar edges
 // so hover pills breathe; tree pills keep the 4px left inset but run only
 // ROW_INSET_RIGHT short of the scrollbar gutter on the right. Pairs with the .sidebar-scroll thumb override in GlobalStyles.jsx.
-const ROW_INSET_RIGHT = 2;
+// The phone has no scrollbar lane, so its pills sit evenly between the edges.
+const ROW_INSET_RIGHT = isPhone ? ROW_INSET : 2;
 /** Gap between a folder glyph and its name = TEXT_COL − SPINE − SPINE_ICON. */
 const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
 /** The spine as this column draws it: SPINE plus the sidebar's own inset.
@@ -1159,7 +1160,13 @@ const Sidebar = memo(function Sidebar({
           // Children are centred, so top padding shifts them by half of it.
           // Height is unchanged, so nothing below the header moves.
           paddingTop: HEADER_NUDGE * 2,
-          paddingLeft: trafficLightsShown(fullScreen) ? MAC_TRAFFIC_INSET : HEADER_LEFT_INSET,
+          // On the phone the wordmark starts on the column's spine, over New note's
+          // glyph: with no traffic lights or divider to answer to, the column is the edge.
+          paddingLeft: trafficLightsShown(fullScreen)
+            ? MAC_TRAFFIC_INSET
+            : isPhone
+              ? TREE_SPINE
+              : HEADER_LEFT_INSET,
           paddingRight: HEADER_RIGHT_INSET,
           flexShrink: 0,
           WebkitAppRegion: isElectronMac ? "drag" : undefined,
