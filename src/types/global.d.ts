@@ -199,5 +199,9 @@ declare global {
       /** Every enter or leave of full screen after `isFullScreen` answered. */
       onFullScreenChanged: (callback: (on: boolean) => void) => Unsubscribe;
     };
+    /** The Android app's vault (src/phone/install.ts): the note-file calls of `electronAPI`. */
+    boojyPhoneAPI?: import("../phone/phoneVault").PhoneVaultAPI;
+    /** Capacitor's bridge, present in the Android app before any script runs. */
+    Capacitor?: { isNativePlatform?: () => boolean };
   }
 }

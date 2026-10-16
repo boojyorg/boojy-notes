@@ -1,4 +1,4 @@
-import { isElectron } from "../utils/platform";
+import { isElectron, isPhone } from "../utils/platform";
 
 function pickFileWeb(accept) {
   return new Promise((resolve) => {
@@ -54,5 +54,8 @@ const webAPI = {
 
 export function getAPI() {
   if (isElectron) return window.electronAPI;
+  // The phone's vault answers the note-file calls (src/phone/install.ts); the
+  // web fallbacks cover pickers and pasted pictures.
+  if (isPhone) return { ...webAPI, ...window.boojyPhoneAPI };
   return webAPI;
 }
