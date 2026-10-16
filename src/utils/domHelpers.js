@@ -159,6 +159,36 @@ export function caretLength(el) {
   return n;
 }
 
+/**
+ * A repaint puts a line's text back as plain spaces, and HTML hides a plain
+ * space at the end of a line: the caret then sits after nothing, and the next
+ * keystroke joins the word before it (`w01w02`). Chromium types that space as
+ * U+00A0 so it shows. After a repaint, the one space just before the caret,
+ * at the end of its line, is put back the way Chromium typed it; nothing
+ * else is touched, so no line holds a character typing could not have put
+ * there. The read-back turns it into the plain space it is
+ * (`settleTypedSpaces`). Returns whether it changed the line.
+ */
+export function showSpaceBeforeCaret(el) {
+  const sel = window.getSelection();
+  if (!sel?.isCollapsed || !el.contains(sel.anchorNode)) return false;
+  const node = sel.anchorNode;
+  const offset = sel.anchorOffset;
+  if (node.nodeType !== Node.TEXT_NODE || node.data[offset - 1] !== " ") return false;
+  if (offset < node.data.length) return false;
+  // The line ends here: nothing but a line break, or the block's end, follows.
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  walker.currentNode = node;
+  let next;
+  while ((next = walker.nextNode())) {
+    if (isBr(next)) break;
+    if (next.nodeType === Node.TEXT_NODE && next.data !== "" && !inAnchor(next)) return false;
+  }
+  node.data = `${node.data.slice(0, offset - 1)}\u00a0`;
+  sel.collapse(node, offset);
+  return true;
+}
+
 /** The link (`<a>` or wikilink span) inside `el` that `node` sits in, if any. */
 function enclosingLink(node, el) {
   const link = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node)?.closest(

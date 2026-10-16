@@ -30,8 +30,8 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
 
 - **A text block is painted only on a signal** (mount, a `syncGen` bump, a title-set change),
   from `latestBlock(noteDataRef)`, never from the render (which can be a keystroke behind),
-  caret offset restored. A bump alone paints nothing; pair it with a commit that publishes at
-  once.
+  caret restored, a line-end space before it as U+00A0 (`showSpaceBeforeCaret`). A bump
+  alone paints nothing; pair it with a commit that publishes at once. `repaint-spaces.spec.ts`.
 - **A text-only commit never repaints**, so a programmatic text edit edits the DOM and reads it
   back (`domNodeToMarkdown` → `updateBlockText`): formatting, the link popover, Find → Replace.
   `repaint-ownership.spec.ts`.
@@ -100,12 +100,12 @@ app's, made through state.**
   (`utils/wikilinkTarget.ts`, shared by click, picker and the broken mark). An explicit path is
   the path. A name two notes share, or none, draws dashed and opens the link picker in fix mode.
   A vault file's name opens it in the note's place, at `#page=N` (`fileForTarget`).
-  Rename and move rewrite no links yet (backlinks will). `link-resolution.spec.ts`.
+  `link-resolution.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and an
-  unresolved click: address, notes, `Create note` (doesn't open it). Writes `[words](url)`, a
-  bare URL, `[[Target|words]]` or `[[Target]]`, the shortest unambiguous target
+  unresolved click: address, notes, `Create note`. Writes `[words](url)`, a
+  bare URL, `[[Target|words]]` or `[[Target]]`, the shortest clear target
   (`linkTargetFor`). `[[` is notes only. The linked words' wash is unwrapped before read-back.
-  Not in a cell or callout yet. `link-picker.spec.ts`.
+  `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE` in `utils/tags.ts`,
   read by renderer, completion, search and filter. `extractAllTags` skips code, frontmatter,
   URLs and link addresses. The pill shows from the first letter. A space or
@@ -166,7 +166,7 @@ app's, made through state.**
   places (`settleBlocks`, after the commit); a drag that moves nothing sends its copy home.
   `motion.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (the UI scale is
-  CSS `zoom`). Not yet: the callout picker, links.
+  CSS `zoom`).
 - **Frontmatter is never moved** (`reorderFloor`, `moveBlock` refuses index 0).
   `frontmatter-order.spec.ts`.
 - **Every root the grip can show beside is in `blockRefs`**; media, code and callout register

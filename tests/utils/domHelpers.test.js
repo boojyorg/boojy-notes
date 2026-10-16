@@ -9,6 +9,7 @@ import {
   caretIntoTextRoot,
   selectionIntoTextRoots,
   caretLength,
+  showSpaceBeforeCaret,
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
   caretOutOfTagEnd,
@@ -871,5 +872,51 @@ describe("focusSidebar and focusNote — into the tree and back", () => {
     window.getSelection().removeAllRanges();
     focusNote();
     expect(document.activeElement.hasAttribute("data-title")).toBe(true);
+  });
+});
+
+describe("showSpaceBeforeCaret — a repainted line-end space keeps its place", () => {
+  /** A block holding `html`, the caret at `offset` in its text node number `textIndex`. */
+  const block = (html, textIndex, offset) => {
+    const el = document.createElement("p");
+    el.innerHTML = html;
+    document.body.replaceChildren(el);
+    const texts = [];
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) texts.push(walker.currentNode);
+    const node = texts[textIndex];
+    window.getSelection().collapse(node, offset ?? node.data.length);
+    return el;
+  };
+
+  it("shows the space before a caret at the end of the line", () => {
+    const el = block("Start. w01 ", 0);
+    expect(showSpaceBeforeCaret(el)).toBe(true);
+    expect(el.innerHTML).toBe("Start. w01&nbsp;");
+    expect(window.getSelection().anchorOffset).toBe(11);
+  });
+
+  it("treats a soft break as the line's end", () => {
+    const el = block("one <br>two", 0);
+    expect(showSpaceBeforeCaret(el)).toBe(true);
+    expect(el.innerHTML).toBe("one&nbsp;<br>two");
+  });
+
+  it("leaves a space with more of the line after it", () => {
+    expect(showSpaceBeforeCaret(block("one two", 0, 4))).toBe(false);
+    expect(showSpaceBeforeCaret(block("one <em>two</em>", 0))).toBe(false);
+  });
+
+  it("touches nothing but that one space: a link's label keeps its spaces", () => {
+    const el = block('<span class="wikilink" data-target="My  Note">My  Note</span> and ', 1);
+    expect(showSpaceBeforeCaret(el)).toBe(true);
+    expect(el.querySelector(".wikilink").textContent).toBe("My  Note");
+  });
+
+  it("does nothing without a caret in the block", () => {
+    const el = block("end ", 0);
+    window.getSelection().removeAllRanges();
+    expect(showSpaceBeforeCaret(el)).toBe(false);
+    expect(el.innerHTML).toBe("end ");
   });
 });
