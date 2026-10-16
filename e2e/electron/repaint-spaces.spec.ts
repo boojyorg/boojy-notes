@@ -11,15 +11,7 @@
  */
 import fs from "node:fs";
 import { expect, test } from "@playwright/test";
-import {
-  launchApp,
-  noteText,
-  sleep,
-  SETTLE_MS,
-  START_OF_LINE,
-  typeAtEnd,
-  waitForFile,
-} from "./harness";
+import { launchApp, noteText, sleep, SETTLE_MS, typeAtEnd, waitForFile } from "./harness";
 
 test("typing through an outside rename loses no space", async () => {
   const h = await launchApp({ "Alpha.md": "Start." });
@@ -70,8 +62,14 @@ test("a hard break keeps its two spaces when Enter moves its paragraph", async (
   const h = await launchApp({ "Spaces.md": "First.\n\nHard break here  \nafter the break." });
   try {
     await h.openNote("Spaces");
-    await h.page.locator("[data-block-id]").filter({ hasText: "after the break." }).click();
-    await h.page.keyboard.press(START_OF_LINE);
+    // The caret at the paragraph's very start, whichever of its two lines a
+    // click would land on.
+    const block = h.page.locator("[data-block-id]").filter({ hasText: "after the break." });
+    await block.click();
+    await block.evaluate((el) => {
+      const text = document.createTreeWalker(el, NodeFilter.SHOW_TEXT).nextNode();
+      if (text) window.getSelection()?.collapse(text, 0);
+    });
     await h.page.keyboard.press("Enter");
     await waitForFile(
       h.vault.file("Spaces.md"),
