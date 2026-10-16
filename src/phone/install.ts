@@ -17,6 +17,9 @@ export async function installPhone() {
   );
 
   const files = capacitorFiles();
+  // A save the app died in the middle of is finished or undone before anything reads.
+  await files.recover("state");
+  await files.recover("vault");
   let sync: ReturnType<typeof createPhoneSync> | null = null;
   const vault = createPhoneVault(files, { onLocalChange: () => sync?.localChanged() });
   sync = createPhoneSync(files, vault.store);
