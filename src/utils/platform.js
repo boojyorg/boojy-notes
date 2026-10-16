@@ -1,7 +1,10 @@
 export const isElectron = typeof window !== "undefined" && !!window.electronAPI;
+// The Android app (proof of concept, Dropbox sync step 2): Capacitor's bridge
+// is in the page before any script runs. Its vault is src/phone/.
+export const isPhone =
+  typeof window !== "undefined" && !!window.Capacitor?.isNativePlatform?.() && !isElectron;
 // `isNative` means a file-backed platform (local .md storage via the native API).
-// Capacitor (iOS/Android) was removed, so the only native target is now Electron.
-export const isNative = isElectron;
+export const isNative = isElectron || isPhone;
 export const isWeb = !isNative;
 // macOS Electron shows the native traffic lights over our chrome
 // (titleBarStyle: hiddenInset), so mac-only layout clearances key off this.

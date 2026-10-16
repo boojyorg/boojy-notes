@@ -646,11 +646,12 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     [takeOutsideVersion],
   );
 
-  // ─── Listen for external file changes (chokidar → IPC, Electron only) ───
+  // ─── Listen for external file changes (chokidar → IPC; the phone's sync) ───
   useEffect(() => {
-    if (!isElectron) return;
+    if (!isNative) return;
+    const api = getAPI();
 
-    const unsubChange = window.electronAPI.onFileChanged((note) => {
+    const unsubChange = api.onFileChanged((note) => {
       if (!note?.id) return;
       // Strip internal _filePath from the note before setting state
       const { _filePath, ...external } = note;
@@ -668,8 +669,8 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     // not make (`externalIds`: the scan leaves it clean), so no mtime moves
     // and nothing is stamped as edited here. Read as a delete instead, the
     // flush would recreate the old file beside the new one.
-    const unsubMove = window.electronAPI.onFileMoved
-      ? window.electronAPI.onFileMoved((note) => {
+    const unsubMove = api.onFileMoved
+      ? api.onFileMoved((note) => {
           if (!note?.id) return;
           const { _filePath, ...external } = note;
           const id = external.id;
@@ -716,17 +717,17 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     };
 
     // A directory made or removed outside the app (Finder, git, another editor).
-    const unsubFolders = window.electronAPI.onFoldersChanged
-      ? window.electronAPI.onFoldersChanged(() => {
+    const unsubFolders = api.onFoldersChanged
+      ? api.onFoldersChanged(() => {
           syncFoldersFromDisk();
         })
       : () => {};
 
-    const unsubDelete = window.electronAPI.onFileDeleted(() => {
+    const unsubDelete = api.onFileDeleted(() => {
       // Re-read all notes and sync folders to remove stale entries
       (async () => {
         try {
-          const diskNotes = await window.electronAPI.readAllNotes();
+          const diskNotes = await api.readAllNotes();
           // Disk is the base, but what exists only here survives the rebuild:
           // drafts, and every note with edits not yet written, whether its
           // write is scheduled (dirty) or its keystrokes are still inside

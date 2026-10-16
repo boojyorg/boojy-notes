@@ -3,7 +3,8 @@ import react from "@vitejs/plugin-react";
 import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
 
-// `--mode web` builds the browser target alone, without Electron, and
+// `--mode web` builds the browser target alone, without Electron; `--mode
+// phone` builds it into `dist-phone/` for the Android app (capacitor.config.ts);
 // `--mode tweak` opens the desktop app with the ?tweak panel. Modes rather
 // than `VAR=1 vite`, which no Windows shell runs. ELECTRON_DISABLE still works.
 export default defineConfig(({ mode }) => {
@@ -11,7 +12,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      ...(mode === "web" || process.env.ELECTRON_DISABLE
+      ...(mode === "web" || mode === "phone" || process.env.ELECTRON_DISABLE
         ? []
         : [
             electron([
@@ -39,5 +40,6 @@ export default defineConfig(({ mode }) => {
             renderer(),
           ]),
     ],
+    ...(mode === "phone" && { build: { outDir: "dist-phone" } }),
   };
 });

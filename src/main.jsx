@@ -8,6 +8,7 @@ import { SidebarProvider } from "./context/SidebarContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
 import { installTraceProbes } from "./utils/trace";
+import { isPhone } from "./utils/platform";
 
 // The crash screen promises "your notes have been backed up to local
 // storage"; that only happens if the boundary can reach the live note store.
@@ -45,27 +46,32 @@ document.head.appendChild(highlightStyle);
 window.addEventListener("unhandledrejection", (e) => console.error("[unhandled]", e.reason));
 installTraceProbes();
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <ThemeProvider>
-      <NoteDataProvider>
-        <SettingsProvider>
-          <LayoutProvider>
-            <SidebarProvider>
-              <AppErrorBoundary>
-                <BoojyNotes />
-              </AppErrorBoundary>
-            </SidebarProvider>
-          </LayoutProvider>
-        </SettingsProvider>
-      </NoteDataProvider>
-      {ThemeTweaker && (
-        <Suspense fallback={null}>
-          <ThemeTweaker />
-          <RhythmTweaker />
-          <MotionTweaker />
-        </Suspense>
-      )}
-    </ThemeProvider>
-  </StrictMode>,
+// The phone's vault and sign-in come before the app's first render.
+const ready = isPhone ? import("./phone/install").then((m) => m.installPhone()) : Promise.resolve();
+
+ready.then(() =>
+  createRoot(document.getElementById("root")).render(
+    <StrictMode>
+      <ThemeProvider>
+        <NoteDataProvider>
+          <SettingsProvider>
+            <LayoutProvider>
+              <SidebarProvider>
+                <AppErrorBoundary>
+                  <BoojyNotes />
+                </AppErrorBoundary>
+              </SidebarProvider>
+            </LayoutProvider>
+          </SettingsProvider>
+        </NoteDataProvider>
+        {ThemeTweaker && (
+          <Suspense fallback={null}>
+            <ThemeTweaker />
+            <RhythmTweaker />
+            <MotionTweaker />
+          </Suspense>
+        )}
+      </ThemeProvider>
+    </StrictMode>,
+  ),
 );

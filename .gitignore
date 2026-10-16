@@ -39,3 +39,4 @@ docs/private/
 # Electron build artifacts
 out/
 release/
+dist-phone/
