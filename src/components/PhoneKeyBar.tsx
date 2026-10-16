@@ -11,7 +11,16 @@ import {
   TextStyleIcon,
   UndoIcon,
 } from "./Icons";
-import { type BarMode, barModeAfterSelection, headingCommand, kindCommand } from "../phone/keyBar";
+import {
+  type BarMode,
+  barModeAfterSelection,
+  type Caret,
+  headingCommand,
+  kindCommand,
+  litFormats,
+  type Pending,
+  promise,
+} from "../phone/keyBar";
 
 /**
  * The phone's bar above the keyboard: what the desktop does with keys and its
@@ -47,6 +56,8 @@ export default function PhoneKeyBar({
   // Aa was pressed: the format row stays after the selection collapses.
   const held = useRef(false);
   const [inText, setInText] = useState(false);
+  // Bold or italic pressed with nothing selected (see `litFormats`).
+  const pending = useRef<Pending | null>(null);
   const [active, setActive] = useState<{ formats: Set<string>; kind: string | null }>({
     formats: new Set(),
     kind: null,
@@ -61,7 +72,7 @@ export default function PhoneKeyBar({
       setInText(inside);
       if (!inside || !sel) return;
       setMode((m) => barModeAfterSelection(m, !sel.isCollapsed, held.current));
-      setActive(readActive(node));
+      setActive(readActive(sel, pending));
     };
     document.addEventListener("selectionchange", read);
     return () => document.removeEventListener("selectionchange", read);
@@ -78,9 +89,18 @@ export default function PhoneKeyBar({
   if (!shown) return null;
 
   const run = (command: string) => () => {
+    const sel = window.getSelection();
+    const promised = (command === "bold" || command === "italic") && !!sel?.isCollapsed;
+    const turnOn = !active.formats.has(command);
     sendCommand(command);
-    // The command changed the text under the caret; read what is on now.
-    requestAnimationFrame(() => setActive(readActive(window.getSelection()?.anchorNode ?? null)));
+    // The command changed the text under the caret, or promised the next
+    // letters a style; read what is on now.
+    requestAnimationFrame(() => {
+      const now = window.getSelection();
+      if (promised && now)
+        pending.current = promise(pending.current, caretOf(now), command, turnOn);
+      if (now) setActive(readActive(now, pending));
+    });
   };
   const show =
     (next: BarMode, hold = false) =>
@@ -217,23 +237,32 @@ const FORMAT_LABELS = {
   link: "Link",
 };
 
-/** What is on at the caret: the text styles around it, and its block's kind. */
-function readActive(node: Node | null): { formats: Set<string>; kind: string | null } {
+const caretOf = (sel: Selection): Caret => ({
+  node: sel.anchorNode,
+  offset: sel.anchorOffset,
+  collapsed: sel.isCollapsed,
+});
+
+/** What is on at the caret: the text styles around it (and any it was promised), and its block's kind. */
+function readActive(
+  sel: Selection,
+  pending: { current: Pending | null },
+): { formats: Set<string>; kind: string | null } {
+  const node = sel.anchorNode;
   const el = node?.nodeType === Node.ELEMENT_NODE ? (node as Element) : node?.parentElement;
-  const formats = new Set<string>();
+  const around = new Set<string>();
   if (el) {
-    if (el.closest("strong, b")) formats.add("bold");
-    if (el.closest("em, i")) formats.add("italic");
-    if (el.closest("s, del")) formats.add("strikethrough");
-    if (el.closest("mark")) formats.add("highlight");
-    if (el.closest("code")) formats.add("code");
-    if (el.closest("a")) formats.add("link");
-    // A style the next letters will take (bold on, nothing typed yet).
-    if (document.queryCommandState?.("bold")) formats.add("bold");
-    if (document.queryCommandState?.("italic")) formats.add("italic");
+    if (el.closest("strong, b")) around.add("bold");
+    if (el.closest("em, i")) around.add("italic");
+    if (el.closest("s, del")) around.add("strikethrough");
+    if (el.closest("mark")) around.add("highlight");
+    if (el.closest("code")) around.add("code");
+    if (el.closest("a")) around.add("link");
   }
+  const lit = litFormats(around, pending.current, caretOf(sel));
+  pending.current = lit.pending;
   const kind = el?.closest("[data-block-type]")?.getAttribute("data-block-type") ?? null;
-  return { formats, kind };
+  return { formats: lit.formats, kind };
 }
 
 /** The keyboard is up when the window has shrunk well below its tallest. */

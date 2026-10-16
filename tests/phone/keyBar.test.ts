@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { barModeAfterSelection, headingCommand, kindCommand } from "../../src/phone/keyBar";
+import {
+  barModeAfterSelection,
+  headingCommand,
+  kindCommand,
+  litFormats,
+  promise,
+} from "../../src/phone/keyBar";
 
 describe("the bar above the keyboard follows the selection", () => {
   it("shows the text styles while text is selected, from any row", () => {
@@ -41,5 +47,35 @@ describe("a heading level", () => {
 
   it("turns a line already at that level back into text", () => {
     expect(headingCommand(3, "h3")).toBe("body");
+  });
+});
+
+describe("bold turned on with nothing selected", () => {
+  const text = document.createTextNode("Hello");
+  const here = { node: text, offset: 5, collapsed: true };
+
+  it("is lit while the caret stays where it was turned on", () => {
+    const pending = promise(null, here, "bold", true);
+    expect(litFormats(new Set(), pending, here).formats.has("bold")).toBe(true);
+  });
+
+  it("goes out once the caret moves, as the browser's promise does", () => {
+    const pending = promise(null, here, "bold", true);
+    const moved = litFormats(new Set(), pending, { ...here, offset: 2 });
+    expect(moved.formats.has("bold")).toBe(false);
+    expect(moved.pending).toBeNull();
+  });
+
+  it("turned off inside bold text, is unlit until the caret moves", () => {
+    const pending = promise(null, here, "bold", false);
+    expect(litFormats(new Set(["bold"]), pending, here).formats.has("bold")).toBe(false);
+    expect(litFormats(new Set(["bold"]), pending, { ...here, offset: 1 }).formats.has("bold")).toBe(
+      true,
+    );
+  });
+
+  it("keeps bold and italic both promised at one spot", () => {
+    const both = promise(promise(null, here, "bold", true), here, "italic", true);
+    expect([...litFormats(new Set(), both, here).formats].sort()).toEqual(["bold", "italic"]);
   });
 });
