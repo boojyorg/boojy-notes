@@ -13,8 +13,11 @@ vi.mock("../../src/utils/platform", () => ({
 const readAllNotes = vi.fn();
 const trashNote = vi.fn();
 const writeNote = vi.fn();
+// On the desktop getAPI() is window.electronAPI: its event subscriptions come
+// from there (each test sets them), the calls under test from these spies.
 vi.mock("../../src/services/apiProvider", () => ({
   getAPI: () => ({
+    ...window.electronAPI,
     getNotesDir: vi.fn(async () => "/notes"),
     readAllNotes,
     trashNote,
@@ -199,8 +202,6 @@ describe("useFileSystem — initial load", () => {
       fileDeletedHandler = handler;
       return () => {};
     });
-    // The delete handler reads disk via window.electronAPI, not the api provider.
-    window.electronAPI.readAllNotes = vi.fn(async () => ({ n1: saved }));
     const latestNoteDataRef = { current: { n1: saved, n2: edited, n3: gone } };
     const unflushedNotes = { current: new Set() };
     const { result, rerender, setNoteData } = renderFS({
@@ -218,6 +219,8 @@ describe("useFileSystem — initial load", () => {
     unflushedNotes.current.add("n2");
 
     setNoteData.mockClear();
+    // The disk after the outside delete, as the re-read finds it.
+    readAllNotes.mockResolvedValue({ n1: saved });
     await act(async () => {
       fileDeletedHandler({ filePath: "/notes/Gone.md" });
     });
