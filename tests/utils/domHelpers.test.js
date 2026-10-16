@@ -9,7 +9,7 @@ import {
   caretIntoTextRoot,
   selectionIntoTextRoots,
   caretLength,
-  showCollapsedSpaces,
+  showSpaceBeforeCaret,
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
   caretOutOfTagEnd,
@@ -875,32 +875,48 @@ describe("focusSidebar and focusNote — into the tree and back", () => {
   });
 });
 
-describe("showCollapsedSpaces — a repainted space keeps its place", () => {
-  const paint = (html) => {
+describe("showSpaceBeforeCaret — a repainted line-end space keeps its place", () => {
+  /** A block holding `html`, the caret at `offset` in its text node number `textIndex`. */
+  const block = (html, textIndex, offset) => {
     const el = document.createElement("p");
     el.innerHTML = html;
-    showCollapsedSpaces(el);
-    return el.innerHTML;
+    document.body.replaceChildren(el);
+    const texts = [];
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) texts.push(walker.currentNode);
+    const node = texts[textIndex];
+    window.getSelection().collapse(node, offset ?? node.data.length);
+    return el;
   };
 
-  it("shows a space at the end of the line, where the next word is typed", () => {
-    expect(paint("Start. w01 ")).toBe("Start. w01&nbsp;");
+  it("shows the space before a caret at the end of the line", () => {
+    const el = block("Start. w01 ", 0);
+    expect(showSpaceBeforeCaret(el)).toBe(true);
+    expect(el.innerHTML).toBe("Start. w01&nbsp;");
+    expect(window.getSelection().anchorOffset).toBe(11);
   });
 
-  it("shows a space at the start of a line and the second of two", () => {
-    expect(paint(" a  b")).toBe("&nbsp;a &nbsp;b");
+  it("treats a soft break as the line's end", () => {
+    const el = block("one <br>two", 0);
+    expect(showSpaceBeforeCaret(el)).toBe(true);
+    expect(el.innerHTML).toBe("one&nbsp;<br>two");
   });
 
-  it("treats a soft break as a line's end and start", () => {
-    expect(paint("one <br> two")).toBe("one&nbsp;<br>&nbsp;two");
+  it("leaves a space with more of the line after it", () => {
+    expect(showSpaceBeforeCaret(block("one two", 0, 4))).toBe(false);
+    expect(showSpaceBeforeCaret(block("one <em>two</em>", 0))).toBe(false);
   });
 
-  it("follows the line across formatting", () => {
-    expect(paint("<strong>bold </strong>")).toBe("<strong>bold&nbsp;</strong>");
-    expect(paint("a <em> b</em>")).toBe("a <em>&nbsp;b</em>");
+  it("touches nothing but that one space: a link's label keeps its spaces", () => {
+    const el = block('<span class="wikilink" data-target="My  Note">My  Note</span> and ', 1);
+    expect(showSpaceBeforeCaret(el)).toBe(true);
+    expect(el.querySelector(".wikilink").textContent).toBe("My  Note");
   });
 
-  it("leaves single spaces between words alone", () => {
-    expect(paint("one two <em>three</em> four")).toBe("one two <em>three</em> four");
+  it("does nothing without a caret in the block", () => {
+    const el = block("end ", 0);
+    window.getSelection().removeAllRanges();
+    expect(showSpaceBeforeCaret(el)).toBe(false);
+    expect(el.innerHTML).toBe("end ");
   });
 });

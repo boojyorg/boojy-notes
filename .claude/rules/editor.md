@@ -30,8 +30,8 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
 
 - **A text block is painted only on a signal** (mount, a `syncGen` bump, a title-set change),
   from `latestBlock(noteDataRef)`, never from the render (which can be a keystroke behind),
-  caret offset restored, a space HTML hides as U+00A0 (`showCollapsedSpaces`). A bump alone
-  paints nothing; pair it with a commit that publishes at once. `rename-while-typing.spec.ts`.
+  caret restored, a line-end space before it as U+00A0 (`showSpaceBeforeCaret`). A bump
+  alone paints nothing; pair it with a commit that publishes at once. `repaint-spaces.spec.ts`.
 - **A text-only commit never repaints**, so a programmatic text edit edits the DOM and reads it
   back (`domNodeToMarkdown` → `updateBlockText`): formatting, the link popover, Find → Replace.
   `repaint-ownership.spec.ts`.
