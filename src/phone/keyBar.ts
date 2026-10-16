@@ -74,3 +74,18 @@ export function promise(
   const kept = pending && sameSpot(pending, caret) ? pending.on : {};
   return { node: caret.node, offset: caret.offset, on: { ...kept, [format]: on } };
 }
+
+/** How much shorter than its tallest the window must be for the keyboard to be up. */
+export const KEYBOARD_MIN = 150;
+
+/**
+ * Whether the keyboard is up: the window is well below the tallest it has
+ * been at this width. Android shrinks the window for the keyboard and keeps
+ * its width; turning the phone changes the width, so each orientation keeps
+ * its own tallest and a landscape window is never taken for a keyboard.
+ */
+export function keyboardUp(tallest: Map<number, number>, width: number, height: number): boolean {
+  const most = Math.max(tallest.get(width) ?? 0, height);
+  tallest.set(width, most);
+  return height < most - KEYBOARD_MIN;
+}

@@ -16,6 +16,7 @@ import {
   barModeAfterSelection,
   type Caret,
   headingCommand,
+  keyboardUp,
   kindCommand,
   litFormats,
   type Pending,
@@ -265,15 +266,12 @@ function readActive(
   return { formats: lit.formats, kind };
 }
 
-/** The keyboard is up when the window has shrunk well below its tallest. */
+/** The keyboard is up when the window has shrunk well below its tallest at this width. */
 function useKeyboardUp() {
-  const tallest = useRef(window.innerHeight);
+  const tallest = useRef(new Map<number, number>());
   const [up, setUp] = useState(false);
   useEffect(() => {
-    const read = () => {
-      tallest.current = Math.max(tallest.current, window.innerHeight);
-      setUp(window.innerHeight < tallest.current - 150);
-    };
+    const read = () => setUp(keyboardUp(tallest.current, window.innerWidth, window.innerHeight));
     read();
     window.addEventListener("resize", read);
     return () => window.removeEventListener("resize", read);

@@ -8,9 +8,11 @@ const LEFT_KEY = "boojy-phone-left";
  * Android's back and the app leaving the screen, on the phone only.
  *
  * Back is Escape first, as every surface already closes itself on Escape
- * (a menu, search, a dialog); only when none took it does Back move: from the
- * note to Home, and from Home out of the app (to the background, as Android's
- * own Back does, so the app is as it was when it comes back).
+ * (a menu, search, a dialog). The menus under the caret (`/`, `[[`, `#`)
+ * take their Escape in the note's text, where Back's would select the block,
+ * so they are closed by name. Only when nothing was open does Back move:
+ * from the note to Home, and from Home out of the app (to the background, as
+ * Android's own Back does, so the app is as it was when it comes back).
  *
  * Leaving notes which screen was showing; a launch soon after, because
  * Android closed the app in the background, puts the note back on screen.
@@ -20,15 +22,18 @@ export function usePhoneScreens({
   loaded,
   showHome,
   showNote,
+  closeCaretMenus,
 }: {
   onNote: boolean;
   /** The vault has been read, so the restored note is there to show. */
   loaded: boolean;
   showHome: () => void;
   showNote: () => void;
+  /** Closes the menus under the caret; answers whether one was open. */
+  closeCaretMenus: () => boolean;
 }) {
-  const latest = useRef({ onNote, showHome });
-  latest.current = { onNote, showHome };
+  const latest = useRef({ onNote, showHome, closeCaretMenus });
+  latest.current = { onNote, showHome, closeCaretMenus };
 
   useEffect(() => {
     if (!isPhone) return;
@@ -44,6 +49,7 @@ export function usePhoneScreens({
         });
         escapeTarget(document.activeElement).dispatchEvent(esc);
         if (esc.defaultPrevented) return;
+        if (latest.current.closeCaretMenus()) return;
         if (backAction(latest.current.onNote) === "home") {
           (document.activeElement as HTMLElement | null)?.blur?.();
           latest.current.showHome();

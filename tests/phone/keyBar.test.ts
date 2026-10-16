@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   barModeAfterSelection,
   headingCommand,
+  keyboardUp,
   kindCommand,
   litFormats,
   promise,
@@ -77,5 +78,24 @@ describe("bold turned on with nothing selected", () => {
   it("keeps bold and italic both promised at one spot", () => {
     const both = promise(promise(null, here, "bold", true), here, "italic", true);
     expect([...litFormats(new Set(), both, here).formats].sort()).toEqual(["bold", "italic"]);
+  });
+});
+
+describe("the keyboard is up", () => {
+  it("when the window is well below its tallest at this width", () => {
+    const tallest = new Map<number, number>();
+    expect(keyboardUp(tallest, 412, 845)).toBe(false);
+    expect(keyboardUp(tallest, 412, 532)).toBe(true);
+    expect(keyboardUp(tallest, 412, 845)).toBe(false);
+  });
+
+  it("never because the phone was turned on its side", () => {
+    // Landscape is far shorter than portrait: with one tallest for both,
+    // the bar showed with no keyboard and stayed after it closed.
+    const tallest = new Map<number, number>();
+    keyboardUp(tallest, 412, 845);
+    expect(keyboardUp(tallest, 845, 412)).toBe(false);
+    expect(keyboardUp(tallest, 845, 200)).toBe(true);
+    expect(keyboardUp(tallest, 412, 845)).toBe(false);
   });
 });

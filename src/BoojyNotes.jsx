@@ -938,6 +938,13 @@ export default function BoojyNotes() {
       const open = noteDataRef.current[activeNote];
       if (open && !open._draft) hideSidebar();
     }, [noteDataRef, activeNote, hideSidebar]),
+    closeCaretMenus: () => {
+      if (!slashMenu && !wikilinkMenu && !tagMenu) return false;
+      setSlashMenu(null);
+      setWikilinkMenu(null);
+      setTagMenu(null);
+      return true;
+    },
   });
 
   // The phone's bar above the keyboard: a table, or the slash menu, at the
