@@ -194,18 +194,27 @@ export function createPhoneVault(files: FileOps, { onLocalChange = () => {} } = 
     return found;
   };
 
+  /**
+   * The first of `name`, `name-2`, … free in `dir`, ignoring case: Android
+   * holds `Shopping.md` and `shopping.md` apart, but Dropbox and a Mac take
+   * them for one file, and the engine would sync neither. `own` is the entry
+   * being renamed, which never collides with itself.
+   */
+  const freeName = async (dir: string | null, name: string, ext: string, own?: string) => {
+    const taken = new Set((await files.list(abs(dir ?? ""))).map((e) => e.name.toLowerCase()));
+    taken.delete(own?.toLowerCase() ?? "");
+    if (!taken.has(`${name}${ext}`.toLowerCase())) return join(dir, `${name}${ext}`);
+    for (let i = 2; ; i++) {
+      if (!taken.has(`${name}-${i}${ext}`.toLowerCase())) return join(dir, `${name}-${i}${ext}`);
+    }
+  };
+
   /** Where a note goes: its folder, a name from its title, `-2`… when taken by another file. */
   const targetFor = async (note: Note, ownRel: string | null) => {
     const own = ownRel ? baseName(ownRel) : null;
     const name = note.title === own ? own : sanitizeFilename(note.title || "Untitled");
-    const first = join(note.folder, `${name}.md`);
-    const free = async (rel: string) =>
-      rel.toLowerCase() === ownRel?.toLowerCase() || !(await files.exists(abs(rel)));
-    if (await free(first)) return first;
-    for (let i = 2; ; i++) {
-      const candidate = join(note.folder, `${name}-${i}.md`);
-      if (await free(candidate)) return candidate;
-    }
+    const ownHere = ownRel && parentOf(ownRel) === (note.folder ?? null) ? `${own}.md` : undefined;
+    return freeName(note.folder ?? null, name, ".md", ownHere);
   };
 
   const moveToDeleted = async (rel: string) => {
@@ -307,7 +316,8 @@ export function createPhoneVault(files: FileOps, { onLocalChange = () => {} } = 
 
     createFolder: (rel) =>
       lock(async () => {
-        const path = join(parentOf(rel), sanitizeFilename(rel.split("/").pop() ?? ""));
+        const name = sanitizeFilename(rel.split("/").pop() ?? "");
+        const path = await freeName(parentOf(rel), name, "");
         await files.mkdir(abs(path));
         onLocalChange();
         return { path };
