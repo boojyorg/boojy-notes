@@ -4,13 +4,14 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { Z } from "../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS, TOUCH } from "../constants/layout";
+import { isPhone } from "../utils/platform";
 import { filterSlashCommands } from "../constants/data";
 import { SlashCommandIcon } from "./Icons";
 
-/** Row height is icon (20) + 7px above and below. */
-const ROW_PAD_Y = 7;
+/** Row height is icon (20) + 7px above and below; a touch target on the phone. */
 const ICON_COL = 20;
+const ROW_PAD_Y = isPhone ? (TOUCH - ICON_COL) / 2 : 7;
 const MENU_WIDTH = 300;
 /**
  * The typed-shortcut hint at the right of a row. Mono so `#`, `##`, `###` read
@@ -123,7 +124,14 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                 >
                   <SlashCommandIcon name={cmd.icon} />
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: TEXT.primary, flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: isPhone ? 15 : 13,
+                    fontWeight: 500,
+                    color: TEXT.primary,
+                    flex: 1,
+                  }}
+                >
                   {cmd.label}
                 </div>
                 {cmd.hint ? (

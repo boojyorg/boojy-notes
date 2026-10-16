@@ -63,7 +63,15 @@ export default function PhoneKeyBar({
     return () => document.removeEventListener("selectionchange", read);
   }, [editorRef]);
 
-  if (!keyboardUp || !inText) return null;
+  // Each time the keyboard comes up the bar starts on its block buttons.
+  const shown = keyboardUp && inText;
+  useEffect(() => {
+    if (shown) return;
+    held.current = false;
+    setMode("blocks");
+  }, [shown]);
+
+  if (!shown) return null;
 
   const run = (command: string) => () => {
     sendCommand(command);
