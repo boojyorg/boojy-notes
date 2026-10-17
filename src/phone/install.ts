@@ -10,13 +10,6 @@ import { createPhoneVault } from "./phoneVault";
  * the app: the phone's own design is a later session.
  */
 export async function installPhone() {
-  // Inside the system bars, not under them, until the phone has a layout.
-  const viewport = document.querySelector('meta[name="viewport"]');
-  viewport?.setAttribute(
-    "content",
-    (viewport.getAttribute("content") ?? "").replace("viewport-fit=cover", "viewport-fit=contain"),
-  );
-
   const files = capacitorFiles();
   // A save the app died in the middle of is finished or undone before anything reads.
   await files.recover("state");
