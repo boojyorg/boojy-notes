@@ -10,12 +10,13 @@ import {
   SourceViewIcon,
   HistoryIcon,
   CloseIcon,
+  BackIcon,
 } from "./Icons";
 import DeletedNoteButton from "./DeletedNoteButton";
 import FileControls from "./FileControls";
-import { hasWindowStrip, isElectronMac } from "../utils/platform";
+import { hasWindowStrip, isElectronMac, isPhone } from "../utils/platform";
 import { WINDOW_STRIP_H as STRIP_H } from "../constants/layout";
-import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET } from "../constants/layout";
+import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET, TOUCH } from "../constants/layout";
 import { PANEL_MS } from "../tokens/motion";
 import { Tooltip, shortcutLabel, useTooltip } from "./Tooltip";
 import { tagPillGround } from "../styles/tagPill";
@@ -78,7 +79,12 @@ export const PATH_AIR = 12;
  * `isElectronMac` alone.
  */
 export const trafficLightsShown = (fullScreen = false) => isElectronMac && !fullScreen;
-const groupWidth = (n) => n * CHROME_BTN + (n - 1) * BTN_GAP;
+/** The chrome row's control box: the desktop's 32, a touch target on the phone. */
+export const CHROME_BOX = isPhone ? TOUCH : CHROME_BTN;
+/** The controls left of the path while the sidebar is hidden: the toggle, New
+ *  note and Search; on the phone, ‹ alone (Home holds the other two). */
+const LEFT_GROUP = isPhone ? 1 : 3;
+const groupWidth = (n) => n * CHROME_BOX + (n - 1) * BTN_GAP;
 /** The collapsed trio's fade-in, timed to end with the panel's slide. */
 const TRIO_FADE_MS = PANEL_MS / 2;
 
@@ -99,14 +105,14 @@ export const chromeControlsLeft = (collapsed, fullScreen = false) =>
  * together.
  */
 export const chromePathInset = (collapsed, fullScreen = false) =>
-  chromeControlsLeft(collapsed, fullScreen) + (collapsed ? groupWidth(3) : 0) + PATH_AIR;
+  chromeControlsLeft(collapsed, fullScreen) + (collapsed ? groupWidth(LEFT_GROUP) : 0) + PATH_AIR;
 
 /**
  * Where the path's band ends, measured from the editor's right edge: the ···,
  * the room the Markdown view's `</>` takes beside it, and the air. Reserved
  * whether the view is on or not, so switching never moves the path.
  */
-export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + groupWidth(2) + PATH_AIR;
+export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + groupWidth(isPhone ? 1 : 2) + PATH_AIR;
 
 /**
  * The same for a viewed file, whose controls stand where `</>` would: the
@@ -114,7 +120,7 @@ export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + groupWidth(2) + PATH_AIR;
  */
 export const chromePathRightInset = (controlsW) =>
   controlsW > 0
-    ? CHROME_INSET + CHROME_BTN + BTN_GAP + controlsW + PATH_AIR
+    ? CHROME_INSET + CHROME_BOX + BTN_GAP + controlsW + PATH_AIR
     : CHROME_PATH_RIGHT_INSET;
 
 /**
@@ -191,8 +197,8 @@ export function ChromeButton({
       aria-label={ariaLabel || label}
       style={{
         position: "relative",
-        width: CHROME_BTN,
-        height: CHROME_BTN,
+        width: CHROME_BOX,
+        height: CHROME_BOX,
         background: restBg,
         border: "none",
         borderRadius: 6,
@@ -252,7 +258,7 @@ export default function EditorChrome({
   // A file shown in the note's place (useFileView): its controls stand left of the ···.
   fileView = null,
 }) {
-  const { sidebarVisible, fullScreen, toggleSidebar, sourceView } = useLayout();
+  const { sidebarVisible, fullScreen, toggleSidebar, revealSidebar, sourceView } = useLayout();
   const { theme } = useTheme();
   const collapsed = !sidebarVisible;
 
@@ -278,20 +284,32 @@ export default function EditorChrome({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP }}>
-            <ChromeButton
-              onClick={toggleSidebar}
-              label="Toggle sidebar"
-              shortcut={SHORTCUTS.toggleSidebar}
-              data-sidebar-toggle
-            >
-              <SidebarToggleIcon />
-            </ChromeButton>
-            <ChromeButton onClick={onNewNote} label="New note" shortcut={SHORTCUTS.newNote}>
-              <NewNoteIcon size={18} />
-            </ChromeButton>
-            <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
-              <SearchIcon size={18} />
-            </ChromeButton>
+            {isPhone ? (
+              <ChromeButton onClick={revealSidebar} label="Back to notes">
+                <BackIcon />
+              </ChromeButton>
+            ) : (
+              <>
+                <ChromeButton
+                  onClick={toggleSidebar}
+                  label="Toggle sidebar"
+                  shortcut={SHORTCUTS.toggleSidebar}
+                  data-sidebar-toggle
+                >
+                  <SidebarToggleIcon />
+                </ChromeButton>
+                <ChromeButton onClick={onNewNote} label="New note" shortcut={SHORTCUTS.newNote}>
+                  <NewNoteIcon size={18} />
+                </ChromeButton>
+                <ChromeButton
+                  onClick={onOpenSearch}
+                  label="Search notes"
+                  shortcut={SHORTCUTS.search}
+                >
+                  <SearchIcon size={18} />
+                </ChromeButton>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -184,3 +184,17 @@ export const NOTES_ROW_GAP = 5;
  */
 export const ROW_LABEL_SIZE = 14;
 export const ROW_LABEL_LINE_HEIGHT = 1.2;
+
+// ── The phone ───────────────────────────────────────────────────────────────
+// The Android app (src/phone/) draws the desktop's own grammar a size up and
+// one screen at a time: Home (the sidebar, full width) or the open note.
+
+/** The phone's starting interface size: the 15px body reads at 16.5, about
+ *  Android's own body text. Still the one size control (Settings). */
+export const PHONE_UI_SCALE = 110;
+/**
+ * A touch target in CSS px at that scale: 44 on screen, the smallest box a
+ * finger reliably hits. Tree rows, chrome buttons and menu rows on the phone
+ * are this tall, never the desktop's 28 and 32.
+ */
+export const TOUCH = 40;

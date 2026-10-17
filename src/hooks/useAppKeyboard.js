@@ -447,6 +447,10 @@ const BLOCK_KINDS = {
   h1: "h1",
   h2: "h2",
   h3: "h3",
+  // The phone's heading row; the desktop menu stops at H3.
+  h4: "h4",
+  h5: "h5",
+  h6: "h6",
   todo: "checkbox",
   bullet: "bullet",
   numbered: "numbered",

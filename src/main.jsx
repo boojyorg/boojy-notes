@@ -9,6 +9,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
 import { installTraceProbes } from "./utils/trace";
 import { isPhone } from "./utils/platform";
+import { PHONE_UI_SCALE } from "./constants/layout";
 
 // The crash screen promises "your notes have been backed up to local
 // storage"; that only happens if the boundary can reach the live note store.
@@ -26,8 +27,12 @@ const ThemeTweaker = tweaking ? lazy(() => import("../dev/ThemeTweaker.jsx")) : 
 const RhythmTweaker = tweaking ? lazy(() => import("../dev/RhythmTweaker.jsx")) : null;
 const MotionTweaker = tweaking ? lazy(() => import("../dev/MotionTweaker.jsx")) : null;
 
+// The phone's own rules in GlobalStyles hang off this class (no hover, touch sizes).
+if (isPhone) document.documentElement.classList.add("is-phone");
+
 // Apply saved UI scale immediately to prevent flash
-const savedScale = localStorage.getItem("boojy-ui-scale");
+const savedScale =
+  localStorage.getItem("boojy-ui-scale") ?? (isPhone ? String(PHONE_UI_SCALE) : null);
 if (savedScale && savedScale !== "100") {
   const scale = Number(savedScale);
   document.documentElement.style.zoom = `${scale}%`;

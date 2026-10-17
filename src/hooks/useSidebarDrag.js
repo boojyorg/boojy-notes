@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import { useTheme } from "./useTheme";
 import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 import { withinFolder } from "../utils/pathTree";
+import { isPhone } from "../utils/platform";
 
 const LIFT_MS = 120;
 const SETTLE_MS = 200;
@@ -409,6 +410,9 @@ export function useSidebarDrag({
   };
 
   const handleSidebarPointerDown = (e) => {
+    // On the phone a finger dragging the list scrolls it; a note moves by its
+    // long-press menu's Move to….
+    if (isPhone) return;
     if (e.button !== 0) return;
     if (e.target.closest(".delete-btn, input")) return;
 

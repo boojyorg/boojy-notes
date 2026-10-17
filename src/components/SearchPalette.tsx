@@ -6,6 +6,8 @@ import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
 import { Z } from "../constants/zIndex";
+import { TOUCH } from "../constants/layout";
+import { isPhone } from "../utils/platform";
 import { tagRows, type TagEntry } from "../utils/tags";
 import {
   foldText,
@@ -81,8 +83,8 @@ type Row =
 
 const PALETTE_WIDTH = 560;
 const FIELD_H = 48;
-/** One row: 7px of padding round a 16px line. */
-const ROW_H = 30;
+/** One row: 7px of padding round a 16px line; a touch target on the phone. */
+const ROW_H = isPhone ? TOUCH : 30;
 const LIST_PAD = 6;
 const LABEL_H = 28;
 /** The palette's height, as a fraction of the window; `vh` divided by the UI scale. */
@@ -338,6 +340,7 @@ export default function SearchPalette({
       flexDirection: "column",
       gap: 2,
       minHeight: ROW_H,
+      justifyContent: "center",
       padding: "7px 10px",
       border: "none",
       borderRadius: 8,
@@ -407,8 +410,9 @@ export default function SearchPalette({
         display: "flex",
         justifyContent: "center",
         alignItems: "flex-start",
-        // Top third: results grow downward and the field stays put.
-        paddingTop: atScale(`${TOP_VH}vh`),
+        // Top third: results grow downward and the field stays put. On the
+        // phone the palette is a screen of its own, the field at its top.
+        paddingTop: isPhone ? 0 : atScale(`${TOP_VH}vh`),
       }}
     >
       <div
@@ -419,14 +423,18 @@ export default function SearchPalette({
         aria-label="Search"
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: `min(${PALETTE_WIDTH}px, ${atScale("92vw")})`,
-          maxHeight: atScale(`${MAX_VH}vh`),
+          ...(isPhone
+            ? { width: "100%", height: "100%" }
+            : {
+                width: `min(${PALETTE_WIDTH}px, ${atScale("92vw")})`,
+                maxHeight: atScale(`${MAX_VH}vh`),
+                border: `1px solid ${BG.divider}`,
+                borderRadius: 12,
+                boxShadow: theme.modalShadow,
+              }),
           display: "flex",
           flexDirection: "column",
           background: BG.elevated,
-          border: `1px solid ${BG.divider}`,
-          borderRadius: 12,
-          boxShadow: theme.modalShadow,
           overflow: "hidden",
         }}
       >
@@ -580,6 +588,29 @@ export default function SearchPalette({
             }}
           />
           {count && <span style={{ fontSize: 11, color: TEXT.muted, flexShrink: 0 }}>{count}</span>}
+          {isPhone && (
+            // No Escape key on a phone: the way out is here, and Back.
+            <button
+              type="button"
+              aria-label="Close search"
+              onClick={onClose}
+              style={{
+                width: TOUCH,
+                height: TOUCH,
+                marginRight: -10,
+                border: "none",
+                background: "none",
+                color: TEXT.muted,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                flexShrink: 0,
+              }}
+            >
+              <CloseIcon size={18} />
+            </button>
+          )}
         </div>
 
         {(rows.length > 0 || emptyText) && (
@@ -587,8 +618,11 @@ export default function SearchPalette({
             ref={listRef}
             style={{
               borderTop: `1px solid ${BG.divider}`,
-              overflowY: mode === "recent" ? "hidden" : "auto",
-              maxHeight: shown * ROW_H + LIST_PAD * 2,
+              overflowY: mode === "recent" && !isPhone ? "hidden" : "auto",
+              // The phone's list takes the screen down to the keyboard.
+              ...(isPhone
+                ? { flex: 1, minHeight: 0 }
+                : { maxHeight: shown * ROW_H + LIST_PAD * 2 }),
               boxSizing: "border-box",
               padding: LIST_PAD,
             }}

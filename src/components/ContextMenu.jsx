@@ -18,7 +18,7 @@ import {
   OpenNoteIcon,
 } from "./Icons";
 import { SHOW_IN_FOLDER_LABEL } from "./settings/SettingsPrimitives";
-import { isMac } from "../utils/platform";
+import { isMac, isPhone } from "../utils/platform";
 
 /** Link Page in Note's key, as the menu bar's accelerator shows it. */
 const LINK_PAGE_KEY = isMac ? "⌥⌘L" : "Ctrl+Alt+L";
@@ -262,10 +262,27 @@ const ContextMenu = memo(function ContextMenu({
     { label: "Delete", icon: <TrashIcon />, rule: true, action: run(v.trash) },
   ];
 
+  // The phone's note screen has no New note of its own (Home has it), so the
+  // note's menu starts with one: two taps from writing to a new note.
+  const phoneNewNote = isPhone
+    ? [
+        {
+          label: "New note",
+          icon: <NewNoteIcon />,
+          action: () => {
+            setCtxMenu(null);
+            createNote(null);
+          },
+        },
+      ]
+    : [];
   const items = isHeader
     ? ctxMenu.id
       ? [
-          ...noteItems(ctxMenu.id, true),
+          ...phoneNewNote,
+          ...noteItems(ctxMenu.id, true).map((item, i) =>
+            i === 0 && isPhone ? { ...item, rule: true } : item,
+          ),
           ...(versionItem ? [versionItem, { ...viewItem, rule: false }] : [viewItem]),
           { ...settingsItem, rule: true },
           deleteItem(ctxMenu.id),

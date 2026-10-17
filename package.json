@@ -11,6 +11,7 @@
     "dev": "vite",
     "dev:tweak": "vite --mode tweak",
     "dev:web": "vite --mode web",
+    "dev:phone": "vite --mode phone --port 5175 --strictPort",
     "build": "vite build",
     "build:electron": "node -e \"fs.rmSync('dist-electron',{recursive:true,force:true})\" && vite build && electron-builder",
     "android": "node dev/android/run.mjs",

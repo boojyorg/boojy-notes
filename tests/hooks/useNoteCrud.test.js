@@ -525,7 +525,8 @@ describe("useNoteCrud", () => {
       expect(data[draftId]).toBeDefined();
       expect(data[draftId]._draft).toBe(true);
       expect(data[draftId].title).toBe("");
-      expect(setActiveNote).toHaveBeenCalledWith(draftId);
+      // Opened quietly: nobody asked for it, so the phone stays on its screen.
+      expect(setActiveNote).toHaveBeenCalledWith(draftId, { show: false });
     });
   });
 

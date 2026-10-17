@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useContext, useMemo, useCallback } from "react";
-import { isElectron } from "../utils/platform";
+import { isElectron, isPhone } from "../utils/platform";
+import { PHONE_UI_SCALE } from "../constants/layout";
 
 const SettingsContext = createContext(null);
 
@@ -10,7 +11,7 @@ export function SettingsProvider({ children }) {
   // It is the one size control; a stored `boojy-font-size` is never read.
   const [uiScale, setUiScale] = useState(() => {
     const saved = localStorage.getItem("boojy-ui-scale");
-    return saved ? Number(saved) : 100;
+    return saved ? Number(saved) : isPhone ? PHONE_UI_SCALE : 100;
   });
 
   // Apply zoom and persist when scale changes. `--ui-scale` goes on the same

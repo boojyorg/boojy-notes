@@ -15,6 +15,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
+import { isPhone } from "../utils/platform";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
 import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
@@ -168,6 +169,7 @@ const EditorArea = memo(
     openNote: openNoteProp,
     // The sidebar's press-and-hold drag, for the rows of the path's popup.
     onPathRowPointerDown,
+    onShowFolder,
     onEditorClick,
     onTitleBlur,
     // Edit → Find… and Find and Replace…: the menu opens the bar through this.
@@ -1129,6 +1131,7 @@ const EditorArea = memo(
             activeNote={activeNote}
             onOpenNote={openNoteProp}
             onRowPointerDown={onPathRowPointerDown}
+            onShowFolder={onShowFolder}
           >
             {deletedNote ? (
               <span data-deleted-title style={{ color: theme.TEXT.primary }}>
@@ -1272,7 +1275,9 @@ const EditorArea = memo(
                     onCut={handleEditorCut}
                     onMouseMove={handleEditorMouseMove}
                     onMouseLeave={handleEditorMouseLeave}
-                    onContextMenu={handleEditorContextMenu}
+                    // The phone's long-press is Android's: it selects the word and
+                    // shows the system's own Cut, Copy, Paste over it.
+                    onContextMenu={isPhone ? undefined : handleEditorContextMenu}
                     onMouseDown={(e) => {
                       handleEditorMouseDown(e);
                       // Prevent caret placement inside links on click (for instant open feel)
@@ -1378,16 +1383,20 @@ const EditorArea = memo(
                       });
                     })()}
                   </div>
-                  <BlockDragHandle
-                    columnRef={columnRef}
-                    editorRef={editorRef}
-                    startHandleDrag={startHandleDrag}
-                    onGripClick={handleGripClick}
-                    pinnedBlockId={
-                      selectedRun && blockSelection.grip ? blockSelection.anchor : null
-                    }
-                    pinKey={note.content.blocks}
-                  />
+                  {/* Desktop only: on the phone a press in the text is the
+                      caret's, and the bar above the keyboard does the rest. */}
+                  {!isPhone && (
+                    <BlockDragHandle
+                      columnRef={columnRef}
+                      editorRef={editorRef}
+                      startHandleDrag={startHandleDrag}
+                      onGripClick={handleGripClick}
+                      pinnedBlockId={
+                        selectedRun && blockSelection.grip ? blockSelection.anchor : null
+                      }
+                      pinKey={note.content.blocks}
+                    />
+                  )}
                   {blockMenu && selectedRun && (
                     <BlockMenu
                       anchor={blockMenu}
@@ -1419,7 +1428,8 @@ const EditorArea = memo(
                   )}
                   <FloatingToolbar
                     // Never beside the right-click menu: one surface at a time.
-                    position={linkCtxMenu ? null : toolbarState}
+                    // The phone's text styles are the bar above the keyboard.
+                    position={linkCtxMenu || isPhone ? null : toolbarState}
                     activeFormats={activeFormats}
                     onFormat={applyFormat}
                   />

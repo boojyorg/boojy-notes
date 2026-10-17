@@ -34,6 +34,7 @@ import {
   SearchIcon,
   MoreHorizontalIcon,
   NewNoteIcon,
+  SettingsIcon,
   SidebarToggleIcon,
   SortIcon,
 } from "./Icons";
@@ -50,7 +51,7 @@ import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import Collapsible from "./Collapsible";
-import { isElectronMac } from "../utils/platform";
+import { isElectronMac, isPhone } from "../utils/platform";
 import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
@@ -67,8 +68,9 @@ import {
   SPINE_ICON,
   TEXT_COL,
   TREE_INDENT,
+  TOUCH,
   TREE_ROW_GAP,
-  TREE_ROW_H,
+  TREE_ROW_H as DESKTOP_ROW_H,
   WORDMARK_H,
 } from "../constants/layout";
 import { parentFolder } from "../utils/pathTree";
@@ -89,13 +91,18 @@ const HEADER_NUDGE = 4;
 // the popup is this tree drawn small. Rows are inset from both sidebar edges
 // so hover pills breathe; tree pills keep the 4px left inset but run only
 // ROW_INSET_RIGHT short of the scrollbar gutter on the right. Pairs with the .sidebar-scroll thumb override in GlobalStyles.jsx.
-const ROW_INSET_RIGHT = 2;
+// The phone has no scrollbar lane, so its pills sit evenly between the edges.
+const ROW_INSET_RIGHT = isPhone ? ROW_INSET : 2;
 /** Gap between a folder glyph and its name = TEXT_COL − SPINE − SPINE_ICON. */
 const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
 /** The spine as this column draws it: SPINE plus the sidebar's own inset.
  *  Every desktop x below (New note, the Notes row, rows, guides) starts here,
  *  so the column moves as one and the popup, on the bare SPINE, does not. */
 const TREE_SPINE = SPINE + SIDEBAR_TREE_INSET;
+/** A row on the phone is one touch target tall, with no rhythm gap between
+ *  (the target already is the air); the desktop's is a label high. */
+const TREE_ROW_H = isPhone ? TOUCH : DESKTOP_ROW_H;
+const ROW_GAP = isPhone ? 0 : TREE_ROW_GAP;
 
 // ── Row grammar (desktop) ────────────────────────────────────────────────────
 // Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,
@@ -117,6 +124,8 @@ const NOTE_MENU_SHIFT = 8;
  */
 /** Keys the tree claims even where they move nothing (an arrow at the end
  *  would otherwise scroll the sidebar). */
+/** A chrome control on the phone: a touch target, the same glyph. */
+const PHONE_BTN = { width: TOUCH, height: TOUCH };
 const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"]);
 
 const rowMenuAnchor = (btn, row) => ({
@@ -134,7 +143,7 @@ const treeRowStyle = (depth, color) => ({
   width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
   marginLeft: ROW_INSET,
   marginRight: ROW_INSET_RIGHT,
-  marginBottom: TREE_ROW_GAP,
+  marginBottom: ROW_GAP,
   height: TREE_ROW_H,
   boxSizing: "border-box",
   padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
@@ -237,8 +246,9 @@ const SECTION_HEADER_LEFT = TREE_SPINE;
 /** The header's 16px glyphs share a right edge with the chrome row's 18px ones:
  *  HEADER_RIGHT_INSET (12) + the chrome glyph's 7px inset − this row's 8px. */
 const SECTION_HEADER_RIGHT = 5;
-/** Header controls share the chrome row's 32px hit box and 18px nav glyph. */
-const SECTION_BTN = 32;
+/** Header controls share the chrome row's 32px hit box and 18px nav glyph
+ *  (a touch target on the phone, where they show at rest). */
+const SECTION_BTN = isPhone ? TOUCH : 32;
 const SECTION_CONTENT_GAP = 2;
 // Header controls (New folder, Sort) are hidden at rest and revealed, muted,
 // while the pointer is on the Notes row or a keyboard focus is in it, lifting
@@ -374,7 +384,7 @@ function SidebarNewNote({ onClick, TEXT }) {
         width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
         marginLeft: ROW_INSET,
         marginRight: ROW_INSET_RIGHT,
-        minHeight: ACTION_ROW_H,
+        minHeight: isPhone ? TOUCH : ACTION_ROW_H,
         boxSizing: "border-box",
         paddingLeft: TREE_SPINE - ROW_INSET,
         paddingRight: 8,
@@ -981,7 +991,7 @@ const Sidebar = memo(function Sidebar({
                 style={{
                   position: "absolute",
                   top: 0,
-                  bottom: TREE_ROW_GAP,
+                  bottom: ROW_GAP,
                   left: TREE_SPINE + SPINE_ICON / 2 + depth * TREE_INDENT,
                   width: 1,
                   background: BG.divider,
@@ -1066,7 +1076,7 @@ const Sidebar = memo(function Sidebar({
                 style={{
                   position: "absolute",
                   top: 0,
-                  bottom: TREE_ROW_GAP,
+                  bottom: ROW_GAP,
                   left: TREE_SPINE + SPINE_ICON / 2,
                   width: 1,
                   background: BG.divider,
@@ -1115,17 +1125,21 @@ const Sidebar = memo(function Sidebar({
         // out of the tab order and off the accessibility tree while
         // the DOM and scroll position stay; `inert` on the whole
         // column would break a double-click mid-slide.
-        width: sidebarWidth,
+        // On the phone it is Home: the whole screen, swapped with the note
+        // rather than slid (a plain switch for now).
+        width: isPhone ? "100%" : sidebarWidth,
         flexShrink: 0,
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        transform: sidebarVisible ? "none" : `translateX(${-sidebarWidth}px)`,
+        transform: sidebarVisible || isPhone ? "none" : `translateX(${-sidebarWidth}px)`,
         opacity: sidebarVisible ? 1 : 0,
         visibility: sidebarVisible ? "visible" : "hidden",
-        transition: `${panelTransition("transform")}, opacity ${PANEL_FADE_MS}ms ease ${
-          sidebarVisible ? PANEL_MS - PANEL_FADE_MS : 0
-        }ms, visibility 0s linear ${sidebarVisible ? 0 : PANEL_MS}ms`,
+        transition: isPhone
+          ? undefined
+          : `${panelTransition("transform")}, opacity ${PANEL_FADE_MS}ms ease ${
+              sidebarVisible ? PANEL_MS - PANEL_FADE_MS : 0
+            }ms, visibility 0s linear ${sidebarVisible ? 0 : PANEL_MS}ms`,
       }}
     >
       {/* Sidebar header: wordmark left, panel toggle right near the divider.
@@ -1141,12 +1155,18 @@ const Sidebar = memo(function Sidebar({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          height: CHROME_TOP + CHROME_BTN,
+          height: CHROME_TOP + (isPhone ? TOUCH : CHROME_BTN),
           boxSizing: "border-box",
           // Children are centred, so top padding shifts them by half of it.
           // Height is unchanged, so nothing below the header moves.
           paddingTop: HEADER_NUDGE * 2,
-          paddingLeft: trafficLightsShown(fullScreen) ? MAC_TRAFFIC_INSET : HEADER_LEFT_INSET,
+          // On the phone the wordmark starts on the column's spine, over New note's
+          // glyph: with no traffic lights or divider to answer to, the column is the edge.
+          paddingLeft: trafficLightsShown(fullScreen)
+            ? MAC_TRAFFIC_INSET
+            : isPhone
+              ? TREE_SPINE
+              : HEADER_LEFT_INSET,
           paddingRight: HEADER_RIGHT_INSET,
           flexShrink: 0,
           WebkitAppRegion: isElectronMac ? "drag" : undefined,
@@ -1204,16 +1224,29 @@ const Sidebar = memo(function Sidebar({
             same two neighbours the collapsed header shows, so Search keeps
             its place beside the toggle in both sidebar states. */}
         <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP, flexShrink: 0 }}>
-          <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
+          <ChromeButton
+            onClick={onOpenSearch}
+            label="Search notes"
+            shortcut={SHORTCUTS.search}
+            style={isPhone ? PHONE_BTN : undefined}
+          >
             <SearchIcon size={18} />
           </ChromeButton>
-          <ChromeButton
-            onClick={toggleSidebar}
-            label="Toggle sidebar"
-            shortcut={SHORTCUTS.toggleSidebar}
-          >
-            <SidebarToggleIcon />
-          </ChromeButton>
+          {isPhone ? (
+            // Home is the whole screen on the phone, so there is nothing to
+            // toggle; the corner is Settings, which has no menu bar to live in.
+            <ChromeButton onClick={() => setSettingsOpen(true)} label="Settings" style={PHONE_BTN}>
+              <SettingsIcon />
+            </ChromeButton>
+          ) : (
+            <ChromeButton
+              onClick={toggleSidebar}
+              label="Toggle sidebar"
+              shortcut={SHORTCUTS.toggleSidebar}
+            >
+              <SidebarToggleIcon />
+            </ChromeButton>
+          )}
         </div>
       </div>
 
@@ -1331,7 +1364,14 @@ const Sidebar = memo(function Sidebar({
         // Pinned under the tree however long it is: where a deleted note
         // waits, always in the same place (Apple Notes hides it when empty;
         // a row that comes and goes is harder to trust).
-        <div style={{ borderTop: `1px solid ${BG.divider}`, padding: "6px 0", flexShrink: 0 }}>
+        <div
+          style={{
+            // On the phone a quiet last row, not a footer (it competed with the tree).
+            borderTop: isPhone ? undefined : `1px solid ${BG.divider}`,
+            padding: isPhone ? "4px 0 8px" : "6px 0",
+            flexShrink: 0,
+          }}
+        >
           <button
             type="button"
             data-testid="recently-deleted-row"

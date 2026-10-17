@@ -257,6 +257,26 @@ export default function GlobalStyles() {
         .sidebar-section-header.menu-open .sidebar-section-action {
           opacity: 0.55;
         }
+        /* The phone has no hover. The Notes row's New folder and Sort show at
+           rest; a row's own ··· and New note never do (a long-press opens the
+           row's menu); and a tapped row keeps no pill, since a touch leaves
+           :hover on whatever it last touched. */
+        html.is-phone .sidebar-section-action { opacity: 0.55; }
+        html.is-phone .sidebar-note-more, html.is-phone .sidebar-folder-actions { display: none !important; }
+        html.is-phone .sidebar-row:hover:not(.is-held) { background-color: transparent; }
+        /* The phone's header has room for some 22 letters: once the folders
+           have given way, a name too long for one line takes a second rather
+           than losing its end, so two notes that differ late still read
+           apart. Two lines at most; the row grows with them (NotePath). */
+        html.is-phone [data-title] {
+          white-space: normal !important;
+          overflow-wrap: anywhere;
+          text-align: center;
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+        }
+        html.is-phone [data-title]:focus { -webkit-line-clamp: unset; }
         /* The vault's name: muted at rest, and the controls' own grey and
            ink on hover, keyboard focus, or while its menu is open. */
         .sidebar-vault-label {

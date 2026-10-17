@@ -200,7 +200,10 @@ declare global {
       onFullScreenChanged: (callback: (on: boolean) => void) => Unsubscribe;
     };
     /** The Android app's vault (src/phone/install.ts): the note-file calls of `electronAPI`. */
-    boojyPhoneAPI?: import("../phone/phoneVault").PhoneVaultAPI;
+    boojyPhoneAPI?: import("../phone/phoneVault").PhoneVaultAPI & {
+      /** The bar above the keyboard's commands (src/phone/commands.ts). */
+      onMenuCommand: (listener: (id: string) => void) => () => void;
+    };
     /** Capacitor's bridge, present in the Android app before any script runs. */
     Capacitor?: { isNativePlatform?: () => boolean };
   }

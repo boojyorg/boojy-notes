@@ -99,7 +99,10 @@ Product calls for Tyr; each trades conventional Markdown meaning against byte pr
 
 Problems Beta users can hit today. Each is small and comes before anything else.
 
-Nothing open.
+- **Bold turned on with nothing selected, then a space typed first, saves `** word**`**, which
+  does not read back as bold (found 2026-10-16 on the phone's Aa → B; the desktop's ⌘B takes the
+  same `execCommand` path, so check it there first). The edge space belongs outside the marks,
+  as `toggleWrappingTag` already keeps it for a selection.
 
 ## Beta: release requirements (met)
 
@@ -514,8 +517,8 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   permission only; moving a vault in is by hand for now). The phone connects to Dropbox
   directly with Boojy's sync engine (`src/sync`: local, Dropbox and the last-synced record
   compared; a clash keeps both, an edit beats a delete, the phone never deletes a folder).
-  Proof of concept step 1 passed its live checks on 2026-10-16 (branch
-  `poc/dropbox-sync-engine`); step 2 is the Pixel. Other providers wait: Google Drive's full
+  Proof of concept step 1 passed its live checks on 2026-10-16, and step 2, the Android app
+  on the Pixel, is merged (#353). Other providers wait: Google Drive's full
   access needs restricted-scope verification. One sync mechanism per collection, never
   overlapping. Found live: Dropbox's Mac app can stop syncing while saying it is up to date,
   so Boojy may need to notice a synced vault gone quiet.
@@ -540,10 +543,12 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   editor is `contentEditable` on the browser's Selection and Range APIs, so a shell that keeps
   the browser DOM can reuse it, and one that does not (full React Native, Flutter) means
   rebuilding the editor. Keyboard, selection, attachments, filesystem access and background
-  sync need real-device evaluation. The phone's layout is a separate design session after the
-  sync proof of concept. Drawer versus
-  two-screen navigation was explored on 2026-04-06 and left undecided; the two-screen touch
-  layout has since been removed. The earlier Capacitor spec, mobile
+  sync need real-device evaluation. **The phone's layout** (designed 2026-10-16 from Notion,
+  Obsidian and Apple Notes; Tyr: the closer to the desktop, the better): two screens, Home (the
+  sidebar, full width) and the note, with a bar above the keyboard; the rules are in
+  `ui-chrome-and-theme.md`. Next on it: a select mode (long-press → Select, then Move to… or
+  Delete for several notes; a phone has no Shift-click), and pictures on the phone, which the
+  bar's image button waits on (saving, showing and syncing them). The earlier Capacitor spec, mobile
   spec, navigation exploration and release strategy are archived in `docs/private/archive/` as
   reference, not plan. **Tyr's phone is Android** (a Pixel 8a), and a good phone app would
   double his use (2026-09-30). The phone comes first as an installable Android app on the same

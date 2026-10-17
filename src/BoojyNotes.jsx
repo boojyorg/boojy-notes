@@ -62,7 +62,10 @@ import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
 import { wikilinkStatus } from "./utils/wikilinkTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
-import { hasWindowStrip, isElectron, isWeb } from "./utils/platform";
+import { hasWindowStrip, isElectron, isPhone, isWeb } from "./utils/platform";
+import { usePhoneScreens } from "./phone/usePhoneScreens";
+import PhoneKeyBar from "./components/PhoneKeyBar";
+import { SLASH_COMMANDS } from "./constants/data";
 import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
 import { fileFromHistoryKey, fileHistoryKey, useNoteHistory } from "./hooks/useNoteHistory";
@@ -103,6 +106,7 @@ export default function BoojyNotes() {
     sidebarWidth,
     sidebarVisible,
     revealSidebar,
+    hideSidebar,
     toggleSidebar,
     sourceView,
     setSourceView,
@@ -154,7 +158,18 @@ export default function BoojyNotes() {
 
   // ── State ──────────────────────────────────────────────────────────
   // Navigation state: one active note. Opening a note replaces the current one.
-  const { activeNote, setActiveNote } = useActiveNote();
+  const { activeNote, setActiveNote: setActiveNoteRaw } = useActiveNote();
+  // On the phone a note is a screen of its own: opening one shows it, and
+  // losing the open note (deleted, the vault switched) goes back to Home. A
+  // launch restores the note without passing here, so the app opens on Home;
+  // the draft made when nothing is open passes `show: false` for the same reason.
+  const setActiveNote = useCallback(
+    (id, { show = true } = {}) => {
+      setActiveNoteRaw(id);
+      if (isPhone && show) (id ? hideSidebar : revealSidebar)();
+    },
+    [setActiveNoteRaw, hideSidebar, revealSidebar],
+  );
 
   const [editorFadeIn, setEditorFadeIn] = useState(false);
 
@@ -914,6 +929,101 @@ export default function BoojyNotes() {
     mouseIsDown,
   });
 
+  // The phone: Back and a launch after Android closed the app (src/phone/).
+  usePhoneScreens({
+    onNote: isPhone && !sidebarVisible,
+    loaded: !fsLoading,
+    showHome: revealSidebar,
+    showNote: useCallback(() => {
+      const open = noteDataRef.current[activeNote];
+      if (open && !open._draft) hideSidebar();
+    }, [noteDataRef, activeNote, hideSidebar]),
+    closeCaretMenus: () => {
+      if (!slashMenu && !wikilinkMenu && !tagMenu) return false;
+      setSlashMenu(null);
+      setWikilinkMenu(null);
+      setTagMenu(null);
+      return true;
+    },
+  });
+
+  // The phone's bar above the keyboard: a table, or the slash menu, at the
+  // caret's block. Both are the slash menu's own, which acts on a block that
+  // holds nothing but its `/`, so a block with text gets a fresh one below it.
+  const caretBlockIndex = () => {
+    const sel = window.getSelection();
+    const node = sel?.anchorNode;
+    const el = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+    const id = el?.closest?.("[data-editor] [data-block-id]")?.getAttribute("data-block-id");
+    const blocks = noteDataRef.current[activeNote]?.content?.blocks ?? [];
+    return id ? blocks.findIndex((b) => b.id === id) : -1;
+  };
+  const emptyLineHere = () => {
+    const index = caretBlockIndex();
+    if (index < 0) return -1;
+    const block = noteDataRef.current[activeNote].content.blocks[index];
+    if (block.type === "p" && !block.text) return index;
+    blockOps.insertBlockAfter(activeNote, index);
+    return index + 1;
+  };
+  const insertTableHere = () => {
+    const index = emptyLineHere();
+    if (index < 0) return;
+    const table = SLASH_COMMANDS.find((c) => c.id === "table");
+    editorHandlers.executeSlashCommand(activeNote, index, table);
+  };
+  // A `/` the bar typed is the bar's, not the writer's: if the menu closes
+  // without a choice, it goes again, with the line the bar made for it.
+  const barSlash = useRef(null);
+  const openSlashHere = () => {
+    const index = caretBlockIndex();
+    if (index < 0) return;
+    const block = noteDataRef.current[activeNote].content.blocks[index];
+    // Typed, as the key would be, so the menu opens and filters as it does.
+    const type = () => document.execCommand("insertText", false, "/");
+    if (block.type === "p" && !block.text) {
+      barSlash.current = { noteId: activeNote, blockId: block.id, made: false };
+      return type();
+    }
+    blockOps.insertBlockAfter(activeNote, index);
+    barSlash.current = { noteId: activeNote, blockId: focusBlockId.current, made: true };
+    setTimeout(type, 60);
+  };
+  const slashWasOpen = useRef(false);
+  useEffect(() => {
+    if (slashMenu) {
+      slashWasOpen.current = true;
+      return;
+    }
+    if (!slashWasOpen.current) return;
+    slashWasOpen.current = false;
+    const typed = barSlash.current;
+    barSlash.current = null;
+    if (!typed) return;
+    const blocks = noteDataRef.current[typed.noteId]?.content?.blocks ?? [];
+    const index = blocks.findIndex((b) => b.id === typed.blockId);
+    const el = blockRefs.current[typed.blockId];
+    // A choice replaced the line or emptied it; the writer's own text stays.
+    // The ref, not the DOM: a choice is in it at once, the paint a frame later.
+    if (index < 0 || !el || !blocks[index].text?.startsWith("/")) return;
+    if (typed.made && index > 0) {
+      blockOps.deleteBlock(typed.noteId, index);
+      const above = blocks[index - 1].id;
+      requestAnimationFrame(() => {
+        const prev = blockRefs.current[above];
+        if (prev) placeCaret(prev, caretLength(prev));
+      });
+      return;
+    }
+    // Taken back as typing is, so the read-back stays the editor's own.
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand("delete");
+  }, [slashMenu, noteDataRef, blockOps]);
+
   // ── Ghost note (draft) effects ────────────────────────────────────────
   useEffect(() => {
     if (fsLoading) return;
@@ -1164,6 +1274,15 @@ export default function BoojyNotes() {
     },
     [setExpanded, markNewRows],
   );
+  // The phone's path crumb: Home, with the open note's folders open so its
+  // row (held, as the open note's always is) shows under the folder tapped.
+  const showFolder = useCallback(() => {
+    revealSidebar();
+    revealInSidebar(noteDataRef.current[activeNote]?.folder ?? null);
+    requestAnimationFrame(() =>
+      document.querySelector(`[data-note-id="${activeNote}"]`)?.scrollIntoView({ block: "center" }),
+    );
+  }, [revealSidebar, revealInSidebar, noteDataRef, activeNote]);
   const moveNotesTo = useCallback(
     (ids, folder, { reveal = true } = {}) => {
       const dest = folder || null;
@@ -1404,47 +1523,49 @@ export default function BoojyNotes() {
       {/* Minimal chrome: two pinned controls instead of a top strip (desktop/web).
           The old desktop TitleBar (28px faux title strip) is gone — the window
           uses hiddenInset traffic lights over the sidebar header instead. */}
-      <EditorChrome
-        activeNote={activeNote}
-        // Its own menu type: the active note's actions plus Settings, never
-        // the sidebar's multi-selection, and open with no note at all.
-        onNoteActions={({ x, y }) => {
-          // The ··· again closes Version History, which stands in its menu's place.
-          if (versionHistory.state.listOpen) versionHistory.close();
-          else if (viewedRel) setCtxMenu({ x, y, type: "viewed-file", id: viewedRel });
-          else setCtxMenu({ x, y, type: "header", id: activeNote });
-        }}
-        past={
-          deletedPreview
-            ? {
-                deleted: true,
-                onPurge: () => recentlyDeleted.purge(deletedPreview.item),
-                onBack: () => {
-                  setBinOpen(false);
-                  closeDeletedPreview();
-                },
-                ask: recentlyDeleted.ask,
-                onRestore: () => restoreDeleted(deletedPreview.item.id),
-                onDismissAsk: () => recentlyDeleted.setAsk(false),
-              }
-            : pastShown
+      {(!isPhone || !sidebarVisible) && (
+        <EditorChrome
+          activeNote={activeNote}
+          // Its own menu type: the active note's actions plus Settings, never
+          // the sidebar's multi-selection, and open with no note at all.
+          onNoteActions={({ x, y }) => {
+            // The ··· again closes Version History, which stands in its menu's place.
+            if (versionHistory.state.listOpen) versionHistory.close();
+            else if (viewedRel) setCtxMenu({ x, y, type: "viewed-file", id: viewedRel });
+            else setCtxMenu({ x, y, type: "header", id: activeNote });
+          }}
+          past={
+            deletedPreview
               ? {
-                  time: versionTime(pastShown.at, Date.now(), versionHistory.hour12),
-                  moment: versionMoment(pastShown.at, versionHistory.hour12),
-                  listOpen: versionHistory.state.listOpen,
-                  onToggleList: () => versionHistory.setListOpen(!versionHistory.state.listOpen),
-                  onBack: versionHistory.close,
-                  ask: versionHistory.state.ask,
-                  onRestore: () => versionHistory.restore(pastShown.id),
-                  onDismissAsk: () => versionHistory.setAsk(false),
+                  deleted: true,
+                  onPurge: () => recentlyDeleted.purge(deletedPreview.item),
+                  onBack: () => {
+                    setBinOpen(false);
+                    closeDeletedPreview();
+                  },
+                  ask: recentlyDeleted.ask,
+                  onRestore: () => restoreDeleted(deletedPreview.item.id),
+                  onDismissAsk: () => recentlyDeleted.setAsk(false),
                 }
-              : null
-        }
-        onNewNote={() => createNote(null)}
-        onOpenSearch={openSearch}
-        onToggleSourceView={toggleSourceView}
-        fileView={fileView}
-      />
+              : pastShown
+                ? {
+                    time: versionTime(pastShown.at, Date.now(), versionHistory.hour12),
+                    moment: versionMoment(pastShown.at, versionHistory.hour12),
+                    listOpen: versionHistory.state.listOpen,
+                    onToggleList: () => versionHistory.setListOpen(!versionHistory.state.listOpen),
+                    onBack: versionHistory.close,
+                    ask: versionHistory.state.ask,
+                    onRestore: () => versionHistory.restore(pastShown.id),
+                    onDismissAsk: () => versionHistory.setAsk(false),
+                  }
+                : null
+          }
+          onNewNote={() => createNote(null)}
+          onOpenSearch={openSearch}
+          onToggleSourceView={toggleSourceView}
+          fileView={fileView}
+        />
+      )}
 
       {/* === MAIN AREA === */}
       <div
@@ -1458,14 +1579,15 @@ export default function BoojyNotes() {
             // In the layout at every width: the editor beside it gets
             // narrower, never covered. Kept mounted while hidden so drag
             // queries and scroll position survive.
-            width: sidebarVisible ? sidebarWidth : 0,
-            minWidth: sidebarVisible ? sidebarWidth : 0,
+            // The phone shows one screen at a time: Home is the sidebar, full width.
+            width: sidebarVisible ? (isPhone ? "100%" : sidebarWidth) : 0,
+            minWidth: sidebarVisible ? (isPhone ? "100%" : sidebarWidth) : 0,
             background: chromeBg,
             display: "flex",
             flexShrink: 0,
             overflow: "hidden",
             position: "relative",
-            transition: panelTransition("width", "min-width"),
+            transition: isPhone ? undefined : panelTransition("width", "min-width"),
           }}
         >
           <Sidebar
@@ -1511,9 +1633,17 @@ export default function BoojyNotes() {
             showing. Hidden when collapsed (its 4px fill + 1px border left a
             hairline strip down the left edge instead of the sidebar fully
             disappearing). */}
-        {sidebarVisible && sidebarHandle(1, { width: 4, flexShrink: 0 })}
+        {sidebarVisible && !isPhone && sidebarHandle(1, { width: 4, flexShrink: 0 })}
         {/* Editor area */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Kept mounted behind Home on the phone, so the note keeps its place. */}
+        <div
+          style={{
+            flex: 1,
+            display: isPhone && sidebarVisible ? "none" : "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
           <EditorProvider
             value={{
               editorRef,
@@ -1557,6 +1687,7 @@ export default function BoojyNotes() {
               setLightbox={setLightbox}
               openNote={openNote}
               onPathRowPointerDown={handleSidebarPointerDown}
+              onShowFolder={isPhone ? showFolder : undefined}
               onTitleBlur={settleTitle}
               pastVersion={versionHistory.state.past}
               deletedNote={deletedPreview}
@@ -1574,6 +1705,9 @@ export default function BoojyNotes() {
               showToast={showToast}
             />
           </EditorProvider>
+          {isPhone && (
+            <PhoneKeyBar editorRef={editorRef} onTable={insertTableHere} onSlash={openSlashHere} />
+          )}
         </div>
       </div>
 
