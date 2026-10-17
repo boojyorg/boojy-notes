@@ -12,6 +12,7 @@ import type { DeletedNote } from "../hooks/useRecentlyDeleted";
 import { useTheme } from "../hooks/useTheme";
 import { cssZoom } from "../utils/domHelpers";
 import { isPhone } from "../utils/platform";
+import { STATUS_BAR_H } from "../utils/uiScale";
 import { TrashIcon, RestoreIcon } from "./Icons";
 import RowAction from "./RowAction";
 
@@ -46,6 +47,8 @@ const ROW_H = isPhone ? TOUCH : 30;
 const NAME_SIZE = isPhone ? PHONE_LABEL_SIZE : 13.5;
 /** The phone's side margin. */
 const PHONE_GUTTER = 16;
+/** The least air it keeps above itself, below the status bar or the window's edge. */
+const TOP_AIR = 8;
 /** Where it stands before it is measured. */
 const DEFAULT_LEFT = isPhone ? PHONE_GUTTER : 248;
 export default function RecentlyDeletedMenu({
@@ -61,26 +64,31 @@ export default function RecentlyDeletedMenu({
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLDivElement>(null);
   useExitGhost(ref);
-  const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
+  /** `room`: from the top of the screen to its foot, all it may grow into. */
+  const [pos, setPos] = useState<{ left: number; bottom: number; room: number } | null>(null);
   const [active, setActive] = useState(-1);
   const [hovered, setHovered] = useState<string | null>(null);
 
   // Beside the sidebar, its foot level with the row's (on the phone, just
   // above the row): measured, then divided by the UI scale before it becomes
-  // a style.
+  // a style. It grows up no further than the room above its foot; past that
+  // the list scrolls, its heading and footer kept (on a short screen six
+  // rows had pushed the heading under the status bar).
   useLayoutEffect(() => {
     const row = document.querySelector('[data-testid="recently-deleted-row"]');
     const z = cssZoom(document.documentElement);
+    const height = window.innerHeight / z;
     if (!row) {
-      setPos({ left: DEFAULT_LEFT, bottom: 10 });
+      setPos({ left: DEFAULT_LEFT, bottom: 10, room: height - 10 });
       return;
     }
     const r = row.getBoundingClientRect();
-    setPos(
-      isPhone
-        ? { left: PHONE_GUTTER, bottom: (window.innerHeight - r.top) / z + 4 }
-        : { left: (r.right + 10) / z, bottom: (window.innerHeight - r.bottom) / z },
-    );
+    const foot = isPhone ? r.top / z - 4 : r.bottom / z;
+    setPos({
+      left: isPhone ? PHONE_GUTTER : (r.right + 10) / z,
+      bottom: height - foot,
+      room: foot,
+    });
   }, []);
 
   useEffect(() => {
@@ -144,9 +152,21 @@ export default function RecentlyDeletedMenu({
         padding: MENU_PAD,
         boxShadow: theme.modalShadow,
         visibility: pos ? "visible" : "hidden",
+        boxSizing: "border-box",
+        maxHeight: pos ? `calc(${pos.room}px - ${STATUS_BAR_H} - ${TOP_AIR}px)` : undefined,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "6px 10px",
+          flexShrink: 0,
+        }}
+      >
         <span style={{ color: TEXT.secondary, display: "flex" }}>
           <TrashIcon />
         </span>
@@ -159,7 +179,12 @@ export default function RecentlyDeletedMenu({
         aria-label="Deleted notes"
         aria-activedescendant={items[active] ? `deleted-${items[active].id}` : undefined}
         onMouseLeave={() => setHovered(null)}
-        style={{ maxHeight: ROW_H * (isPhone ? 6 : 10), overflowY: "auto" }}
+        style={{
+          maxHeight: ROW_H * (isPhone ? 6 : 10),
+          minHeight: 0,
+          flex: "0 1 auto",
+          overflowY: "auto",
+        }}
       >
         {items.map((item, i) => {
           const actions = isPhone || (hovered ? hovered === item.id : i === active);
@@ -235,8 +260,19 @@ export default function RecentlyDeletedMenu({
           </div>
         )}
       </div>
-      <div role="separator" style={{ height: 1, background: BG.divider, margin: "4px 6px" }} />
-      <div style={{ padding: "5px 10px 6px", color: TEXT.muted, fontSize: 12.5, lineHeight: 1.5 }}>
+      <div
+        role="separator"
+        style={{ height: 1, background: BG.divider, margin: "4px 6px", flexShrink: 0 }}
+      />
+      <div
+        style={{
+          padding: "5px 10px 6px",
+          color: TEXT.muted,
+          fontSize: 12.5,
+          lineHeight: 1.5,
+          flexShrink: 0,
+        }}
+      >
         {items.length > 0 && (
           <div data-testid="recently-deleted-hint">
             {isPhone ? "Tap" : "Click"} a note to view it.

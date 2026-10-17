@@ -11,7 +11,8 @@ Rule + one reason + the proving spec. History is in git.
   `recently-deleted.spec.ts`. A folder's directory goes only once just OS cruft is left;
   non-note files are never touched.
 - **The phone's bin**: `deleted/<when>/<path>`, ids in `state/deleted.json` (sync's deletes
-  too); each step ordered so a crash leaves the note in one place. `recentlyDeleted.test.ts`.
+  too); a crash between steps leaves the note in one place; a restore is handed to sync
+  (`takeRestored`), so a pass cut short never bins it again. `recentlyDeleted.test.ts`.
 - Desktop confirms only several files; one note goes at once, its toast with Undo.
 
 ## The watcher drops only an event it can trace to the app's own operation
@@ -21,8 +22,8 @@ Rule + one reason + the proving spec. History is in git.
 eviction). `watcher-scale.spec.ts`.
 
 - **`write-note` claims the bytes it wrote**: a later event whose file holds exactly those bytes
-  is the echo, however late (macOS re-sends ~3 s later). The claim ends at
-  the first event showing other bytes or the file gone. **Don't replace the bytes with a timer.**
+  is the echo, however late. The claim ends at
+  the first event showing other bytes or the file gone.
 - **An unlink the app causes** (Trash, a rename's old path) is claimed once and consumed. A
   Trash move's end forgets the file and looks again (`unlinkDone`; a quick Put Back was lost).
   An unclaimed unlink is real, however soon.

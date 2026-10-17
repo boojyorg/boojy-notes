@@ -97,6 +97,11 @@ export interface LocalStore {
   loadRecord(): Promise<string | null>;
   /** Replaces the record whole, so a crash leaves the previous one. */
   saveRecord(text: string): Promise<void>;
+  /**
+   * The paths put back from Recently Deleted since the last call, forgotten as
+   * they are handed over. Only a store with a bin has it (the phone's vault).
+   */
+  takeRestored?(): Promise<string[]>;
 }
 
 /** Dropbox's comparison key for a path. */

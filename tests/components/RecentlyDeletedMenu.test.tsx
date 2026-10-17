@@ -148,6 +148,12 @@ describe("RecentlyDeletedMenu on the phone", () => {
       expect(menu.style.left).toBe("16px");
       expect(menu.style.right).toBe("16px");
       expect(menu.style.bottom).toBe(`${window.innerHeight - 700 + 4}px`);
+      // On a short screen it grows up only to the status bar; the list scrolls.
+      const { STATUS_BAR_H } = await import("../../src/utils/uiScale");
+      expect(menu.style.maxHeight).toBe(`calc(696px - ${STATUS_BAR_H} - 8px)`);
+      expect(menu.style.flexDirection).toBe("column");
+      const list = screen.getByRole("listbox");
+      expect([list.style.minHeight, list.style.overflowY]).toEqual(["0px", "auto"]);
       for (const option of screen.getAllByRole("option")) {
         expect(option.style.height).toBe(`${TOUCH}px`);
         const restore = option.querySelector("button") as HTMLElement;

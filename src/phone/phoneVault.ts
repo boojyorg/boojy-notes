@@ -26,7 +26,9 @@ import type { FileOps } from "./files";
  * ordered so a crash between two leaves a state the next read puts right:
  * the bin's entry is written before its file moves in and dropped after it
  * moves out (an entry without its file is dropped, a file without an entry is
- * adopted under a new id, kept from then on).
+ * adopted under a new id, kept from then on). A restore is also noted for
+ * sync (`state/restored.json`, `takeRestored`): a pass that binned the note
+ * and died before recording it would otherwise delete it again.
  *
  * Every operation runs one at a time. A save the editor asked for before the
  * engine changed that note's file is refused as stale (the editor then keeps
@@ -279,6 +281,14 @@ export function createPhoneVault(
   const saveBin = () =>
     files.write(join(STATE, "deleted.json"), encoder.encode(JSON.stringify(bin)));
 
+  /** Paths put back from the bin, kept for the next sync pass (LocalStore's `takeRestored`). */
+  const readRestored = async (): Promise<string[]> => {
+    const bytes = await files.read(join(STATE, "restored.json"));
+    return bytes ? JSON.parse(new TextDecoder().decode(bytes)) : [];
+  };
+  const writeRestored = (paths: string[]) =>
+    files.write(join(STATE, "restored.json"), encoder.encode(JSON.stringify(paths)));
+
   /** Out of the vault into the bin; a note with an id is recorded first, so it comes back as itself. */
   const moveToDeleted = async (rel: string, id: string | null) => {
     const at = now();
@@ -524,11 +534,13 @@ export function createPhoneVault(
         const folder = parentOf(rel);
         const newFolder = !!folder && !(await files.exists(abs(folder)));
         const target = await freeName(folder, baseName(rel), ".md");
-        // The id at its new place first: a crash before the file moves leaves
-        // an index entry for a missing file, which the next read drops.
+        // The id at its new place, and the restore noted for sync, first: a
+        // crash before the file moves leaves an index entry for a missing
+        // file, which the next read drops, and a note sync finds nothing for.
         const idx = await loadIndex();
         idx[id] = target;
         await saveIndex();
+        await writeRestored([...(await readRestored()), target]);
         // Moved, not rewritten: the bytes are the ones that were deleted.
         await files.rename(from, abs(target));
         delete entries[id];
@@ -642,6 +654,13 @@ export function createPhoneVault(
         if ((await files.list(abs(rel))).length > 0) return;
         await files.rmdir(abs(rel));
         emit(listeners.folders, undefined);
+      }),
+
+    takeRestored: () =>
+      lock(async () => {
+        const paths = await readRestored();
+        if (paths.length) await writeRestored([]);
+        return paths;
       }),
 
     loadRecord: async () => {

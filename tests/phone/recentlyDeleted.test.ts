@@ -220,8 +220,8 @@ describe("a delete or restore cut short", () => {
 
 /** The bin against the sync engine and a stand-in Dropbox: the engine reconciles a restore. */
 describe("restoring, as sync sees it", () => {
-  async function synced(notes: Record<string, string>) {
-    const env = setup();
+  async function synced(notes: Record<string, string>, files = memoryFiles()) {
+    const env = setup(files);
     const dropbox = new FakeDropbox();
     for (const [path, text] of Object.entries(notes)) await dropbox.macWrite(path, text);
     // Passes until one has nothing left to do, as the runner would; a local
@@ -286,6 +286,31 @@ describe("restoring, as sync sees it", () => {
     const calls = env.dropbox.calls.length;
     await env.settle(next);
     expect(env.dropbox.calls.slice(calls)).toEqual(["listContinue"]);
+    expect(await next.api.listDeletedNotes()).toEqual([]);
+  });
+
+  // Sync binned a note the Mac deleted, then the app died before the record
+  // said so: the next pass took the restored note, unchanged since the record,
+  // for one Dropbox had deleted, and binned it again.
+  it("restored after a pass died between binning it and recording that: it stays restored", async () => {
+    let binned = false;
+    const files = memoryFiles({
+      failOn: (op, path) => {
+        if (op === "rename" && path === "vault/A.md") binned = true;
+        return binned && op === "write" && path === "state/sync-record.json";
+      },
+    });
+    const env = await synced({ "A.md": "alpha" }, files);
+    env.dropbox.macDelete("A.md");
+    await expect(syncPass({ local: env.vault.store, remote: env.dropbox })).rejects.toThrow(
+      /killed/,
+    );
+    const next = env.restart();
+    const [row] = await next.api.listDeletedNotes();
+    expect(await next.api.restoreDeletedNote(row.id)).toMatchObject({ title: "A" });
+    await env.settle(next);
+    expect(textOf(env.files, "vault/A.md")).toBe("alpha");
+    expect(env.dropbox.read("A.md")).toBe("alpha");
     expect(await next.api.listDeletedNotes()).toEqual([]);
   });
 
