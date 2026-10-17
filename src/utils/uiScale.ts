@@ -64,4 +64,11 @@ const STATUS_BAR_AIR = 6;
  * room to the page on a current WebView), so whatever stands at the top
  * stands below this. 0 wherever there is no such bar.
  */
+/**
+ * The room Android's gesture or button bar takes at the bottom of the phone's
+ * screen, in the app's own pixels: a list scrolls its last row clear of it.
+ * 0 wherever there is no such bar.
+ */
+export const NAV_BAR_H = atScale("env(safe-area-inset-bottom, 0px)");
+
 export const STATUS_BAR_H = `max(0px, ${atScale("env(safe-area-inset-top, 0px)")} - ${STATUS_BAR_AIR}px)`;

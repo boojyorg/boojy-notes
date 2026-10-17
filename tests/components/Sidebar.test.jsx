@@ -151,7 +151,8 @@ function renderSidebar(overrides = {}) {
     trashFile: overrides.trashFile,
   };
 
-  return render(<Sidebar {...props} />);
+  const Component = overrides.Component ?? Sidebar;
+  return render(<Component {...props} />);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -846,5 +847,27 @@ describe("Sidebar vault menu and files", () => {
     expect(setCtxMenu).toHaveBeenCalledWith(
       expect.objectContaining({ type: "file", id: "reading-list.pdf" }),
     );
+  });
+});
+
+// The phone draws under Android's gesture bar, so Home's last row was left
+// behind it, out of reach: the list keeps the bar's height clear at its end.
+describe("Sidebar on the phone", () => {
+  it("scrolls its last row clear of Android's gesture bar", async () => {
+    vi.resetModules();
+    vi.doMock("../../src/utils/platform", async (actual) => ({
+      ...(await actual()),
+      isPhone: true,
+    }));
+    try {
+      const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
+      const { NAV_BAR_H } = await import("../../src/utils/uiScale");
+      const { container } = renderSidebar({ Component: PhoneSidebar });
+      const scroller = container.querySelector(".sidebar-scroll");
+      expect(scroller.getAttribute("style")).toContain(NAV_BAR_H);
+    } finally {
+      vi.doUnmock("../../src/utils/platform");
+      vi.resetModules();
+    }
   });
 });

@@ -22,7 +22,7 @@ import {
 } from "../utils/search";
 import { RECENT_SHOWN, recentRows } from "../utils/recentNotes";
 import { cssZoom } from "../utils/domHelpers";
-import { STATUS_BAR_H, atScale } from "../utils/uiScale";
+import { NAV_BAR_H, STATUS_BAR_H, atScale } from "../utils/uiScale";
 import { tagPillStyle } from "../styles/tagPill";
 import type { NoteData } from "../types/notes";
 import { otherFileKind, splitExtension, type OtherFile } from "../utils/otherFiles";
@@ -626,6 +626,8 @@ export default function SearchPalette({
                 : { maxHeight: shown * ROW_H + LIST_PAD * 2 }),
               boxSizing: "border-box",
               padding: LIST_PAD,
+              // The last result scrolls clear of Android's gesture bar.
+              ...(isPhone && { paddingBottom: `calc(${LIST_PAD}px + ${NAV_BAR_H})` }),
             }}
           >
             {mode === "recent" && rows.length > 0 && (

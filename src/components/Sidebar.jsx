@@ -74,6 +74,7 @@ import {
   WORDMARK_H,
 } from "../constants/layout";
 import { parentFolder } from "../utils/pathTree";
+import { NAV_BAR_H } from "../utils/uiScale";
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.
@@ -1310,7 +1311,8 @@ const Sidebar = memo(function Sidebar({
             overflow: "auto",
             display: "flex",
             flexDirection: "column",
-            padding: "0 0 2px",
+            // On the phone the last row scrolls clear of Android's gesture bar.
+            padding: isPhone ? `0 0 calc(2px + ${NAV_BAR_H})` : "0 0 2px",
           }}
         >
           {/* The vault header: where you are, and everything that makes
