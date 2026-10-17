@@ -12,7 +12,7 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
  */
 export interface FileOps {
   /** The entries of a directory; empty when it does not exist. */
-  list(dir: string): Promise<{ name: string; kind: "file" | "dir"; mtime: number }[]>;
+  list(dir: string): Promise<{ name: string; kind: "file" | "dir"; mtime: number; size: number }[]>;
   read(path: string): Promise<Uint8Array | null>;
   /** Whole or not at all, parent directories made; see `recover`. */
   write(path: string, bytes: Uint8Array): Promise<void>;
@@ -90,6 +90,7 @@ export function capacitorFiles(): FileOps {
         name: f.name,
         kind: f.type === "directory" ? "dir" : "file",
         mtime: Number(f.mtime) || 0,
+        size: Number(f.size) || 0,
       }));
     },
 

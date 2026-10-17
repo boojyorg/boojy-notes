@@ -86,6 +86,12 @@ export interface LocalStore {
   list(): Promise<{ files: string[]; folders: string[] }>;
   read(path: string): Promise<Uint8Array | null>;
   /**
+   * The content hash of `path` as `list` last found it, or null when it is
+   * gone: a store that can tell a file is unchanged answers without reading
+   * it. Without it, the engine reads every file each pass.
+   */
+  hash?(path: string): Promise<string | null>;
+  /**
    * Writes `bytes` whole (temporary file, then rename) only if `path` still
    * holds bytes with content hash `expected`, or is absent when `expected` is
    * null. Returns false, writing nothing, when the file changed meanwhile.

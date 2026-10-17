@@ -138,11 +138,56 @@ function createLock() {
 }
 
 export function createPhoneVault(
-  files: FileOps,
+  disk: FileOps,
   { onLocalChange = () => {}, now = () => Date.now() } = {},
 ) {
   const lock = createLock();
   const abs = (rel: string) => join(VAULT, rel);
+
+  // The content hashes sync asked for (`hash`), each kept while its file's
+  // stamp (size and modified time, as the latest walk listed it) holds, so a
+  // pass reads only what changed: reading every file each pass held up
+  // Android's UI thread, which draws the page. Every write, rename and removal
+  // the app makes forgets what it touched, so a rewrite within one modified
+  // time at the same size is never taken for the old bytes; forgotten
+  // whether the call succeeds or not, as a failed write may still have landed.
+  // Nothing else writes the app's private storage.
+  const stamps = new Map<string, string>();
+  const hashes = new Map<string, { stamp: string; hash: string }>();
+  /** Forgets `path`; `folder` also what was under it (a rename may move a folder). */
+  const forget = (path: string, folder = false) => {
+    if (!path.startsWith(`${VAULT}/`)) return;
+    stamps.delete(path);
+    hashes.delete(path);
+    if (!folder) return;
+    for (const map of [stamps, hashes])
+      for (const key of [...map.keys()]) if (key.startsWith(`${path}/`)) map.delete(key);
+  };
+  const files: FileOps = {
+    ...disk,
+    async write(path, bytes) {
+      try {
+        await disk.write(path, bytes);
+      } finally {
+        forget(path);
+      }
+    },
+    async rename(from, to) {
+      try {
+        await disk.rename(from, to);
+      } finally {
+        forget(from, true);
+        forget(to, true);
+      }
+    },
+    async remove(path) {
+      try {
+        await disk.remove(path);
+      } finally {
+        forget(path);
+      }
+    },
+  };
 
   /** note id → its file, vault-relative. Kept across launches, so ids are stable. */
   let index: Record<string, string> | null = null;
@@ -238,6 +283,7 @@ export function createPhoneVault(
           await visit(path);
         } else {
           found.files.push(path);
+          stamps.set(abs(path), `${entry.size}:${entry.mtime}`);
         }
       }
     };
@@ -590,6 +636,17 @@ export function createPhoneVault(
   const store: LocalStore = {
     list: () => lock(walk),
     read: (rel) => lock(() => files.read(abs(rel))),
+
+    hash: (rel) =>
+      lock(async () => {
+        const path = abs(rel);
+        const stamp = stamps.get(path);
+        const known = hashes.get(path);
+        if (stamp && known?.stamp === stamp) return known.hash;
+        const hash = await hashAt(rel);
+        if (hash && stamp) hashes.set(path, { stamp, hash });
+        return hash;
+      }),
 
     writeIfUnchanged: (rel, bytes, expected) =>
       lock(async () => {
