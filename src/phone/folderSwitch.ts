@@ -91,4 +91,9 @@ export async function settleFolder(
   }
   await files.write(BINDING, encode({ folder: pending.to, accountId: pending.accountId }));
   await files.remove(SWITCH);
+  // A switch resumed from an earlier start was for the folder asked for then:
+  // the one asked for now is settled the same way (nothing more when it matches).
+  if (pending.to !== folder || pending.accountId !== accountId) {
+    await settleFolder(files, { folder, accountId, now });
+  }
 }

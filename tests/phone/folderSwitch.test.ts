@@ -114,6 +114,21 @@ describe("switching the folder the phone syncs", () => {
     expect(files.store.has("state/switch.json")).toBe(false);
   });
 
+  it("finishes a switch cut short, then switches again to the folder now asked for", async () => {
+    const files = await syncedTest(
+      memoryFiles({ failOn: (op, path) => op === "rename" && path === "deleted" }),
+    );
+    await expect(settle(files)).rejects.toThrow();
+    // Started again with another folder chosen meanwhile.
+    await settleFolder(files, { folder: "Work", accountId: "dbid:A", now: () => T0 + 1 });
+    expect(jsonOf(files, "state/binding.json")).toEqual({ folder: "Work", accountId: "dbid:A" });
+    expect(filesUnder(files, ARCHIVE)).toEqual(OLD_COPY.map((p) => `${ARCHIVE}/${p}`));
+    // What Work downloads stays at the next start.
+    await files.write("vault/Work note.md", bytes("downloaded"));
+    await settleFolder(files, { folder: "Work", accountId: "dbid:A", now: () => T0 + 2 });
+    expect(textOf(files, "vault/Work note.md")).toBe("downloaded");
+  });
+
   it("finishes a switch killed before it was bound", async () => {
     const files = await syncedTest(
       memoryFiles({ failOn: (op, path) => op === "write" && path === "state/binding.json" }),
