@@ -252,6 +252,99 @@ export function applyDomFormat(
   return true;
 }
 
+/** The styles a collapsed caret can be promised (`execCommand`'s typing style), by element. */
+const TYPING_STYLES: Record<string, "bold" | "italic"> = {
+  STRONG: "bold",
+  B: "bold",
+  EM: "italic",
+  I: "italic",
+};
+
+/**
+ * Fired on `document` when the editor moved a typing style along with the
+ * caret (`liftTypedSpace`), so a surface that lights a promised style where
+ * it was made (the phone's bar) follows it.
+ */
+export const TYPING_STYLE_MOVED = "boojy-typing-style-moved";
+
+const isSpace = (s: string) => /^\s+$/.test(s);
+
+/**
+ * A space typed first after bold or italic was turned on at the caret goes
+ * outside the new element, and the style is promised again for the next
+ * letter. Chromium put the space in the `<b>` its typing style made, and
+ * `** word**` is no Markdown reader's bold. Only a run that holds nothing
+ * but the space just typed is lifted, so a `** **` the file holds stays.
+ */
+export function liftTypedSpace(
+  sel: Selection,
+  native: { inputType: string; data: string | null; isComposing: boolean },
+  boundary: Node | null,
+): boolean {
+  if (native.inputType !== "insertText" || native.isComposing || !isSpace(native.data ?? "")) {
+    return false;
+  }
+  const text = sel.anchorNode;
+  if (!sel.isCollapsed || text?.nodeType !== Node.TEXT_NODE) return false;
+  if (boundary && !boundary.contains(text)) return false;
+  // Chromium types a space at a line's end as U+00A0, so it shows.
+  const typed = (text as Text).data.replace(/\u00a0/g, " ");
+  if (typed !== native.data?.replace(/\u00a0/g, " ")) return false;
+  const styles: ("bold" | "italic")[] = [];
+  let outer: Node | null = null;
+  for (let node = text.parentNode; node && node !== boundary; node = node.parentNode) {
+    const style = TYPING_STYLES[node.nodeName];
+    if (!style || node.textContent !== (text as Text).data) break;
+    styles.push(style);
+    outer = node;
+  }
+  if (!outer?.parentNode) return false;
+  outer.parentNode.insertBefore(text, outer);
+  outer.parentNode.removeChild(outer);
+  const r = document.createRange();
+  r.setStart(text, (text as Text).length);
+  sel.removeAllRanges();
+  sel.addRange(r);
+  for (const style of new Set(styles)) document.execCommand(style);
+  document.dispatchEvent(new Event(TYPING_STYLE_MOVED));
+  return true;
+}
+
+/**
+ * Before bold or italic is turned off at a collapsed caret that ends a run of
+ * it, the spaces that end the run step out after it and the caret with them,
+ * which is the style off: `**word **next` is no Markdown reader's bold. Says
+ * whether it did, in which case the caller has nothing left to toggle.
+ */
+export function shedTrailingSpace(
+  sel: Selection,
+  format: InlineFormat,
+  boundary: Node | null,
+): boolean {
+  const text = sel.anchorNode;
+  if (!sel.isCollapsed || text?.nodeType !== Node.TEXT_NODE) return false;
+  const t = text as Text;
+  if (sel.anchorOffset !== t.length) return false;
+  let run: Element | null = null;
+  for (let node = t.parentNode; node && node !== boundary; node = node.parentNode) {
+    if (TYPING_STYLES[node.nodeName] === format) {
+      run = node as Element;
+      break;
+    }
+  }
+  if (!run?.parentNode || textEdges(run)[1] !== t) return false;
+  const spaces = /\s+$/.exec(t.data)?.[0] ?? "";
+  if (!spaces || (spaces.length === t.data.length && run.textContent === t.data)) return false;
+  t.splitText(t.length - spaces.length);
+  const moved = t.nextSibling as Text;
+  run.parentNode.insertBefore(moved, run.nextSibling);
+  const r = document.createRange();
+  r.setStart(moved, moved.length);
+  sel.removeAllRanges();
+  sel.addRange(r);
+  return true;
+}
+
 /**
  * The field holding `node`, or null when it is in a text block, outside the
  * editor, or in a field that holds no Markdown.

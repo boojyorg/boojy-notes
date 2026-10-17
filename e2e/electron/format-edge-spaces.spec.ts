@@ -57,3 +57,55 @@ test("italic on words with spaces at both ends wraps the words alone", async () 
   expect(h.vault.read(NOTE)).toBe("The *cat sat* here\n");
   expect(h.pageErrors).toEqual([]);
 });
+
+/** Put the caret at the end of the paragraph, with the editor focused. */
+async function caretAtEnd() {
+  const p = h.page.locator('[data-block-type="p"]').first();
+  await p.click();
+  await h.page.keyboard.press("End");
+}
+
+test("bold turned on at the caret, then a space, keeps the space outside the bold", async () => {
+  await caretAtEnd();
+  await h.page.keyboard.press(`${MOD}+b`);
+  await h.page.keyboard.type(" word");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("word"));
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe("The cat sat here **word**\n");
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("bold turned off after a space keeps the space outside the bold", async () => {
+  await caretAtEnd();
+  await h.page.keyboard.press(`${MOD}+b`);
+  await h.page.keyboard.type(" word ");
+  await h.page.keyboard.press(`${MOD}+b`);
+  await h.page.keyboard.type("next");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("next"));
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe("The cat sat here **word** next\n");
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("italic turned on mid-line, then a space, keeps the space outside the italic", async () => {
+  const p = h.page.locator('[data-block-type="p"]').first();
+  await p.click();
+  await p.evaluate((el) => window.getSelection()?.collapse(el.firstChild, 3));
+  await h.page.keyboard.press(`${MOD}+i`);
+  await h.page.keyboard.type(" big");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("big"));
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe("The *big* cat sat here\n");
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("bold and italic turned on together keep the first space outside both", async () => {
+  await caretAtEnd();
+  await h.page.keyboard.press(`${MOD}+b`);
+  await h.page.keyboard.press(`${MOD}+i`);
+  await h.page.keyboard.type(" word");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("word"));
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe("The cat sat here ***word***\n");
+  expect(h.pageErrors).toEqual([]);
+});

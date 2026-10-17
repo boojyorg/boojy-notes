@@ -99,10 +99,7 @@ Product calls for Tyr; each trades conventional Markdown meaning against byte pr
 
 Problems Beta users can hit today. Each is small and comes before anything else.
 
-- **Bold turned on with nothing selected, then a space typed first, saves `** word**`**, which
-  does not read back as bold (found 2026-10-16 on the phone's Aa → B; the desktop's ⌘B takes the
-  same `execCommand` path, so check it there first). The edge space belongs outside the marks,
-  as `toggleWrappingTag` already keeps it for a selection.
+None open.
 
 ## Beta: release requirements (met)
 

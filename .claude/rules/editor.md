@@ -48,7 +48,8 @@ app's, made through state.**
 - **`execCommand` fires no `beforeinput`**, so script mutations ask `scopeOf` first.
 - **Bold, italic and code are structural wraps** (`toggleWrappingTag`), never `execCommand("bold")`,
   which reads the computed style. What is selected decides on or off, not where it starts
-  (code nested); edge spaces stay outside. `heading-bold.spec.ts`, `format-edge-spaces.spec.ts`.
+  (code nested); edge spaces stay outside, typed ones too (`liftTypedSpace`, `shedTrailingSpace`).
+  `heading-bold.spec.ts`, `format-edge-spaces.spec.ts`.
 - **A block with its own field owns its edits and its keys** (table cell, callout, code
   textarea): `handleEditorKeyDown` returns when focus is in a field, because its logic reads a
   stale document selection there. The exception: inline-format shortcuts in a
@@ -189,9 +190,8 @@ app's, made through state.**
 
 ## Headings
 
-H1–H6 are native elements styled by `headingStyle`. **Every editor spacing value lives in
-`DEFAULT_RHYTHM`**. New headings are ATX;
-imported spelling lives in `headingSource`. An empty heading shows `Heading N` from CSS.
+**Every editor spacing value lives in `DEFAULT_RHYTHM`**. New headings are ATX; imported
+spelling lives in `headingSource`. An empty heading shows `Heading N` from CSS.
 `heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file, edited as typing

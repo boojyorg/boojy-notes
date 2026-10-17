@@ -15,6 +15,7 @@ const sent = vi.hoisted(() => [] as string[]);
 vi.mock("../../src/phone/commands", () => ({ sendCommand: (id: string) => sent.push(id) }));
 
 import PhoneKeyBar from "../../src/components/PhoneKeyBar";
+import { TYPING_STYLE_MOVED } from "../../src/utils/inlineFormatCommands";
 
 let editor: HTMLDivElement;
 const size = (width: number, height: number) => {
@@ -140,6 +141,25 @@ describe("the bar above the keyboard", () => {
     press("Text style");
     expect(lit("Bold")).toBe("true");
     expect(lit("Italic")).toBeNull();
+  });
+
+  it("keeps a promised bold lit where the editor moves it, and drops it on a tap", async () => {
+    mount();
+    size(412, 532);
+    caret(5);
+    press("Text style");
+    press("Bold");
+    await act(() => new Promise((r) => requestAnimationFrame(r)));
+    expect(lit("Bold")).toBe("true");
+    // A space typed first goes before the bold, and the caret with it.
+    act(() => {
+      window.getSelection()?.collapse(editor.children[0].firstChild, 6);
+      document.dispatchEvent(new Event(TYPING_STYLE_MOVED));
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    expect(lit("Bold")).toBe("true");
+    caret(2);
+    expect(lit("Bold")).toBeNull();
   });
 
   it("picks a heading level, the line's own level making it text again", () => {
