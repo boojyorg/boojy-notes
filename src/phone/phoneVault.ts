@@ -149,29 +149,43 @@ export function createPhoneVault(
   // pass reads only what changed: reading every file each pass held up
   // Android's UI thread, which draws the page. Every write, rename and removal
   // the app makes forgets what it touched, so a rewrite within one modified
-  // time at the same size is never taken for the old bytes. Nothing else
-  // writes the app's private storage.
+  // time at the same size is never taken for the old bytes; forgotten
+  // whether the call succeeds or not, as a failed write may still have landed.
+  // Nothing else writes the app's private storage.
   const stamps = new Map<string, string>();
   const hashes = new Map<string, { stamp: string; hash: string }>();
-  const forget = (path: string) => {
+  /** Forgets `path`; `folder` also what was under it (a rename may move a folder). */
+  const forget = (path: string, folder = false) => {
+    if (!path.startsWith(`${VAULT}/`)) return;
+    stamps.delete(path);
+    hashes.delete(path);
+    if (!folder) return;
     for (const map of [stamps, hashes])
-      for (const key of [...map.keys()])
-        if (key === path || key.startsWith(`${path}/`)) map.delete(key);
+      for (const key of [...map.keys()]) if (key.startsWith(`${path}/`)) map.delete(key);
   };
   const files: FileOps = {
     ...disk,
     async write(path, bytes) {
-      await disk.write(path, bytes);
-      forget(path);
+      try {
+        await disk.write(path, bytes);
+      } finally {
+        forget(path);
+      }
     },
     async rename(from, to) {
-      await disk.rename(from, to);
-      forget(from);
-      forget(to);
+      try {
+        await disk.rename(from, to);
+      } finally {
+        forget(from, true);
+        forget(to, true);
+      }
     },
     async remove(path) {
-      await disk.remove(path);
-      forget(path);
+      try {
+        await disk.remove(path);
+      } finally {
+        forget(path);
+      }
     },
   };
 
@@ -629,10 +643,8 @@ export function createPhoneVault(
         const stamp = stamps.get(path);
         const known = hashes.get(path);
         if (stamp && known?.stamp === stamp) return known.hash;
-        const bytes = await files.read(path);
-        if (!bytes) return null;
-        const hash = await contentHash(bytes);
-        if (stamp) hashes.set(path, { stamp, hash });
+        const hash = await hashAt(rel);
+        if (hash && stamp) hashes.set(path, { stamp, hash });
         return hash;
       }),
 

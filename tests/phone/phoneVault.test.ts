@@ -272,20 +272,48 @@ describe("a sync pass reads only what changed", () => {
     expect(after.hashes["One.md"]).toBe(await contentHash(bytes("eno")));
   });
 
-  it("forgets what sync writes, renames and removes, within one modified time", async () => {
+  it("forgets what sync writes, within one modified time", async () => {
     const { phone, pass } = counted(true);
     await phone.api.writeNote(note("n1", "One", "one"));
     await phone.api.writeNote(note("n2", "Two", "two"));
-    await phone.api.writeNote(note("n3", "Three", "three"));
     const first = await pass();
-    // Same size as before: only forgetting the write can tell it apart.
+    // Same size, same time: only forgetting the write can tell it apart.
     await phone.store.writeIfUnchanged("One.md", bytes("uno"), first.hashes["One.md"] as string);
-    await phone.store.rename("Two.md", "Deux.md");
-    await phone.store.removeIfUnchanged("Three.md", first.hashes["Three.md"] as string);
     const after = await pass();
-    expect(after.reads).toEqual(["Deux.md", "One.md"]);
+    expect(after.reads).toEqual(["One.md"]);
     expect(after.hashes["One.md"]).toBe(await contentHash(bytes("uno")));
-    expect(Object.keys(after.hashes).sort()).toEqual(["Deux.md", "One.md"]);
+  });
+
+  it("forgets a write that failed after its bytes landed", async () => {
+    const { disk, phone, pass } = counted(true);
+    await phone.api.writeNote(note("n1", "One", "one"));
+    const first = await pass();
+    // The new bytes are in place, then the tidy-up after them fails.
+    const write = disk.write;
+    disk.write = async (p, b) => {
+      await write(p, b);
+      disk.write = write;
+      throw new Error("killed after the write");
+    };
+    await expect(
+      phone.store.writeIfUnchanged("One.md", bytes("uno"), first.hashes["One.md"] as string),
+    ).rejects.toThrow("killed after the write");
+    const after = await pass();
+    expect(after.reads).toEqual(["One.md"]);
+    expect(after.hashes["One.md"]).toBe(await contentHash(bytes("uno")));
+  });
+
+  it("forgets the names a rename touches, within one modified time", async () => {
+    const { phone, pass } = counted(true);
+    await phone.api.writeNote(note("n1", "One", "aaa"));
+    await phone.api.writeNote(note("n2", "Other", "bbb"));
+    await pass();
+    // Another file of the same size and time takes One.md's name.
+    await phone.store.rename("One.md", "Gone.md");
+    await phone.store.rename("Other.md", "One.md");
+    const after = await pass();
+    expect(after.reads).toEqual(["Gone.md", "One.md"]);
+    expect(after.hashes["One.md"]).toBe(await contentHash(bytes("bbb")));
   });
 
   it("reads again a file changed behind the app, by its size or its time", async () => {

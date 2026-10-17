@@ -166,9 +166,7 @@ class Pass {
         this.result.attention.push({ kind: "case", paths: paths.sort() });
         continue;
       }
-      const hash = this.local.hash
-        ? await this.local.hash(paths[0])
-        : await this.local.read(paths[0]).then((bytes) => bytes && contentHash(bytes));
+      const hash = await (this.local.hash?.(paths[0]) ?? this.hashOf(paths[0]));
       if (hash) this.files.set(key, { path: paths[0], hash });
     }
     for (const path of folders) if (!isIgnored(path)) this.folders.set(keyOf(path), path);
