@@ -63,6 +63,7 @@ import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
 import { wikilinkStatus } from "./utils/wikilinkTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isPhone, isWeb } from "./utils/platform";
+import { STATUS_BAR_H } from "./utils/uiScale";
 import { usePhoneScreens } from "./phone/usePhoneScreens";
 import PhoneKeyBar from "./components/PhoneKeyBar";
 import { SLASH_COMMANDS } from "./constants/data";
@@ -1484,7 +1485,10 @@ export default function BoojyNotes() {
       style={{
         width: "100%",
         height: `${10000 / uiScale}vh`,
-        background: theme.BG.darkest,
+        // The phone's app starts below Android's status bar, which stands on
+        // the ground of the screen shown: Home's, or the note's sheet.
+        ...(isPhone && { boxSizing: "border-box", paddingTop: STATUS_BAR_H }),
+        background: isPhone ? (sidebarVisible ? chromeBg : theme.BG.editor) : theme.BG.darkest,
         display: "flex",
         flexDirection: "column",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",

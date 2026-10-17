@@ -18,6 +18,7 @@ import { hasWindowStrip, isElectronMac, isPhone } from "../utils/platform";
 import { WINDOW_STRIP_H as STRIP_H } from "../constants/layout";
 import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET, TOUCH } from "../constants/layout";
 import { PANEL_MS } from "../tokens/motion";
+import { STATUS_BAR_H } from "../utils/uiScale";
 import { Tooltip, shortcutLabel, useTooltip } from "./Tooltip";
 import { tagPillGround } from "../styles/tagPill";
 
@@ -63,6 +64,9 @@ export const CHROME_TOP = 7;
  * fixed to the window's top stands below; 0 on the Mac and the web.
  */
 export const WINDOW_STRIP_H = hasWindowStrip ? STRIP_H : 0;
+/** Where a control fixed to the window's top stands, `offset` below the row's top. */
+const fixedTop = (offset) =>
+  isPhone ? `calc(${offset}px + ${STATUS_BAR_H})` : offset + WINDOW_STRIP_H;
 export {
   CHROME_BTN,
   BTN_GAP,
@@ -274,7 +278,7 @@ export default function EditorChrome({
           className="panel-motion"
           style={{
             position: "fixed",
-            top: CHROME_TOP + WINDOW_STRIP_H,
+            top: fixedTop(CHROME_TOP),
             left: trioLeft,
             zIndex: Z.TOOLBAR,
             // In after the panel has gone, not over it: the sidebar's own
@@ -316,7 +320,7 @@ export default function EditorChrome({
       <div
         style={{
           position: "fixed",
-          top: CHROME_TOP + WINDOW_STRIP_H,
+          top: fixedTop(CHROME_TOP),
           right: CHROME_INSET,
           zIndex: Z.TOOLBAR,
           display: "flex",
@@ -373,7 +377,7 @@ export default function EditorChrome({
             aria-label={past.deleted ? "Viewing a deleted note" : "Viewing an earlier version"}
             style={{
               position: "fixed",
-              top: CHROME_TOP + WINDOW_STRIP_H + CHROME_BTN + 6,
+              top: fixedTop(CHROME_TOP + CHROME_BTN + 6),
               right: CHROME_INSET + CHROME_BTN + BTN_GAP,
               width: 290,
               background: theme.BG.elevated,
