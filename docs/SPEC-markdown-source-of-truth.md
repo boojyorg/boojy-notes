@@ -87,6 +87,10 @@ that plainly rather than pretending otherwise.
   are real `.md` files in the vault: `electron/noteFileManager.js` writes via `blocksToMarkdown`
   and reads via `markdownToBlocks`. An index in Electron's userData maps note IDs to paths; the
   vault itself is never written except through the user's own edits.
+- **The Android app (in testing) stores Markdown too.** Its copy of the vault is real `.md`
+  files in the app's private storage (`src/phone/phoneVault.ts`), written and read with the
+  same converters, and kept in step with a Dropbox folder byte for byte (`src/sync/`), so
+  Dropbox's copy is the file the desktop opens.
 - **The web build is a development target, outside the product promise.** It persists block
   JSON in `localStorage` (`boojy-notes-v1`). Those blocks are provably round-trippable, but
   the web build does not "store markdown", and nothing in the UI, docs or marketing should

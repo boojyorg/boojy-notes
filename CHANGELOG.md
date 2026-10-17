@@ -1,15 +1,18 @@
 # Changelog
 
-## Unreleased
+## v0.16.0 — 2026-10-17
 
 ### Bug Fixes
 
 - **Bold and italic typed as you go stay bold in other apps** — Turning bold on with ⌘B and then typing a space before the word saved `** word**`, which Obsidian and other Markdown apps show as plain stars rather than bold. Turning bold off just after a space did the same at the other end (`**word **`). The space now goes outside the bold, so the file says `**word**`. Italic too.
 - **A space at the end of a line no longer goes missing** — If a note was renamed outside Boojy Notes while you typed in it (by Dropbox, say, or in Finder), the space you had just typed could vanish, joining the next word to the last. It now stays.
+- **Renaming a note in a Dropbox folder keeps its Dropbox history** — Renaming or moving a note without changing its words now just renames its file. Before, Boojy Notes also wrote the same text again, which Dropbox took for a new file: the note lost its version history in Dropbox, and other devices saw a new note and a deleted one instead of a rename.
+- **A note brought back from Recently Deleted stays as it came back** — A restored note was written again about two seconds later, which a sync app could take for an edit. It now comes back exactly as it was and is left alone.
+- **Escape still closes Recently Deleted after a restore** — Restoring a note, or deleting one for good, from the Recently Deleted list removed the button that had the keyboard's attention, so Escape stopped reaching the list. The list now keeps it, and Escape closes it.
 
 ### Improvements
 
-- **Boojy Notes is in Beta** — From v0.15.0 the desktop app is complete enough for ordinary daily use, on macOS, Windows and Linux. What's next: having the same notes on your phone.
+- **Boojy Notes is in Beta** — From v0.15.0 the desktop app is complete enough for ordinary daily use, on macOS, Windows and Linux. What's next: the same notes on your phone, which now works in testing with a vault kept in Dropbox. The phone app isn't available to download yet.
 
 ## v0.15.0 — 2026-10-07
 

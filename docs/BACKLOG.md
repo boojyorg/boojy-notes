@@ -13,9 +13,9 @@ in their own short list below.
 
 Three tiers, kept apart. **Release requirements** were what Beta waited for (met). **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-07,
-the v0.15.0 release pass; before that 2026-09-30, the whole-product pass (Tyr marked 89 features
-from Apple Notes, Obsidian and Notion). Items marked *review §n* come from the whole-app review of
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-17,
+the v0.16.0 release pass (sync working on Tyr's Mac and phone); before that 2026-09-30, the
+whole-product pass (Tyr marked 89 features from Apple Notes, Obsidian and Notion). Items marked *review §n* come from the whole-app review of
 2026-09-07, whose fixes shipped in v0.7.0.
 
 ## Direction
@@ -27,7 +27,8 @@ avoid. Bring existing notes in, create and edit without ceremony, find them agai
 files. Migration quality, editing comfort and access across devices are expected to matter
 more than any feature nobody else has. That is a product hypothesis, not validated demand.
 
-- **Beta is desktop-first, and for Tyr and a few friends**: local files, no account, no sync.
+- **Beta is desktop-first, and for Tyr and a few friends**: local files, no account; sync only
+  through a Dropbox folder (Platforms, below).
   There is no rush to a public launch; the aim is the best product for daily use. Personal
   tools only; collaboration is excluded.
 - **Sync with the phone is the next goal, after Beta's release requirements** (Tyr,
@@ -44,6 +45,8 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   from day one**; then a web app; a public launch after that. Boojy Cloud is weighed once
   Dropbox's limits are known. One requirement carries over from the earlier plan: a remote
   update never disrupts typing or loses unsaved edits (stable block ids are one possible fix).
+  **Where it stands (2026-10-17):** Tyr's vault syncs between his Mac and his Pixel through
+  Dropbox, offline writing included (#350–#363); the phone app is not yet distributed.
 - **Local-first; the cloud is opt-in.** Nothing leaves the machine unless you turn sync on,
   and a device that never signs in loses nothing. **Hosting must stay cheap to run**: a design
   that could cost $1,000 a month is the wrong design, so quotas, size caps and a budget alarm
@@ -276,12 +279,11 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   `a` plus two empty rows: bytes identical, structure differs. Decide whether that matters only
   after it has been felt.
 
-- **Cmd+B at a bare caret** (press, type, press, as Apple Notes and Notion do). Probed in the
-  real app 2026-09-10: bold and italic work through Chromium's own typing style, but a space
-  typed first lands inside the element, so `Cmd+B`, ` bold`, `Cmd+B` reaches the
-  file as `** bold**`, which no reader takes for bold; strikethrough, highlight and code do
-  nothing (their toggles return early on a collapsed selection, `useInlineFormatting`). Making
-  it real means owning the typing style for all five and keeping the space outside.
+- **Cmd+B at a bare caret** (press, type, press, as Apple Notes and Notion do). Bold and italic
+  work through Chromium's own typing style, a space at either edge kept outside (v0.16.0);
+  strikethrough, highlight and code do nothing (their toggles return early on a collapsed
+  selection, `useInlineFormatting`). Making them real means owning the typing style for those
+  three.
 - **Nested typed formatting** (`*x*` typed inside existing bold) is left literal until the next
   repaint, by the trigger's own guard; the renderer decides it then. Judge live.
 
@@ -511,11 +513,14 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 - **Sync: Dropbox first, by device** (decided 2026-10-15). Desktop never talks to Dropbox: the
   vault sits in `Dropbox/Apps/Boojy Notes/<vault>/` and Dropbox's own app syncs it (app-folder
-  permission only; moving a vault in is by hand for now). The phone connects to Dropbox
-  directly with Boojy's sync engine (`src/sync`: local, Dropbox and the last-synced record
-  compared; a clash keeps both, an edit beats a delete, the phone never deletes a folder).
-  Proof of concept step 1 passed its live checks on 2026-10-16, and step 2, the Android app
-  on the Pixel, is merged (#353). Other providers wait: Google Drive's full
+  permission only). The phone connects to Dropbox directly with Boojy's sync engine
+  (`src/sync`: local, Dropbox and the last-synced record compared; a clash keeps both, an edit
+  beats a delete, the phone never deletes a folder), and shows sync's state on Home. In Tyr's
+  daily use since 2026-10-17. **Before anyone else uses it:** a moved vault keeps its version
+  history (history and the note index are keyed by the vault's path; Tyr's were copied by hand,
+  so moving a vault in loses them today); a signed Android build that installs and updates
+  without the Mac, its sign-in in Android's keystore; the folder chosen at sign-in, not fixed in
+  code (the safe switch, `src/phone/folderSwitch.ts`, exists). Other providers wait: Google Drive's full
   access needs restricted-scope verification. One sync mechanism per collection, never
   overlapping. Found live: Dropbox's Mac app can stop syncing while saying it is up to date,
   so Boojy may need to notice a synced vault gone quiet.
@@ -536,7 +541,7 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   long-press to the system); the block grip shows on touch; the desktop layout puts the sidebar
   over half the screen. Test layout in a phone-sized Chromium, the keyboard on the real phone
   (USB debugging, `chrome://inspect`); an emulator's typed input skips the keyboard's composition.
-- **Mobile shell: Capacitor or similar recommended**, to be confirmed in sync step 2. The
+- **Mobile shell: Capacitor**, chosen in sync step 2 (#353). The
   editor is `contentEditable` on the browser's Selection and Range APIs, so a shell that keeps
   the browser DOM can reuse it, and one that does not (full React Native, Flutter) means
   rebuilding the editor. Keyboard, selection, attachments, filesystem access and background
@@ -544,8 +549,11 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   Obsidian and Apple Notes; Tyr: the closer to the desktop, the better): two screens, Home (the
   sidebar, full width) and the note, with a bar above the keyboard; the rules are in
   `ui-chrome-and-theme.md`. Next on it: a select mode (long-press → Select, then Move to… or
-  Delete for several notes; a phone has no Shift-click), and pictures on the phone, which the
-  bar's image button waits on (saving, showing and syncing them). The earlier Capacitor spec, mobile
+  Delete for several notes; a phone has no Shift-click), only once Tyr misses it; pictures on
+  the phone, which the bar's image button waits on (showing them first, then adding);
+  `attachments` shows as an ordinary folder at the top of Home (the desktop's last row); a
+  long-press on a row also selects its text; Search's Recent is empty; Settings laid out for a
+  phone; Gboard's floating keyboard hides the bar. The earlier Capacitor spec, mobile
   spec, navigation exploration and release strategy are archived in `docs/private/archive/` as
   reference, not plan. **Tyr's phone is Android** (a Pixel 8a), and a good phone app would
   double his use (2026-09-30). The phone comes first as an installable Android app on the same
