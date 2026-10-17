@@ -3,6 +3,7 @@ import {
   buildPastedBlocks,
   isStructuredMarkdownLine,
   stripIncidentalLineEnding,
+  typedPaste,
   type PastedBlock,
 } from "../../src/utils/pasteBlocks";
 import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown";
@@ -252,4 +253,23 @@ describe("isStructuredMarkdownLine", () => {
   it.each(["plain words", "", "a\nb", "---", "```"])("rejects %j", (line) =>
     expect(isStructuredMarkdownLine(line)).toBe(false),
   );
+});
+
+describe("typedPaste", () => {
+  const typed = (data: string | null, inputType = "insertText", isComposing = false) =>
+    ({ inputType, data, isComposing }) as InputEvent;
+
+  it("takes several lines a keyboard types at once as a paste of that text", () => {
+    const paste = typedPaste(typed("# Demo\n\n- one"));
+    expect(paste?.clipboardData.getData("text/plain")).toBe("# Demo\n\n- one");
+    expect(paste?.clipboardData.getData("text/html")).toBe("");
+    expect(paste?.clipboardData.files).toEqual([]);
+  });
+
+  it("leaves one line, a composition and any other input to typing", () => {
+    expect(typedPaste(typed("worldwide "))).toBeNull();
+    expect(typedPaste(typed("a\nb", "insertText", true))).toBeNull();
+    expect(typedPaste(typed(null, "insertParagraph"))).toBeNull();
+    expect(typedPaste(typed("a\nb", "insertReplacementText"))).toBeNull();
+  });
 });

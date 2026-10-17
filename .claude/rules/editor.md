@@ -1,7 +1,6 @@
 # Editor
 
-What a change to the contentEditable editor must not break, and why. Gotchas: `AGENTS.md`;
-values: the code; history: git.
+What a change to the editor must not break, and why.
 
 ## One owner for note state
 
@@ -297,9 +296,9 @@ same language writes nothing.
 
 ## Paste and copy
 
-- **A block holding text never changes type on paste** (`utils/pasteBlocks.ts`). Plain lines
-  stay soft breaks; a blank line starts a block; only an empty block is taken over by
-  structure. One trailing newline is stripped.
+- **A block holding text never changes type on paste.** Plain lines stay soft breaks; a blank
+  line starts a block; only an empty block is taken over by structure. One trailing newline is
+  stripped. Lines a keyboard types at once (Gboard's clipboard) are a paste (`typedPaste`).
 - **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`); a drop lands
   where the block-drag marker says. `file-drop.spec.ts`.
 - **Copy**: structure travels only for whole blocks (`fullBlock`: Markdown and structural

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import { getBlockFromNode } from "../utils/domHelpers";
 import { useSlashCommands } from "./editor/useSlashCommands";
 import { useInputHandler } from "./editor/useInputHandler";
@@ -7,6 +7,7 @@ import { usePasteHandler } from "./editor/usePasteHandler";
 import { useDragDropHandlers } from "./editor/useDragDropHandlers";
 import { useMouseHandlers } from "./editor/useMouseHandlers";
 import { useCrossBlockEdit } from "./editor/useCrossBlockEdit";
+import { typedPaste } from "../utils/pasteBlocks";
 
 export function useEditorHandlers({
   noteDataRef,
@@ -112,6 +113,17 @@ export function useEditorHandlers({
     scopeOf,
     ownEdit,
   });
+  // Several lines a keyboard types at once are a paste (`typedPaste`); the
+  // rest of the typing goes to the one owner of edits across roots.
+  const handleBeforeInput = useCallback(
+    (e) => {
+      const paste = typedPaste(e);
+      if (!paste) return handleEditorBeforeInput(e);
+      e.preventDefault();
+      handleEditorPaste(paste);
+    },
+    [handleEditorBeforeInput, handleEditorPaste],
+  );
   const { handleEditorDragOver, handleEditorDragLeave, handleEditorDrop } = useDragDropHandlers({
     ...shared,
     saveAndInsertFiles,
@@ -130,7 +142,7 @@ export function useEditorHandlers({
     handleEditorPaste,
     handleEditorCopy,
     handleEditorCut,
-    handleEditorBeforeInput,
+    handleEditorBeforeInput: handleBeforeInput,
     handleEditorDragOver,
     handleEditorDragLeave,
     handleEditorDrop,

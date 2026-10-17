@@ -174,3 +174,23 @@ export function buildPastedBlocks(
 export function stripIncidentalLineEnding(text: string): string {
   return text.replace(/\r?\n$/, "");
 }
+
+/**
+ * The paste a keyboard made by typing, or null for typing. A phone keyboard's
+ * clipboard (Gboard's) sends the text as one `insertText`, never a paste
+ * event, so several lines typed at once are read as a paste, through the
+ * paste handler's own path. One line stays typing: a word picked from the
+ * suggestions arrives in the same shape.
+ */
+export function typedPaste(e: InputEvent) {
+  if (e.inputType !== "insertText" || e.isComposing || !e.data?.includes("\n")) return null;
+  const text = e.data;
+  return {
+    preventDefault() {},
+    clipboardData: {
+      files: [],
+      types: ["text/plain"],
+      getData: (type: string) => (type === "text/plain" ? text : ""),
+    },
+  };
+}
