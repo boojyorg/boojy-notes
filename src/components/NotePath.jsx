@@ -88,7 +88,8 @@ const SEP_MX = 6;
 const BIAS_SHRINK = 1000;
 
 /** The path's font: interface size, regular weight, no letter spacing. */
-export const PATH_FONT = { fontSize: 14, fontWeight: 400, lineHeight: "20px" };
+/** A size up on the phone, where the row is the note's only title. */
+export const PATH_FONT = { fontSize: isPhone ? 15 : 14, fontWeight: 400, lineHeight: "20px" };
 /** The name alone is medium, the obvious thing in the row: the row stands in
  *  for a title bar, whose title is the heavier item. Folders stay regular in
  *  secondary ink. 500 is a real cut in any Inter and in the
