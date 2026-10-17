@@ -899,4 +899,23 @@ describe("Sidebar on the phone", () => {
       vi.resetModules();
     }
   });
+
+  // The row read `Notes` on the phone, not the Dropbox folder it syncs.
+  it("names the vault row after the Dropbox folder it syncs", async () => {
+    vi.resetModules();
+    vi.doMock("../../src/utils/platform", async (actual) => ({
+      ...(await actual()),
+      isPhone: true,
+    }));
+    try {
+      const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
+      const { SYNC_FOLDER } = await import("../../src/phone/syncFolder");
+      const { getByText, queryByText } = renderSidebar({ Component: PhoneSidebar });
+      expect(getByText(SYNC_FOLDER)).toBeInTheDocument();
+      expect(queryByText("Notes")).not.toBeInTheDocument();
+    } finally {
+      vi.doUnmock("../../src/utils/platform");
+      vi.resetModules();
+    }
+  });
 });

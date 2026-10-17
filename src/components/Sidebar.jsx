@@ -52,6 +52,7 @@ import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import Collapsible from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
+import { SYNC_FOLDER } from "../phone/syncFolder";
 import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
@@ -558,7 +559,8 @@ const Sidebar = memo(function Sidebar({
   };
   const closeVaultMenu = () => setVaultMenu(null);
   const [vaultView, setVaultView] = useVaultView(notesDir || "web");
-  const vaultName = vaults.find((v) => v.current)?.name ?? "Notes";
+  // The phone has one storage location, its Dropbox folder: named, never a switcher.
+  const vaultName = vaults.find((v) => v.current)?.name ?? (isPhone ? SYNC_FOLDER : "Notes");
   // ⌘O, File → Open Vault…: the same menu from the keyboard, its open vault
   // active. The app shows a hidden sidebar first and asks once it has arrived.
   useEffect(() => {
@@ -1277,7 +1279,7 @@ const Sidebar = memo(function Sidebar({
                     onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
                   />
                 ) : (
-                  "Notes"
+                  vaultName
                 )
               }
               TEXT={TEXT}
