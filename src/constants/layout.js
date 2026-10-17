@@ -198,3 +198,7 @@ export const PHONE_UI_SCALE = 110;
  * are this tall, never the desktop's 28 and 32.
  */
 export const TOUCH = 40;
+/** Home's rows on the phone: a touch target with a little air, their names a
+ *  size up from the desktop's 14. Judged beside Notion on a Pixel 8a. */
+export const PHONE_ROW_H = 42;
+export const PHONE_LABEL_SIZE = 15;

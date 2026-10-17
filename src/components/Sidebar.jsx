@@ -69,6 +69,8 @@ import {
   TEXT_COL,
   TREE_INDENT,
   TOUCH,
+  PHONE_ROW_H,
+  PHONE_LABEL_SIZE,
   TREE_ROW_GAP,
   TREE_ROW_H as DESKTOP_ROW_H,
   WORDMARK_H,
@@ -101,7 +103,9 @@ const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
 const TREE_SPINE = SPINE + SIDEBAR_TREE_INSET;
 /** A row on the phone is one touch target tall, with no rhythm gap between
  *  (the target already is the air); the desktop's is a label high. */
-const TREE_ROW_H = isPhone ? TOUCH : DESKTOP_ROW_H;
+const TREE_ROW_H = isPhone ? PHONE_ROW_H : DESKTOP_ROW_H;
+/** A row's name: a size up on the phone. */
+const ROW_NAME_SIZE = isPhone ? PHONE_LABEL_SIZE : ROW_LABEL_SIZE;
 const ROW_GAP = isPhone ? 0 : TREE_ROW_GAP;
 
 // ── Row grammar (desktop) ────────────────────────────────────────────────────
@@ -154,7 +158,7 @@ const treeRowStyle = (depth, color) => ({
   alignItems: "center",
   gap: ICON_GAP,
   color,
-  fontSize: 14,
+  fontSize: ROW_NAME_SIZE,
   // 400 for every kind: the glyph alone tells a folder from a note.
   fontWeight: 400,
   fontFamily: "inherit",
@@ -384,7 +388,7 @@ function SidebarNewNote({ onClick, TEXT }) {
         width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
         marginLeft: ROW_INSET,
         marginRight: ROW_INSET_RIGHT,
-        minHeight: isPhone ? TOUCH : ACTION_ROW_H,
+        minHeight: isPhone ? PHONE_ROW_H : ACTION_ROW_H,
         boxSizing: "border-box",
         paddingLeft: TREE_SPINE - ROW_INSET,
         paddingRight: 8,
@@ -393,7 +397,7 @@ function SidebarNewNote({ onClick, TEXT }) {
         cursor: "pointer",
         color: TEXT.secondary,
         fontFamily: "inherit",
-        fontSize: ROW_LABEL_SIZE,
+        fontSize: ROW_NAME_SIZE,
         // Stated, not `normal`: the note's first line is set on this baseline.
         lineHeight: ROW_LABEL_LINE_HEIGHT,
         textAlign: "left",
@@ -760,7 +764,7 @@ const Sidebar = memo(function Sidebar({
           <RenameField
             name={n.title}
             label="Rename note"
-            style={renameFieldStyle(theme, 14)}
+            style={renameFieldStyle(theme, ROW_NAME_SIZE)}
             onRename={(value) => renameNote(nId, value)}
             onClose={() => setRenamingNote(null)}
             onKeyClose={(field) => refocusAfterRename(field)}
@@ -898,7 +902,7 @@ const Sidebar = memo(function Sidebar({
             <RenameField
               name={folder.name}
               label="Rename folder"
-              style={renameFieldStyle(theme, 14)}
+              style={renameFieldStyle(theme, ROW_NAME_SIZE)}
               onRename={(value) => renameFolder(folderPath, value.trim())}
               onClose={() => setRenamingFolder(null)}
               // The renamed folder's row is a new one, under its new path.

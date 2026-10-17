@@ -7,6 +7,7 @@
 // The dev spacing panel (dev/RhythmTweaker.jsx, `?tweak`) lays live values
 // over these through `setRhythm`; a judged value comes back here.
 import { useSyncExternalStore } from "react";
+import { isPhone } from "../utils/platform";
 
 export interface Rhythm {
   /** Body text size in px, for every text block. */
@@ -34,7 +35,8 @@ export interface Rhythm {
  *  less sits it on its own text. */
 export const DEFAULT_RHYTHM: Rhythm = {
   bodySize: 15,
-  lineHeight: 1.7,
+  // A phone's narrow column reads closer: 1.6 beside Notion and Obsidian's 1.5.
+  lineHeight: isPhone ? 1.6 : 1.7,
   paragraphGap: 9,
   headingAbove: 28,
   headingBelow: 8,
