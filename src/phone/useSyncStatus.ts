@@ -36,6 +36,7 @@ export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
   useEffect(() => api?.subscribe(setStatus), [api]);
 
   // A pass that ends quickly never shows as syncing; the state before it stays.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the new status is the trigger
   useEffect(() => {
     if (!status) return;
     if (status.state !== "syncing" || shown?.state === "syncing") {
@@ -44,7 +45,6 @@ export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
     }
     const timer = setTimeout(() => setShown(status), SYNCING_SHOWS_AFTER_MS);
     return () => clearTimeout(timer);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: the new status is the trigger
   }, [status]);
 
   const signInAgain = useCallback(async () => {

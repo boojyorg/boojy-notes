@@ -1,23 +1,23 @@
 # Files, the watcher and persistence
 
-Rule + one reason + the proving spec. History is in git.
-
 ## Delete follows the platform
 
 - Electron sends `.md` files to the OS Trash; **Recently Deleted is the recovery surface**: the
-  note's last text and history stay in the store 30 days (not in the vault), listed
-  by where it was, shown read-only on a click; restored where it was (folder
-  remade, `-2` on a clash, same id, never written back), or deleted for good after asking.
+  note's last text and history stay in the store 30 days, listed by where it was, shown
+  read-only on a click; restored where it was (folder remade, `-2` on a clash, same id, never
+  written back), or deleted for good after asking.
   `recently-deleted.spec.ts`. A folder's directory goes only once just OS cruft is left;
   non-note files are never touched.
 - **The phone's bin**: `deleted/<when>/<path>`, ids in `state/deleted.json` (sync's deletes
   too); a crash between steps leaves the note in one place; a restore is handed to sync
   (`takeRestored`), so a pass cut short never bins it again. `recentlyDeleted.test.ts`.
+- **The phone's copy is one account's folder**: a change sets it aside (`old-folders/`)
+  before sync, resumably. `folderSwitch.test.ts`.
 - Desktop confirms only several files; one note goes at once, its toast with Undo.
 
 ## The watcher drops only an event it can trace to the app's own operation
 
-`electron/fileWatcher.js`, never decided on the clock alone. **One watch for the whole vault**
+`electron/fileWatcher.js`. **One watch for the whole vault**
 (`treeWatcher.ts`, a recursive `fs.watch`), never a file open per note (it blocked iCloud
 eviction). `watcher-scale.spec.ts`.
 
@@ -77,9 +77,9 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
   folders and on window focus. `trash-file` refuses a note (notes go by id, `trash-note`).
   `vault-switcher.spec.ts`.
-- **First run** (`settleSetupState`): an existing config or `Documents/Boojy/Notes` means an
-  existing user; otherwise the default folder is not made until `complete-setup`.
-  `vault-root.spec.ts`, `first-run.spec.ts`.
+- **First run** (`settleSetupState`): a config or `Documents/Boojy/Notes` means an existing
+  user; else the default folder waits for `complete-setup`. `vault-root.spec.ts`,
+  `first-run.spec.ts`.
 
 ## A note's title is its filename
 
@@ -127,4 +127,4 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
 ## Tracing
 
 `BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (after `pnpm build`, app quit) logs
-both processes on one clock. `syncGeneration` is editor plumbing, not cloud sync.
+both processes on one clock. `syncGeneration` is editor plumbing, not sync.

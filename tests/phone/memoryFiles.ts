@@ -47,10 +47,14 @@ export function memoryFiles({
       crash("rename", from);
       if (store.has(to)) throw new Error(`${to} already exists`);
       const v = store.get(from);
-      if (!v || v === "dir") throw new Error(`no file ${from}`);
+      if (!v) throw new Error(`no file ${from}`);
       ensureDir(parent(to));
-      store.set(to, v);
-      store.delete(from);
+      // A directory moves with everything under it, as Android's rename does.
+      for (const [p, entry] of [...store]) {
+        if (p !== from && !p.startsWith(`${from}/`)) continue;
+        store.delete(p);
+        store.set(to + p.slice(from.length), entry);
+      }
     },
     async remove(p) {
       crash("remove", p);

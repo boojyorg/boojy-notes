@@ -4,8 +4,9 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/phone/files", () => ({
-  capacitorFiles: () => ({ recover: async () => {} }),
+  capacitorFiles: () => ({ recover: async () => {}, read: async () => null }),
 }));
+vi.mock("../../src/phone/folderSwitch", () => ({ settleFolder: async () => {} }));
 vi.mock("../../src/phone/phoneVault", () => ({
   createPhoneVault: () => ({ api: {}, store: {} }),
 }));
