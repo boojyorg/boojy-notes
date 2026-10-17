@@ -2,6 +2,7 @@ import { type ReactNode, type RefObject, useEffect, useRef, useState } from "rea
 import { useTheme } from "../hooks/useTheme";
 import { TOUCH } from "../constants/layout";
 import { sendCommand } from "../phone/commands";
+import { TYPING_STYLE_MOVED } from "../utils/inlineFormatCommands";
 import {
   CloseIcon,
   FormatIcon,
@@ -75,8 +76,19 @@ export default function PhoneKeyBar({
       setMode((m) => barModeAfterSelection(m, !sel.isCollapsed, held.current));
       setActive(readActive(sel, pending));
     };
+    // The editor moved a promised style with the caret (a space typed first
+    // after bold was turned on goes before the bold): the promise moves too.
+    const follow = () => {
+      const sel = window.getSelection();
+      if (pending.current && sel)
+        pending.current = { ...pending.current, node: sel.anchorNode, offset: sel.anchorOffset };
+    };
     document.addEventListener("selectionchange", read);
-    return () => document.removeEventListener("selectionchange", read);
+    document.addEventListener(TYPING_STYLE_MOVED, follow);
+    return () => {
+      document.removeEventListener("selectionchange", read);
+      document.removeEventListener(TYPING_STYLE_MOVED, follow);
+    };
   }, [editorRef]);
 
   // Each time the keyboard comes up the bar starts on its block buttons.

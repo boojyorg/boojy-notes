@@ -4,6 +4,7 @@
 
 ### Bug Fixes
 
+- **Bold and italic typed as you go stay bold in other apps** — Turning bold on with ⌘B and then typing a space before the word saved `** word**`, which Obsidian and other Markdown apps show as plain stars rather than bold. Turning bold off just after a space did the same at the other end (`**word **`). The space now goes outside the bold, so the file says `**word**`. Italic too.
 - **A space at the end of a line no longer goes missing** — If a note was renamed outside Boojy Notes while you typed in it (by Dropbox, say, or in Finder), the space you had just typed could vanish, joining the next word to the last. It now stays.
 
 ### Improvements

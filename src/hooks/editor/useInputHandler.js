@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { cleanOrphanNodes, getCaretOffset, hasOwnField, placeCaret } from "../../utils/domHelpers";
 import { domNodeToMarkdown, inlineMarkdownToHtml } from "../../utils/inlineFormatting";
 import { paintTypedFormat, typedFormatHit } from "../../utils/typedFormatting";
+import { liftTypedSpace } from "../../utils/inlineFormatCommands";
 import { genBlockId } from "../../utils/storage";
 import { TAG_TAIL_RE } from "../../utils/tags";
 import { SLASH_COMMANDS } from "../../constants/data";
@@ -117,6 +118,8 @@ export function useInputHandler({
     if (hasOwnField(block)) return;
     const el = blockRefs.current[block?.id];
     if (!el) return;
+    // A space typed into the bold just turned on goes before it, bold kept for the next letter.
+    if (native) liftTypedSpace(window.getSelection(), native, el);
     let text = trimEdgeNewlines(domNodeToMarkdown(el));
 
     // Typed inline formatting: the closing marker of `**bold**` and its kin

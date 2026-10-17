@@ -7,7 +7,12 @@ import {
 } from "../utils/domHelpers";
 import { domNodeToMarkdown } from "../utils/inlineFormatting";
 import { rangeScope } from "../utils/crossBlockEdit";
-import { applyDomFormat, formatInlineField, inlineFieldFor } from "../utils/inlineFormatCommands";
+import {
+  applyDomFormat,
+  formatInlineField,
+  inlineFieldFor,
+  shedTrailingSpace,
+} from "../utils/inlineFormatCommands";
 
 /** No inline format active — what the toolbars show when there is no selection. */
 export const EMPTY_FORMATS = {
@@ -131,9 +136,10 @@ export function useInlineFormatting({
         // the next keystroke has no structural equivalent (residue, rare).
         // Everything else is a structural wrap (`applyDomFormat`), because the
         // command decides its direction from the computed style and un-bolded
-        // a heading's word.
+        // a heading's word. Turned off after a space, the space steps out of
+        // the run with the caret, which is the style off (`shedTrailingSpace`).
         if (sel.isCollapsed && (format === "bold" || format === "italic")) {
-          document.execCommand(format);
+          if (!shedTrailingSpace(sel, format, editorRef.current)) document.execCommand(format);
         } else {
           applyDomFormat(sel, format, editorRef.current);
         }
