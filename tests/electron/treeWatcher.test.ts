@@ -21,7 +21,17 @@ const until = async (want: string, ms = 3000) => {
   }
 };
 
-function start() {
+/** How long the watch may take to come up on a busy machine. */
+const LIVE_MS = 10_000;
+
+/**
+ * Starts the watch and returns once it reports: macOS's stream starts late
+ * when the machine is busy (the whole suite running), and a file written
+ * before it is live is never reported. A probe file is written until the
+ * watch sees it, then removed; only the probe's events are dropped, so a
+ * startup event the watch should not have sent is still there to fail on.
+ */
+async function start() {
   watcher = watchTree(root, {
     stabilityMs: 60,
     pollMs: 20,
@@ -31,6 +41,17 @@ function start() {
         .some((s) => s.startsWith(".")),
   });
   watcher.on("all", (event, p) => events.push(`${event} ${rel(p)}`));
+  // Rewritten only now and then: the watch reports a file once it holds still.
+  const probe = path.join(root, "probe.md");
+  const begun = Date.now();
+  for (let n = 0; !events.some((e) => e.endsWith(" probe.md")); n++) {
+    if (Date.now() - begun > LIVE_MS) throw new Error("the watch never reported");
+    if (n % 10 === 0) fs.writeFileSync(probe, String(n));
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  fs.rmSync(probe);
+  await until("unlink probe.md");
+  events = events.filter((e) => !e.endsWith(" probe.md"));
 }
 
 beforeEach(() => {
@@ -46,8 +67,9 @@ afterEach(async () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+// Coming up, the probe's removal, then up to four events at `until`'s 3 s.
 for (const mode of ["native", "per directory"])
-  describe(`watchTree (${mode})`, () => {
+  describe(`watchTree (${mode})`, { timeout: LIVE_MS + 5 * 3000 + 5000 }, () => {
     beforeEach(() => {
       if (mode === "per directory") process.env.BOOJY_WATCH_PER_DIRECTORY = "1";
       else delete process.env.BOOJY_WATCH_PER_DIRECTORY;
@@ -55,13 +77,13 @@ for (const mode of ["native", "per directory"])
 
     it("reports nothing for what was there when it started", async () => {
       fs.writeFileSync(path.join(root, "a.md"), "a");
-      start();
+      await start();
       await new Promise((r) => setTimeout(r, 200));
       expect(events).toEqual([]);
     });
 
     it("reports a file added, changed and removed", async () => {
-      start();
+      await start();
       fs.writeFileSync(path.join(root, "a.md"), "a");
       await until("add a.md");
       fs.writeFileSync(path.join(root, "a.md"), "a changed");
@@ -71,7 +93,7 @@ for (const mode of ["native", "per directory"])
     });
 
     it("reports every file in a folder that arrives whole, and every file in one that goes", async () => {
-      start();
+      await start();
       const outside = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-tree-out-"));
       fs.mkdirSync(path.join(outside, "Sub"));
       fs.writeFileSync(path.join(outside, "Sub", "one.md"), "1");
@@ -88,7 +110,7 @@ for (const mode of ["native", "per directory"])
 
     it("keeps seeing a file after a save renames a new copy over it", async () => {
       fs.writeFileSync(path.join(root, "a.md"), "one");
-      start();
+      await start();
       fs.writeFileSync(path.join(root, ".~a.md.tmp"), "two");
       fs.renameSync(path.join(root, ".~a.md.tmp"), path.join(root, "a.md"));
       await until("change a.md");
@@ -98,7 +120,7 @@ for (const mode of ["native", "per directory"])
     });
 
     it("never reports what is ignored", async () => {
-      start();
+      await start();
       fs.writeFileSync(path.join(root, ".hidden.md"), "h");
       fs.writeFileSync(path.join(root, "seen.md"), "s");
       await until("add seen.md");
@@ -107,7 +129,7 @@ for (const mode of ["native", "per directory"])
 
     it("takes a case-only rename as the old spelling gone and the new one added", async () => {
       fs.writeFileSync(path.join(root, "Alpha.md"), "a");
-      start();
+      await start();
       fs.renameSync(path.join(root, "Alpha.md"), path.join(root, "alpha.md"));
       await until("add alpha.md");
       await until("unlink Alpha.md");
@@ -116,7 +138,7 @@ for (const mode of ["native", "per directory"])
     it("takes a file it was told to forget as an add, even back before it looked", async () => {
       const outside = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-trash-"));
       fs.writeFileSync(path.join(root, "a.md"), "a");
-      start();
+      await start();
       await new Promise((r) => setTimeout(r, 100));
       // The app's Trash move, and a Put Back of the same file (inode, size
       // and mtime all kept) before the watch has looked at either.
@@ -131,7 +153,7 @@ for (const mode of ["native", "per directory"])
     it("looks again when told to forget: a Put Back it already passed over is an add", async () => {
       const outside = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-trash-"));
       fs.writeFileSync(path.join(root, "a.md"), "a");
-      start();
+      await start();
       await new Promise((r) => setTimeout(r, 100));
       fs.renameSync(path.join(root, "a.md"), path.join(outside, "a.md"));
       fs.renameSync(path.join(outside, "a.md"), path.join(root, "a.md"));
