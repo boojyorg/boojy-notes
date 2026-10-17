@@ -1,8 +1,10 @@
 # AGENTS.md
 
-Boojy Notes is a desktop (Electron) editor for Markdown files you own. The web build
-(`pnpm dev:web`) is a development and test surface, not the product. Read files directly when
-needed; do not ask before reading.
+Boojy Notes is a desktop (Electron) editor for Markdown files you own. An Android app on the
+same editor (Capacitor, `src/phone/`) syncs a Dropbox folder with Boojy's sync engine
+(`src/sync/`); it is in testing, not yet distributed. The web build (`pnpm dev:web`) is a
+development and test surface, not the product. Read files directly when needed; do not ask
+before reading.
 
 Naming: **Boojy** is the suite; this product is **Boojy Notes** (then "the app" or "it") in
 documentation and product prose. Identifiers, stored keys, filenames and URLs stay as they are.
@@ -43,6 +45,8 @@ pnpm test:electron    # real Electron against a throwaway vault
 pnpm check            # Biome lint + format
 pnpm typecheck        # tsc --noEmit
 pnpm build:electron   # desktop installers into release/
+pnpm dev:phone        # the Android app's dev server (port 5175)
+pnpm android          # build + install on a connected phone; --live loads dev:phone
 ```
 
 ## Structure
@@ -53,12 +57,15 @@ src/
 ├── components/         # UI; blocks/ (media blocks), settings/
 ├── context/            # Theme, NoteData, Settings, Layout, Sidebar, Editor
 ├── hooks/              # app hooks; editor/ holds keyboard, paste, drag, slash commands
-├── services/           # getAPI(): the Electron or web API
+├── services/           # getAPI(): the Electron, phone or web API
+├── phone/              # the Android app: vault on the phone's storage, sync, screens, key bar
+├── sync/               # the sync engine (local, Dropbox, last-synced record) and its status
 ├── utils/              # markdown.js (the converters), storage, search, platform, …
 ├── constants/          # themes.js (the only colour authority), layout.js, slash commands, z-index
 ├── tokens/  styles/    # motion, rhythm, type; shared style fragments
 └── types/              # notes.ts (Block/Note/NoteData), global.d.ts (window.electronAPI)
 electron/               # main process: IPC, file I/O, watcher, OS trash, folders, menu
+android/                # the Capacitor Android project (dev/android/run.mjs builds it)
 tests/  e2e/            # unit tests + preservation corpus; Playwright (e2e/electron/ = real app)
 dev/                    # dev-only tooling (?tweak, wordmarks.sh); never bundled
 ```
@@ -80,7 +87,8 @@ dev/                    # dev-only tooling (?tweak, wordmarks.sh); never bundled
 - **Every path that crosses IPC stays inside the vault** (`insideVault()`,
   `resolveVaultDir()`). The window never opens a second window or navigates; http(s) links go
   to the system browser. Config and settings are written atomically.
-- Platform flags live in `src/utils/platform.js`; `--mode web` (or `ELECTRON_DISABLE=1`) excludes Electron code.
+- Platform flags live in `src/utils/platform.js`; `--mode web` (or `ELECTRON_DISABLE=1`) excludes Electron code,
+  and `--mode phone` builds the Android app (`isPhone`).
 
 ## Keep it small
 

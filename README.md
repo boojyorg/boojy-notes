@@ -41,18 +41,20 @@ The desktop app is the product. The browser build is a development target: quick
 
 ## Development
 
-| Script           | Description                                            |
-| ---------------- | ------------------------------------------------------ |
-| `dev`            | Vite dev server + Electron                             |
-| `dev:web`        | Vite dev server (browser only)                         |
-| `build`          | Production build (web)                                 |
-| `build:electron` | Production build + desktop installers, into `release/` |
-| `test`           | Unit tests (Vitest)                                    |
-| `test:coverage`  | Unit tests with the CI coverage floor                  |
-| `test:e2e`       | Web end-to-end tests (Playwright)                      |
-| `test:electron`  | Real desktop app against a temp vault                  |
-| `check`          | Biome lint + format in one pass                        |
-| `typecheck`      | TypeScript check (`tsc --noEmit`)                      |
+| Script           | Description                                                |
+| ---------------- | ---------------------------------------------------------- |
+| `dev`            | Vite dev server + Electron                                 |
+| `dev:web`        | Vite dev server (browser only)                             |
+| `build`          | Production build (web)                                     |
+| `build:electron` | Production build + desktop installers, into `release/`     |
+| `test`           | Unit tests (Vitest)                                        |
+| `test:coverage`  | Unit tests with the CI coverage floor                      |
+| `test:e2e`       | Web end-to-end tests (Playwright)                          |
+| `test:electron`  | Real desktop app against a temp vault                      |
+| `check`          | Biome lint + format in one pass                            |
+| `typecheck`      | TypeScript check (`tsc --noEmit`)                          |
+| `dev:phone`      | Vite dev server for the Android app, on port 5175          |
+| `android`        | Builds and installs the Android app (`--live`: dev server) |
 
 All scripts run via `pnpm <script>`. CI gates every push on `check`, `typecheck`, `test:coverage`, `test:e2e` and `test:electron`, plus a dependency audit at high severity; `test` alone is not the gate. Architecture, conventions and the things that will bite you are in [AGENTS.md](AGENTS.md); remaining work is in [docs/BACKLOG.md](docs/BACKLOG.md).
 
@@ -60,9 +62,11 @@ Built with React 19 and Vite 8, Electron 44 for the desktop shell, Vitest and Pl
 
 ## Status
 
-Boojy Notes is in Beta, since v0.15.0, published on 2026-10-07 for macOS, Windows and Linux. It's the build [boojy.org](https://boojy.org) offers, and an installed copy from v0.8.0 onward updates itself to it. The desktop app is complete enough for ordinary daily use: I use it every day, and what I bump into decides what gets finished next. The next big step is having the same notes on my Android phone. On Windows the installer isn't signed yet, so Windows warns about an unknown publisher; choose More info, then Run anyway.
+Boojy Notes is in Beta, since v0.15.0. The latest release is v0.16.0, published on 2026-10-17 for macOS, Windows and Linux. It's the build [boojy.org](https://boojy.org) offers, and an installed copy from v0.8.0 onward updates itself to it. The desktop app is complete enough for ordinary daily use: I use it every day, and what I bump into decides what gets finished next. On Windows the installer isn't signed yet, so Windows warns about an unknown publisher; choose More info, then Run anyway.
 
-Several things were built and then removed to keep the product small: cloud sync and sign-in, PDF and DOCX export, tabs and split view, native mobile. Each is listed under Removed in [CHANGELOG.md](CHANGELOG.md), and Git keeps the code if a direction is ever reconsidered.
+The same notes on an Android phone work, in testing. The vault sits in a Dropbox folder: on the desktop, Dropbox's own app keeps it in step, and an Android app on the same editor syncs it, writing offline too. The phone app isn't available to download yet.
+
+Several things were built and then removed to keep the product small: the first cloud sync and sign-in, PDF and DOCX export, tabs and split view, and the first mobile app. Each is listed under Removed in [CHANGELOG.md](CHANGELOG.md), and Git keeps the code if a direction is ever reconsidered.
 
 ## Contributing
 
