@@ -149,6 +149,7 @@ function renderSidebar(overrides = {}) {
     onManageVaults: overrides.onManageVaults,
     onOpenFile: overrides.onOpenFile,
     trashFile: overrides.trashFile,
+    recentlyDeleted: overrides.recentlyDeleted,
   };
 
   const Component = overrides.Component ?? Sidebar;
@@ -894,6 +895,50 @@ describe("Sidebar on the phone", () => {
       const { container } = renderSidebar({ Component: PhoneSidebar });
       const scroller = container.querySelector(".sidebar-scroll");
       expect(scroller.getAttribute("style")).toContain(NAV_BAR_H);
+    } finally {
+      vi.doUnmock("../../src/utils/platform");
+      vi.resetModules();
+    }
+  });
+
+  // Recently Deleted stands below the list, so it is the row that must clear
+  // the gesture bar; the list's own end then needs no room for it.
+  it("keeps Recently Deleted clear of Android's gesture bar", async () => {
+    vi.resetModules();
+    vi.doMock("../../src/utils/platform", async (actual) => ({
+      ...(await actual()),
+      isPhone: true,
+    }));
+    try {
+      const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
+      const { NAV_BAR_H } = await import("../../src/utils/uiScale");
+      const { container, getByTestId } = renderSidebar({
+        Component: PhoneSidebar,
+        recentlyDeleted: { open: false, onToggle: vi.fn() },
+      });
+      const footer = getByTestId("recently-deleted-row").parentElement;
+      expect(footer.getAttribute("style")).toContain(NAV_BAR_H);
+      const scroller = container.querySelector(".sidebar-scroll");
+      expect(scroller.getAttribute("style")).not.toContain(NAV_BAR_H);
+    } finally {
+      vi.doUnmock("../../src/utils/platform");
+      vi.resetModules();
+    }
+  });
+
+  // The row read `Notes` on the phone, not the Dropbox folder it syncs.
+  it("names the vault row after the Dropbox folder it syncs", async () => {
+    vi.resetModules();
+    vi.doMock("../../src/utils/platform", async (actual) => ({
+      ...(await actual()),
+      isPhone: true,
+    }));
+    try {
+      const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
+      const { SYNC_FOLDER } = await import("../../src/phone/syncFolder");
+      const { getByText, queryByText } = renderSidebar({ Component: PhoneSidebar });
+      expect(getByText(SYNC_FOLDER)).toBeInTheDocument();
+      expect(queryByText("Notes")).not.toBeInTheDocument();
     } finally {
       vi.doUnmock("../../src/utils/platform");
       vi.resetModules();

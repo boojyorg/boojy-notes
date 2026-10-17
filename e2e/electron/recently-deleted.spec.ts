@@ -80,6 +80,30 @@ test("Undo on the deletion toast puts the note back", async () => {
   }
 });
 
+// The restored note joined the editor's state as an edit, not as the disk's
+// version, and the next flush wrote the file again: a sync client takes a
+// swapped-in file for a new one.
+test("a restored note is not written again", async () => {
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
+  const h = await launchApp({ "Loose.md": "Loose note.\n", "Keep.md": "Keep.\n" });
+  try {
+    await deleteNote(h, "Loose");
+    await expect.poll(() => fs.existsSync(h.vault.file("Loose.md"))).toBe(false);
+    await binRow(h).click();
+    await bin(h).getByRole("option").hover();
+    await bin(h).getByRole("button", { name: "Restore “Loose”" }).click();
+    await waitForFile(h.vault.file("Loose.md"), (t) => t === "Loose note.\n");
+    const restored = fs.statSync(h.vault.file("Loose.md"));
+    // Past the write debounce and a flush.
+    await h.page.waitForTimeout(2_500);
+    const after = fs.statSync(h.vault.file("Loose.md"));
+    expect([after.ino, after.mtimeMs]).toEqual([restored.ino, restored.mtimeMs]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("deleting for good asks first, and leaves nothing to restore", async () => {
   test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp({ "Secret.md": "Private.\n", "Keep.md": "Keep.\n" });

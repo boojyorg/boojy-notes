@@ -11,13 +11,14 @@ import { syncPass } from "../sync/engine";
 import { createSyncRunner } from "../sync/syncRunner";
 import type { LocalStore } from "../sync/types";
 import type { FileOps } from "./files";
+import { SYNC_FOLDER } from "./syncFolder";
 
 /**
  * Sign-in and sync for the phone (proof of concept, step 2). Dropbox's page
  * opens in the phone's browser and comes back through `boojynotes://oauth`,
  * which only this app answers. The refresh token is kept in the app's
  * private storage (the real app keeps it in Android's keystore). The vault is
- * fixed to `test` for now; the first version will choose it at sign-in.
+ * `SYNC_FOLDER` (syncFolder.ts).
  *
  * Sync runs while the app is open: on opening and on coming back to the
  * front, a moment after a save, whenever Dropbox's long-poll says the vault
@@ -28,7 +29,6 @@ import type { FileOps } from "./files";
 
 const APP_KEY = "fupgkw6riwb8yrj"; // The Boojy Notes app key, which is public.
 const REDIRECT = "boojynotes://oauth";
-const VAULT = "test";
 const SECRETS = "state/dropbox.json";
 const PENDING = "state/sign-in.json";
 const SAVE_DELAY_MS = 1500;
@@ -87,7 +87,7 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
   async function start() {
     const { refreshToken } = decode(await files.read(SECRETS));
     const token = refreshingToken({ clientId: APP_KEY, refreshToken });
-    const remote = createDropboxRemote({ root: `/${VAULT}`, token });
+    const remote = createDropboxRemote({ root: `/${SYNC_FOLDER}`, token });
     const runner = createSyncRunner(async () => {
       const started = Date.now();
       const result = await syncPass({ local, remote });

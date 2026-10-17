@@ -26,8 +26,8 @@ const api = (): API | undefined => {
 interface Options {
   /** The open storage location: the bin is its own. */
   notesDir: string | null;
-  /** A note back from disk joins the notes (useHistory's applyExternalNote). */
-  applyExternalNote: (note: Note) => void;
+  /** A note back on disk joins the notes as the disk's version, never written back (useFileSystem's). */
+  takeNoteFromDisk: (note: Note) => void;
   /** The pill that shows where a note landed (SidebarContext's markNewRows). */
   markNewRows: (rows: { notes: string[] }) => void;
   requestConfirm: (prompt: Record<string, unknown>) => Promise<unknown>;
@@ -45,7 +45,7 @@ interface Options {
  */
 export function useRecentlyDeleted({
   notesDir,
-  applyExternalNote,
+  takeNoteFromDisk,
   markNewRows,
   requestConfirm,
   listOpen = false,
@@ -68,6 +68,11 @@ export function useRecentlyDeleted({
     refresh();
     return api()?.onDeletedNotesChanged(refresh);
   }, [refresh, notesDir]);
+  // Opening the list reads it again: on the phone that is also when what is
+  // past its 30 days goes, however long the app has stayed open.
+  useEffect(() => {
+    if (listOpen) refresh();
+  }, [listOpen, refresh]);
 
   const view = useCallback(async (item: DeletedNote) => {
     const seq = ++viewSeq.current;
@@ -110,13 +115,13 @@ export function useRecentlyDeleted({
     async (id: string) => {
       const note = await api()?.restoreDeletedNote(id);
       if (!note) return false;
-      applyExternalNote(note);
+      takeNoteFromDisk(note);
       markNewRows({ notes: [id] });
       setPreview((p) => (p?.item.id === id ? null : p));
       setAsk(false);
       return true;
     },
-    [applyExternalNote, markNewRows],
+    [takeNoteFromDisk, markNewRows],
   );
 
   const purge = useCallback(

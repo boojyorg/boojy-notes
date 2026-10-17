@@ -94,6 +94,7 @@ class Pass {
     // acted on, so the changes they describe are never skipped after a crash.
     Object.assign(this.record, await discover(this.remote, this.record));
     await this.save();
+    await this.adoptRestored();
     if (this.record.plan) await this.finishClash();
     await this.scan();
     await this.followRemoteRenames();
@@ -113,6 +114,25 @@ class Pass {
 
   private save() {
     return saveRecord(this.local, this.record);
+  }
+
+  /**
+   * Notes put back from Recently Deleted. One that Dropbox deleted while the
+   * record still holds it as synced was binned by a pass that died before
+   * recording it: the delete is recorded now, so the restored note reads as
+   * new and goes back up, not as unchanged and deleted again. Any other
+   * restore the ordinary rules already handle.
+   */
+  private async adoptRestored() {
+    let changed = false;
+    for (const path of (await this.local.takeRestored?.()) ?? []) {
+      const key = keyOf(path);
+      if (this.record.synced[key] && !this.record.remote[key]) {
+        delete this.record.synced[key];
+        changed = true;
+      }
+    }
+    if (changed) await this.save();
   }
 
   private note(line: string) {

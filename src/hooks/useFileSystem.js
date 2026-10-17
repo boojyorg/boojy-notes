@@ -966,5 +966,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     downloadOffloaded,
     rereadNote,
     folderOps,
+    /** A note as the disk holds it now (a restore): taken, never written back. */
+    takeNoteFromDisk: applyExternal,
   };
 }

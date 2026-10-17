@@ -7,6 +7,7 @@ import { createPhoneVault, sanitizeFilename } from "../../src/phone/phoneVault";
 import { contentHash } from "../../src/sync/contentHash";
 import type { Note } from "../../src/types/notes";
 import { markdownToBlocks } from "../../src/utils/markdown";
+import { memoryFiles } from "./memoryFiles";
 
 /** The phone's file calls over a folder on the Mac. */
 function folderFiles(root: string): FileOps {
@@ -195,58 +196,9 @@ describe("the sync engine's calls, as the editor sees them", () => {
   });
 });
 
-/** Files in memory, case-sensitive as Android's storage is (the Mac's is not). */
-function caseSensitiveFiles(): FileOps {
-  const store = new Map<string, Uint8Array | "dir">();
-  const parent = (p: string) => p.split("/").slice(0, -1).join("/");
-  const ensureDir = (p: string) => {
-    const parts = p.split("/");
-    for (let i = 1; i <= parts.length; i++)
-      if (parts[i - 1]) store.set(parts.slice(0, i).join("/"), "dir");
-  };
-  const ops: FileOps = {
-    async list(dir) {
-      return [...store.entries()]
-        .filter(([p]) => parent(p) === dir)
-        .map(([p, v]) => ({
-          name: p.split("/").pop() as string,
-          kind: v === "dir" ? "dir" : "file",
-          mtime: 0,
-        }));
-    },
-    async read(p) {
-      const v = store.get(p);
-      return v && v !== "dir" ? v : null;
-    },
-    async write(p, bytes) {
-      ensureDir(parent(p));
-      store.set(p, bytes);
-    },
-    async rename(from, to) {
-      if (store.has(to)) throw new Error(`${to} already exists`);
-      ensureDir(parent(to));
-      store.set(to, store.get(from) as Uint8Array);
-      store.delete(from);
-    },
-    async remove(p) {
-      store.delete(p);
-    },
-    async mkdir(p) {
-      ensureDir(p);
-    },
-    async rmdir(p) {
-      store.delete(p);
-    },
-    exists: async (p) => store.has(p),
-    mtime: async (p) => (store.has(p) ? 0 : null),
-    recover: (dir) => recoverWrites(ops, dir),
-  };
-  return ops;
-}
-
 describe("names Dropbox cannot tell apart", () => {
   it("gives a note differing only in case from another a -2", async () => {
-    const phone = createPhoneVault(caseSensitiveFiles());
+    const phone = createPhoneVault(memoryFiles());
     await phone.api.writeNote(note("n1", "Shopping", "milk"));
     expect(await phone.api.writeNote(note("n2", "shopping", "eggs"))).toEqual({
       title: "shopping-2",
@@ -254,7 +206,7 @@ describe("names Dropbox cannot tell apart", () => {
   });
 
   it("lets a note change only the case of its own name", async () => {
-    const phone = createPhoneVault(caseSensitiveFiles());
+    const phone = createPhoneVault(memoryFiles());
     await phone.api.writeNote(note("n1", "shopping", "milk"));
     expect(await phone.api.writeNote(note("n1", "Shopping", "milk"))).toEqual({
       title: "Shopping",
@@ -263,7 +215,7 @@ describe("names Dropbox cannot tell apart", () => {
   });
 
   it("gives a folder differing only in case from another a -2", async () => {
-    const phone = createPhoneVault(caseSensitiveFiles());
+    const phone = createPhoneVault(memoryFiles());
     await phone.api.createFolder("Work");
     expect(await phone.api.createFolder("work")).toEqual({ path: "work-2" });
   });

@@ -1,5 +1,7 @@
 import { type ReactNode, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { TOUCH } from "../constants/layout";
+import { isPhone } from "../utils/platform";
 import { Tooltip, useTooltip } from "./Tooltip";
 
 /**
@@ -49,8 +51,9 @@ export default function RowAction({
         }}
         onMouseDown={tooltip.handlers.onMouseDown}
         style={{
-          width: 26,
-          height: 24,
+          // A finger's size on the phone, where it is always shown.
+          width: isPhone ? TOUCH : 26,
+          height: isPhone ? TOUCH : 24,
           border: "none",
           borderRadius: 6,
           background: "transparent",
