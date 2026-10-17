@@ -21,11 +21,15 @@ const until = async (want: string, ms = 3000) => {
   }
 };
 
+/** How long the watch may take to come up on a busy machine. */
+const LIVE_MS = 10_000;
+
 /**
  * Starts the watch and returns once it reports: macOS's stream starts late
  * when the machine is busy (the whole suite running), and a file written
  * before it is live is never reported. A probe file is written until the
- * watch sees it, then removed, and the test starts from no events.
+ * watch sees it, then removed; only the probe's events are dropped, so a
+ * startup event the watch should not have sent is still there to fail on.
  */
 async function start() {
   watcher = watchTree(root, {
@@ -41,13 +45,13 @@ async function start() {
   const probe = path.join(root, "probe.md");
   const begun = Date.now();
   for (let n = 0; !events.some((e) => e.endsWith(" probe.md")); n++) {
-    if (Date.now() - begun > 10_000) throw new Error("the watch never reported");
+    if (Date.now() - begun > LIVE_MS) throw new Error("the watch never reported");
     if (n % 10 === 0) fs.writeFileSync(probe, String(n));
     await new Promise((r) => setTimeout(r, 25));
   }
   fs.rmSync(probe);
   await until("unlink probe.md");
-  events = [];
+  events = events.filter((e) => !e.endsWith(" probe.md"));
 }
 
 beforeEach(() => {
@@ -63,8 +67,9 @@ afterEach(async () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+// Coming up, the probe's removal, then up to four events at `until`'s 3 s.
 for (const mode of ["native", "per directory"])
-  describe(`watchTree (${mode})`, () => {
+  describe(`watchTree (${mode})`, { timeout: LIVE_MS + 5 * 3000 + 5000 }, () => {
     beforeEach(() => {
       if (mode === "per directory") process.env.BOOJY_WATCH_PER_DIRECTORY = "1";
       else delete process.env.BOOJY_WATCH_PER_DIRECTORY;
