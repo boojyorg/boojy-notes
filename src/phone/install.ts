@@ -17,10 +17,17 @@ export async function installPhone() {
   let sync: ReturnType<typeof createPhoneSync> | null = null;
   const vault = createPhoneVault(files, { onLocalChange: () => sync?.localChanged() });
   sync = createPhoneSync(files, vault.store);
-  // The vault's file calls, and the menu bar's command channel (the bar above the keyboard sends on it).
+  // The vault's file calls, the menu bar's command channel (the bar above the
+  // keyboard sends on it), and sync's state for Home's folder row.
   (window as unknown as { boojyPhoneAPI: unknown }).boojyPhoneAPI = {
     ...vault.api,
     onMenuCommand: onCommand,
+    sync: {
+      status: sync.status.status,
+      subscribe: sync.status.subscribe,
+      syncNow: sync.syncNow,
+      signInAgain: sync.signInAgain,
+    },
   };
 
   if (!(await sync.signedIn())) await signInScreen(sync.signIn);

@@ -197,6 +197,13 @@ describe("createDropboxRemote", () => {
     expect(sent[0].headers.Authorization).toBeUndefined();
     expect(sent[0].body).toEqual({ cursor: "C1", timeout: 30 });
   });
+
+  it("names the signed-in account", async () => {
+    const { remote, sent } = remoteWith(json({ account_id: "dbid:A" }));
+    expect(await remote.accountId()).toBe("dbid:A");
+    expect(sent[0].url).toBe("https://api.dropboxapi.com/2/users/get_current_account");
+    expect(sent[0].body).toBeNull();
+  });
 });
 
 describe("signing in", () => {

@@ -30,7 +30,11 @@ import {
   CircleAlert as LuCircleAlert,
   Clock as LuClock,
   Cloud as LuCloud,
+  CloudAlert as LuCloudAlert,
+  CloudCheck as LuCloudCheck,
   CloudDownload as LuCloudDownload,
+  CloudOff as LuCloudOff,
+  CloudSync as LuCloudSync,
   Code as LuCode,
   CodeXml as LuCodeXml,
   ClipboardPaste as LuClipboardPaste,
@@ -167,6 +171,11 @@ export const MissingAttachmentIcon = ({ image = false, size = ICON_INLINE }) => 
 export const OffloadedIcon = navIcon(LuCloudDownload);
 /** A note whose file the app cannot open as text (not UTF-8, too large, or unreadable). */
 export const UnreadableIcon = navIcon(LuFileExclamationPoint);
+/** The phone's sync, after its folder's name on Home: its four states. */
+export const SyncedIcon = navIcon(LuCloudCheck);
+export const SyncingIcon = navIcon(LuCloudSync);
+export const SyncOfflineIcon = navIcon(LuCloudOff);
+export const SyncProblemIcon = navIcon(LuCloudAlert);
 /** Show in Finder, for a vault or a file. */
 export const RevealIcon = navIcon(LuFolderSearch);
 /** Switch to: one storage location for another. */

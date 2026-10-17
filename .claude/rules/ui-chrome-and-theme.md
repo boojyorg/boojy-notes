@@ -93,10 +93,10 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **Interface size is one segmented control; every press applies at once** (a debounce
   overwrote newer values). The figure is a field committed on Enter/blur; an outside change
   cancels an unfinished edit. `stepScale` is the one rule shared with `Cmd+±`.
-- **Settings keeps the scale it opened with** (`zoom: openedAt / uiScale`), so the pane holds
-  still. Centred by a wrapper, never a transform (it would contain the `fixed` children). A
-  menu inside it passes `overSettings` (else it stacks under the pane) and owns Escape; the
-  scale keys are the one shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
+- **Settings keeps the scale it opened with**, so the pane holds still. Centred by a wrapper,
+  never a transform (it would contain the `fixed` children). A menu inside it passes
+  `overSettings` (else it stacks under the pane) and owns Escape; the scale keys are the one
+  shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
 - **`vw`/`vh` ignore the UI scale**: anything sized against the viewport divides by it
   (`atScale()`).
 - **One zoom system**: the app's UI scale. `main.js` resets Chromium's zoom on `dom-ready`. A scale shortcut always answers with `UiScaleChip`.
@@ -164,8 +164,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
   note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` is the
   sidebar's own and never baked into the shared constants.
-- Rows are neutral `BG.hover` pills for hover and selection; the active note is never bold or
-  accent. Only structure and actions get a glyph. An unnamed note reads `Untitled` muted.
+- The active note is never bold or accent. Only structure and actions get a glyph. An unnamed
+  note reads `Untitled` muted.
 - Row controls (note ···, folder New note + ···) are zero-width at rest and `span
   role="button" tabIndex={-1}` (a nested button fails axe). A row's ··· passes its rectangle
   (`rowMenuAnchor`) so a flipped menu clears the row.
@@ -215,6 +215,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits for a hover. The
   keyboard bar sends menu-bar commands (`phone/commands.ts`). `tests/phone/`. **The top
   clears `STATUS_BAR_H`** (a new WebView leaves it to the page).
+- **Sync's state follows Home's folder name** (`syncStatus.ts`); synced means all settled.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
   is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems**, centred under the
   name; margins go first, then gutters.

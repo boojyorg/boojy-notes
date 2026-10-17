@@ -10,7 +10,12 @@ vi.mock("../../src/phone/phoneVault", () => ({
   createPhoneVault: () => ({ api: {}, store: {} }),
 }));
 vi.mock("../../src/phone/phoneSync", () => ({
-  createPhoneSync: () => ({ signedIn: async () => true, start: async () => {}, localChanged() {} }),
+  createPhoneSync: () => ({
+    signedIn: async () => true,
+    start: async () => {},
+    localChanged() {},
+    status: { status: () => null, subscribe: () => () => {} },
+  }),
 }));
 vi.mock("../../src/phone/commands", () => ({ onCommand: () => () => {} }));
 

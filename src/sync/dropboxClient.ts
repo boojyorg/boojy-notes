@@ -79,6 +79,8 @@ async function failure(res: Response): Promise<Error> {
 export interface DropboxRemote extends Remote {
   /** Waits up to `timeout` seconds for a change after `cursor`. Needs no token. */
   longpoll(cursor: string, timeout?: number): Promise<{ changes: boolean; backoff: number }>;
+  /** The signed-in account's id, which never changes for that account. */
+  accountId(): Promise<string>;
 }
 
 export function createDropboxRemote({
@@ -221,6 +223,10 @@ export function createDropboxRemote({
       });
       const result = (await res.json()) as { changes: boolean; backoff?: number };
       return { changes: result.changes, backoff: result.backoff ?? 0 };
+    },
+
+    async accountId() {
+      return (await rpc<{ account_id: string }>("users/get_current_account", null)).account_id;
     },
   };
 }

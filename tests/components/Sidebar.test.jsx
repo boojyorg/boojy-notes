@@ -150,6 +150,7 @@ function renderSidebar(overrides = {}) {
     onOpenFile: overrides.onOpenFile,
     trashFile: overrides.trashFile,
     recentlyDeleted: overrides.recentlyDeleted,
+    sync: overrides.sync,
   };
 
   const Component = overrides.Component ?? Sidebar;
@@ -943,5 +944,27 @@ describe("Sidebar on the phone", () => {
       vi.doUnmock("../../src/utils/platform");
       vi.resetModules();
     }
+  });
+
+  it("shows sync's state after the folder's name, and says it in words on a tap", async () => {
+    const sync = {
+      status: { state: "problem", lastSynced: null, problems: [{ kind: "signed-out" }] },
+      syncNow: vi.fn(),
+      signInAgain: vi.fn(),
+    };
+    const { getByTestId, getByText } = renderSidebar({ sync });
+    const glyph = getByTestId("sync-status");
+    expect(glyph.dataset.state).toBe("problem");
+    expect(glyph.getAttribute("aria-label")).toBe("Sync: Needs attention");
+    expect(glyph.parentElement.textContent).toBe("Notes");
+    fireEvent.click(glyph);
+    expect(getByText(/Dropbox sign-in has expired/)).toBeInTheDocument();
+    fireEvent.click(getByTestId("sync-sign-in"));
+    expect(sync.signInAgain).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no sync state where nothing syncs", () => {
+    const { queryByTestId } = renderSidebar();
+    expect(queryByTestId("sync-status")).not.toBeInTheDocument();
   });
 });

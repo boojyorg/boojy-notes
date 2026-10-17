@@ -52,6 +52,7 @@ import { useResolvedTitle } from "./hooks/useResolvedTitle";
 import { caretLength, caretOffsetAt, getCaretOffset, placeCaret } from "./utils/domHelpers";
 import { binnedToast, deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useRecentlyDeleted } from "./hooks/useRecentlyDeleted";
+import { useSyncStatus } from "./phone/useSyncStatus";
 import RecentlyDeletedMenu from "./components/RecentlyDeletedMenu";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
@@ -291,6 +292,8 @@ export default function BoojyNotes() {
     showToast,
     requestConfirm,
   });
+  // The phone's sync, shown on Home's folder row; null elsewhere.
+  const sync = useSyncStatus({ showToast });
   const [binOpen, setBinOpen] = useState(false);
   const recentlyDeleted = useRecentlyDeleted({
     notesDir,
@@ -1650,6 +1653,7 @@ export default function BoojyNotes() {
             ctxMenuFileId={ctxMenu?.type === "file" ? ctxMenu.id : null}
             vaultMenuRequest={vaultMenuRequest}
             onVaultMenuOpen={refreshVaults}
+            sync={sync}
             recentlyDeleted={
               recentlyDeleted.available
                 ? {
