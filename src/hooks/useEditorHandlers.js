@@ -120,8 +120,14 @@ export function useEditorHandlers({
   const handleBeforeInput = useCallback(
     (e) => {
       const paste = typedPaste(e);
+      // A keystroke's target is the whole editor: where it lands is its range
+      // (or the caret). A field's own input is addressed to the field.
+      const node =
+        e.target === editorRef.current
+          ? (e.getTargetRanges?.()[0]?.startContainer ?? window.getSelection()?.anchorNode)
+          : e.target;
       const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
-      const at = paste && getBlockFromNode(e.target, editorRef.current, blocks, blockRefs.current);
+      const at = paste && getBlockFromNode(node, editorRef.current, blocks, blockRefs.current);
       if (!at || hasOwnField(blocks[at.blockIndex])) return handleEditorBeforeInput(e);
       e.preventDefault();
       handleEditorPaste(paste);
