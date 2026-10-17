@@ -5,7 +5,7 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
 
 ## Theme and colour
 
-`src/constants/themes.js` is the only colour authority. Never hardcode a hex in a component.
+`src/constants/themes.js` is the only colour authority.
 
 - Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. A fresh
   install starts on System.
@@ -47,7 +47,7 @@ a key, the newer replacing the older, and end when it stops being true** (`write
 
 ## Icons: Lucide only
 
-`src/components/Icons.jsx` wraps `lucide-react`, always `currentColor`; never hand-roll an SVG
+`Icons.jsx` wraps `lucide-react`, always `currentColor`; never hand-roll an SVG
 (exceptions: `FindBar`, `CodeBlock`, the task tick). Two sizes (list, navigation) and two
 strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder): don't flatten the
 tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, never a box.
@@ -64,7 +64,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **A drag rectangle must never lie under a control earlier in the DOM**: Chromium applies
   regions in DOM order, so a later `drag` overrides an earlier `no-drag`. Regions stand down while a popup is open; a surface that floats into the row (the
   selection toolbar) is `no-drag`. `chrome-row.spec.ts`.
-- One active note; no tabs. Leave the `resolveInitialActiveNote()` migration read path.
+- Leave the `resolveInitialActiveNote()` migration read path.
 - The wordmark opens Settings. No About, Help or Recently Deleted.
 - **The header ··· is the active note's menu** (a row's ··· is its first group and Delete).
   While the Markdown view is on, a lit `</>` stands left of the ···; the path band reserves its
@@ -90,9 +90,9 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - Settings is one pane on the palette's surface. Accent never marks the chosen pill.
 - **Spelling: a Mac's system chooses the language**, so that row opens Keyboard settings, never a
   dead control; elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
-- **Interface size is one segmented control; every press applies at once** — no timer (a debounce overwrote newer values). The figure is an editable
-  field committed on Enter/blur; an outside change cancels an unfinished edit. `stepScale` is
-  the one rule shared with `Cmd+±`.
+- **Interface size is one segmented control; every press applies at once** (a debounce
+  overwrote newer values). The figure is a field committed on Enter/blur; an outside change
+  cancels an unfinished edit. `stepScale` is the one rule shared with `Cmd+±`.
 - **Settings keeps the scale it opened with** (`zoom: openedAt / uiScale`), so the pane holds
   still. Centred by a wrapper, never a transform (it would contain the `fixed` children). A
   menu inside it passes `overSettings` (else it stacks under the pane) and owns Escape; the
@@ -212,8 +212,9 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 - **No touch layout, no overlay sidebar** at any desktop width.
 - **The phone is Home (the sidebar, full width) or the note, never both**; else the desktop's
-  rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits
-  for a hover. The keyboard bar sends menu-bar commands (`phone/commands.ts`). `tests/phone/`.
+  rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits for a hover. The
+  keyboard bar sends menu-bar commands (`phone/commands.ts`). `tests/phone/`. **The top
+  clears `STATUS_BAR_H`** (a new WebView leaves it to the page).
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
   is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems**, centred under the
   name; margins go first, then gutters.

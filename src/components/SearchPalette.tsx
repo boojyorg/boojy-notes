@@ -22,7 +22,7 @@ import {
 } from "../utils/search";
 import { RECENT_SHOWN, recentRows } from "../utils/recentNotes";
 import { cssZoom } from "../utils/domHelpers";
-import { atScale } from "../utils/uiScale";
+import { STATUS_BAR_H, atScale } from "../utils/uiScale";
 import { tagPillStyle } from "../styles/tagPill";
 import type { NoteData } from "../types/notes";
 import { otherFileKind, splitExtension, type OtherFile } from "../utils/otherFiles";
@@ -424,7 +424,8 @@ export default function SearchPalette({
         onClick={(e) => e.stopPropagation()}
         style={{
           ...(isPhone
-            ? { width: "100%", height: "100%" }
+            ? // Its own ground behind Android's status bar, its field below it.
+              { width: "100%", height: "100%", boxSizing: "border-box", paddingTop: STATUS_BAR_H }
             : {
                 width: `min(${PALETTE_WIDTH}px, ${atScale("92vw")})`,
                 maxHeight: atScale(`${MAX_VH}vh`),

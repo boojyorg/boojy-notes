@@ -51,3 +51,17 @@ export function parseScale(text: string): number | null {
  * `SettingsContext` writes beside the zoom.
  */
 export const atScale = (expr: string) => `calc((${expr}) / var(--ui-scale, 1))`;
+
+/**
+ * The air the status bar's inset already leaves below its icons, which the
+ * app's top row (with air of its own) may stand in.
+ */
+const STATUS_BAR_AIR = 6;
+
+/**
+ * The room Android's status bar takes at the top of the phone's screen, in
+ * the app's own pixels: the app draws under the bar (Capacitor leaves the
+ * room to the page on a current WebView), so whatever stands at the top
+ * stands below this. 0 wherever there is no such bar.
+ */
+export const STATUS_BAR_H = `max(0px, ${atScale("env(safe-area-inset-top, 0px)")} - ${STATUS_BAR_AIR}px)`;
