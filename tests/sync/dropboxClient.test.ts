@@ -9,7 +9,12 @@ import {
   MAX_SINGLE_UPLOAD,
   refreshingToken,
 } from "../../src/sync/dropboxClient";
-import { CursorResetError, RemoteConflictError, RemoteNotFoundError } from "../../src/sync/types";
+import {
+  CursorResetError,
+  RemoteConflictError,
+  RemoteNotFoundError,
+  RemoteTooLargeError,
+} from "../../src/sync/types";
 
 interface Sent {
   url: string;
@@ -142,7 +147,7 @@ describe("createDropboxRemote", () => {
     const { remote, sent } = remoteWith();
     const big = { length: MAX_SINGLE_UPLOAD + 1 } as Uint8Array;
     await expect(remote.upload("Big.mov", big, { kind: "add" })).rejects.toBeInstanceOf(
-      DropboxHttpError,
+      RemoteTooLargeError,
     );
     expect(sent).toHaveLength(0);
   });
@@ -191,6 +196,21 @@ describe("createDropboxRemote", () => {
     expect(sent[0].url).toBe("https://notify.dropboxapi.com/2/files/list_folder/longpoll");
     expect(sent[0].headers.Authorization).toBeUndefined();
     expect(sent[0].body).toEqual({ cursor: "C1", timeout: 30 });
+  });
+
+  it("finds whether any of some ids names a file here", async () => {
+    const { remote, sent } = remoteWith(error(409, "path/not_found/"), json(fileMeta("A.md")));
+    expect(await remote.holdsAnyOf(["id:gone", "id:abc"])).toBe(true);
+    expect(sent.map((s) => s.body)).toEqual([{ path: "id:gone" }, { path: "id:abc" }]);
+    const none = remoteWith(error(409, "path/not_found/"));
+    expect(await none.remote.holdsAnyOf(["id:gone"])).toBe(false);
+  });
+
+  it("names the signed-in account", async () => {
+    const { remote, sent } = remoteWith(json({ account_id: "dbid:A" }));
+    expect(await remote.accountId()).toBe("dbid:A");
+    expect(sent[0].url).toBe("https://api.dropboxapi.com/2/users/get_current_account");
+    expect(sent[0].body).toBeNull();
   });
 });
 

@@ -151,8 +151,49 @@ describe("the sync engine: one row of the design's table each", () => {
     env.phone.type("Note.md", "one");
     env.phone.type("note.md", "two");
     const result = await env.settle();
-    expect(result.attention.sort()).toEqual(["Note.md", "note.md"]);
+    expect(result.attention).toEqual([{ kind: "case", paths: ["Note.md", "note.md"] }]);
     expect(env.dropbox.paths()).toEqual([]);
+  });
+
+  it("never takes a note held back for case for one renamed on the phone", async () => {
+    const env = await started({ "A.md": "alpha" });
+    env.phone.type("a.md", "other");
+    env.phone.type("B.md", "alpha"); // A's bytes under a new name
+    const calls = await env.callsDuring(env.settle);
+    expect(calls).not.toContain("move");
+    expect(env.dropbox.read("A.md")).toBe("alpha");
+    expect(env.dropbox.read("B.md")).toBe("alpha");
+  });
+
+  it("leaves a note held back for case where it is when the Mac renames it", async () => {
+    const env = await started({ "A.md": "alpha" });
+    env.phone.type("a.md", "other");
+    env.dropbox.macMove("A.md", "C.md");
+    await env.settle();
+    expect(env.phone.text("A.md")).toBe("alpha");
+    expect(env.phone.text("a.md")).toBe("other");
+    expect(env.dropbox.read("C.md")).toBe("alpha");
+  });
+
+  it("holds back a file too big for Dropbox and syncs the rest", async () => {
+    const env = await started({});
+    env.dropbox.maxUpload = 10;
+    env.phone.type("Big.pdf", "far more than ten bytes");
+    env.phone.type("A.md", "alpha");
+    const result = await env.settle();
+    expect(result.attention).toEqual([{ kind: "too-large", path: "Big.pdf" }]);
+    expect(env.dropbox.paths()).toEqual(["A.md"]);
+  });
+
+  it("holds back a conflicted copy too big for Dropbox and finishes the clash", async () => {
+    const env = await started({ "A.md": "alpha" });
+    env.dropbox.maxUpload = 10;
+    env.phone.type("A.md", "phone's long version");
+    await env.dropbox.macWrite("A.md", "mac's");
+    const result = await env.settle();
+    expect(result.attention).toEqual([{ kind: "too-large", path: `A ${COPY}.md` }]);
+    expect(env.dropbox.read("A.md")).toBe("mac's");
+    expect(env.phone.text(`A ${COPY}.md`)).toBe("phone's long version");
   });
 });
 

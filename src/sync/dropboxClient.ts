@@ -6,6 +6,7 @@ import {
   type RemoteEntry,
   type RemoteFile,
   RemoteNotFoundError,
+  RemoteTooLargeError,
   type WriteMode,
 } from "./types";
 
@@ -78,6 +79,10 @@ async function failure(res: Response): Promise<Error> {
 export interface DropboxRemote extends Remote {
   /** Waits up to `timeout` seconds for a change after `cursor`. Needs no token. */
   longpoll(cursor: string, timeout?: number): Promise<{ changes: boolean; backoff: number }>;
+  /** The signed-in account's id, which never changes for that account. */
+  accountId(): Promise<string>;
+  /** Whether any of these Dropbox ids names a file here: ids are one account's own. */
+  holdsAnyOf(ids: string[]): Promise<boolean>;
 }
 
 export function createDropboxRemote({
@@ -169,7 +174,7 @@ export function createDropboxRemote({
 
     async upload(path, bytes, mode: WriteMode) {
       if (bytes.length > MAX_SINGLE_UPLOAD) {
-        throw new DropboxHttpError(413, `${path} is over 150 MB`, null);
+        throw new RemoteTooLargeError(path);
       }
       const res = await send(`${CONTENT}files/upload`, {
         method: "POST",
@@ -220,6 +225,22 @@ export function createDropboxRemote({
       });
       const result = (await res.json()) as { changes: boolean; backoff?: number };
       return { changes: result.changes, backoff: result.backoff ?? 0 };
+    },
+
+    async accountId() {
+      return (await rpc<{ account_id: string }>("users/get_current_account", null)).account_id;
+    },
+
+    async holdsAnyOf(ids) {
+      for (const id of ids) {
+        try {
+          await rpc("files/get_metadata", { path: id });
+          return true;
+        } catch (error) {
+          if (!(error instanceof RemoteNotFoundError)) throw error;
+        }
+      }
+      return false;
     },
   };
 }

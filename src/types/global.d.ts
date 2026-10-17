@@ -203,6 +203,8 @@ declare global {
     boojyPhoneAPI?: import("../phone/phoneVault").PhoneVaultAPI & {
       /** The bar above the keyboard's commands (src/phone/commands.ts). */
       onMenuCommand: (listener: (id: string) => void) => () => void;
+      /** Sync's state, for Home's folder row (src/phone/useSyncStatus.ts). */
+      sync: import("../phone/useSyncStatus").PhoneSyncAPI;
     };
     /** Capacitor's bridge, present in the Android app before any script runs. */
     Capacitor?: { isNativePlatform?: () => boolean };

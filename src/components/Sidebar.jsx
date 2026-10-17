@@ -50,6 +50,7 @@ import {
 import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
+import SyncStatusButton from "./SyncStatusButton";
 import Collapsible from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
 import { SYNC_FOLDER } from "../phone/syncFolder";
@@ -476,6 +477,32 @@ function VaultLabel({ name, open, onOpen }) {
   );
 }
 
+/**
+ * The phone's folder row: the Dropbox folder's name, then sync's state
+ * (`SyncStatusButton`), close beside it rather than across the row, since it
+ * speaks of that folder.
+ */
+function SyncedVaultLabel({ name, sync, TEXT }) {
+  return (
+    <span style={{ display: "flex", alignItems: "center", minWidth: 0, gap: 2 }}>
+      <span
+        style={{
+          fontSize: 14,
+          fontWeight: 500,
+          color: TEXT.muted,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          minWidth: 0,
+        }}
+      >
+        {name}
+      </span>
+      <SyncStatusButton sync={sync} />
+    </span>
+  );
+}
+
 const Sidebar = memo(function Sidebar({
   activeNote,
   toggle,
@@ -516,6 +543,8 @@ const Sidebar = memo(function Sidebar({
   onVaultMenuOpen,
   // Desktop: the pinned Recently Deleted row. { open, onToggle }
   recentlyDeleted,
+  // The phone: sync's state, after the folder's name (useSyncStatus).
+  sync = null,
 }) {
   const { chromeBg, sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
   // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
@@ -1278,6 +1307,8 @@ const Sidebar = memo(function Sidebar({
                     open={vaultMenu !== null}
                     onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
                   />
+                ) : sync ? (
+                  <SyncedVaultLabel name={vaultName} sync={sync} TEXT={TEXT} />
                 ) : (
                   vaultName
                 )
