@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { getBlockFromNode } from "../utils/domHelpers";
+import { useCallback, useRef } from "react";
+import { getBlockFromNode, hasOwnField } from "../utils/domHelpers";
 import { useSlashCommands } from "./editor/useSlashCommands";
 import { useInputHandler } from "./editor/useInputHandler";
 import { useKeyboardHandlers } from "./editor/useKeyboardHandlers";
@@ -7,6 +7,7 @@ import { usePasteHandler } from "./editor/usePasteHandler";
 import { useDragDropHandlers } from "./editor/useDragDropHandlers";
 import { useMouseHandlers } from "./editor/useMouseHandlers";
 import { useCrossBlockEdit } from "./editor/useCrossBlockEdit";
+import { typedPaste } from "../utils/pasteBlocks";
 
 export function useEditorHandlers({
   noteDataRef,
@@ -112,6 +113,27 @@ export function useEditorHandlers({
     scopeOf,
     ownEdit,
   });
+  // Several lines a keyboard types at once into a text block are a paste
+  // (`typedPaste`). A block with its own field (a code block's textarea, a
+  // cell, a callout) keeps the input, as it keeps a real paste; the rest of
+  // the typing goes to the one owner of edits across roots.
+  const handleBeforeInput = useCallback(
+    (e) => {
+      const paste = typedPaste(e);
+      // A keystroke's target is the whole editor: where it lands is its range
+      // (or the caret). A field's own input is addressed to the field.
+      const node =
+        e.target === editorRef.current
+          ? (e.getTargetRanges?.()[0]?.startContainer ?? window.getSelection()?.anchorNode)
+          : e.target;
+      const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
+      const at = paste && getBlockFromNode(node, editorRef.current, blocks, blockRefs.current);
+      if (!at || hasOwnField(blocks[at.blockIndex])) return handleEditorBeforeInput(e);
+      e.preventDefault();
+      handleEditorPaste(paste);
+    },
+    [handleEditorBeforeInput, handleEditorPaste, noteDataRef, editorRef, blockRefs],
+  );
   const { handleEditorDragOver, handleEditorDragLeave, handleEditorDrop } = useDragDropHandlers({
     ...shared,
     saveAndInsertFiles,
@@ -130,7 +152,7 @@ export function useEditorHandlers({
     handleEditorPaste,
     handleEditorCopy,
     handleEditorCut,
-    handleEditorBeforeInput,
+    handleEditorBeforeInput: handleBeforeInput,
     handleEditorDragOver,
     handleEditorDragLeave,
     handleEditorDrop,
