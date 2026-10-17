@@ -9,6 +9,7 @@ import {
   type RemoteEntry,
   type RemoteFile,
   RemoteNotFoundError,
+  RemoteTooLargeError,
   type WriteMode,
 } from "../../src/sync/types";
 
@@ -58,6 +59,8 @@ export class FakeDropbox implements Remote {
   pageSize = 1000;
   /** False stands for a vault whose folder isn't in Dropbox (yet, or any more). */
   rootExists = true;
+  /** The largest upload taken, in bytes (Dropbox's is 150 MB). */
+  maxUpload = Number.POSITIVE_INFINITY;
   calls: Op[] = [];
   private nextRev = 1;
   private nextId = 1;
@@ -226,6 +229,7 @@ export class FakeDropbox implements Remote {
 
   async upload(path: string, bytes: Uint8Array, mode: WriteMode) {
     await this.enter("upload");
+    if (bytes.length > this.maxUpload) throw new RemoteTooLargeError(path);
     const existing = this.files.get(keyOf(path));
     if (mode.kind === "add" && existing) throw new RemoteConflictError(path);
     if (mode.kind === "update" && existing?.rev !== mode.rev) throw new RemoteConflictError(path);

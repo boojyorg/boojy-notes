@@ -86,7 +86,8 @@ async function connect(phoneFolder: string, vault: string) {
     const started = Date.now();
     const result = await syncPass({ local, remote });
     for (const line of result.log) console.log(`  ${line}`);
-    if (result.attention.length) console.log(`  needs attention: ${result.attention.join(", ")}`);
+    if (result.attention.length)
+      console.log("  needs attention:", JSON.stringify(result.attention));
     console.log(
       `pass done in ${Date.now() - started} ms${result.again ? ", another to follow" : ""}`,
     );

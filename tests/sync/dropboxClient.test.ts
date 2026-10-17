@@ -9,7 +9,12 @@ import {
   MAX_SINGLE_UPLOAD,
   refreshingToken,
 } from "../../src/sync/dropboxClient";
-import { CursorResetError, RemoteConflictError, RemoteNotFoundError } from "../../src/sync/types";
+import {
+  CursorResetError,
+  RemoteConflictError,
+  RemoteNotFoundError,
+  RemoteTooLargeError,
+} from "../../src/sync/types";
 
 interface Sent {
   url: string;
@@ -142,7 +147,7 @@ describe("createDropboxRemote", () => {
     const { remote, sent } = remoteWith();
     const big = { length: MAX_SINGLE_UPLOAD + 1 } as Uint8Array;
     await expect(remote.upload("Big.mov", big, { kind: "add" })).rejects.toBeInstanceOf(
-      DropboxHttpError,
+      RemoteTooLargeError,
     );
     expect(sent).toHaveLength(0);
   });

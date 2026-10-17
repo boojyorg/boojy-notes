@@ -151,8 +151,29 @@ describe("the sync engine: one row of the design's table each", () => {
     env.phone.type("Note.md", "one");
     env.phone.type("note.md", "two");
     const result = await env.settle();
-    expect(result.attention.sort()).toEqual(["Note.md", "note.md"]);
+    expect(result.attention).toEqual([{ kind: "case", paths: ["Note.md", "note.md"] }]);
     expect(env.dropbox.paths()).toEqual([]);
+  });
+
+  it("holds back a file too big for Dropbox and syncs the rest", async () => {
+    const env = await started({});
+    env.dropbox.maxUpload = 10;
+    env.phone.type("Big.pdf", "far more than ten bytes");
+    env.phone.type("A.md", "alpha");
+    const result = await env.settle();
+    expect(result.attention).toEqual([{ kind: "too-large", path: "Big.pdf" }]);
+    expect(env.dropbox.paths()).toEqual(["A.md"]);
+  });
+
+  it("holds back a conflicted copy too big for Dropbox and finishes the clash", async () => {
+    const env = await started({ "A.md": "alpha" });
+    env.dropbox.maxUpload = 10;
+    env.phone.type("A.md", "phone's long version");
+    await env.dropbox.macWrite("A.md", "mac's");
+    const result = await env.settle();
+    expect(result.attention).toEqual([{ kind: "too-large", path: `A ${COPY}.md` }]);
+    expect(env.dropbox.read("A.md")).toBe("mac's");
+    expect(env.phone.text(`A ${COPY}.md`)).toBe("phone's long version");
   });
 });
 

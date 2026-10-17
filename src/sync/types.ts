@@ -47,7 +47,7 @@ export interface Remote {
   listContinue(cursor: string): Promise<ListPage>;
   /** Throws RemoteNotFoundError. */
   download(path: string): Promise<{ file: RemoteFile; bytes: Uint8Array }>;
-  /** Throws RemoteConflictError when the mode's condition fails. */
+  /** Throws RemoteConflictError when the mode's condition fails, RemoteTooLargeError. */
   upload(path: string, bytes: Uint8Array, mode: WriteMode): Promise<RemoteFile>;
   /**
    * Moves the file whose Dropbox id is `id` (wherever it now is) to `to`: by
@@ -68,6 +68,11 @@ export class RemoteConflictError extends Error {
 
 export class RemoteNotFoundError extends Error {
   name = "RemoteNotFoundError";
+}
+
+/** Dropbox won't take a file this big in one upload (150 MB). */
+export class RemoteTooLargeError extends Error {
+  name = "RemoteTooLargeError";
 }
 
 /** The cursor is too old to continue from; list again from the start. */

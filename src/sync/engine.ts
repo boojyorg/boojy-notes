@@ -7,6 +7,7 @@ import {
   RemoteConflictError,
   type RemoteFile,
   RemoteNotFoundError,
+  RemoteTooLargeError,
 } from "./types";
 
 /**
@@ -24,11 +25,17 @@ import {
  * folder delete conditional, so a file another device just added could go too.
  */
 
+/** A file left alone until a person acts; the rest of the vault syncs meanwhile. */
+export type Attention =
+  /** Phone names that differ only in case, which Dropbox takes for one. */
+  | { kind: "case"; paths: string[] }
+  /** Over Dropbox's single-upload limit. */
+  | { kind: "too-large"; path: string };
+
 export interface PassResult {
   /** Something changed while the pass ran, or a condition failed: run another pass. */
   again: boolean;
-  /** Paths left alone until a person acts (two names that differ only in case). */
-  attention: string[];
+  attention: Attention[];
   /** What the pass did, one line per change. */
   log: string[];
 }
@@ -144,16 +151,20 @@ class Pass {
     this.files.clear();
     this.folders.clear();
     const { files, folders } = await this.local.list();
+    const byKey = new Map<string, string[]>();
     for (const path of files) {
       if (isIgnored(path)) continue;
       const key = keyOf(path);
-      if (this.files.has(key)) {
+      byKey.set(key, [...(byKey.get(key) ?? []), path]);
+    }
+    for (const [key, paths] of byKey) {
+      if (paths.length > 1) {
         this.skip.add(key);
-        this.result.attention.push(path, this.files.get(key)?.path ?? path);
+        this.result.attention.push({ kind: "case", paths: paths.sort() });
         continue;
       }
-      const bytes = await this.local.read(path);
-      if (bytes) this.files.set(key, { path, hash: await contentHash(bytes) });
+      const bytes = await this.local.read(paths[0]);
+      if (bytes) this.files.set(key, { path: paths[0], hash: await contentHash(bytes) });
     }
     for (const path of folders) if (!isIgnored(path)) this.folders.set(keyOf(path), path);
   }
@@ -281,6 +292,10 @@ class Pass {
         there ? { kind: "update", rev: there.rev } : { kind: "add" },
       );
     } catch (error) {
+      if (error instanceof RemoteTooLargeError) {
+        this.result.attention.push({ kind: "too-large", path: here.path });
+        return;
+      }
       if (!(error instanceof RemoteConflictError)) throw error;
       this.result.again = true;
       return;
@@ -407,10 +422,15 @@ class Pass {
         this.record.remote[keyOf(file.path)] = file;
         this.record.synced[keyOf(file.path)] = syncedFrom(file, hash);
       } catch (error) {
-        if (!(error instanceof RemoteConflictError)) throw error;
-        // Already there (an upload whose answer was lost): the next pass
-        // compares the two and records them if they match.
-        this.result.again = true;
+        if (error instanceof RemoteTooLargeError) {
+          // The copy stays on the phone, a file with no record, and each pass
+          // holds it back as any other file too big.
+          this.result.attention.push({ kind: "too-large", path: plan.copyPath });
+        } else if (error instanceof RemoteConflictError) {
+          // Already there (an upload whose answer was lost): the next pass
+          // compares the two and records them if they match.
+          this.result.again = true;
+        } else throw error;
       }
     }
     this.note(`kept both: ${plan.path} and ${plan.copyPath}`);

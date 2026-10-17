@@ -6,6 +6,7 @@ import {
   type RemoteEntry,
   type RemoteFile,
   RemoteNotFoundError,
+  RemoteTooLargeError,
   type WriteMode,
 } from "./types";
 
@@ -169,7 +170,7 @@ export function createDropboxRemote({
 
     async upload(path, bytes, mode: WriteMode) {
       if (bytes.length > MAX_SINGLE_UPLOAD) {
-        throw new DropboxHttpError(413, `${path} is over 150 MB`, null);
+        throw new RemoteTooLargeError(path);
       }
       const res = await send(`${CONTENT}files/upload`, {
         method: "POST",
