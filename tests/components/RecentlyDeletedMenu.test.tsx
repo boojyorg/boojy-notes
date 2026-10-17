@@ -94,3 +94,71 @@ describe("RecentlyDeletedMenu", () => {
     expect(props.onClose).toHaveBeenCalled();
   });
 });
+
+describe("RecentlyDeletedMenu keeps its keys", () => {
+  // Restoring a row took the focused action with it; Escape (the phone's Back)
+  // then went to the page and left the list open.
+  it("takes focus back when the row whose action held it goes", () => {
+    const props = {
+      restore: vi.fn(),
+      purge: vi.fn(),
+      onClose: vi.fn(),
+      onEscape: vi.fn(),
+      view: vi.fn(),
+      viewingId: null,
+    };
+    const { rerender } = render(<RecentlyDeletedMenu items={items} {...props} />);
+    fireEvent.mouseEnter(screen.getAllByRole("option")[0]);
+    screen.getByRole("button", { name: "Restore “Old plan”" }).focus();
+    rerender(<RecentlyDeletedMenu items={items.slice(1)} {...props} />);
+    expect(document.activeElement).toBe(screen.getByRole("dialog", { name: "Recently Deleted" }));
+    fireEvent.keyDown(document.activeElement as Element, { key: "Escape" });
+    expect(props.onEscape).toHaveBeenCalled();
+  });
+});
+
+// Beside the sidebar it stood off the phone's screen, and its actions waited
+// for a hover a finger never makes.
+describe("RecentlyDeletedMenu on the phone", () => {
+  it("stands above its row across the screen, every row showing its actions", async () => {
+    vi.resetModules();
+    vi.doMock("../../src/utils/platform", async (actual) => ({
+      ...(await actual<object>()),
+      isPhone: true,
+    }));
+    const row = document.createElement("button");
+    row.dataset.testid = "recently-deleted-row";
+    row.getBoundingClientRect = () => ({ top: 700, bottom: 742, left: 0, right: 400 }) as DOMRect;
+    document.body.append(row);
+    try {
+      const { default: PhoneMenu } = await import("../../src/components/RecentlyDeletedMenu");
+      const { TOUCH } = await import("../../src/constants/layout.js");
+      render(
+        <PhoneMenu
+          items={items}
+          restore={vi.fn()}
+          purge={vi.fn()}
+          onClose={vi.fn()}
+          onEscape={vi.fn()}
+          view={vi.fn()}
+          viewingId={null}
+        />,
+      );
+      const menu = screen.getByRole("dialog", { name: "Recently Deleted" });
+      expect(menu.style.left).toBe("16px");
+      expect(menu.style.right).toBe("16px");
+      expect(menu.style.bottom).toBe(`${window.innerHeight - 700 + 4}px`);
+      for (const option of screen.getAllByRole("option")) {
+        expect(option.style.height).toBe(`${TOUCH}px`);
+        const restore = option.querySelector("button") as HTMLElement;
+        expect(restore.parentElement?.style.visibility).toBe("visible");
+        expect(restore.style.height).toBe(`${TOUCH}px`);
+      }
+      expect(document.body.textContent).toContain("Tap a note to view it.");
+    } finally {
+      row.remove();
+      vi.doUnmock("../../src/utils/platform");
+      vi.resetModules();
+    }
+  });
+});

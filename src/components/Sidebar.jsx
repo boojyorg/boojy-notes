@@ -1317,8 +1317,9 @@ const Sidebar = memo(function Sidebar({
             overflow: "auto",
             display: "flex",
             flexDirection: "column",
-            // On the phone the last row scrolls clear of Android's gesture bar.
-            padding: isPhone ? `0 0 calc(2px + ${NAV_BAR_H})` : "0 0 2px",
+            // On the phone the last row scrolls clear of Android's gesture
+            // bar, unless Recently Deleted stands below it and keeps it clear.
+            padding: isPhone && !recentlyDeleted ? `0 0 calc(2px + ${NAV_BAR_H})` : "0 0 2px",
           }}
         >
           {/* The vault header: where you are, and everything that makes
@@ -1376,7 +1377,7 @@ const Sidebar = memo(function Sidebar({
           style={{
             // On the phone a quiet last row, not a footer (it competed with the tree).
             borderTop: isPhone ? undefined : `1px solid ${BG.divider}`,
-            padding: isPhone ? "4px 0 8px" : "6px 0",
+            padding: isPhone ? `4px 0 calc(8px + ${NAV_BAR_H})` : "6px 0",
             flexShrink: 0,
           }}
         >

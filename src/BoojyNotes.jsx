@@ -63,8 +63,9 @@ import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
 import { wikilinkStatus } from "./utils/wikilinkTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isPhone, isWeb } from "./utils/platform";
-import { STATUS_BAR_H } from "./utils/uiScale";
+import { NAV_BAR_H, STATUS_BAR_H } from "./utils/uiScale";
 import { usePhoneScreens } from "./phone/usePhoneScreens";
+import { useDeletedReturn } from "./phone/useDeletedReturn";
 import PhoneKeyBar from "./components/PhoneKeyBar";
 import { SLASH_COMMANDS } from "./constants/data";
 import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
@@ -256,6 +257,7 @@ export default function BoojyNotes() {
     downloadOffloaded,
     rereadNote,
     folderOps,
+    takeNoteFromDisk,
   } = useFileSystem(noteData, setCustomFolders, syncGeneration, showToast, {
     unflushedNotes,
     latestNoteDataRef: noteDataRef,
@@ -292,7 +294,7 @@ export default function BoojyNotes() {
   const [binOpen, setBinOpen] = useState(false);
   const recentlyDeleted = useRecentlyDeleted({
     notesDir,
-    applyExternalNote,
+    takeNoteFromDisk,
     markNewRows,
     requestConfirm,
     listOpen: binOpen,
@@ -301,15 +303,37 @@ export default function BoojyNotes() {
   // Another note opened (or a new one) ends the look at a deleted one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the open note is the trigger
   useEffect(() => closeDeletedPreview(), [activeNote, closeDeletedPreview]);
+  const deletedReturn = useDeletedReturn({
+    previewing: !!deletedPreview,
+    homeShowing: sidebarVisible,
+    activeNote,
+    showHome: revealSidebar,
+    showNote: hideSidebar,
+    setListOpen: setBinOpen,
+    closePreview: closeDeletedPreview,
+  });
   // Restored from its own preview: opened, since it was being looked at.
   const restoreDeleted = useCallback(
     async (id) => {
       const viewing = deletedPreview?.item.id === id;
-      if (!(await recentlyDeleted.restore(id)) || !viewing) return;
+      const undo = viewing ? deletedReturn.restoring() : () => {};
+      if (!(await recentlyDeleted.restore(id))) {
+        undo();
+        return;
+      }
+      if (!viewing) return;
       setBinOpen(false);
       setActiveNote(id);
     },
-    [deletedPreview, recentlyDeleted.restore, setActiveNote],
+    [deletedPreview, deletedReturn.restoring, recentlyDeleted.restore, setActiveNote],
+  );
+  const viewDeleted = useCallback(
+    (item) => {
+      versionHistory.close();
+      deletedReturn.chose();
+      recentlyDeleted.view(item);
+    },
+    [versionHistory.close, deletedReturn.chose, recentlyDeleted.view],
   );
   // The bin's menu stands beside its row: with the sidebar gone, it goes too.
   useEffect(() => {
@@ -322,6 +346,9 @@ export default function BoojyNotes() {
       setTimeout(() => setBinOpen(true), PANEL_MS);
     }
   }, [sidebarVisible, revealSidebar]);
+  // What floats at the foot of the editor (toasts, the scale chip) starts
+  // past the sidebar; the phone's Home is the whole screen, never beside it.
+  const besideSidebar = !isPhone && sidebarVisible ? sidebarWidth : 0;
   const pastShown = versionHistory.state.selected
     ? versionHistory.state.versions.find((v) => v.id === versionHistory.state.selected)
     : null;
@@ -1762,10 +1789,7 @@ export default function BoojyNotes() {
             setBinOpen(false);
             closeDeletedPreview();
           }}
-          view={(item) => {
-            versionHistory.close();
-            recentlyDeleted.view(item);
-          }}
+          view={viewDeleted}
           viewingId={deletedPreview?.item.id ?? null}
         />
       )}
@@ -1888,7 +1912,7 @@ export default function BoojyNotes() {
         // open: two readouts of one number, one of them floating over the app.
         hint={settingsOpen ? null : scaleHint}
         onHide={hideScaleHint}
-        left={24 + (sidebarVisible ? sidebarWidth : 0)}
+        left={24 + besideSidebar}
       />
 
       {toasts.length > 0 && (
@@ -1896,14 +1920,16 @@ export default function BoojyNotes() {
           className="panel-motion"
           style={{
             position: "fixed",
-            bottom: 24,
+            bottom: isPhone ? `calc(24px + ${NAV_BAR_H})` : 24,
             // At the foot of the editor, centred on it as the path and the note
             // are, never on the window: the sidebar is the one surface whose
             // rows a toast could hide, and the row a deletion just took away
             // is the worst thing to cover. It travels with the panel on the
             // panel's own clock. The band spans the pane; only the toasts
-            // take the pointer, and none is wider than the pane.
-            left: 24 + (sidebarVisible ? sidebarWidth : 0),
+            // take the pointer, and none is wider than the pane. The phone
+            // shows one screen at a time: the band spans it, above the
+            // gesture bar.
+            left: 24 + besideSidebar,
             right: 24,
             transition: panelTransition("left"),
             display: "flex",

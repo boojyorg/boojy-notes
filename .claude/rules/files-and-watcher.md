@@ -1,17 +1,18 @@
 # Files, the watcher and persistence
 
-Rule + one reason + the proving spec. `AGENTS.md` gotcha 4 is the summary. History is in git.
+Rule + one reason + the proving spec. History is in git.
 
 ## Delete follows the platform
 
 - Electron sends `.md` files to the OS Trash; **Recently Deleted is the recovery surface**: the
   note's last text and history stay in the store 30 days (not in the vault), listed
   by where it was, shown read-only on a click; restored where it was (folder
-  remade, `-2` on a clash, same id), or deleted for good after asking. `recently-deleted.spec.ts`.
-  A folder's directory goes only once just OS cruft is left; non-note files are never
-  touched.
-- Desktop confirms only several files; one note goes at once, its toast with
-  Undo.
+  remade, `-2` on a clash, same id, never written back), or deleted for good after asking.
+  `recently-deleted.spec.ts`. A folder's directory goes only once just OS cruft is left;
+  non-note files are never touched.
+- **The phone's bin**: `deleted/<when>/<path>`, ids in `state/deleted.json` (sync's deletes
+  too); each step ordered so a crash leaves the note in one place. `recentlyDeleted.test.ts`.
+- Desktop confirms only several files; one note goes at once, its toast with Undo.
 
 ## The watcher drops only an event it can trace to the app's own operation
 
@@ -66,9 +67,9 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   a new last segment, keeps a moved folder's disk name, never escapes the vault
   (`resolveVaultDir`), answers with the final path. No input sanitises a folder name.
 - Rename and move are one `renameSync`, after flushing edits under it; not undoable. Delete waits for the Trash flush. A folder outlives its notes.
-- Duplicate folder: one directory copy (`Name (copy)`), adopted from disk, revealed, no toast.
-- **A missing chosen vault is never recreated**; writes refuse with the ordinary toast.
-- **Storage locations** (`electron/vaults.ts`, code says vault): config's `vaults`; `add-vault`
+- Duplicate folder: one directory copy (`Name (copy)`), adopted from disk.
+- **A missing chosen vault is never recreated**; writes refuse.
+- **Storage locations** (`electron/vaults.ts`): config's `vaults`; `add-vault`
   adds without switching; `open-vault` takes only a listed, present path. Remove never touches
   the folder; **Rename is a label (`vaultLabels`), never the folder's name**: other apps may
   point at it. A switch flushes, empties, reloads.
@@ -96,7 +97,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   through. `file-mode.spec.ts`.
 - **A rename moves the file first**, then the index, then the text: one file at every instant,
   its id kept through a crash. **Unchanged text is not rewritten**: a sync client takes the
-  swapped-in file for a new one (Dropbox gave it a new id). A leftover `.~Name.md.tmp` goes if superseded, else becomes a
+  swapped-in file for a new one. A leftover `.~Name.md.tmp` goes if superseded, else becomes a
   `(recovered <date>)` note. `atomicWrites.test.js`, `leftoverTemps.test.ts`.
 
 ## Attachments
@@ -109,11 +110,10 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
 
 - **A version is the file's text, taken where it is written or read** (`electron/history.ts`,
   fed by `write-note` and `parseNoteFile`), never the editor's state: a restore can only bring
-  back what the file was. Kept outside the vault (`userData/history/`): gzipped texts named by
-  hash, an append-only log per note id.
-- **What makes one**: a session's end (the note left, the window closed, a pause; one
-  soon after replaces the last), a note's text before its first edit, and before a large delete, an outside change, Replace All or a restore; `⌘S` makes a save
-  point (`useSavePoint`). Nothing unchanged is kept twice.
+  back what the file was. Kept outside the vault (`userData/history/`).
+- **What makes one**: a session's end (leaving it, closing, a pause; one soon after replaces
+  the last), a note's text before its first edit, and before a large delete, an outside change,
+  Replace All or a restore; `⌘S` makes a save point. Nothing unchanged is kept twice.
 - **Save points are kept for good; Autosaves over a month thin to a day's last.** Naming an
   Autosave makes it a save point. History off keeps nothing new; off with Delete removes the texts at once.
 - **The list is the ··· menu in place** (`VersionHistoryList`). A chosen version shows read-only
