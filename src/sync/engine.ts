@@ -146,7 +146,10 @@ class Pass {
     this.result.log.push(line);
   }
 
-  /** The phone's files, hashed. Two names that differ only in case cannot both sync. */
+  /**
+   * The phone's files, hashed. Two names that differ only in case cannot both
+   * sync: their key is skipped, so no step reads it as missing (a rename) either.
+   */
   private async scan() {
     this.files.clear();
     this.folders.clear();
@@ -176,7 +179,7 @@ class Pass {
    */
   private renamedHere(synced: Synced): LocalFile | null {
     const missing = Object.entries(this.record.synced).filter(
-      ([key, s]) => s.hash === synced.hash && !this.files.has(key),
+      ([key, s]) => s.hash === synced.hash && !this.files.has(key) && !this.skip.has(key),
     );
     if (missing.length !== 1) return null;
     const twins = [...this.files.entries()].filter(
@@ -193,7 +196,7 @@ class Pass {
       const moved = byId.get(synced.id);
       const target = moved && keyOf(moved.path);
       if (!moved || !target || target === key || this.record.synced[target]) continue;
-      if (this.files.has(target)) continue;
+      if (this.files.has(target) || this.skip.has(key) || this.skip.has(target)) continue;
       // Renamed on the phone too: Dropbox's name wins, the contents are the same.
       const here = this.files.get(key) ?? this.renamedHere(synced);
       if (here) {
@@ -211,7 +214,7 @@ class Pass {
   /** A note renamed on the phone is moved in Dropbox, so the Mac sees a rename, not a new note. */
   private async sendLocalRenames() {
     for (const [key, synced] of Object.entries(this.record.synced)) {
-      if (this.files.has(key)) continue;
+      if (this.files.has(key) || this.skip.has(key)) continue;
       const there = this.record.remote[key];
       if (!there || there.id !== synced.id) continue;
       const here = this.renamedHere(synced);

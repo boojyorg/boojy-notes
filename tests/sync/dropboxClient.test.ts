@@ -198,6 +198,14 @@ describe("createDropboxRemote", () => {
     expect(sent[0].body).toEqual({ cursor: "C1", timeout: 30 });
   });
 
+  it("finds whether any of some ids names a file here", async () => {
+    const { remote, sent } = remoteWith(error(409, "path/not_found/"), json(fileMeta("A.md")));
+    expect(await remote.holdsAnyOf(["id:gone", "id:abc"])).toBe(true);
+    expect(sent.map((s) => s.body)).toEqual([{ path: "id:gone" }, { path: "id:abc" }]);
+    const none = remoteWith(error(409, "path/not_found/"));
+    expect(await none.remote.holdsAnyOf(["id:gone"])).toBe(false);
+  });
+
   it("names the signed-in account", async () => {
     const { remote, sent } = remoteWith(json({ account_id: "dbid:A" }));
     expect(await remote.accountId()).toBe("dbid:A");

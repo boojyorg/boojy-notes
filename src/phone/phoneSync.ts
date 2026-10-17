@@ -8,6 +8,7 @@ import {
   refreshingToken,
 } from "../sync/dropboxClient";
 import { syncPass } from "../sync/engine";
+import { loadRecord } from "../sync/syncRecord";
 import { createSyncRunner } from "../sync/syncRunner";
 import { createSyncStatus, type FailureMeaning } from "../sync/syncStatus";
 import type { LocalStore } from "../sync/types";
@@ -60,7 +61,10 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
   const status = createSyncStatus();
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
-  let request: () => void = () => {};
+  /** Asks for a pass; one the person asked for (`byHand`) needn't wait out Dropbox. */
+  let request: (byHand?: boolean) => void = () => {};
+  /** Dropbox asked for no request before this (Retry-After), ms. */
+  let notBefore = 0;
   let token: () => Promise<string> = () => Promise.reject(new Error("not signed in"));
 
   const readSecrets = async (): Promise<Secrets | null> => decode(await files.read(SECRETS));
@@ -166,11 +170,21 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
         return result;
       } catch (error) {
         log("pass failed:", message(error));
-        retryIn(retryDelay(status.failed(error)));
+        const meaning = status.failed(error);
+        if ("offline" in meaning && meaning.retryAfterMs !== null) {
+          notBefore = Date.now() + meaning.retryAfterMs;
+        }
+        retryIn(retryDelay(meaning));
         throw error;
       }
     });
-    request = () => {
+    request = (byHand = false) => {
+      // A save, a return or a reconnect waits out Dropbox's wait: the retry
+      // set for its end runs the pass.
+      if (!byHand && Date.now() < notBefore) {
+        retryIn(notBefore - Date.now());
+        return;
+      }
       clearTimeout(retry);
       runner
         .request()
@@ -233,6 +247,22 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
     }
   }
 
+  /**
+   * Whether a new sign-in is the account these notes sync with: the kept
+   * sign-in's account, or, for one kept before accounts were, an account that
+   * holds a file the record synced (Dropbox ids are one account's own). A
+   * record with nothing synced is bound to no account yet.
+   */
+  async function sameAccount(kept: Secrets | null, fresh: Secrets) {
+    const remote = createDropboxRemote({
+      root: `/${SYNC_FOLDER}`,
+      token: refreshingToken({ clientId: APP_KEY, refreshToken: fresh.refreshToken }),
+    });
+    if (kept?.accountId) return (fresh.accountId ?? (await remote.accountId())) === kept.accountId;
+    const ids = Object.values((await loadRecord(local)).synced).map((s) => s.id);
+    return ids.length === 0 || remote.holdsAnyOf(ids.slice(0, 10));
+  }
+
   return {
     status,
     signedIn: async () => !!(await readSecrets())?.refreshToken,
@@ -248,17 +278,16 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
      */
     async signInAgain() {
       const fresh = await signIn();
-      const kept = await readSecrets();
-      if (kept?.accountId && fresh.accountId && fresh.accountId !== kept.accountId) {
+      if (!(await sameAccount(await readSecrets(), fresh))) {
         status.refused({ kind: "other-account" });
         return;
       }
       await files.write(SECRETS, encode(fresh));
       takeSecrets(fresh);
-      request();
+      request(true);
     },
     /** Try again, from the sync menu. */
-    syncNow: () => request(),
+    syncNow: () => request(true),
     /** A save in the editor asks for a pass a moment later. */
     localChanged() {
       status.changed();

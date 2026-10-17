@@ -34,8 +34,10 @@ vi.mock("../../src/sync/dropboxClient", async (actual) => ({
       longpoll: () => new Promise(() => {}),
       accountId: async () => {
         if (!dropboxReachable) throw new TypeError("Failed to fetch");
-        return "dbid:A";
+        return (await opts.token()) === "access-for-theirs" ? "dbid:B" : "dbid:A";
       },
+      // Account A's files are found only by A's sign-ins.
+      holdsAnyOf: async () => (await opts.token()) !== "access-for-theirs",
     };
   },
   refreshingToken:
@@ -51,7 +53,7 @@ const passes = vi.fn<() => Promise<PassResult>>();
 const tokensUsed: string[] = [];
 vi.mock("../../src/sync/engine", () => ({
   syncPass: async () => {
-    tokensUsed.push(await remotes[remotes.length - 1].token());
+    tokensUsed.push(await remotes[0].token()); // the worker's, made first
     return passes();
   },
 }));
@@ -89,10 +91,24 @@ function gate() {
   };
 }
 
-async function started(secrets: object = { refreshToken: "old", accountId: "dbid:A" }) {
+/** A record that has synced one note, whose Dropbox id is account A's. */
+const SYNCED_ONE = JSON.stringify({
+  version: 1,
+  cursor: "C1",
+  remote: {},
+  remoteFolders: {},
+  synced: { "a.md": { path: "A.md", id: "id:1", rev: "r1", hash: "h" } },
+  syncedFolders: {},
+  plan: null,
+});
+
+async function started(
+  secrets: object = { refreshToken: "old", accountId: "dbid:A" },
+  record: string | null = SYNCED_ONE,
+) {
   const files = memoryFiles();
   await files.write("state/dropbox.json", encode(secrets));
-  const local = { loadRecord: async () => null } as never;
+  const local = { loadRecord: async () => record } as never;
   const sync = createPhoneSync(files, local);
   await sync.start();
   return { files, sync };
@@ -105,6 +121,13 @@ function dropboxAnswers(files: ReturnType<typeof memoryFiles>) {
     setTimeout(() => fire("appUrlOpen", { url: `boojynotes://oauth?code=c&state=${state}` }), 0);
   });
 }
+
+const windowListeners: [string, EventListenerOrEventListenerObject][] = [];
+const addWindowListener = window.addEventListener.bind(window);
+window.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject) => {
+  windowListeners.push([type, listener]);
+  addWindowListener(type, listener);
+}) as typeof window.addEventListener;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -119,6 +142,10 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+  // An earlier test's worker must not answer a later test's `online`.
+  for (const [type, listener] of windowListeners.splice(0)) {
+    window.removeEventListener(type, listener);
+  }
 });
 
 describe("the phone's sync worker", () => {
@@ -180,6 +207,29 @@ describe("the phone's sync worker", () => {
     expect(sync.status.status().state).toBe("synced");
   });
 
+  it("holds saves, returns and reconnects to Dropbox's wait; a tap is the person's", async () => {
+    passes.mockRejectedValueOnce(new DropboxHttpError(429, "too_many_requests/", 30));
+    passes.mockResolvedValue(done());
+    const { sync } = await started();
+    await vi.advanceTimersByTimeAsync(0);
+    sync.localChanged();
+    await vi.advanceTimersByTimeAsync(1500);
+    fire("appStateChange", { isActive: true });
+    window.dispatchEvent(new Event("online"));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(passes).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(passes).toHaveBeenCalledTimes(2);
+
+    passes.mockRejectedValueOnce(new DropboxHttpError(429, "too_many_requests/", 30));
+    sync.syncNow();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(passes).toHaveBeenCalledTimes(3);
+    sync.syncNow();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(passes).toHaveBeenCalledTimes(4);
+  });
+
   it("learns the account of a sign-in kept before accounts were checked, once online", async () => {
     dropboxReachable = false;
     passes.mockRejectedValueOnce(new TypeError("Failed to fetch"));
@@ -197,9 +247,9 @@ describe("the phone's sync worker", () => {
 });
 
 describe("signing in again", () => {
-  async function signedOut() {
+  async function signedOut(...args: Parameters<typeof started>) {
     passes.mockRejectedValueOnce(new DropboxHttpError(400, '{"error": "invalid_grant"}', null));
-    const env = await started();
+    const env = await started(...args);
     await vi.advanceTimersByTimeAsync(0);
     expect(env.sync.status.status().problems).toEqual([{ kind: "signed-out" }]);
     return env;
@@ -223,8 +273,8 @@ describe("signing in again", () => {
     await vi.advanceTimersByTimeAsync(0);
     await attempt;
     await vi.advanceTimersByTimeAsync(0);
-    expect(remotes).toHaveLength(1);
     expect(appStateListeners()).toBe(1);
+    expect(windowListeners.filter(([type]) => type === "online")).toHaveLength(1);
     expect(tokensUsed).toEqual(["access-for-old", "access-for-new"]);
     expect(sync.status.status()).toMatchObject({ state: "synced", problems: [] });
     expect(decode(await files.read("state/dropbox.json"))).toEqual({
@@ -246,6 +296,38 @@ describe("signing in again", () => {
     expect(sync.status.status().problems).toEqual([{ kind: "other-account" }]);
     expect(decode(await files.read("state/dropbox.json")).refreshToken).toBe("old");
     expect(passes).toHaveBeenCalledTimes(1);
+  });
+
+  describe("a sign-in kept before accounts were checked", () => {
+    async function signInAs(refreshToken: string, accountId: string, record = SYNCED_ONE) {
+      const env = await signedOut({ refreshToken: "old" }, record);
+      passes.mockResolvedValue(done());
+      exchangeCode.mockResolvedValue({ refreshToken, accountId });
+      dropboxAnswers(env.files);
+      const attempt = env.sync.signInAgain();
+      await vi.advanceTimersByTimeAsync(0);
+      await attempt;
+      return env;
+    }
+
+    it("refuses an account that holds none of the notes it synced", async () => {
+      const { files, sync } = await signInAs("theirs", "dbid:B");
+      expect(sync.status.status().problems).toEqual([{ kind: "other-account" }]);
+      expect(decode(await files.read("state/dropbox.json"))).toEqual({ refreshToken: "old" });
+    });
+
+    it("takes the account that holds them, and keeps its id", async () => {
+      const { files } = await signInAs("new", "dbid:A");
+      expect(decode(await files.read("state/dropbox.json"))).toEqual({
+        refreshToken: "new",
+        accountId: "dbid:A",
+      });
+    });
+
+    it("takes any account while nothing has synced", async () => {
+      const { files } = await signInAs("theirs", "dbid:B", null as never);
+      expect(decode(await files.read("state/dropbox.json")).refreshToken).toBe("theirs");
+    });
   });
 
   it("treats coming back without an answer as cancelled, changing nothing", async () => {
