@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { getBlockFromNode } from "../utils/domHelpers";
+import { getBlockFromNode, hasOwnField } from "../utils/domHelpers";
 import { useSlashCommands } from "./editor/useSlashCommands";
 import { useInputHandler } from "./editor/useInputHandler";
 import { useKeyboardHandlers } from "./editor/useKeyboardHandlers";
@@ -113,16 +113,20 @@ export function useEditorHandlers({
     scopeOf,
     ownEdit,
   });
-  // Several lines a keyboard types at once are a paste (`typedPaste`); the
-  // rest of the typing goes to the one owner of edits across roots.
+  // Several lines a keyboard types at once into a text block are a paste
+  // (`typedPaste`). A block with its own field (a code block's textarea, a
+  // cell, a callout) keeps the input, as it keeps a real paste; the rest of
+  // the typing goes to the one owner of edits across roots.
   const handleBeforeInput = useCallback(
     (e) => {
       const paste = typedPaste(e);
-      if (!paste) return handleEditorBeforeInput(e);
+      const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
+      const at = paste && getBlockFromNode(e.target, editorRef.current, blocks, blockRefs.current);
+      if (!at || hasOwnField(blocks[at.blockIndex])) return handleEditorBeforeInput(e);
       e.preventDefault();
       handleEditorPaste(paste);
     },
-    [handleEditorBeforeInput, handleEditorPaste],
+    [handleEditorBeforeInput, handleEditorPaste, noteDataRef, editorRef, blockRefs],
   );
   const { handleEditorDragOver, handleEditorDragLeave, handleEditorDrop } = useDragDropHandlers({
     ...shared,

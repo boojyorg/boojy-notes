@@ -44,3 +44,25 @@ test("one word a keyboard types at once is still typing", async ({ page }) => {
   });
   expect(prevented).toBe(false);
 });
+
+test("several lines typed into a code block are the code block's", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Keyboard code");
+  await page.locator('[data-editor] [data-block-type="p"]').first().click();
+  await page.keyboard.type("``` ");
+  const code = page.locator("textarea.code-textarea");
+  await expect(code).toBeFocused();
+  const prevented = await code.evaluate((el) => {
+    const event = new InputEvent("beforeinput", {
+      inputType: "insertText",
+      data: "# not a heading\nline two",
+      bubbles: true,
+      cancelable: true,
+    });
+    el.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(prevented).toBe(false);
+  await expect(page.locator("h1[data-block-type]")).toHaveCount(0);
+});
