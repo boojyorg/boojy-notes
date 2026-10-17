@@ -764,7 +764,7 @@ const Sidebar = memo(function Sidebar({
           <RenameField
             name={n.title}
             label="Rename note"
-            style={renameFieldStyle(theme, 14)}
+            style={renameFieldStyle(theme, ROW_NAME_SIZE)}
             onRename={(value) => renameNote(nId, value)}
             onClose={() => setRenamingNote(null)}
             onKeyClose={(field) => refocusAfterRename(field)}
@@ -902,7 +902,7 @@ const Sidebar = memo(function Sidebar({
             <RenameField
               name={folder.name}
               label="Rename folder"
-              style={renameFieldStyle(theme, 14)}
+              style={renameFieldStyle(theme, ROW_NAME_SIZE)}
               onRename={(value) => renameFolder(folderPath, value.trim())}
               onClose={() => setRenamingFolder(null)}
               // The renamed folder's row is a new one, under its new path.

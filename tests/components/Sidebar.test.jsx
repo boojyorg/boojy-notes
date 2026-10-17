@@ -151,7 +151,8 @@ function renderSidebar(overrides = {}) {
     trashFile: overrides.trashFile,
   };
 
-  return render(<Sidebar {...props} />);
+  const Component = overrides.Component ?? Sidebar;
+  return render(<Component {...props} />);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -330,6 +331,35 @@ describe("Sidebar", () => {
     fireEvent.keyDown(input, { key: "Enter", target: { value: "New Name" } });
     expect(renameNote).toHaveBeenCalledWith("n1", "New Name");
     expect(setRenamingNote).toHaveBeenCalledWith(null);
+  });
+
+  // On the phone a row's name is a size up, and a rename showed it a size
+  // down: both rename fields hard-coded the desktop's 14px.
+  it("on the phone, renaming a note or a folder keeps the name's size", async () => {
+    vi.resetModules();
+    vi.doMock("../../src/utils/platform", async (actual) => ({
+      ...(await actual()),
+      isPhone: true,
+    }));
+    try {
+      const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
+      const { PHONE_LABEL_SIZE } = await import("../../src/constants/layout.js");
+      const noteData = buildNoteData([{ id: "n1", title: "Old Name" }]);
+      const folderTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
+      const { getByLabelText } = renderSidebar({
+        Component: PhoneSidebar,
+        folderTree,
+        noteData,
+        expanded: { F: true },
+        renamingNote: "n1",
+        renamingFolder: "F",
+      });
+      expect(getByLabelText("Rename note").style.fontSize).toBe(`${PHONE_LABEL_SIZE}px`);
+      expect(getByLabelText("Rename folder").style.fontSize).toBe(`${PHONE_LABEL_SIZE}px`);
+    } finally {
+      vi.doUnmock("../../src/utils/platform");
+      vi.resetModules();
+    }
   });
 
   // The rename field is invisible (2026-09-16): no border, fill or padding,
