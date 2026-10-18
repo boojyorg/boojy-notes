@@ -20,7 +20,7 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
 - **Undo and redo act on the open note only** (`takeNewestFor`); stacks shared, capped at 50.
   A typing group belongs to one note and a structural commit closes it. Undo never conjures a
   deleted note; a move is not undoable. `undo-scope.spec.ts`.
-- A draft ends in the ref at its first keystroke (no `promoteDraft`). The rebuild after an
+- A draft ends in the ref at its first keystroke. The rebuild after an
   outside delete keeps drafts and dirty notes from the ref. A vault switch flushes, empties,
   then switches. A version already written is not written again. `note-ownership.spec.ts`,
   `pending-edits-lifecycle.spec.ts`.
@@ -72,7 +72,6 @@ app's, made through state.**
   (else the note scrolls). `useFocusTrap`.
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
   completion (tags: prefix match). The `[[` picker is a dialog and takes focus.
-- **A key a menu consumed never reaches the editor** (`defaultPrevented`).
 - A completion from a native listener commits at once (`commitNoteData`). A triple-click
   selects the block or its field by the app's hand (`selectClickedBlock`: Chromium's collapses
   on the next row's marker). The click's caret rescue never takes focus back.
@@ -93,7 +92,7 @@ app's, made through state.**
 
 - **A caret at a link's edge rests on a U+200B inside a `caret-anchor` span**, placed only by
   `placeCaret`: Chromium put an edge caret inside the link, and typing rewrote the alias. Walkers drop U+200B only inside a `caret-anchor`; elsewhere it is
-  the file's byte. Never strip it by value; never place a caret bypassing `placeCaret`.
+  the file's byte. Never strip it by value.
 - **The browser's own caret is fixed at the keystroke** (`beforeinput` in `useEditorFocusUX`:
   `caretOutOfLinkEnd`/`Start`), never on `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
@@ -152,14 +151,17 @@ app's, made through state.**
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`); never focused, so the selection
   stays blue. `text-context-menu.spec.ts`.
 
-## Block drag: the gutter handle, never the text
+## Block drag: the gutter grip; on the phone, a hold
 
-- **Text never starts a block drag; a picture does.** One floating grip
+- **On the desktop text never starts a block drag; a picture does.** One floating grip
   (`BlockDragHandle`) in the left padding, on hover, desktop only, `aria-hidden`; a click
   selects the block. `⌘⇧↑/↓` is the keyboard path. None under two blocks.
 - A key hides the grip (a modifier alone doesn't: Shift-click) and clears `hoveringHandle`.
   **Blur cancels a press unconditionally** (Cmd-Tab left a phantom drag).
   `grip-reveal.spec.ts`.
+- **On the phone a still finger holds the block** (`useHoldToGrab`; the system's long-press
+  is refused): moved, it drags; let go, `BlockMenu` opens under it, Turn into in place. A
+  scroll or a double-tap stays the browser's; a held block drags at once. `hold-to-grab.spec.ts`.
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.
 - **The page is still mid-drag.** A reorder (drop, `⌘⇧↑/↓`) glides moved blocks from their old
@@ -277,9 +279,9 @@ same language writes nothing.
 ## Whole-block selection
 
 - **Any block can be selected whole** (`utils/blockRun.ts`: anchor and head, the run between):
-  the grip's click, a press in a block's gutter strip (`gutterSelect`; grip left plain), Escape
-  in the text, a divider, image or table's press, Escape from a cell; Shift-click on a grip or block extends. **A list item brings its nested items**
-  (`subtreeEnd`), selected or dragged. Text blocks wear the band; the caret rests, hidden.
+  the grip, the gutter strip (`gutterSelect`), Escape, a press on a divider, image or table;
+  Shift-click extends. **A list item brings its nested items** (`subtreeEnd`), selected or
+  dragged. Text blocks wear the band; the caret rests, hidden.
 - On a selection, Backspace/Delete remove it in one commit and ⌘C/⌘X copy it whole
   (`wholeBlocksCopy`, raised by hand: no range covers it); a letter deselects and types. A press
   off `data-selection-surface` deselects.

@@ -1,8 +1,17 @@
+import { useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { SLASH_COMMANDS } from "../constants/data";
 import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
 import { shortcutLabel } from "./Tooltip";
-import { ClipboardIcon, CopyIcon, SlashCommandIcon, TrashIcon, TurnIntoIcon } from "./Icons";
+import { cssZoom } from "../utils/domHelpers";
+import {
+  ChevronLeftIcon,
+  ClipboardIcon,
+  CopyIcon,
+  SlashCommandIcon,
+  TrashIcon,
+  TurnIntoIcon,
+} from "./Icons";
 
 /** The kinds Turn into offers, by `/` menu id, in the menu bar's order. */
 const TURN_INTO_IDS = ["text", "h1", "h2", "h3", "bullet", "numbered", "checkbox", "blockquote"];
@@ -21,6 +30,35 @@ export function kindLabel(type: string): string {
 
 /** Air between the grip and the menu. */
 const MENU_GAP = 4;
+/** The window margin positionMenu keeps, and the menu's own padding and hairline. */
+const FIT = 8 + 12;
+
+/**
+ * Where Turn into's kinds stand on a phone: where the actions stood, so the
+ * menu stays put while it changes its rows. Under the selection it keeps its
+ * top edge; over it, its bottom edge. A list taller than that room scrolls.
+ * Said to positionMenu as an anchor whose first answer is that edge.
+ */
+function kindsPlace(selection: MenuAnchor): { anchor: MenuAnchor; maxHeight: number } | null {
+  const el = document.querySelector<HTMLElement>(".block-menu");
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  const zoom = cssZoom(el);
+  if (r.top >= selection.bottom) {
+    const edge = r.top - MENU_GAP;
+    return {
+      anchor: { top: edge, bottom: edge, left: r.left, right: r.left },
+      maxHeight: (window.innerHeight - r.top - FIT) / zoom,
+    };
+  }
+  // Over the selection: no room under the anchor, so the menu takes the
+  // place above it, its foot at the actions' foot.
+  const edge = r.bottom + MENU_GAP;
+  return {
+    anchor: { top: edge, bottom: window.innerHeight, left: r.left, right: r.left },
+    maxHeight: (r.bottom - FIT) / zoom,
+  };
+}
 
 interface BlockMenuProps {
   /** Viewport rect of the grip (or where it stands): the menu opens beside it. */
@@ -32,6 +70,12 @@ interface BlockMenuProps {
   onCopy: () => void;
   onDelete: () => void;
   onClose: () => void;
+  /**
+   * The phone's: `anchor` is the selected blocks' rect, and the menu hangs
+   * under it (over it when there is no room), never on them; Turn into shows
+   * its kinds in place, a phone having no side to hang them beside.
+   */
+  under?: boolean;
 }
 
 /**
@@ -49,8 +93,12 @@ export default function BlockMenu({
   onCopy,
   onDelete,
   onClose,
+  under = false,
 }: BlockMenuProps) {
   const { theme } = useTheme();
+  // Turn into's kinds, shown in place on a phone: where they stand, and how
+  // tall they may grow (null while the actions show).
+  const [turning, setTurning] = useState<{ anchor: MenuAnchor; maxHeight: number } | null>(null);
   // Beside the grip, never over the block it acts on: to its left, top edges
   // level (Notion's place), or to its right when the margin has no room.
   // Said to positionMenu as a line at the grip's top whose right end is the
@@ -66,31 +114,43 @@ export default function BlockMenu({
   const same = types.every((t) => t === types[0]) ? types[0] : null;
   const heading = types.length === 1 ? kindLabel(types[0]) : `${types.length} blocks`;
 
+  const kinds: MenuItem[] = TURN_INTO.map((kind) => ({
+    label: kind.label,
+    icon: <SlashCommandIcon name={kind.icon} />,
+    role: "menuitemradio",
+    checked: kind.type === same,
+    action: () => onTurnInto(kind.type),
+  }));
   const items: MenuItem[] = [];
-  if (types.some((t) => TURNABLE.has(t))) {
-    items.push({
-      label: "Turn into",
-      icon: <TurnIntoIcon />,
-      submenu: TURN_INTO.map((kind) => ({
-        label: kind.label,
-        icon: <SlashCommandIcon name={kind.icon} />,
-        role: "menuitemradio",
-        checked: kind.type === same,
-        action: () => onTurnInto(kind.type),
-      })),
-    });
+  if (turning) {
+    items.push(
+      { label: "Turn into", icon: <ChevronLeftIcon />, action: () => setTurning(null) },
+      ...kinds.map((k, i) => (i === 0 ? { ...k, rule: true } : k)),
+    );
+  } else if (types.some((t) => TURNABLE.has(t))) {
+    items.push(
+      under
+        ? {
+            label: "Turn into",
+            icon: <TurnIntoIcon />,
+            drills: true,
+            action: () => setTurning(kindsPlace(anchor)),
+          }
+        : { label: "Turn into", icon: <TurnIntoIcon />, submenu: kinds },
+    );
   }
-  items.push(
-    // Copy before Duplicate, as in the note's ··· menu.
-    { label: "Copy", icon: <ClipboardIcon />, action: onCopy, hint: shortcutLabel({ key: "C" }) },
-    {
-      label: "Duplicate",
-      icon: <CopyIcon />,
-      action: onDuplicate,
-      hint: shortcutLabel({ key: "D" }),
-    },
-    { label: "Delete", icon: <TrashIcon />, action: onDelete, hint: "⌫", danger: true },
-  );
+  if (!turning)
+    items.push(
+      // Copy before Duplicate, as in the note's ··· menu.
+      { label: "Copy", icon: <ClipboardIcon />, action: onCopy, hint: shortcutLabel({ key: "C" }) },
+      {
+        label: "Duplicate",
+        icon: <CopyIcon />,
+        action: onDuplicate,
+        hint: shortcutLabel({ key: "D" }),
+      },
+      { label: "Delete", icon: <TrashIcon />, action: onDelete, hint: "⌫", danger: true },
+    );
 
   // The shortcuts the rows show, answered while the menu holds the keys.
   const onKey = (e: KeyboardEvent) => {
@@ -109,11 +169,15 @@ export default function BlockMenu({
 
   return (
     <Menu
+      // A new list is a new menu, measured and placed for its own height.
+      key={turning ? "kinds" : "actions"}
       items={items}
       label="Block options"
       idPrefix="block-menu-item"
-      anchor={side}
-      align="end"
+      anchor={turning?.anchor ?? (under ? anchor : side)}
+      align={under ? "start" : "end"}
+      gapY={under ? MENU_GAP : undefined}
+      maxHeight={turning?.maxHeight}
       onClose={onClose}
       minWidth={200}
       className="block-menu"

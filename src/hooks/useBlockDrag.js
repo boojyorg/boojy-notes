@@ -423,6 +423,35 @@ export function useBlockDrag({
     returnHome();
   };
 
+  /** The copy, the marker and the auto-scroll follow the pointer to (x, y). */
+  const followPointer = (x, y) => {
+    const bd = blockDrag.current;
+    if (!bd.active) return;
+    if (bd.cloneEl) bd.cloneEl.style.top = `${(y - bd.offsetY) / (bd.zoom || 1)}px`;
+    if (bd._updatePointer) bd._updatePointer(y, x);
+    updateBlockDropTarget(y, x);
+  };
+
+  /**
+   * The phone's hold (useHoldToGrab) lifts `blockId` at the finger: the drag
+   * starts at once, the finger having already said so, and its moves and its
+   * lift come from the touch (`followPointer`, then `finalizeBlockDrag`). The
+   * keyboard goes down with the focus, so the whole screen is the drop's.
+   */
+  const startHoldDrag = (blockId, x, y) => {
+    const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
+    if (!blocks) return false;
+    const blockIndex = blocks.findIndex((b) => b.id === blockId);
+    if (blockIndex < reorderFloor(blocks)) return false;
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && editorRef.current?.contains(focused)) focused.blur();
+    const bd = blockDrag.current;
+    bd.startX = x;
+    bd.startY = y;
+    activateBlockDrag({ blockId, blockIndex }, y);
+    return bd.active;
+  };
+
   /**
    * Press on the gutter grip for `blockId`. The drag lifts on the first real
    * movement — no timer — and a press released without moving is a click
@@ -447,9 +476,7 @@ export function useBlockDrag({
         if (Math.hypot(dx, dy) > DRAG_THRESHOLD) activateBlockDrag(blockInfo, ev.clientY);
         return;
       }
-      if (bd.cloneEl) bd.cloneEl.style.top = `${(ev.clientY - bd.offsetY) / (bd.zoom || 1)}px`;
-      if (bd._updatePointer) bd._updatePointer(ev.clientY, ev.clientX);
-      updateBlockDropTarget(ev.clientY, ev.clientX);
+      followPointer(ev.clientX, ev.clientY);
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -468,5 +495,10 @@ export function useBlockDrag({
   // Deps deliberately not exhaustive: cleanupBlockDrag is stable (no deps), safe to omit
   useEffect(() => () => cleanupBlockDrag(), []);
 
-  return { blockDrag, startHandleDrag, cancelBlockDrag };
+  return {
+    blockDrag,
+    startHandleDrag,
+    cancelBlockDrag,
+    holdDrag: { start: startHoldDrag, move: followPointer, end: finalizeBlockDrag },
+  };
 }

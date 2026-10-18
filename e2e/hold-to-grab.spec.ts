@@ -1,0 +1,221 @@
+import { type CDPSession, expect, type Page, test } from "@playwright/test";
+
+// The phone's hold (useHoldToGrab), in the web build behind `?hold`: a finger
+// kept still on a block grabs it; moved, it drags the block; let go, it opens
+// the block's menu under it. A scroll and a double-tap stay the browser's.
+// Touches go through CDP, so the page sees real touch events.
+
+test.use({ hasTouch: true });
+
+const HOLD = 500;
+
+type TouchType = "touchStart" | "touchMove" | "touchEnd";
+
+const menu = (page: Page) => page.getByRole("menu", { name: "Block options" });
+const paragraphs = (page: Page) => page.locator('[data-editor] [data-block-type="p"]');
+/** The blocks wearing the selection band, by text. */
+const washed = (page: Page) =>
+  page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>("[data-editor] > [data-block-id]"))
+      .filter((el) => getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)")
+      .map((el) => el.innerText.trim()),
+  );
+
+async function threeParagraphs(page: Page) {
+  await page.goto("/?hold");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Hold");
+  await paragraphs(page).first().click();
+  await page.keyboard.type("One");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Two");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Three");
+  await expect(paragraphs(page)).toHaveText(["One", "Two", "Three"]);
+}
+
+function finger(cdp: CDPSession) {
+  const at = (type: TouchType, x: number, y: number) =>
+    cdp.send("Input.dispatchTouchEvent", { type, touchPoints: [{ x, y }] });
+  return {
+    down: (x: number, y: number) => at("touchStart", x, y),
+    move: (x: number, y: number) => at("touchMove", x, y),
+    up: () => cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }),
+  };
+}
+
+async function centre(page: Page, index: number) {
+  const b = (await paragraphs(page).nth(index).boundingBox())!;
+  return { x: b.x + 20, y: b.y + b.height / 2 };
+}
+
+test("a still finger, let go, selects the block and opens its menu under it", async ({ page }) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const p = await centre(page, 1);
+
+  await f.down(p.x, p.y);
+  await page.waitForTimeout(HOLD);
+  await f.up();
+
+  await expect.poll(() => washed(page)).toEqual(["Two"]);
+  await expect(menu(page)).toBeVisible();
+  const block = (await paragraphs(page).nth(1).boundingBox())!;
+  const box = (await menu(page).boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(block.y + block.height);
+});
+
+test("a held finger that moves drags the block, one commit on the drop", async ({ page }) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const from = await centre(page, 0);
+  const last = (await paragraphs(page).nth(2).boundingBox())!;
+  const to = last.y + last.height - 2;
+
+  await f.down(from.x, from.y);
+  await page.waitForTimeout(HOLD);
+  for (let i = 1; i <= 8; i++) await f.move(from.x, from.y + ((to - from.y) * i) / 8);
+  await f.up();
+
+  await expect(paragraphs(page)).toHaveText(["Two", "Three", "One"]);
+  await expect(menu(page)).toHaveCount(0);
+  await expect.poll(() => washed(page)).toEqual([]);
+
+  await page.keyboard.press("Meta+z");
+  await expect(paragraphs(page)).toHaveText(["One", "Two", "Three"]);
+});
+
+test("a finger that moves before the hold is a scroll, never a hold", async ({ page }) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const p = await centre(page, 1);
+
+  await f.down(p.x, p.y);
+  await f.move(p.x, p.y + 30);
+  await page.waitForTimeout(HOLD);
+  await f.up();
+
+  await expect(menu(page)).toHaveCount(0);
+  await expect.poll(() => washed(page)).toEqual([]);
+});
+
+test("the second press of a double-tap is the text's, never a hold", async ({ page }) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const p = await centre(page, 1);
+
+  await f.down(p.x, p.y);
+  await f.up();
+  await f.down(p.x, p.y);
+  await page.waitForTimeout(HOLD);
+  await f.up();
+
+  await expect(menu(page)).toHaveCount(0);
+  await expect.poll(() => washed(page)).toEqual([]);
+});
+
+test("a held block drags from the first move, and a hold through the open menu grabs", async ({
+  page,
+}) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const two = await centre(page, 1);
+
+  await f.down(two.x, two.y);
+  await page.waitForTimeout(HOLD);
+  await f.up();
+  await expect(menu(page)).toBeVisible();
+
+  // Already selected: no second wait.
+  const first = (await paragraphs(page).nth(0).boundingBox())!;
+  await f.down(two.x, two.y);
+  for (let i = 1; i <= 6; i++) await f.move(two.x, two.y + ((first.y + 2 - two.y) * i) / 6);
+  await f.up();
+  await expect(paragraphs(page)).toHaveText(["Two", "One", "Three"]);
+});
+
+test("Turn into shows its kinds in the same menu, and Back returns", async ({ page }) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const p = await centre(page, 1);
+
+  await f.down(p.x, p.y);
+  await page.waitForTimeout(HOLD);
+  await f.up();
+
+  await menu(page).getByRole("menuitem", { name: "Turn into" }).tap();
+  await expect(page.getByRole("menu", { name: "Turn into" })).toHaveCount(0);
+  await expect(menu(page).getByRole("menuitemradio", { name: "Text" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await menu(page).getByRole("menuitem", { name: "Turn into" }).tap();
+  await expect(menu(page).getByRole("menuitem", { name: "Copy" })).toBeVisible();
+
+  await menu(page).getByRole("menuitem", { name: "Turn into" }).tap();
+  await menu(page).getByRole("menuitemradio", { name: "Heading 1" }).tap();
+  await expect(page.locator('[data-editor] [data-block-type="h1"]')).toHaveText("Two");
+});
+
+test("a held list item drags with its nested items", async ({ page }) => {
+  await page.goto("/?hold");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Nested");
+  await paragraphs(page).first().click();
+  await page.keyboard.type("- Parent");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("Child");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("After");
+  const items = page.locator('[data-editor] [data-block-type="bullet"]');
+  await expect(items).toHaveCount(2);
+
+  const f = finger(await page.context().newCDPSession(page));
+  const parent = (await items.first().boundingBox())!;
+  const after = (await paragraphs(page).last().boundingBox())!;
+  const from = { x: parent.x + parent.width / 2, y: parent.y + parent.height / 2 };
+  const to = after.y + after.height - 2;
+  await f.down(from.x, from.y);
+  await page.waitForTimeout(HOLD);
+  for (let i = 1; i <= 8; i++) await f.move(from.x, from.y + ((to - from.y) * i) / 8);
+  await f.up();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Array.from(document.querySelectorAll<HTMLElement>("[data-editor] > [data-block-id]"))
+          .map((el) => el.innerText.trim())
+          .filter(Boolean),
+      ),
+    )
+    .toEqual(["After", "Parent", "Child"]);
+});
+
+test("a second finger mid-drag leaves the drag to the first", async ({ page }) => {
+  await threeParagraphs(page);
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type: TouchType, touchPoints: { x: number; y: number; id: number }[]) =>
+    cdp.send("Input.dispatchTouchEvent", { type, touchPoints });
+  const from = await centre(page, 0);
+  const last = (await paragraphs(page).nth(2).boundingBox())!;
+  const to = last.y + last.height - 2;
+  const at = (i: number) => ({ x: from.x, y: from.y + ((to - from.y) * i) / 8, id: 0 });
+  // Where Android hands the app an edge swipe made while a finger is down.
+  const other = { x: 2, y: from.y, id: 1 };
+
+  await touch("touchStart", [at(0)]);
+  await page.waitForTimeout(HOLD);
+  for (let i = 1; i <= 3; i++) await touch("touchMove", [at(i)]);
+  await touch("touchStart", [at(3), other]);
+  await touch("touchMove", [at(4), { ...other, x: 60 }]);
+  // A touchEnd names the fingers that lift.
+  await touch("touchEnd", [{ ...other, x: 60 }]);
+  for (let i = 5; i <= 8; i++) await touch("touchMove", [at(i)]);
+  await touch("touchEnd", []);
+
+  await expect(paragraphs(page)).toHaveText(["Two", "Three", "One"]);
+  await expect(page.locator(".block-drop-marker:visible")).toHaveCount(0);
+});

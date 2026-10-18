@@ -132,6 +132,7 @@ const contentIcon =
 // ── Disclosure ────────────────────────────────────────────────────────────
 export const ChevronDownIcon = contentIcon(LuChevronDown);
 export const ChevronRightIcon = contentIcon(LuChevronRight);
+export const ChevronLeftIcon = contentIcon(LuChevronLeft);
 
 // ── Tree items ────────────────────────────────────────────────────────────
 export const FolderIcon = ({ open = false, color = "currentColor", size: sz = ICON_INLINE }) => {

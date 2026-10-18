@@ -48,6 +48,8 @@ export interface MenuItem {
   action?: () => void;
   /** Rows hung beside this one, opened on hover, → or Enter; ← or Escape comes back. */
   submenu?: MenuItem[];
+  /** Its action shows further rows in this menu's place: drawn as a submenu's row. */
+  drills?: boolean;
 }
 
 /** Air between a menu and its submenu. */
@@ -340,7 +342,7 @@ export default function Menu({
                 {item.hint}
               </span>
             )}
-            {item.submenu && (
+            {(item.submenu || item.drills) && (
               <span aria-hidden="true" style={{ display: "flex", color: TEXT.muted }}>
                 <ChevronRightIcon />
               </span>
@@ -378,6 +380,7 @@ export default function Menu({
       onContextMenu={stop}
     >
       <div
+        data-menu-backdrop=""
         onMouseDown={close}
         onContextMenu={close}
         style={{
