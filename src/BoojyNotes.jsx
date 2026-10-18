@@ -764,7 +764,7 @@ export default function BoojyNotes() {
     });
   getLinkContextRef.current = getLinkContext;
 
-  const { blockDrag, startHandleDrag, cancelBlockDrag } = useBlockDrag({
+  const { blockDrag, startHandleDrag, cancelBlockDrag, holdDrag } = useBlockDrag({
     noteDataRef,
     activeNoteRef,
     commitNoteData,
@@ -1692,6 +1692,8 @@ export default function BoojyNotes() {
               ...blockOps,
               ...editorHandlers,
               startHandleDrag,
+              holdDrag,
+              cancelBlockDrag,
               commitTextChange,
               syncGeneration,
               detectActiveFormats,

@@ -15,7 +15,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
-import { isPhone } from "../utils/platform";
+import { isPhone, isWeb } from "../utils/platform";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
 import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
@@ -54,6 +54,7 @@ import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import { useSpellingMarks } from "../hooks/editor/useSpellingMarks";
+import { useHoldToGrab } from "../hooks/editor/useHoldToGrab";
 import FindBar from "./FindBar";
 import SourceView from "./SourceView";
 import { blocksToMarkdown } from "../utils/markdown";
@@ -69,6 +70,11 @@ import { LIST_TYPES } from "../utils/crossBlockEdit";
 import BlockMenu from "./BlockMenu";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { wholeBlocksCopy } from "../utils/clipboardCopy";
+
+// `?hold` turns the phone's hold on in the web build: the e2e suite's touch
+// tests and the iOS simulator's look at it.
+const HOLD_IN_WEB =
+  isWeb && typeof location !== "undefined" && new URLSearchParams(location.search).has("hold");
 
 /*
  * The note name is a FILE LABEL, not the document's heading.
@@ -215,6 +221,8 @@ const EditorArea = memo(
       handleEditorCut,
       handleEditorBeforeInput,
       startHandleDrag,
+      holdDrag,
+      cancelBlockDrag,
       handleEditorMouseDown,
       handleEditorMouseUp,
       handleEditorFocus,
@@ -520,6 +528,52 @@ const EditorArea = memo(
 
     // The grip's menu (BlockMenu): the viewport rect it hangs under, or null.
     const [blockMenu, setBlockMenu] = useState(null);
+
+    // The phone's hold (useHoldToGrab): a finger kept still on a block selects
+    // it; moved, it drags the block (useBlockDrag, from the finger); let go
+    // where it was, it opens the block's menu there. Through a ref: the drag's
+    // functions come from the frozen context and close over refs only.
+    const holdDragRef = useRef(holdDrag);
+    holdDragRef.current = holdDrag;
+    const heldIdsRef = useRef([]);
+    heldIdsRef.current = selectedRun
+      ? selectedIds(note?.content?.blocks || [], blockSelection)
+      : [];
+    useHoldToGrab({
+      editorRef,
+      enabled: isPhone || HOLD_IN_WEB,
+      mountKey: `${activeNote}:${hasNote}:${sourceView}`,
+      // A hold through the open menu's backdrop closes it.
+      onHold: (id) => {
+        setBlockMenu(null);
+        setSelectedBlockId(id);
+      },
+      // Under the held block and its nested items, never on them.
+      onRelease: (id) => {
+        const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
+        const i = blocks.findIndex((b) => b.id === id);
+        const rootOf = (b) => blockRefs.current[b?.id]?.closest?.("[data-block-id]");
+        const first = rootOf(blocks[i])?.getBoundingClientRect();
+        const last = rootOf(blocks[subtreeEnd(blocks, i)])?.getBoundingClientRect();
+        if (i < 0 || !first || !last) return;
+        setBlockMenu({
+          top: first.top,
+          bottom: last.bottom,
+          left: first.left,
+          right: first.left,
+          under: true,
+        });
+      },
+      onDragStart: (id, x, y) => holdDragRef.current?.start(id, x, y) ?? false,
+      onDragMove: (x, y) => holdDragRef.current?.move(x, y),
+      isHeld: (id) => heldIdsRef.current.includes(id),
+      onDragEnd: (cancelled) => {
+        if (cancelled) cancelBlockDrag?.();
+        else holdDragRef.current?.end();
+        // A drop leaves the block where it landed, not selected.
+        setSelectedBlockId(null);
+      },
+    });
     useEffect(() => {
       if (!selectedRun) setBlockMenu(null);
     }, [selectedRun]);
@@ -1400,6 +1454,7 @@ const EditorArea = memo(
                   {blockMenu && selectedRun && (
                     <BlockMenu
                       anchor={blockMenu}
+                      under={!!blockMenu.under}
                       types={note.content.blocks
                         .slice(selectedRun.from, selectedRun.to + 1)
                         .map((b) => b.type)}

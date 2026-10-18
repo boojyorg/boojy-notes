@@ -84,10 +84,22 @@ describe("useMouseHandlers caret rescue", () => {
     expect(document.activeElement).toBe(palette);
   });
 
-  it("focus resting on the body (nothing else took it) still gets the rescue", async () => {
+  it("a focus still in the editor a frame later gets the rescue", async () => {
     const { result } = renderHook(() => useMouseHandlers(deps));
+    editor.focus();
     result.current.handleEditorFocus();
     await nextFrame();
     expect(placeCaret).toHaveBeenCalledWith(block, 0);
+  });
+
+  it("a focus taken back before the frame gets none: no caret, no scroll to the top", async () => {
+    const { result } = renderHook(() => useMouseHandlers(deps));
+    editor.focus();
+    result.current.handleEditorFocus();
+    // The phone's hold, its keyboard down, blurs the note its long-press focused.
+    editor.blur();
+    await nextFrame();
+    expect(placeCaret).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(document.body);
   });
 });
