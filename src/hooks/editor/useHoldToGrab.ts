@@ -320,6 +320,11 @@ export function useHoldToGrab({
       }
     };
 
+    // The browser's own drag of selected words: a phone draws no copy of
+    // them, so a held finger's wobble would move them unseen. Cut and Paste
+    // move text here; the selection's handles are touches, never a drag.
+    const onDragStart = (e: DragEvent) => e.preventDefault();
+
     // iOS's long-press callout over the editor.
     area.style.setProperty("-webkit-touch-callout", "none");
     document.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -335,7 +340,9 @@ export function useHoldToGrab({
     // The app leaving the screen, or the editor rebuilt mid-touch (the
     // Markdown view): the touch's lift would never be heard.
     window.addEventListener("blur", abort);
+    area.addEventListener("dragstart", onDragStart, true);
     return () => {
+      area.removeEventListener("dragstart", onDragStart, true);
       abort();
       window.removeEventListener("blur", abort);
       window.removeEventListener("resize", onResize);

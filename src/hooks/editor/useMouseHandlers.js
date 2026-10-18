@@ -102,7 +102,9 @@ export function useMouseHandlers({
     const currentNote = activeNoteRef.current;
     if (mouseIsDown.current) return;
     requestAnimationFrame(() => {
-      if (focusLeftEditor()) return;
+      // A focus already taken back (the phone's hold, its keyboard down) has
+      // no caret to rescue: placing one would scroll the note to its top.
+      if (!editorRef.current?.contains(document.activeElement)) return;
       const sel = window.getSelection();
       if (sel.rangeCount) {
         const info = getBlock(sel.anchorNode);

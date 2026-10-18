@@ -74,7 +74,7 @@ app's, made through state.**
   completion (tags: prefix match). The `[[` picker is a dialog and takes focus.
 - A completion from a native listener commits at once (`commitNoteData`). A triple-click
   selects the block or its field by the app's hand (`selectClickedBlock`: Chromium's collapses
-  on the next row's marker). The click's caret rescue never takes focus back.
+  on the next row's marker). A caret rescue never takes focus back.
 - ArrowUp with nothing above reaches the note's name (`focusTitleEnd`), ArrowDown from it comes
   back. Shift+Arrow is always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
 - **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), landing as arrows do, on screen.
@@ -159,9 +159,9 @@ app's, made through state.**
 - A key hides the grip (a modifier alone doesn't: Shift-click) and clears `hoveringHandle`.
   **Blur cancels a press unconditionally** (Cmd-Tab left a phantom drag).
   `grip-reveal.spec.ts`.
-- **On the phone a still finger holds the block** (`useHoldToGrab`; the system's long-press
-  is refused): moved, it drags; let go, `BlockMenu` opens under it, Turn into in place. A
-  scroll, a double-tap or selected text stays the browser's. `hold-to-grab.spec.ts`.
+- **On the phone a still finger holds the block** (`useHoldToGrab`, not the system's
+  long-press): moved, it drags; let go, `BlockMenu` under it, Turn into in place. A scroll, a
+  double-tap or selected text is the browser's; text never drags (unseen). `hold-to-grab.spec.ts`.
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.
 - **The page is still mid-drag.** A reorder (drop, `⌘⇧↑/↓`) glides moved blocks from their old

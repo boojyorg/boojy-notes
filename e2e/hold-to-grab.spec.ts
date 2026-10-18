@@ -21,8 +21,8 @@ const washed = (page: Page) =>
       .map((el) => el.innerText.trim()),
   );
 
-async function threeParagraphs(page: Page) {
-  await page.goto("/?hold");
+async function threeParagraphs(page: Page, url = "/?hold") {
+  await page.goto(url);
   await page.locator("[data-title]").first().click();
   await page.keyboard.type("Hold");
   await paragraphs(page).first().click();
@@ -320,4 +320,99 @@ test("a hold on a code block's selected text is the text's", async ({ page }) =>
   await expect
     .poll(() => code.evaluate((el: HTMLTextAreaElement) => [el.selectionStart, el.selectionEnd]))
     .toEqual([0, 3]);
+});
+
+/** Selects the second paragraph's word, "Two"; answers its rect. */
+async function selectTwo(page: Page) {
+  return (await page.evaluate(() => {
+    const p = document.querySelectorAll('[data-editor] [data-block-type="p"]')[1];
+    const r = document.createRange();
+    r.selectNodeContents(p.firstChild!);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(r);
+    return r.getBoundingClientRect().toJSON();
+  })) as DOMRect;
+}
+
+test("selected words held and moved stay put: no text drag, no block drag", async ({ page }) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const word = await selectTwo(page);
+  const three = (await paragraphs(page).nth(2).boundingBox())!;
+  const from = { x: word.x + word.width / 2, y: word.y + word.height / 2 };
+
+  await f.down(from.x, from.y);
+  await page.waitForTimeout(HOLD);
+  for (let i = 1; i <= 8; i++)
+    await f.move(from.x + 20 * (i / 8), from.y + (three.y + three.height / 2 - from.y) * (i / 8));
+  await f.up();
+
+  await expect(paragraphs(page)).toHaveText(["One", "Two", "Three"]);
+  await expect.poll(() => page.evaluate(() => getSelection()?.toString())).toBe("Two");
+  await expect(page.locator(".block-drop-marker:visible")).toHaveCount(0);
+  await expect(menu(page)).toHaveCount(0);
+});
+
+// The browser's own text drag cannot be driven headless (no drag starts, on
+// the desktop either), so the refusal is read where it acts: the dragstart
+// the browser fires from selected words. The Pixel shows the rest.
+const dragStartRefused = async (page: Page) => {
+  await selectTwo(page);
+  return page.evaluate(() => {
+    const p = document.querySelectorAll('[data-editor] [data-block-type="p"]')[1];
+    const e = new DragEvent("dragstart", { bubbles: true, cancelable: true });
+    p.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+};
+
+test("on the phone the browser's text drag is refused", async ({ page }) => {
+  await threeParagraphs(page);
+  expect(await dragStartRefused(page)).toBe(true);
+});
+
+test("on the desktop selected words still drag as text", async ({ page }) => {
+  await threeParagraphs(page, "/");
+  expect(await dragStartRefused(page)).toBe(false);
+});
+
+// Android's long-press focuses the note; the hold takes the focus back, the
+// keyboard being down. The editor's caret rescue, a frame after the focus,
+// put the caret in the first block and scrolled the note to its top.
+test("a focus the hold takes back places no caret and never scrolls the note", async ({ page }) => {
+  await page.goto("/?hold");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Long");
+  await paragraphs(page).first().click();
+  await page.keyboard.type("# Top");
+  await page.keyboard.press("Enter");
+  for (let i = 1; i <= 40; i++) {
+    await page.keyboard.type(`Line ${i}`);
+    await page.keyboard.press("Enter");
+  }
+  const scroller = page.locator(".editor-scroll");
+  // The keyboard down: nothing focused, no caret in the note (once the last
+  // Enter's caret has landed).
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    getSelection()?.removeAllRanges();
+  });
+  await scroller.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  const before = await scroller.evaluate((el) => el.scrollTop);
+  expect(before).toBeGreaterThan(200);
+
+  await page.evaluate(() => {
+    const editor = document.querySelector<HTMLElement>("[data-editor]")!;
+    editor.focus({ preventScroll: true });
+    editor.blur();
+    // Android's WebView drops the selection with the focus.
+    getSelection()?.removeAllRanges();
+  });
+  await page.waitForTimeout(200);
+
+  expect(await scroller.evaluate((el) => el.scrollTop)).toBe(before);
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
 });
