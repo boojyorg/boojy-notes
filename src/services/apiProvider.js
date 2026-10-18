@@ -1,4 +1,5 @@
-import { isElectron, isPhone } from "../utils/platform";
+import { onCommand } from "../phone/commands";
+import { isElectron, isPhone, keyBarInWeb } from "../utils/platform";
 
 function pickFileWeb(accept) {
   return new Promise((resolve) => {
@@ -57,5 +58,7 @@ export function getAPI() {
   // The phone's vault answers the note-file calls (src/phone/install.ts); the
   // web fallbacks cover pickers and pasted pictures.
   if (isPhone) return { ...webAPI, ...window.boojyPhoneAPI };
+  // The bar's commands, as the phone's API carries them.
+  if (keyBarInWeb) return { ...webAPI, onMenuCommand: onCommand };
   return webAPI;
 }

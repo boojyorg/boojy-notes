@@ -6,6 +6,10 @@ export const isPhone =
 // `isNative` means a file-backed platform (local .md storage via the native API).
 export const isNative = isElectron || isPhone;
 export const isWeb = !isNative;
+// `?keybar` shows the phone's bar above the keyboard in the web build, with
+// no keyboard to wait for: the e2e suite drives it there.
+export const keyBarInWeb =
+  isWeb && typeof location !== "undefined" && new URLSearchParams(location.search).has("keybar");
 // macOS Electron shows the native traffic lights over our chrome
 // (titleBarStyle: hiddenInset), so mac-only layout clearances key off this.
 export const isElectronMac =

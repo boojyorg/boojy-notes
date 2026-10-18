@@ -1,26 +1,46 @@
 /** The phone's bar above the keyboard (PhoneKeyBar): its rules, kept pure. */
 
-export type BarMode = "blocks" | "format" | "heading";
+export type BarMode = "blocks" | "format" | "heading" | "list" | "more";
+
+const LIST_KINDS = new Set(["bullet", "numbered", "checkbox"]);
+
+/** Whether a block of this kind is a list item, whose row the bar shows by itself. */
+export const isListKind = (kind: string | null) => LIST_KINDS.has(kind ?? "");
 
 /**
- * Which row a change of selection leaves showing. A selection opens the text
+ * Which row a change of selection leaves open. A selection opens the text
  * styles; when it collapses they give way again, unless Aa opened them
  * (`held`), so B can be turned on before typing. The heading row is left to
- * its own ‹ and choices.
+ * its own ✕ and choices, and so is the list row opened by hand until the
+ * caret is in a list, where it is the list's own row (`shownRow`).
  */
-export function barModeAfterSelection(mode: BarMode, ranged: boolean, held: boolean): BarMode {
+export function barModeAfterSelection(
+  mode: BarMode,
+  ranged: boolean,
+  held: boolean,
+  inList: boolean,
+): BarMode {
   if (ranged) return "format";
   if (mode === "format" && !held) return "blocks";
+  if (mode === "list" && inList) return "blocks";
   return mode;
 }
 
-/** A list or task button on a block already of that kind turns it back into text. */
-export function kindCommand(
-  kind: "bullet" | "numbered" | "checkbox" | string,
-  current: string | null,
-) {
-  const command = kind === "checkbox" ? "todo" : kind;
-  return current === kind ? "body" : command;
+/**
+ * The row on screen: the one opened, else the list's while the caret is in a
+ * list item, unless its ✕ put it away (`dismissed`) until the caret leaves.
+ */
+export function shownRow(mode: BarMode, inList: boolean, dismissed: boolean): BarMode {
+  if (mode !== "blocks") return mode;
+  return inList && !dismissed ? "list" : "blocks";
+}
+
+/** The menu bar's command for a block kind, where its name is not the kind's. */
+const KIND_COMMANDS: Record<string, string> = { checkbox: "todo", blockquote: "quote" };
+
+/** A list, task or quote button on a block already of that kind turns it back into text. */
+export function kindCommand(kind: string, current: string | null) {
+  return current === kind ? "body" : (KIND_COMMANDS[kind] ?? kind);
 }
 
 /** A heading level, or text again when the line already has that level. */

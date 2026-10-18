@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import WindowStrip from "./components/WindowStrip";
 import { useWindowResizing } from "./hooks/useWindowResizing";
-import { selectedIds } from "./utils/blockRun";
+import { belowItem, selectedIds } from "./utils/blockRun";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
@@ -44,7 +44,7 @@ import { useVersionHistory } from "./hooks/useVersionHistory";
 import VersionHistoryList from "./components/VersionHistoryList";
 import { versionMoment, versionTime } from "./utils/versionTime";
 import UiScaleChip from "./components/UiScaleChip";
-import { useAppKeyboard } from "./hooks/useAppKeyboard";
+import { indentSpan, useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
@@ -63,7 +63,7 @@ import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
 import { wikilinkStatus } from "./utils/wikilinkTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
-import { hasWindowStrip, isElectron, isPhone, isWeb } from "./utils/platform";
+import { hasWindowStrip, isElectron, isPhone, isWeb, keyBarInWeb } from "./utils/platform";
 import { NAV_BAR_H, STATUS_BAR_H } from "./utils/uiScale";
 import { usePhoneScreens } from "./phone/usePhoneScreens";
 import { useDeletedReturn } from "./phone/useDeletedReturn";
@@ -978,9 +978,10 @@ export default function BoojyNotes() {
     },
   });
 
-  // The phone's bar above the keyboard: a table, or the slash menu, at the
-  // caret's block. Both are the slash menu's own, which acts on a block that
-  // holds nothing but its `/`, so a block with text gets a fresh one below it.
+  // The phone's bar above the keyboard: a table, a code block or a divider
+  // at the caret's block, as the slash menu makes them. An empty line becomes
+  // the block; under a line of text it goes after the line's list item and
+  // the items nested under it (`belowItem`). One commit, one undo, either way.
   const caretBlockIndex = () => {
     const sel = window.getSelection();
     const node = sel?.anchorNode;
@@ -989,71 +990,20 @@ export default function BoojyNotes() {
     const blocks = noteDataRef.current[activeNote]?.content?.blocks ?? [];
     return id ? blocks.findIndex((b) => b.id === id) : -1;
   };
-  const emptyLineHere = () => {
-    const index = caretBlockIndex();
-    if (index < 0) return -1;
-    const block = noteDataRef.current[activeNote].content.blocks[index];
-    if (block.type === "p" && !block.text) return index;
-    blockOps.insertBlockAfter(activeNote, index);
-    return index + 1;
-  };
-  const insertTableHere = () => {
-    const index = emptyLineHere();
-    if (index < 0) return;
-    const table = SLASH_COMMANDS.find((c) => c.id === "table");
-    editorHandlers.executeSlashCommand(activeNote, index, table);
-  };
-  // A `/` the bar typed is the bar's, not the writer's: if the menu closes
-  // without a choice, it goes again, with the line the bar made for it.
-  const barSlash = useRef(null);
-  const openSlashHere = () => {
+  const insertHere = (id) => {
     const index = caretBlockIndex();
     if (index < 0) return;
-    const block = noteDataRef.current[activeNote].content.blocks[index];
-    // Typed, as the key would be, so the menu opens and filters as it does.
-    const type = () => document.execCommand("insertText", false, "/");
-    if (block.type === "p" && !block.text) {
-      barSlash.current = { noteId: activeNote, blockId: block.id, made: false };
-      return type();
-    }
-    blockOps.insertBlockAfter(activeNote, index);
-    barSlash.current = { noteId: activeNote, blockId: focusBlockId.current, made: true };
-    setTimeout(type, 60);
+    const blocks = noteDataRef.current[activeNote].content.blocks;
+    const block = blocks[index];
+    const command = SLASH_COMMANDS.find((c) => c.id === id);
+    const empty = block.type === "p" && !block.text;
+    editorHandlers.executeSlashCommand(
+      activeNote,
+      index,
+      command,
+      empty ? {} : { at: belowItem(blocks, index) },
+    );
   };
-  const slashWasOpen = useRef(false);
-  useEffect(() => {
-    if (slashMenu) {
-      slashWasOpen.current = true;
-      return;
-    }
-    if (!slashWasOpen.current) return;
-    slashWasOpen.current = false;
-    const typed = barSlash.current;
-    barSlash.current = null;
-    if (!typed) return;
-    const blocks = noteDataRef.current[typed.noteId]?.content?.blocks ?? [];
-    const index = blocks.findIndex((b) => b.id === typed.blockId);
-    const el = blockRefs.current[typed.blockId];
-    // A choice replaced the line or emptied it; the writer's own text stays.
-    // The ref, not the DOM: a choice is in it at once, the paint a frame later.
-    if (index < 0 || !el || !blocks[index].text?.startsWith("/")) return;
-    if (typed.made && index > 0) {
-      blockOps.deleteBlock(typed.noteId, index);
-      const above = blocks[index - 1].id;
-      requestAnimationFrame(() => {
-        const prev = blockRefs.current[above];
-        if (prev) placeCaret(prev, caretLength(prev));
-      });
-      return;
-    }
-    // Taken back as typing is, so the read-back stays the editor's own.
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    document.execCommand("delete");
-  }, [slashMenu, noteDataRef, blockOps]);
 
   // ── Ghost note (draft) effects ────────────────────────────────────────
   useEffect(() => {
@@ -1390,6 +1340,8 @@ export default function BoojyNotes() {
     resetKey: notesDir,
   });
 
+  const blockSelectionIds = () =>
+    selectedIds(noteDataRef.current[activeNote]?.content?.blocks ?? [], blockSelectionRef.current);
   useAppKeyboard({
     activeNote,
     noteData,
@@ -1418,11 +1370,9 @@ export default function BoojyNotes() {
     setBlockKind,
     duplicateBlocks: () => blockActionsRef.current?.duplicate(),
     copyNoteText,
-    blockSelectionIds: () =>
-      selectedIds(
-        noteDataRef.current[activeNote]?.content?.blocks ?? [],
-        blockSelectionRef.current,
-      ),
+    blockSelectionIds,
+    updateBlockIndent: blockOps.updateBlockIndent,
+    indentBlockRange,
     updateTableRows: blockOps.updateTableRows,
     openFind: (mode) => openFindRef.current?.(mode),
     detectActiveFormats,
@@ -1742,8 +1692,19 @@ export default function BoojyNotes() {
               showToast={showToast}
             />
           </EditorProvider>
-          {isPhone && (
-            <PhoneKeyBar editorRef={editorRef} onTable={insertTableHere} onSlash={openSlashHere} />
+          {(isPhone || keyBarInWeb) && (
+            <PhoneKeyBar
+              editorRef={editorRef}
+              onInsert={insertHere}
+              canIndent={(delta) =>
+                !!indentSpan(
+                  noteDataRef.current[activeNote]?.content?.blocks ?? [],
+                  blockSelectionIds(),
+                  delta,
+                )
+              }
+              always={keyBarInWeb}
+            />
           )}
         </div>
       </div>

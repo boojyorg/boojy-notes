@@ -32,6 +32,19 @@ export function subtreeEnd(blocks: readonly Block[], i: number): number {
 }
 
 /**
+ * Where a block goes "under" block `i` without breaking a list apart: after
+ * the top-level item that holds `i`, with everything nested under it.
+ * Anywhere else, straight after `i`.
+ */
+export function belowItem(blocks: readonly Block[], i: number): number {
+  let top = i;
+  while (top > 0 && LIST_KINDS.has(blocks[top]?.type) && (blocks[top].indent || 0) > 0) top--;
+  // A nested item with no item above it to belong to: under itself.
+  if (!LIST_KINDS.has(blocks[top]?.type)) top = i;
+  return subtreeEnd(blocks, top) + 1;
+}
+
+/**
  * The indices a selection covers, `from` to `to`, children included; null when
  * either end has left the note. Never above the frontmatter, which is the
  * file's head and not a block to act on.

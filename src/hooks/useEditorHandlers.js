@@ -70,7 +70,7 @@ export function useEditorHandlers({
     ...shared,
     selectBlock,
   });
-  const { executeSlashCommand } = useSlashCommands({ ...shared, insertBlockAfter, onError });
+  const { executeSlashCommand } = useSlashCommands({ ...shared, onError });
   const { handleBlockInput, handleEditorInput } = useInputHandler({
     ...shared,
     slashMenuRef,

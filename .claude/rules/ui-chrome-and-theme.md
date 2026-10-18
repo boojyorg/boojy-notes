@@ -1,14 +1,13 @@
 # UI chrome, theme and icons
 
-Design intent and the constraints a change must not break. The code owns exact values; history
-is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
+Design intent and the constraints a change must not break. The code owns exact values.
+Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
 
 ## Theme and colour
 
 `src/constants/themes.js` is the only colour authority.
 
-- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. A fresh
-  install starts on System.
+- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`.
 - Neutral palettes; teal is the identity. `?tweak` (dev only) overrides live.
 - **Use surfaces by role**: `BG.editor` sheet, `BG.elevated` menus/modals, `BG.standard`
   sidebar, `BG.surface` content hover, `BG.hover` row/menu hover *and* selected, `BG.divider`
@@ -213,8 +212,9 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **No touch layout, no overlay sidebar** at any desktop width.
 - **The phone is Home (the sidebar, full width) or the note, never both**; else the desktop's
   rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits for a hover. The
-  keyboard bar sends menu-bar commands (`phone/commands.ts`). `tests/phone/`. **The top
-  clears `STATUS_BAR_H`** (a new WebView leaves it to the page).
+  keyboard bar sends menu-bar commands (`phone/commands.ts`); **a list item brings the list
+  row**, its ✕ holding until the caret leaves the list (`keyBar.ts`). **The top clears
+  `STATUS_BAR_H`** (a new WebView leaves it to the page).
 - **Sync's state follows Home's folder name** (`syncStatus.ts`); synced means all settled.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
   is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems**, centred under the

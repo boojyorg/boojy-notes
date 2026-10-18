@@ -175,6 +175,38 @@ describe("the application menu", () => {
     expect(deps.setBlockKind).toHaveBeenLastCalledWith("n1", ["b1", "b2"], "checkbox");
   });
 
+  it("moves the phone's ⇤ ⇥ as Tab moves them, and nothing where Tab would move nothing", () => {
+    const list = [
+      { id: "b1", type: "bullet", text: "one" },
+      { id: "b2", type: "bullet", text: "two" },
+      { id: "b3", type: "bullet", text: "three", indent: 1 },
+    ];
+    const deps = makeDeps({
+      noteData: { n1: { title: "A", content: { blocks: list } } },
+      updateBlockIndent: vi.fn(),
+      indentBlockRange: vi.fn(),
+    });
+    mountEditor();
+    const { rerender } = renderHook((d) => useAppKeyboard(d), { initialProps: deps });
+    // One item keeps its caret and takes its nested items (Tab's own call).
+    select("b2", "b2");
+    run("indent");
+    expect(deps.updateBlockIndent).toHaveBeenLastCalledWith("n1", 1, 1, true);
+    // The first item has nothing to nest under, and it is at the edge already.
+    select("b1", "b1");
+    run("indent");
+    run("outdent");
+    expect(deps.updateBlockIndent).toHaveBeenCalledTimes(1);
+    // A text range across items moves them as one.
+    select("b2", "b3");
+    run("outdent");
+    expect(deps.indentBlockRange).toHaveBeenLastCalledWith("n1", 1, 2, -1);
+    // Blocks selected whole come before the text selection.
+    rerender({ ...deps, blockSelectionIds: () => ["b3"] });
+    run("outdent");
+    expect(deps.updateBlockIndent).toHaveBeenLastCalledWith("n1", 2, -1, true);
+  });
+
   it("undoes the note in the editor, and a text field's own edit inside it", () => {
     const deps = makeDeps({ canUndo: true });
     mountEditor();

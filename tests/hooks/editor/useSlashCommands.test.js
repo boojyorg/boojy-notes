@@ -26,7 +26,6 @@ function setup(initialBlocks = [{ id: "block-1", type: "p", text: "/x" }]) {
   const focusCursorPos = { current: null };
   const element = document.createElement("div");
   element.textContent = "/x";
-  const insertBlockAfter = vi.fn();
   const onError = vi.fn();
 
   const { result } = renderHook(() =>
@@ -36,15 +35,14 @@ function setup(initialBlocks = [{ id: "block-1", type: "p", text: "/x" }]) {
       commitNoteData,
       focusBlockId,
       focusCursorPos,
-      insertBlockAfter,
       onError,
     }),
   );
 
-  const run = (command, index = 0) =>
-    act(() => result.current.executeSlashCommand("note-1", index, command));
+  const run = (command, index = 0, opts) =>
+    act(() => result.current.executeSlashCommand("note-1", index, command, opts));
   const blocks = () => noteDataRef.current["note-1"].content.blocks;
-  return { run, blocks, element, focusBlockId, focusCursorPos, insertBlockAfter, onError };
+  return { run, blocks, element, focusBlockId, focusCursorPos, commitNoteData, onError };
 }
 
 beforeEach(() => {
@@ -250,10 +248,42 @@ describe("useSlashCommands — plain conversions", () => {
     expect(t.blocks()).toEqual([{ id: "block-1", type: "checkbox", text: "", checked: false }]);
   });
 
-  it("spacer drops text and asks for a paragraph after it", async () => {
+  it("spacer drops text and puts a paragraph under it, in one commit", async () => {
     const t = setup();
     await t.run({ type: "spacer" });
-    expect(t.blocks()).toEqual([{ id: "block-1", type: "spacer" }]);
-    expect(t.insertBlockAfter).toHaveBeenCalledWith("note-1", 0, "p", "");
+    expectSpecialThenParagraph(t, { id: "block-1", type: "spacer" }, "new-1");
+    expect(t.commitNoteData).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useSlashCommands — inserted at a place (the phone bar's)", () => {
+  const LINE = { id: "block-1", type: "p", text: "Some words" };
+  const NEXT = { id: "block-2", type: "p", text: "Next" };
+
+  it("puts the block and a paragraph in at the place, the line untouched, in one commit", async () => {
+    const t = setup([LINE, NEXT]);
+    t.element.textContent = "Some words";
+    await t.run({ type: "code" }, 0, { at: 1 });
+    expect(t.blocks()).toEqual([
+      LINE,
+      { id: "new-1", type: "code", text: "", lang: "" },
+      PARA("new-2"),
+      NEXT,
+    ]);
+    expect(t.commitNoteData).toHaveBeenCalledTimes(1);
+    expect(t.element.textContent).toBe("Some words");
+    expect(t.focusBlockId.current).toBe("new-1");
+  });
+
+  it("does the same for a table and a divider", async () => {
+    const table = setup([LINE]);
+    await table.run({ type: "table" }, 0, { at: 1 });
+    expect(table.blocks().map((b) => b.type)).toEqual(["p", "table", "p"]);
+    expect(table.commitNoteData).toHaveBeenCalledTimes(1);
+    const divider = setup([LINE]);
+    await divider.run({ type: "spacer" }, 0, { at: 1 });
+    expect(divider.blocks().map((b) => b.type)).toEqual(["p", "spacer", "p"]);
+    expect(divider.commitNoteData).toHaveBeenCalledTimes(1);
+    expect(divider.focusBlockId.current).toBe(divider.blocks()[2].id);
   });
 });
