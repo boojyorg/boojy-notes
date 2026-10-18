@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  belowItem,
   indentRun,
   selectedIds,
   selectionRange,
@@ -14,6 +15,30 @@ const fm: Block = { id: "fm", type: "frontmatter", text: "title: x" } as Block;
 
 // a, then a list: b with c and d nested (d deeper), then e, then f.
 const note = [p("a"), li("b"), li("c", 1), li("d", 2), li("e"), p("f")];
+
+describe("belowItem", () => {
+  it("is straight after a block outside a list", () => {
+    expect(belowItem(note, 0)).toBe(1);
+    expect(belowItem(note, 5)).toBe(6);
+  });
+
+  it("is after a list item's nested items, so they stay its children", () => {
+    expect(belowItem(note, 1)).toBe(4);
+  });
+
+  it("is after the whole top-level item from a nested one, so nothing below it is orphaned", () => {
+    expect(belowItem(note, 2)).toBe(4);
+    expect(belowItem(note, 3)).toBe(4);
+  });
+
+  it("is straight after a top-level item with nothing nested", () => {
+    expect(belowItem(note, 4)).toBe(5);
+  });
+
+  it("is after a nested item that has no item above it to belong to", () => {
+    expect(belowItem([p("a"), li("b", 1), li("c", 2)], 1)).toBe(3);
+  });
+});
 
 describe("subtreeEnd", () => {
   it("takes a list item's nested items, however deep, and stops at its own depth", () => {

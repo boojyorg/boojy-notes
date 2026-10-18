@@ -116,3 +116,50 @@ test("⇥ moves an item with its nested items, the caret staying, and Undo puts 
   await expect.poll(() => left(page, "Parent")).toBeCloseTo(parent);
   expect(await left(page, "Child")).toBeCloseTo(child);
 });
+
+const blockCount = (page: Page) => page.locator("[data-editor] > [data-block-id]").count();
+
+test("a block put under a list parent leaves its children under it, and one Undo takes it back", async ({
+  page,
+}) => {
+  await nestedList(page);
+  const before = await blockCount(page);
+  await item(page, "Parent").click();
+  // The list's row stands over the main row: its ✕ first.
+  await button(page, "Close").click();
+  await button(page, "More blocks").click();
+  await button(page, "Code block").click();
+
+  const code = page.locator('[data-editor] [data-block-type="code"]');
+  await expect(code).toHaveCount(1);
+  // The child is still nested under its parent, and the code block comes after it.
+  expect(await left(page, "Child")).toBeGreaterThan(await left(page, "Parent"));
+  expect((await code.boundingBox())!.y).toBeGreaterThan(
+    (await item(page, "Child").boundingBox())!.y,
+  );
+
+  await button(page, "Undo").click();
+  await expect(code).toHaveCount(0);
+  await expect.poll(() => blockCount(page)).toBe(before);
+});
+
+test("a divider under a line of text is one Undo", async ({ page }) => {
+  await page.goto("/?keybar");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Divider");
+  await page.locator('[data-editor] [data-block-type="p"]').first().click();
+  await page.keyboard.type("Some words");
+  await page.waitForTimeout(600);
+  const before = await blockCount(page);
+  await button(page, "More blocks").click();
+  await button(page, "Divider").click();
+  const divider = page.locator('[data-editor] [data-block-type="spacer"]');
+  await expect(divider).toHaveCount(1);
+
+  await button(page, "Undo").click();
+  await expect(divider).toHaveCount(0);
+  await expect.poll(() => blockCount(page)).toBe(before);
+  await expect(page.locator('[data-editor] [data-block-type="p"]').first()).toHaveText(
+    "Some words",
+  );
+});

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import WindowStrip from "./components/WindowStrip";
 import { useWindowResizing } from "./hooks/useWindowResizing";
-import { selectedIds } from "./utils/blockRun";
+import { belowItem, selectedIds } from "./utils/blockRun";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
@@ -979,8 +979,9 @@ export default function BoojyNotes() {
   });
 
   // The phone's bar above the keyboard: a table, a code block or a divider
-  // at the caret's block. Each is the slash menu's own, which acts on a block
-  // that holds nothing, so a block with text gets a fresh one below it.
+  // at the caret's block, as the slash menu makes them. An empty line becomes
+  // the block; under a line of text it goes after the line's list item and
+  // the items nested under it (`belowItem`). One commit, one undo, either way.
   const caretBlockIndex = () => {
     const sel = window.getSelection();
     const node = sel?.anchorNode;
@@ -989,19 +990,19 @@ export default function BoojyNotes() {
     const blocks = noteDataRef.current[activeNote]?.content?.blocks ?? [];
     return id ? blocks.findIndex((b) => b.id === id) : -1;
   };
-  const emptyLineHere = () => {
-    const index = caretBlockIndex();
-    if (index < 0) return -1;
-    const block = noteDataRef.current[activeNote].content.blocks[index];
-    if (block.type === "p" && !block.text) return index;
-    blockOps.insertBlockAfter(activeNote, index);
-    return index + 1;
-  };
   const insertHere = (id) => {
-    const index = emptyLineHere();
+    const index = caretBlockIndex();
     if (index < 0) return;
+    const blocks = noteDataRef.current[activeNote].content.blocks;
+    const block = blocks[index];
     const command = SLASH_COMMANDS.find((c) => c.id === id);
-    editorHandlers.executeSlashCommand(activeNote, index, command);
+    const empty = block.type === "p" && !block.text;
+    editorHandlers.executeSlashCommand(
+      activeNote,
+      index,
+      command,
+      empty ? {} : { at: belowItem(blocks, index) },
+    );
   };
 
   // ── Ghost note (draft) effects ────────────────────────────────────────

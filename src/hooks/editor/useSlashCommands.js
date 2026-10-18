@@ -17,27 +17,34 @@ export function useSlashCommands({
   commitNoteData,
   focusBlockId,
   focusCursorPos,
-  insertBlockAfter,
   onError,
 }) {
   // `opts.columns` is the typed table trigger's: a run of pipes is the row it
   // draws, so `||||` asks for three columns. The menu's Table passes nothing
-  // and keeps the smallest useful shape.
+  // and keeps the smallest useful shape. `opts.at` is the phone bar's (Table,
+  // Code, Divider under a line of text): the block goes in at that index,
+  // a new one, and the block at `blockIndex` is left as it is.
   const executeSlashCommand = useCallback(async (noteId, blockIndex, command, opts = {}) => {
     const blocks = noteDataRef.current[noteId].content.blocks;
-    const block = blocks[blockIndex];
-    const el = blockRefs.current[block.id];
+    const at = opts.at ?? null;
+    const block = at === null ? blocks[blockIndex] : { id: genBlockId() };
+    const el = at === null ? blockRefs.current[block.id] : null;
 
     const updateBlocks = (mutate) => commitNoteData(editBlocks(noteId, mutate));
 
     // Replace the slash block with `special` followed by a fresh empty
-    // paragraph, and put the caret in the block that can take it: the
+    // paragraph (or put both in at `at`), in one commit, so one undo takes
+    // them back, and put the caret in the block that can take it: the
     // special block's own field when it has one, else the start of the
     // paragraph. This is the one state operation every "insert a special
     // block" command ends in.
     const replaceWithSpecialBlock = (special) => {
       const paraBlock = { id: genBlockId(), type: "p", text: "" };
-      updateBlocks((blks) => blks.splice(blockIndex, 1, special, paraBlock));
+      updateBlocks((blks) =>
+        at === null
+          ? blks.splice(blockIndex, 1, special, paraBlock)
+          : blks.splice(at, 0, special, paraBlock),
+      );
       focusBlockId.current = hasOwnField(special) ? special.id : paraBlock.id;
       focusCursorPos.current = 0;
     };
@@ -142,22 +149,23 @@ export function useSlashCommands({
       return;
     }
 
+    // A divider carries no text, and the paragraph under it takes the caret.
+    if (command.type === "spacer") {
+      const divider = { ...block, type: "spacer" };
+      delete divider.text;
+      delete divider.checked;
+      replaceWithSpecialBlock(divider);
+      return;
+    }
+
     // Everything else converts the block in place.
     updateBlocks((blks) => {
       const updated = { ...blks[blockIndex], text: "", type: command.type };
       if (command.type === "checkbox") updated.checked = false;
-      if (command.type === "spacer") {
-        delete updated.text;
-        delete updated.checked;
-      }
       if (command.type !== "checkbox") delete updated.checked;
       blks[blockIndex] = updated;
     });
-    if (command.type === "spacer") {
-      insertBlockAfter(noteId, blockIndex, "p", "");
-    } else {
-      refocusSlashBlock();
-    }
+    refocusSlashBlock();
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
