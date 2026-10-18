@@ -161,7 +161,7 @@ app's, made through state.**
   `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`; the system's long-press
   is refused): moved, it drags; let go, `BlockMenu` opens under it, Turn into in place. A
-  scroll or a double-tap stays the browser's; a held block drags at once. `hold-to-grab.spec.ts`.
+  scroll, a double-tap or selected text stays the browser's. `hold-to-grab.spec.ts`.
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.
 - **The page is still mid-drag.** A reorder (drop, `⌘⇧↑/↓`) glides moved blocks from their old

@@ -219,3 +219,105 @@ test("a second finger mid-drag leaves the drag to the first", async ({ page }) =
   await expect(paragraphs(page)).toHaveText(["Two", "Three", "One"]);
   await expect(page.locator(".block-drop-marker:visible")).toHaveCount(0);
 });
+
+test("a drag the editor is rebuilt under goes home: no copy or marker is left", async ({
+  page,
+}) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const from = await centre(page, 0);
+  const before = await page.evaluate(() => document.body.children.length);
+
+  await f.down(from.x, from.y);
+  await page.waitForTimeout(HOLD);
+  for (let i = 1; i <= 4; i++) await f.move(from.x, from.y + 15 * i);
+  await page.keyboard.press("Meta+/");
+  await f.up();
+  await page.keyboard.press("Meta+/");
+
+  await expect(paragraphs(page)).toHaveText(["One", "Two", "Three"]);
+  await expect.poll(() => page.evaluate(() => document.body.children.length)).toBe(before);
+  await expect(page.locator(".block-drop-marker:visible")).toHaveCount(0);
+});
+
+test("the window losing focus ends the touch: a waiting hold never fires, a drag goes home", async ({
+  page,
+}) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const from = await centre(page, 0);
+  const blur = () => page.evaluate(() => window.dispatchEvent(new Event("blur")));
+
+  await f.down(from.x, from.y);
+  await blur();
+  await page.waitForTimeout(HOLD);
+  await f.up();
+  await expect(menu(page)).toHaveCount(0);
+  await expect.poll(() => washed(page)).toEqual([]);
+
+  await f.down(from.x, from.y);
+  await page.waitForTimeout(HOLD);
+  for (let i = 1; i <= 4; i++) await f.move(from.x, from.y + 15 * i);
+  await blur();
+  for (let i = 5; i <= 8; i++) await f.move(from.x, from.y + 15 * i);
+  await f.up();
+  await expect(paragraphs(page)).toHaveText(["One", "Two", "Three"]);
+  await expect(page.locator(".block-drop-marker:visible")).toHaveCount(0);
+});
+
+test("a hold on selected text is the text's; a hold elsewhere still grabs its block", async ({
+  page,
+}) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const select = () =>
+    page.evaluate(() => {
+      const p = document.querySelectorAll('[data-editor] [data-block-type="p"]')[1];
+      const r = document.createRange();
+      r.selectNodeContents(p.firstChild!);
+      getSelection()!.removeAllRanges();
+      getSelection()!.addRange(r);
+    });
+  const hold = async (x: number, y: number) => {
+    await f.down(x, y);
+    await page.waitForTimeout(HOLD);
+    await f.up();
+  };
+
+  await select();
+  const word = (await page.evaluate(() =>
+    getSelection()!.getRangeAt(0).getBoundingClientRect().toJSON(),
+  )) as DOMRect;
+  await hold(word.x + word.width / 2, word.y + word.height / 2);
+  await expect(menu(page)).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => getSelection()?.toString())).toBe("Two");
+
+  // Below the words: the selection toolbar stands over the line above.
+  const three = await centre(page, 2);
+  await hold(three.x, three.y);
+  await expect(menu(page)).toBeVisible();
+  await expect.poll(() => washed(page)).toEqual(["Three"]);
+});
+
+test("a hold on a code block's selected text is the text's", async ({ page }) => {
+  await page.goto("/?hold");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Code");
+  await paragraphs(page).first().click();
+  await page.keyboard.type("``` ");
+  const code = page.locator("[data-editor] textarea");
+  await expect(code).toBeFocused();
+  await page.keyboard.type("let a = 1");
+  await code.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 3));
+
+  const f = finger(await page.context().newCDPSession(page));
+  const b = (await code.boundingBox())!;
+  await f.down(b.x + 12, b.y + b.height / 2);
+  await page.waitForTimeout(HOLD);
+  await f.up();
+
+  await expect(menu(page)).toHaveCount(0);
+  await expect
+    .poll(() => code.evaluate((el: HTMLTextAreaElement) => [el.selectionStart, el.selectionEnd]))
+    .toEqual([0, 3]);
+});

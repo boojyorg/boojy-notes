@@ -1,6 +1,13 @@
 import { type RefObject, useEffect, useRef } from "react";
 import { keyboardUp } from "../../phone/keyBar";
-import { drifted, HOLD_MS, isSecondTap, type Tap, tapFrom } from "../../utils/holdGesture";
+import {
+  drifted,
+  HOLD_MS,
+  HOLD_SLOP,
+  isSecondTap,
+  type Tap,
+  tapFrom,
+} from "../../utils/holdGesture";
 
 /** The block root under a point, frontmatter never; through an open menu's backdrop too. */
 function blockAt(root: HTMLElement, x: number, y: number): string | null {
@@ -18,6 +25,25 @@ function blockAt(root: HTMLElement, x: number, y: number): string | null {
   }
   if (!(el instanceof HTMLElement) || !el.dataset.blockId) return null;
   return el.dataset.blockType === "frontmatter" ? null : el.dataset.blockId;
+}
+
+/**
+ * Whether a press at (x, y) lands on text already selected: the text's, so
+ * the system's own menu copies the words, never a held block. A text box
+ * (code) counts whole while it holds a selection.
+ */
+function onSelectedText(target: Element | null, x: number, y: number): boolean {
+  if (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement)
+    return target.selectionStart !== target.selectionEnd;
+  const sel = document.getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) return false;
+  return Array.from(sel.getRangeAt(0).getClientRects()).some(
+    (r) =>
+      x >= r.left - HOLD_SLOP &&
+      x <= r.right + HOLD_SLOP &&
+      y >= r.top - HOLD_SLOP &&
+      y <= r.bottom + HOLD_SLOP,
+  );
 }
 
 /** The touch in `list` made by `finger`, if it is there. */
@@ -104,6 +130,15 @@ export function useHoldToGrab({
       if (el instanceof HTMLElement && root.contains(el)) el.blur();
     };
 
+    /** The touch ends without its finger: a waiting hold never fires, a drag goes home. */
+    const abort = () => {
+      if (!touch) return;
+      clearTimeout(touch.timer);
+      if (touch.dragging) on.current.onDragEnd(true);
+      touch.field?.style.removeProperty("pointer-events");
+      touch = null;
+    };
+
     const claim = () => {
       if (!touch || touch.claimed || touch.second || touch.scrolled) return;
       clearTimeout(touch.timer);
@@ -111,7 +146,7 @@ export function useHoldToGrab({
       if (!id) return;
       touch.claimed = true;
       touch.blockId = id;
-      // The block replaces a text selection the hold landed on, with its
+      // The block replaces a text selection elsewhere in the note, with its
       // handles and the system's menu.
       const sel = document.getSelection();
       if (sel && !sel.isCollapsed) sel.collapseToEnd();
@@ -143,7 +178,7 @@ export function useHoldToGrab({
         (area.contains(target) ||
           (!!target.closest("[data-menu-backdrop]") &&
             document.elementsFromPoint(x, y).some((el) => area.contains(el))));
-      if (!overNote) {
+      if (!overNote || onSelectedText(target, x, y)) {
         touch = null;
         return;
       }
@@ -297,10 +332,14 @@ export function useHoldToGrab({
     document.addEventListener("selectionchange", onSelectionChange);
     root.addEventListener("focusin", onFocusIn);
     window.addEventListener("resize", onResize);
+    // The app leaving the screen, or the editor rebuilt mid-touch (the
+    // Markdown view): the touch's lift would never be heard.
+    window.addEventListener("blur", abort);
     return () => {
+      abort();
+      window.removeEventListener("blur", abort);
       window.removeEventListener("resize", onResize);
       root.removeEventListener("focusin", onFocusIn);
-      if (touch) clearTimeout(touch.timer);
       area.style.removeProperty("-webkit-touch-callout");
       document.removeEventListener("touchstart", onTouchStart);
       document.removeEventListener("touchmove", onTouchMove);
