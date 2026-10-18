@@ -1,0 +1,118 @@
+import { expect, type Page, test } from "@playwright/test";
+
+// The phone's bar above the keyboard, in the web build behind `?keybar` (no
+// keyboard to wait for). In a list item it shows the list's own row, whose
+// ⇤ ⇥ are Tab and Shift+Tab: the nested items follow, the caret stays on its
+// character, one undo each, and a button greys where Tab would move nothing.
+
+const item = (page: Page, text: string) =>
+  page.getByRole("textbox", { name: "Bullet item" }).filter({ hasText: text });
+const button = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
+const left = async (page: Page, text: string) => (await item(page, text).boundingBox())!.x;
+
+/** The caret's block text, and the text before the caret in it. */
+const caret = (page: Page) =>
+  page.evaluate(() => {
+    const sel = window.getSelection()!;
+    const node = sel.anchorNode!;
+    const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement!;
+    const block = el.closest('[role="textbox"]')!;
+    const range = document.createRange();
+    range.setStart(block, 0);
+    range.setEnd(node, sel.anchorOffset);
+    return { text: block.textContent, before: range.toString() };
+  });
+
+/** Alpha, then Parent with Child nested under it. */
+async function nestedList(page: Page) {
+  await page.goto("/?keybar");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Lists");
+  await page.locator('[data-editor] [data-block-type="p"]').first().click();
+  await expect(button(page, "Lists")).toBeVisible();
+  await page.keyboard.type("- Alpha");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Parent");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Child");
+  await page.keyboard.press("Tab");
+  await expect
+    .poll(async () => (await left(page, "Child")) - (await left(page, "Parent")))
+    .toBeGreaterThan(0);
+}
+
+test("in a list the bar is the list's row, its ⇤ ⇥ greyed where Tab would move nothing", async ({
+  page,
+}) => {
+  await nestedList(page);
+  await item(page, "Alpha").click();
+  await expect(button(page, "Indent")).toHaveAttribute("aria-disabled", "true");
+  await expect(button(page, "Outdent")).toHaveAttribute("aria-disabled", "true");
+  await item(page, "Child").click();
+  await expect(button(page, "Indent")).toHaveAttribute("aria-disabled", "true");
+  await expect(button(page, "Outdent")).not.toHaveAttribute("aria-disabled");
+});
+
+test("undo and redo stand in the same place in every row", async ({ page }) => {
+  await nestedList(page);
+  const at = async () => [
+    (await button(page, "Undo").boundingBox())!.x,
+    (await button(page, "Redo").boundingBox())!.x,
+  ];
+  await item(page, "Parent").click();
+  await expect(button(page, "Indent")).toBeVisible();
+  const list = await at();
+  await button(page, "Close").click();
+  await expect(button(page, "Lists")).toBeVisible();
+  expect(await at()).toEqual(list);
+  await button(page, "Heading").click();
+  await expect(button(page, "Heading 6")).toBeVisible();
+  expect(await at()).toEqual(list);
+  await button(page, "Close").click();
+  await button(page, "More blocks").click();
+  await expect(button(page, "Divider")).toBeVisible();
+  expect(await at()).toEqual(list);
+});
+
+test("More blocks puts a code block under a line of text, the caret in it", async ({ page }) => {
+  await page.goto("/?keybar");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Blocks");
+  await page.locator('[data-editor] [data-block-type="p"]').first().click();
+  await page.keyboard.type("Some words");
+  await button(page, "More blocks").click();
+  await button(page, "Code block").click();
+
+  const code = page.locator('[data-editor] [data-block-type="code"]');
+  await expect(code).toHaveCount(1);
+  await expect(page.locator('[data-editor] [data-block-type="p"]').first()).toHaveText(
+    "Some words",
+  );
+  await expect.poll(() => code.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  // The choice closed the row.
+  await expect(button(page, "Code block")).toBeHidden();
+  await expect(button(page, "More blocks")).toBeVisible();
+});
+
+test("⇥ moves an item with its nested items, the caret staying, and Undo puts them back", async ({
+  page,
+}) => {
+  await nestedList(page);
+  const parent = await left(page, "Parent");
+  const child = await left(page, "Child");
+
+  await item(page, "Parent").click();
+  await page.keyboard.press("End");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowLeft");
+  await button(page, "Indent").click();
+
+  await expect.poll(() => left(page, "Parent")).toBeGreaterThan(parent);
+  // The nested item came along (each depth draws its own marker, so not by the same pixels).
+  expect(await left(page, "Child")).toBeGreaterThan(child);
+  expect(await caret(page)).toEqual({ text: "Parent", before: "Par" });
+  await expect(button(page, "Outdent")).not.toHaveAttribute("aria-disabled");
+
+  await button(page, "Undo").click();
+  await expect.poll(() => left(page, "Parent")).toBeCloseTo(parent);
+  expect(await left(page, "Child")).toBeCloseTo(child);
+});

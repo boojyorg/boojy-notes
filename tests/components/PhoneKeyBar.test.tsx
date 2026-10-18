@@ -38,19 +38,33 @@ const caret = (from: number, to = from, line = 0) => {
     document.dispatchEvent(new Event("selectionchange"));
   });
 };
-const props = { onTable: vi.fn(), onSlash: vi.fn() };
+const props = { onInsert: vi.fn(), canIndent: vi.fn((_: 1 | -1) => true) };
 const mount = () => render(<PhoneKeyBar editorRef={{ current: editor }} {...props} />);
 const press = (name: string) => fireEvent.click(screen.getByRole("button", { name }));
 const lit = (name: string) => screen.getByRole("button", { name }).getAttribute("aria-pressed");
 const bar = () => screen.queryByRole("toolbar");
+const row = () => screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"));
+const MAIN = ["Undo", "Redo", "Heading", "Lists", "Text style", "More blocks"];
+const MORE = ["Undo", "Redo", "Table", "Quote", "Code block", "Divider", "Close"];
+const LIST = [
+  "Undo",
+  "Redo",
+  "Bulleted list",
+  "Numbered list",
+  "Task",
+  "Outdent",
+  "Indent",
+  "Close",
+];
 
 beforeEach(() => {
   sent.length = 0;
-  props.onTable.mockClear();
-  props.onSlash.mockClear();
+  props.onInsert.mockClear();
+  props.canIndent.mockReset();
+  props.canIndent.mockReturnValue(true);
   editor = document.createElement("div");
   editor.innerHTML =
-    '<p data-block-type="p">Hello world</p><h2 data-block-type="h2">Title</h2><p data-block-type="bullet"><b>Bold</b></p>';
+    '<p data-block-type="p">Hello world</p><h2 data-block-type="h2">Title</h2><p data-block-type="bullet"><b>Bold</b></p><p data-block-type="bullet">Item</p>';
   document.body.append(editor);
   size(412, 845);
 });
@@ -77,29 +91,141 @@ describe("the bar above the keyboard", () => {
     expect(bar()).toBeNull();
   });
 
-  it("sends each block button's command, a lit one turning the line back to text", () => {
+  it("shows the block buttons in text, the slash menu last", () => {
     mount();
     size(412, 532);
     caret(2);
-    press("Bulleted list");
+    expect(row()).toEqual(MAIN);
+  });
+
+  it("gives every button in every row the same slot, so none moves between rows", () => {
+    mount();
+    size(412, 532);
+    caret(2);
+    const slots = new Set<string>();
+    const read = () => {
+      for (const b of screen.getAllByRole("button")) slots.add(b.style.flex);
+    };
+    read();
+    press("Heading");
+    read();
+    press("Close");
+    press("Text style");
+    read();
+    press("Close");
+    press("More blocks");
+    read();
+    press("Close");
+    caret(1, 1, 3);
+    read();
+    expect(slots.size).toBe(1);
+    expect([...slots][0]).toMatch(/^0 0 /);
+  });
+
+  it("sends each list button's command, a lit one turning the line back to text", () => {
+    mount();
+    size(412, 532);
+    caret(2);
+    press("Lists");
+    expect(row()).toEqual(LIST);
     press("Task");
     press("Undo");
     press("Redo");
-    expect(sent).toEqual(["bullet", "todo", "undo", "redo"]);
+    expect(sent).toEqual(["todo", "undo", "redo"]);
     caret(1, 1, 2);
     expect(lit("Bulleted list")).toBe("true");
     press("Bulleted list");
     expect(sent.at(-1)).toBe("body");
   });
 
-  it("hands table and / to the editor", () => {
+  it("shows the list row by itself in a list item, with indent and outdent", () => {
+    mount();
+    size(412, 532);
+    caret(1, 1, 3);
+    expect(row()).toEqual(LIST);
+    press("Indent");
+    press("Outdent");
+    expect(sent).toEqual(["indent", "outdent"]);
+  });
+
+  it("greys indent and outdent where Tab would move nothing, and a press sends nothing", () => {
+    props.canIndent.mockImplementation((delta) => delta === 1);
+    mount();
+    size(412, 532);
+    caret(1, 1, 3);
+    const outdent = screen.getByRole("button", { name: "Outdent" });
+    expect(outdent).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Indent" })).not.toHaveAttribute("aria-disabled");
+    fireEvent.click(outdent);
+    expect(sent).toEqual([]);
+  });
+
+  it("keeps the list row put away after its ✕ until the caret leaves the list", () => {
+    mount();
+    size(412, 532);
+    caret(1, 1, 3);
+    press("Close");
+    expect(row()).toEqual(MAIN);
+    expect(lit("Lists")).toBe("true");
+    caret(2, 2, 3);
+    expect(row()).toEqual(MAIN);
+    // A selection in the list, let go, is not leaving it.
+    caret(0, 3, 3);
+    caret(3, 3, 3);
+    expect(row()).toEqual(MAIN);
+    caret(2);
+    caret(1, 1, 3);
+    expect(row()).toEqual(LIST);
+  });
+
+  it("hands the list row opened by hand to the list it makes", () => {
     mount();
     size(412, 532);
     caret(2);
+    press("Lists");
+    caret(4);
+    expect(row()).toEqual(LIST);
+    press("Bulleted list");
+    expect(sent).toEqual(["bullet"]);
+    editor.children[0].setAttribute("data-block-type", "bullet");
+    caret(4);
+    expect(row()).toEqual(LIST);
+    // Into text: the main row, as for any list.
+    caret(2, 2, 1);
+    expect(row()).toEqual(MAIN);
+  });
+
+  it("opens the blocks the other rows lack, each choice closing the row", () => {
+    mount();
+    size(412, 532);
+    caret(2);
+    press("More blocks");
+    expect(row()).toEqual(MORE);
+    press("Code block");
+    expect(props.onInsert).toHaveBeenLastCalledWith("code");
+    expect(row()).toEqual(MAIN);
+    press("More blocks");
     press("Table");
     press("More blocks");
-    expect(props.onTable).toHaveBeenCalled();
-    expect(props.onSlash).toHaveBeenCalled();
+    press("Divider");
+    expect(props.onInsert.mock.calls.map(([c]) => c)).toEqual(["code", "table", "divider"]);
+  });
+
+  it("turns the line into a quote, a quote's own button making it text again", () => {
+    editor.children[0].setAttribute("data-block-type", "blockquote");
+    mount();
+    size(412, 532);
+    caret(2, 2, 1);
+    press("More blocks");
+    expect(lit("Quote")).toBeNull();
+    press("Quote");
+    expect(sent).toEqual(["quote"]);
+    expect(row()).toEqual(MAIN);
+    caret(2);
+    press("More blocks");
+    expect(lit("Quote")).toBe("true");
+    press("Quote");
+    expect(sent.at(-1)).toBe("body");
   });
 
   it("opens the text styles on Aa and closes them on ✕, undo staying first", () => {
@@ -131,13 +257,15 @@ describe("the bar above the keyboard", () => {
     caret(0, 5);
     expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
     caret(2);
-    expect(screen.getByRole("button", { name: "Table" })).toBeInTheDocument();
+    expect(row()).toEqual(MAIN);
   });
 
   it("lights the style the caret sits in", () => {
     mount();
     size(412, 532);
     caret(1, 1, 2);
+    // A list item's row stands over Aa: its ✕ first.
+    press("Close");
     press("Text style");
     expect(lit("Bold")).toBe("true");
     expect(lit("Italic")).toBeNull();
@@ -167,11 +295,24 @@ describe("the bar above the keyboard", () => {
     size(412, 532);
     caret(1, 1, 1);
     press("Heading");
+    expect(row()).toEqual([
+      "Undo",
+      "Redo",
+      ...[1, 2, 3, 4, 5, 6].map((n) => `Heading ${n}`),
+      "Close",
+    ]);
     expect(lit("Heading 2")).toBe("true");
     press("Heading 2");
     expect(sent).toEqual(["body"]);
     press("Heading");
-    press("Heading 4");
-    expect(sent.at(-1)).toBe("h4");
+    press("Heading 6");
+    expect(sent.at(-1)).toBe("h6");
+    expect(row()).toEqual(MAIN);
+  });
+
+  it("shows without the keyboard when told to (the web build's ?keybar)", () => {
+    render(<PhoneKeyBar editorRef={{ current: editor }} {...props} always />);
+    caret(2);
+    expect(bar()).not.toBeNull();
   });
 });

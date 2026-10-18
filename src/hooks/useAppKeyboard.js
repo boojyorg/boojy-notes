@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { getAPI } from "../services/apiProvider";
 import { SCALE_DEFAULT, stepScale } from "../utils/uiScale";
 import { withAlignment } from "../utils/tableShape";
+import { indentRun } from "../utils/blockRun";
 import { focusSidebar } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
 
@@ -66,6 +67,9 @@ export function useAppKeyboard({
   setBlockKind,
   duplicateBlocks,
   blockSelectionIds,
+  // The phone's ⇤ ⇥: what Tab and Shift+Tab run (`indentSpan`).
+  updateBlockIndent,
+  indentBlockRange,
   copyNoteText,
   updateTableRows,
   openFind,
@@ -114,6 +118,8 @@ export function useAppKeyboard({
     setBlockKind,
     duplicateBlocks,
     blockSelectionIds,
+    updateBlockIndent,
+    indentBlockRange,
     copyNoteText,
     updateTableRows,
     openFind,
@@ -457,6 +463,23 @@ const BLOCK_KINDS = {
   quote: "blockquote",
 };
 
+/**
+ * Where the phone's ⇤ ⇥ act: the blocks selected whole, else the lines the
+ * selection runs through, first to last. Null when Tab's own rule
+ * (`indentRun`) would move nothing there, which greys the button.
+ *
+ * @param {import("../types/notes").Block[]} blocks
+ * @param {string[]} chosenIds the blocks selected whole
+ * @param {1 | -1} delta
+ */
+export function indentSpan(blocks, chosenIds, delta) {
+  const ids = chosenIds.length ? chosenIds : selectedBlockIds(blocks);
+  const from = blocks.findIndex((b) => b.id === ids[0]);
+  const to = blocks.findIndex((b) => b.id === ids.at(-1));
+  if (from < 0 || to < 0) return null;
+  return indentRun(blocks, from, to, delta) ? { from, to } : null;
+}
+
 /** The ids of the blocks the selection runs through, first to last, in the editor. */
 function selectedBlockIds(blocks) {
   const sel = window.getSelection();
@@ -570,6 +593,16 @@ function runMenuCommand(id, L, titleRef) {
   const blocks = L.noteData[note]?.content?.blocks ?? [];
   if (INLINE_FORMATS.has(id)) {
     if (selectedBlockIds(blocks).length > 0) L.applyFormat?.(id);
+    return;
+  }
+  if (id === "indent" || id === "outdent") {
+    // Phone only: the desktop's Tab is a key, never a menu item, which would
+    // take Tab from every field. One item keeps its caret, as Tab does.
+    const delta = id === "indent" ? 1 : -1;
+    const span = indentSpan(blocks, L.blockSelectionIds?.() ?? [], delta);
+    if (!span) return;
+    if (span.from === span.to) L.updateBlockIndent?.(note, span.from, delta, true);
+    else L.indentBlockRange?.(note, span.from, span.to, delta);
     return;
   }
   if (id in BLOCK_KINDS) {

@@ -80,6 +80,7 @@ import {
   Unlink as LuUnlink,
   Link as LuLink,
   List as LuList,
+  ListPlus as LuListPlus,
   Maximize2 as LuMaximize2,
   ListOrdered as LuListOrdered,
   Minus as LuMinus,
@@ -96,6 +97,7 @@ import {
   Search as LuSearch,
   Settings as LuSettings,
   SquareCheck as LuSquareCheck,
+  SquarePlus as LuSquarePlus,
   SquarePen as LuSquarePen,
   Strikethrough as LuStrikethrough,
   Sun as LuSun,
@@ -217,11 +219,17 @@ export const MinusIcon = contentIcon(LuMinus);
 export const ArrowUpToLineIcon = navIcon(LuArrowUpToLine);
 export const ArrowDownToLineIcon = navIcon(LuArrowDownToLine);
 export const ArrowLeftToLineIcon = navIcon(LuArrowLeftToLine);
-/** The phone's bar above the keyboard: history, the heading row, text styles. */
+/** The phone's bar above the keyboard: history, the heading, list and more-blocks rows, text styles. */
 export const UndoIcon = navIcon(LuUndo2, 20);
 export const RedoIcon = navIcon(LuRedo2, 20);
 export const HeadingIcon = navIcon(LuHeading, 20);
+/** The list row's opener: Bullet's own glyph would stand twice, outside the row and in it. */
+export const ListsIcon = navIcon(LuListPlus, 20);
+/** Shift+Tab and Tab, drawn as the Tab key draws them. */
+export const OutdentIcon = navIcon(LuArrowLeftToLine, 20);
+export const IndentIcon = navIcon(LuArrowRightToLine, 20);
 export const TextStyleIcon = navIcon(LuALargeSmall, 22);
+export const MoreBlocksIcon = navIcon(LuSquarePlus, 20);
 /** The phone's way back from a note to Home. */
 export const BackIcon = navIcon(LuChevronLeft, 22);
 export const ArrowRightToLineIcon = navIcon(LuArrowRightToLine);

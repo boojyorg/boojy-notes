@@ -2,41 +2,75 @@ import { describe, expect, it } from "vitest";
 import {
   barModeAfterSelection,
   headingCommand,
+  isListKind,
   keyboardUp,
   kindCommand,
   litFormats,
   promise,
+  shownRow,
 } from "../../src/phone/keyBar";
 
 describe("the bar above the keyboard follows the selection", () => {
   it("shows the text styles while text is selected, from any row", () => {
-    expect(barModeAfterSelection("blocks", true, false)).toBe("format");
-    expect(barModeAfterSelection("heading", true, false)).toBe("format");
+    expect(barModeAfterSelection("blocks", true, false, false)).toBe("format");
+    expect(barModeAfterSelection("heading", true, false, false)).toBe("format");
+    expect(barModeAfterSelection("list", true, false, true)).toBe("format");
   });
 
   it("goes back to the block buttons when a selection collapses", () => {
-    expect(barModeAfterSelection("format", false, false)).toBe("blocks");
+    expect(barModeAfterSelection("format", false, false, false)).toBe("blocks");
   });
 
   it("keeps the text styles Aa opened, so bold can be turned on before typing", () => {
-    expect(barModeAfterSelection("format", false, true)).toBe("format");
+    expect(barModeAfterSelection("format", false, true, false)).toBe("format");
   });
 
   it("leaves the heading row to its own choices while the caret moves", () => {
-    expect(barModeAfterSelection("heading", false, false)).toBe("heading");
+    expect(barModeAfterSelection("heading", false, false, false)).toBe("heading");
+  });
+
+  it("keeps the list row opened by hand until the caret is in a list, then hands it to the list", () => {
+    expect(barModeAfterSelection("list", false, false, false)).toBe("list");
+    expect(barModeAfterSelection("list", false, false, true)).toBe("blocks");
   });
 });
 
-describe("a list or task button", () => {
+describe("the row on screen", () => {
+  it("is the list's while the caret is in a list item", () => {
+    expect(shownRow("blocks", true, false)).toBe("list");
+    expect(shownRow("blocks", false, false)).toBe("blocks");
+  });
+
+  it("is the block buttons in a list whose row was put away", () => {
+    expect(shownRow("blocks", true, true)).toBe("blocks");
+  });
+
+  it("is a row opened by hand, in a list or not", () => {
+    expect(shownRow("heading", true, false)).toBe("heading");
+    expect(shownRow("format", true, false)).toBe("format");
+    expect(shownRow("list", false, false)).toBe("list");
+  });
+});
+
+describe("a list item", () => {
+  it("is a bullet, a numbered item or a task", () => {
+    expect(["bullet", "numbered", "checkbox"].every(isListKind)).toBe(true);
+    expect(["p", "h2", "blockquote", null].some(isListKind)).toBe(false);
+  });
+});
+
+describe("a list, task or quote button", () => {
   it("makes the line that kind", () => {
     expect(kindCommand("bullet", "p")).toBe("bullet");
     expect(kindCommand("numbered", "h2")).toBe("numbered");
     expect(kindCommand("checkbox", "p")).toBe("todo");
+    expect(kindCommand("blockquote", "p")).toBe("quote");
   });
 
   it("turns a line already of that kind back into text", () => {
     expect(kindCommand("bullet", "bullet")).toBe("body");
     expect(kindCommand("checkbox", "checkbox")).toBe("body");
+    expect(kindCommand("blockquote", "blockquote")).toBe("body");
   });
 });
 
