@@ -262,7 +262,7 @@ test.describe("by touch", () => {
     const italic = await centre("Italic", 1);
 
     await touch("touchStart", [bold]);
-    await expect(page.getByTestId("key-bar-chip")).toHaveText("Bold**");
+    await expect(page.getByTestId("key-bar-chip")).toHaveText("Bold");
     await touch("touchStart", [bold, italic]);
     // A touchEnd names the fingers that lift: the first, then the second.
     await touch("touchEnd", [bold]);
@@ -300,7 +300,7 @@ test.describe("by touch", () => {
     await expect(button(page, "Heading 2")).toBeVisible();
     const held = await down("Heading 2");
     const chip = page.getByTestId("key-bar-chip");
-    await expect(chip).toHaveText("Heading 2##");
+    await expect(chip).toHaveText("Heading 2");
     // Clear of the fingertip, its tail pointing at the button.
     const c = (await chip.boundingBox())!;
     expect(held.y - (c.y + c.height)).toBeGreaterThanOrEqual(12);
@@ -311,7 +311,7 @@ test.describe("by touch", () => {
       type: "touchMove",
       touchPoints: [{ x: h3.x + h3.width / 2, y: h3.y + h3.height / 2 }],
     });
-    await expect(chip).toHaveText("Heading 3###");
+    await expect(chip).toHaveText("Heading 3");
     await up();
     await expect(chip).toBeHidden();
     // Lifting chose nothing: the line is still text, the row still open.

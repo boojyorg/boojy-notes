@@ -5,9 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
-      TEXT: { secondary: "#47403A" },
+      TEXT: { primary: "#14110F", secondary: "#47403A", muted: "#6F6861" },
       BG: { standard: "#F9F9F9", divider: "#E9E9E9" },
-      ACCENT: { text: "#2A737D" },
+      ACCENT: { text: "#2A737D", primary: "#8FC1C6" },
+      mark: { bg: "rgba(143, 193, 198, 0.35)" },
+      inlineCode: { bg: "rgba(0,0,0,0.06)", border: "rgba(0,0,0,0.1)" },
+      link: { color: "#2A737D" },
     },
   }),
 }));
@@ -346,9 +349,9 @@ describe("tap acts, hold explains", () => {
     vi.useRealTimers();
   });
 
-  it("names a button held still, with the Markdown typed for the same, and does nothing", () => {
+  it("names a button held still, teaching no Markdown, and does nothing", () => {
     press("Headings");
-    expect(hold("Heading 2")).toBe("Heading 2##");
+    expect(hold("Heading 2")).toBe("Heading 2");
     expect(sent).toEqual([]);
     // The row stays: lifting after a hold chose nothing.
     expect(button("Heading 2")).toBeTruthy();
@@ -400,13 +403,13 @@ describe("tap acts, hold explains", () => {
     act(() => {
       vi.advanceTimersByTime(HOLD_MS);
     });
-    expect(chip()?.textContent).toBe("Heading 1#");
+    expect(chip()?.textContent).toBe("Heading 1");
     // A touch's moves keep coming to the button it began on; what is under the finger decides.
     // jsdom has no hit-testing: the element under the finger is given.
     const under = vi.fn((_x: number, _y: number): Element | null => button("Heading 3"));
     document.elementFromPoint = under;
     fireEvent.pointerMove(h1, { clientX: 120, clientY: 10, pointerType: "touch" });
-    expect(chip()?.textContent).toBe("Heading 3###");
+    expect(chip()?.textContent).toBe("Heading 3");
     expect(button("Heading 3").hasAttribute("data-pressed")).toBe(true);
     // Off the bar: no chip; back on: its chip again, with no new wait.
     under.mockReturnValue(document.body);
@@ -414,7 +417,7 @@ describe("tap acts, hold explains", () => {
     expect(chip()).toBeNull();
     under.mockReturnValue(button("Heading 2"));
     fireEvent.pointerMove(h1, { clientX: 80, clientY: 10, pointerType: "touch" });
-    expect(chip()?.textContent).toBe("Heading 2##");
+    expect(chip()?.textContent).toBe("Heading 2");
     fireEvent.pointerUp(h1, { pointerType: "touch" });
     expect(chip()).toBeNull();
     expect(button("Heading 2").hasAttribute("data-pressed")).toBe(false);
@@ -431,11 +434,61 @@ describe("tap acts, hold explains", () => {
       vi.advanceTimersByTime(HOLD_MS);
     });
     fireEvent.pointerDown(italic, { ...finger, pointerId: 2 });
-    expect(chip()?.textContent).toBe("Bold**");
+    expect(chip()?.textContent).toBe("Bold");
     fireEvent.pointerUp(bold, { pointerType: "touch", pointerId: 1 });
     fireEvent.pointerUp(italic, { pointerType: "touch", pointerId: 2 });
     expect(sent).toEqual([]);
     expect(italic.hasAttribute("data-pressed")).toBe(false);
+  });
+
+  /** A button held, its chip's label element while held (the lift that follows does nothing). */
+  const heldLabel = (name: string) => {
+    const b = button(name);
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    // The innermost element holding the name: the label itself, not its wrapper.
+    const label = [...(chip()?.querySelectorAll("span") ?? [])]
+      .filter((s) => s.textContent?.endsWith(name))
+      .pop() as HTMLElement | undefined;
+    const style = label
+      ? {
+          fontSize: label.style.fontSize,
+          fontWeight: label.style.fontWeight,
+          fontStyle: label.style.fontStyle,
+        }
+      : null;
+    const marked = !!label?.firstElementChild;
+    fireEvent.pointerUp(b);
+    return { style, marked };
+  };
+
+  it("draws a label as what the button makes", () => {
+    press("Headings");
+    expect(heldLabel("Heading 2").style?.fontSize).toBe("22px");
+    press("Close");
+    press("Text style");
+    expect(heldLabel("Bold").style?.fontWeight).toBe("700");
+    expect(heldLabel("Italic").style?.fontStyle).toBe("italic");
+    press("Close");
+    press("Lists");
+    // The editor's marker before a list's name: a bullet, a number, an empty box.
+    expect(heldLabel("Bullet list").marked).toBe(true);
+    expect(heldLabel("To-do list").marked).toBe(true);
+    expect(sent).toEqual([]);
+  });
+
+  it("leaves a greyed button's label plain", () => {
+    editor.innerHTML = '<p data-block-type="code">let x</p>';
+    caret(2);
+    const b = button("Headings");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    expect(chip()?.querySelector("span span[style*='inline-flex']")).toBeNull();
+    fireEvent.pointerUp(b);
   });
 
   it("takes the chip away at a new press", () => {

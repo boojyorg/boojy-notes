@@ -8,7 +8,7 @@ import { latestBlock } from "../hooks/useOwnedField";
 import { useEmptyMark } from "../hooks/useEmptyMark";
 import { baselineFromTop } from "../utils/typeBaseline";
 import { imageDisplayWidth, imageNoWidthFields, imageWidthFields } from "../utils/imageSize";
-import { isElectron } from "../utils/platform";
+import { isElectron, isPhone } from "../utils/platform";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -193,8 +193,10 @@ const EditableBlock = memo(
     }, [syncGen, noteTitleSet]); // deliberately not exhaustive: the signals, never a keystroke
 
     // The first paragraph's placeholder shows only while it holds no text,
-    // never under `line one ⇧↵ line two`.
-    useEmptyMark(elRef, blockIndex === 0 && block.type === "p");
+    // never under `line one ⇧↵ line two`. Not on the phone: `/` is on its
+    // keyboard's second layer, and the bar is the quicker way in.
+    const placeholder = !isPhone && blockIndex === 0;
+    useEmptyMark(elRef, placeholder && block.type === "p");
 
     useLayoutEffect(() => {
       const el = elRef.current || wholeRef.current;
@@ -389,8 +391,8 @@ const EditableBlock = memo(
           ref={elRef}
           data-block-id={block.id}
           data-block-type={block.type}
-          data-placeholder="Type / for commands..."
-          className={blockIndex === 0 ? "empty-block" : undefined}
+          data-placeholder="Type / for blocks"
+          className={placeholder ? "empty-block" : undefined}
           role="textbox"
           aria-multiline="true"
           aria-label="Paragraph"

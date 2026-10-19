@@ -1,6 +1,5 @@
 /** The phone's bar above the keyboard (PhoneKeyBar): its rules, kept pure. */
 
-import { SLASH_COMMANDS } from "../constants/data";
 import { hasOwnField } from "../utils/domHelpers";
 
 export type BarMode = "blocks" | "format" | "heading" | "list" | "more";
@@ -60,27 +59,11 @@ export function barReach(kind: string | null, inlineField: boolean): Reach {
 }
 
 /**
- * What a hold on a block button teaches: the Markdown typed for the same
- * (`##`, `-`, `|||`), the slash menu's own hints, so the two never disagree.
- * A button that opens a row (H, ≡, ⊞) names the row and teaches nothing: its
- * row's buttons do.
- */
-const TYPED = new Map(SLASH_COMMANDS.filter((c) => c.hint).map((c) => [c.id, c.hint]));
-export const blockHint = (id: string) => TYPED.get(id);
-
-/** The markers a text style is typed with. Link has none: its picker takes web and note links alike. */
-export const FORMAT_MARKERS: Record<string, string> = {
-  bold: "**",
-  italic: "*",
-  strikethrough: "~~",
-  highlight: "==",
-  code: "`",
-};
-
-/**
- * What a hold on a button that opens a row says it holds, after its name,
- * muted (Headings H1–H6): the row's own names, so the hold teaches what the
- * next tap shows. Never in the hint's pill, which means "type this".
+ * What a hold on a button that opens a row says it holds, under its name,
+ * muted (Headings, H1–H6): the row's own names, so the hold teaches what the
+ * next tap shows. A hold teaches no Markdown: on a phone `##` and `**` sit on
+ * the keyboard's second layer, and the bar is the quicker way. Typed
+ * Markdown still converts for those who know it.
  */
 const ROW_CONTENTS: Record<string, string> = {
   heading: "H1–H6",

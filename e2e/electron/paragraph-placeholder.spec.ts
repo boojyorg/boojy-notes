@@ -1,5 +1,5 @@
 /**
- * "Type / for commands..." shows in a note's first paragraph only while it
+ * "Type / for blocks" shows in a note's first paragraph only while it
  * holds no text. An empty paragraph is one <br>, and so is a paragraph with
  * one soft break, so a CSS rule on the <br> drew the placeholder under
  * `line one ⇧↵ line two` (2026-09-26, and the 2026-09-24 overlap report).
@@ -26,7 +26,7 @@ test("a first paragraph with one soft break shows no placeholder", async () => {
     await h.openNote("Plain");
     expect(await placeholder(h.page)).toBe("none");
     await h.openNote("Blank");
-    expect(await placeholder(h.page)).toBe('"Type / for commands..."');
+    expect(await placeholder(h.page)).toBe('"Type / for blocks"');
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
@@ -44,7 +44,7 @@ test("the placeholder goes on the first keystroke and comes back when the text i
     await h.page.keyboard.type("b");
     expect(await placeholder(h.page)).toBe("none");
     for (let i = 0; i < 3; i++) await h.page.keyboard.press("Backspace");
-    await expect.poll(() => placeholder(h.page)).toBe('"Type / for commands..."');
+    await expect.poll(() => placeholder(h.page)).toBe('"Type / for blocks"');
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
@@ -64,7 +64,7 @@ test("the placeholder shows only while the note is one empty line: a line below 
     await h.page.keyboard.press("Backspace");
     await h.page.keyboard.press("Backspace");
     await expect.poll(() => h.page.locator("[data-block-id]").count()).toBe(1);
-    await expect.poll(() => placeholder(h.page)).toBe('"Type / for commands..."');
+    await expect.poll(() => placeholder(h.page)).toBe('"Type / for blocks"');
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
