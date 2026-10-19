@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { Z } from "../constants/zIndex";
 import { useExitGhost } from "../hooks/useExitGhost";
@@ -88,6 +95,10 @@ interface TooltipProps {
   note?: string;
   /** Muted, smaller words under the label: what a control opens (Headings, H1–H6). */
   detail?: string;
+  /** The label drawn as what the control makes (Heading 1 at its size, Bold in bold). */
+  look?: CSSProperties;
+  /** A mark before the label, as the editor draws it (a list's bullet, number or box). */
+  lead?: ReactNode;
   shortcut?: string;
   /** The control the chip names; the chip is centred on it. */
   anchor: HTMLElement | null;
@@ -116,6 +127,8 @@ export function Tooltip({
   lines,
   note,
   detail,
+  look,
+  lead,
   shortcut,
   anchor,
   placement = "above",
@@ -217,7 +230,14 @@ export function Tooltip({
         </span>
       ) : (
         <span style={{ display: "flex", flexDirection: "column", ...centred }}>
-          {label}
+          {look || lead ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, ...look }}>
+              {lead}
+              {label}
+            </span>
+          ) : (
+            label
+          )}
           {detail && (
             <span
               style={{

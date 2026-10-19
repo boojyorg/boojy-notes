@@ -5,9 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
-      TEXT: { secondary: "#47403A" },
+      TEXT: { primary: "#14110F", secondary: "#47403A", muted: "#6F6861" },
       BG: { standard: "#F9F9F9", divider: "#E9E9E9" },
-      ACCENT: { text: "#2A737D" },
+      ACCENT: { text: "#2A737D", primary: "#8FC1C6" },
+      mark: { bg: "rgba(143, 193, 198, 0.35)" },
+      inlineCode: { bg: "rgba(0,0,0,0.06)", border: "rgba(0,0,0,0.1)" },
+      link: { color: "#2A737D" },
     },
   }),
 }));
@@ -436,6 +439,56 @@ describe("tap acts, hold explains", () => {
     fireEvent.pointerUp(italic, { pointerType: "touch", pointerId: 2 });
     expect(sent).toEqual([]);
     expect(italic.hasAttribute("data-pressed")).toBe(false);
+  });
+
+  /** A button held, its chip's label element while held (the lift that follows does nothing). */
+  const heldLabel = (name: string) => {
+    const b = button(name);
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    // The innermost element holding the name: the label itself, not its wrapper.
+    const label = [...(chip()?.querySelectorAll("span") ?? [])]
+      .filter((s) => s.textContent?.endsWith(name))
+      .pop() as HTMLElement | undefined;
+    const style = label
+      ? {
+          fontSize: label.style.fontSize,
+          fontWeight: label.style.fontWeight,
+          fontStyle: label.style.fontStyle,
+        }
+      : null;
+    const marked = !!label?.firstElementChild;
+    fireEvent.pointerUp(b);
+    return { style, marked };
+  };
+
+  it("draws a label as what the button makes", () => {
+    press("Headings");
+    expect(heldLabel("Heading 2").style?.fontSize).toBe("22px");
+    press("Close");
+    press("Text style");
+    expect(heldLabel("Bold").style?.fontWeight).toBe("700");
+    expect(heldLabel("Italic").style?.fontStyle).toBe("italic");
+    press("Close");
+    press("Lists");
+    // The editor's marker before a list's name: a bullet, a number, an empty box.
+    expect(heldLabel("Bullet list").marked).toBe(true);
+    expect(heldLabel("To-do list").marked).toBe(true);
+    expect(sent).toEqual([]);
+  });
+
+  it("leaves a greyed button's label plain", () => {
+    editor.innerHTML = '<p data-block-type="code">let x</p>';
+    caret(2);
+    const b = button("Headings");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    expect(chip()?.querySelector("span span[style*='inline-flex']")).toBeNull();
+    fireEvent.pointerUp(b);
   });
 
   it("takes the chip away at a new press", () => {

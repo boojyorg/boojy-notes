@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type PointerEvent,
   type ReactNode,
   type RefObject,
@@ -9,6 +10,7 @@ import {
 } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { TOUCH } from "../constants/layout";
+import { headingStyle, useRhythm } from "../tokens/rhythm";
 import { sendCommand } from "../phone/commands";
 import { drifted, HOLD_MS } from "../utils/holdGesture";
 import { INLINE_FIELD_SELECTOR, TYPING_STYLE_MOVED } from "../utils/inlineFormatCommands";
@@ -86,6 +88,7 @@ export default function PhoneKeyBar({
 }) {
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
+  const rhythm = useRhythm();
   const keyboardUp = useKeyboardUp();
   // The row opened by hand; "blocks" leaves it to the caret (`shownRow`).
   const [mode, setMode] = useState<BarMode>("blocks");
@@ -194,7 +197,12 @@ export default function PhoneKeyBar({
     label: string,
     glyph: ReactNode,
     onPress: () => void,
-    { lit = false, disabled = false }: { lit?: boolean; disabled?: boolean } = {},
+    {
+      lit = false,
+      disabled = false,
+      look,
+      mark,
+    }: { lit?: boolean; disabled?: boolean; look?: CSSProperties; mark?: ReactNode } = {},
   ) => (
     <button
       key={key}
@@ -209,7 +217,7 @@ export default function PhoneKeyBar({
       {...explain.holdFor(
         disabled
           ? { key, label, note: notHere(active.kind) }
-          : { key, label, detail: rowContents(key) },
+          : { key, label, detail: rowContents(key), look, mark },
         disabled ? undefined : onPress,
       )}
       className="press"
@@ -245,22 +253,69 @@ export default function PhoneKeyBar({
   const close = button("close", "Close", <CloseIcon size={18} />, show("blocks"));
   const inList = isListKind(active.kind);
   const kinds = !active.reach.kinds;
+  // A hold's label is drawn as what the button makes: a heading at its size,
+  // Bold in bold, a list item with the editor's marker before it.
+  const mono = "'SF Mono', 'Fira Code', monospace";
+  const looks: Record<string, CSSProperties> = {
+    bold: { fontWeight: 700 },
+    italic: { fontStyle: "italic" },
+    strikethrough: { textDecoration: "line-through" },
+    highlight: { background: theme.mark.bg, borderRadius: 2, padding: "0 2px" },
+    code: {
+      fontFamily: mono,
+      background: theme.inlineCode.bg,
+      border: `1px solid ${theme.inlineCode.border}`,
+      borderRadius: 3,
+      padding: "0 4px",
+    },
+    link: { color: theme.link.color, textDecoration: "underline" },
+  };
+  const headingLook = (n: number): CSSProperties => {
+    const { fontSize, fontWeight, letterSpacing } = headingStyle(
+      `h${n}` as "h1",
+      rhythm,
+    ) as CSSProperties;
+    return { fontSize, fontWeight, letterSpacing };
+  };
+  // A new task is unticked, so its box is empty: the label shows what the tap makes.
+  const listMarks: Record<string, ReactNode> = {
+    bullet: <span style={{ width: 6, height: 6, borderRadius: "50%", background: TEXT.primary }} />,
+    numbered: <span style={{ color: TEXT.secondary }}>1.</span>,
+    checkbox: (
+      <span
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 3.5,
+          border: `1.5px solid ${TEXT.muted}`,
+          boxSizing: "border-box",
+        }}
+      />
+    ),
+  };
   const kind = (k: string, label: string, glyph: ReactNode) =>
     button(k, label, glyph, run(kindCommand(k, active.kind)), {
       lit: active.kind === k,
       disabled: kinds,
+      mark: listMarks[k],
     });
   // A choice in a row opened for one choice closes it.
   const once = (onPress: () => void) => () => {
     onPress();
     setMode("blocks");
   };
-  const insert = (command: "table" | "code" | "divider", label: string, glyph: string) =>
+  const insert = (
+    command: "table" | "code" | "divider",
+    label: string,
+    glyph: string,
+    look?: CSSProperties,
+  ) =>
     button(
       command,
       label,
       <SlashCommandIcon name={glyph} size={20} />,
       once(() => onInsert(command)),
+      { look },
     );
 
   // Each row: the buttons from the left, then its last group at the right end.
@@ -288,9 +343,13 @@ export default function PhoneKeyBar({
           "Quote",
           <SlashCommandIcon name="text-quote" size={20} />,
           once(run(kindCommand("blockquote", active.kind))),
-          { lit: active.kind === "blockquote", disabled: kinds },
+          {
+            lit: active.kind === "blockquote",
+            disabled: kinds,
+            look: { borderLeft: `3px solid ${ACCENT.primary}`, paddingLeft: 8 },
+          },
         ),
-        insert("code", "Code block", "code"),
+        insert("code", "Code block", "code", { fontFamily: mono }),
         insert("divider", "Divider", "minus"),
       ],
       [close],
@@ -320,6 +379,7 @@ export default function PhoneKeyBar({
           button(f, FORMAT_LABELS[f], <FormatIcon name={f} size={18} />, run(f), {
             lit: active.formats.has(f),
             disabled: f === "link" ? !active.reach.link : !active.reach.styles,
+            look: looks[f],
           }),
         ),
       ],
@@ -332,6 +392,7 @@ export default function PhoneKeyBar({
           button(`h${n}`, `Heading ${n}`, `H${n}`, once(run(headingCommand(n, active.kind))), {
             lit: active.kind === `h${n}`,
             disabled: kinds,
+            look: headingLook(n),
           }),
         ),
       ],
@@ -363,6 +424,8 @@ export default function PhoneKeyBar({
         <Tooltip
           label={explain.chip.label}
           detail={explain.chip.detail}
+          look={explain.chip.look}
+          lead={explain.chip.mark}
           note={explain.chip.note}
           anchor={explain.chip.anchor}
           touch
@@ -445,6 +508,10 @@ interface Explained {
   label: string;
   /** What a button that opens a row holds, muted after its name (`rowContents`). */
   detail?: string;
+  /** The label drawn as what the button makes (Heading 1 at its size, Bold in bold). */
+  look?: CSSProperties;
+  /** The editor's marker before a list button's label. */
+  mark?: ReactNode;
   /** Why a greyed button does nothing here, muted under its name. */
   note?: string;
   anchor: HTMLElement;
