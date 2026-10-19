@@ -369,8 +369,11 @@ export default function GlobalStyles() {
            is answered before it is finished). Only an icon-only control dips:
            beside a label, an icon shrinking alone reads as two things
            moving, so a labelled row (New note) only shades. .press is the
-           opt-in for a control that has none of its own. */
+           opt-in for a control that has none of its own; one that refuses
+           the touch itself (the phone's key bar) marks the press with
+           data-pressed, since no :active follows a refused touchstart. */
         .press:active:not(:disabled):not([aria-disabled="true"]),
+        .press[data-pressed]:not([aria-disabled="true"]),
         .settings-button:active:not([aria-disabled="true"]),
         .theme-pill:active,
         .sidebar-action-row:active,
@@ -379,6 +382,7 @@ export default function GlobalStyles() {
           transition: scale var(--motion-fast) var(--ease-enter);
         }
         .press:active:not(:disabled):not([aria-disabled="true"]) svg,
+        .press[data-pressed]:not([aria-disabled="true"]) svg,
         .sidebar-section-action:active svg { scale: var(--press-icon-scale); }
         [data-block-id] code {
           background: ${theme.inlineCode.bg};

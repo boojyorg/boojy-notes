@@ -15,6 +15,7 @@ const sent = vi.hoisted(() => [] as string[]);
 vi.mock("../../src/phone/commands", () => ({ sendCommand: (id: string) => sent.push(id) }));
 
 import PhoneKeyBar from "../../src/components/PhoneKeyBar";
+import { HOLD_MS } from "../../src/utils/holdGesture";
 import { TYPING_STYLE_MOVED } from "../../src/utils/inlineFormatCommands";
 
 let editor: HTMLDivElement;
@@ -44,14 +45,14 @@ const press = (name: string) => fireEvent.click(screen.getByRole("button", { nam
 const lit = (name: string) => screen.getByRole("button", { name }).getAttribute("aria-pressed");
 const bar = () => screen.queryByRole("toolbar");
 const row = () => screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"));
-const MAIN = ["Undo", "Redo", "Heading", "Lists", "Text style", "More blocks"];
+const MAIN = ["Undo", "Redo", "Headings", "Lists", "Text style", "More blocks"];
 const MORE = ["Undo", "Redo", "Table", "Quote", "Code block", "Divider", "Close"];
 const LIST = [
   "Undo",
   "Redo",
-  "Bulleted list",
+  "Bullet list",
   "Numbered list",
-  "Task",
+  "To-do list",
   "Outdent",
   "Indent",
   "Close",
@@ -107,7 +108,7 @@ describe("the bar above the keyboard", () => {
       for (const b of screen.getAllByRole("button")) slots.add(b.style.flex);
     };
     read();
-    press("Heading");
+    press("Headings");
     read();
     press("Close");
     press("Text style");
@@ -128,13 +129,13 @@ describe("the bar above the keyboard", () => {
     caret(2);
     press("Lists");
     expect(row()).toEqual(LIST);
-    press("Task");
+    press("To-do list");
     press("Undo");
     press("Redo");
     expect(sent).toEqual(["todo", "undo", "redo"]);
     caret(1, 1, 2);
-    expect(lit("Bulleted list")).toBe("true");
-    press("Bulleted list");
+    expect(lit("Bullet list")).toBe("true");
+    press("Bullet list");
     expect(sent.at(-1)).toBe("body");
   });
 
@@ -185,7 +186,7 @@ describe("the bar above the keyboard", () => {
     press("Lists");
     caret(4);
     expect(row()).toEqual(LIST);
-    press("Bulleted list");
+    press("Bullet list");
     expect(sent).toEqual(["bullet"]);
     editor.children[0].setAttribute("data-block-type", "bullet");
     caret(4);
@@ -294,7 +295,7 @@ describe("the bar above the keyboard", () => {
     mount();
     size(412, 532);
     caret(1, 1, 1);
-    press("Heading");
+    press("Headings");
     expect(row()).toEqual([
       "Undo",
       "Redo",
@@ -304,7 +305,7 @@ describe("the bar above the keyboard", () => {
     expect(lit("Heading 2")).toBe("true");
     press("Heading 2");
     expect(sent).toEqual(["body"]);
-    press("Heading");
+    press("Headings");
     press("Heading 6");
     expect(sent.at(-1)).toBe("h6");
     expect(row()).toEqual(MAIN);
@@ -314,5 +315,174 @@ describe("the bar above the keyboard", () => {
     render(<PhoneKeyBar editorRef={{ current: editor }} {...props} always />);
     caret(2);
     expect(bar()).not.toBeNull();
+  });
+});
+
+describe("tap acts, hold explains", () => {
+  const button = (name: string) => screen.getByRole("button", { name });
+  const chip = () => document.querySelector('[data-testid="key-bar-chip"]');
+  /**
+   * A finger kept on a button for `ms`, then lifted (and the click a lift
+   * gives): the chip's words while it was held.
+   */
+  const hold = (name: string, ms = HOLD_MS) => {
+    const b = button(name);
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+    const seen = chip()?.textContent ?? null;
+    fireEvent.pointerUp(b);
+    fireEvent.click(b);
+    return seen;
+  };
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mount();
+    size(412, 532);
+    caret(2);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("names a button held still, with the Markdown typed for the same, and does nothing", () => {
+    press("Headings");
+    expect(hold("Heading 2")).toBe("Heading 2##");
+    expect(sent).toEqual([]);
+    // The row stays: lifting after a hold chose nothing.
+    expect(button("Heading 2")).toBeTruthy();
+  });
+
+  it("names a button that opens a row with what it holds, and no hint", () => {
+    // Two lines: the name, then what it holds.
+    expect(hold("Headings")).toBe("HeadingsH1–H6");
+    expect(hold("Lists")).toBe("ListsBullet, numbered, to-do");
+    expect(row()).toEqual(MAIN);
+  });
+
+  it("keeps the chip while the finger stays, and lets it go the moment it lifts", () => {
+    const b = button("Lists");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS + 3000);
+    });
+    expect(chip()).not.toBeNull();
+    fireEvent.pointerUp(b);
+    expect(chip()).toBeNull();
+  });
+
+  it("acts on a tap, and on the tap after a hold", () => {
+    press("Text style");
+    hold("Bold");
+    expect(sent).toEqual([]);
+    press("Bold");
+    expect(sent).toEqual(["bold"]);
+  });
+
+  it("is no hold once the finger moves, and a short press shows nothing", () => {
+    press("Text style");
+    const b = button("Italic");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(b, { clientX: 40, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    expect(chip()).toBeNull();
+    expect(hold("Italic", HOLD_MS - 1)).toBeNull();
+    expect(sent).toEqual(["italic"]);
+  });
+
+  it("follows a held finger from button to button at once, and the lift still does nothing", () => {
+    press("Headings");
+    const h1 = button("Heading 1");
+    fireEvent.pointerDown(h1, { clientX: 10, clientY: 10, pointerType: "touch" });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    expect(chip()?.textContent).toBe("Heading 1#");
+    // A touch's moves keep coming to the button it began on; what is under the finger decides.
+    // jsdom has no hit-testing: the element under the finger is given.
+    const under = vi.fn((_x: number, _y: number): Element | null => button("Heading 3"));
+    document.elementFromPoint = under;
+    fireEvent.pointerMove(h1, { clientX: 120, clientY: 10, pointerType: "touch" });
+    expect(chip()?.textContent).toBe("Heading 3###");
+    expect(button("Heading 3").hasAttribute("data-pressed")).toBe(true);
+    // Off the bar: no chip; back on: its chip again, with no new wait.
+    under.mockReturnValue(document.body);
+    fireEvent.pointerMove(h1, { clientX: 120, clientY: -80, pointerType: "touch" });
+    expect(chip()).toBeNull();
+    under.mockReturnValue(button("Heading 2"));
+    fireEvent.pointerMove(h1, { clientX: 80, clientY: 10, pointerType: "touch" });
+    expect(chip()?.textContent).toBe("Heading 2##");
+    fireEvent.pointerUp(h1, { pointerType: "touch" });
+    expect(chip()).toBeNull();
+    expect(button("Heading 2").hasAttribute("data-pressed")).toBe(false);
+    expect(sent).toEqual([]);
+    delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+  });
+
+  it("leaves the gesture to the first finger: a second never turns its hold into a tap", () => {
+    press("Text style");
+    const [bold, italic] = [button("Bold"), button("Italic")];
+    const finger = { clientX: 10, clientY: 10, pointerType: "touch" };
+    fireEvent.pointerDown(bold, { ...finger, pointerId: 1 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    fireEvent.pointerDown(italic, { ...finger, pointerId: 2 });
+    expect(chip()?.textContent).toBe("Bold**");
+    fireEvent.pointerUp(bold, { pointerType: "touch", pointerId: 1 });
+    fireEvent.pointerUp(italic, { pointerType: "touch", pointerId: 2 });
+    expect(sent).toEqual([]);
+    expect(italic.hasAttribute("data-pressed")).toBe(false);
+  });
+
+  it("takes the chip away at a new press", () => {
+    fireEvent.pointerDown(button("Lists"), { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    expect(chip()).not.toBeNull();
+    fireEvent.pointerDown(button("Undo"), { clientX: 10, clientY: 10 });
+    expect(chip()).toBeNull();
+  });
+
+  it("acts on a finger's tap at its lift, with no click to wait for", () => {
+    // The bar refuses the touch, so Android sends no click after it.
+    press("Text style");
+    const b = button("Bold");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10, pointerType: "touch" });
+    expect(b.hasAttribute("data-pressed")).toBe(true);
+    fireEvent.pointerUp(b, { pointerType: "touch" });
+    expect(b.hasAttribute("data-pressed")).toBe(false);
+    expect(sent).toEqual(["bold"]);
+  });
+
+  it("does nothing at the lift of a finger's hold, or of a finger that moved", () => {
+    press("Text style");
+    const b = button("Bold");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10, pointerType: "touch" });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    fireEvent.pointerUp(b, { pointerType: "touch" });
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10, pointerType: "touch" });
+    fireEvent.pointerMove(b, { clientX: 40, clientY: 10, pointerType: "touch" });
+    fireEvent.pointerUp(b, { pointerType: "touch" });
+    expect(sent).toEqual([]);
+  });
+
+  it("refuses the touch itself, so Android never focuses a button or opens its menu", () => {
+    const start = new Event("touchstart", { bubbles: true, cancelable: true });
+    button("Lists").dispatchEvent(start);
+    expect(start.defaultPrevented).toBe(true);
+  });
+
+  it("says why a greyed button does nothing", () => {
+    editor.innerHTML = '<p data-block-type="code">let x</p>';
+    caret(2);
+    expect(hold("Headings")).toBe("HeadingsNot in a code block");
+    expect(row()).toEqual(MAIN);
   });
 });

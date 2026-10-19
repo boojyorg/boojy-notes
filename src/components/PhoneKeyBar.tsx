@@ -1,7 +1,16 @@
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import {
+  type PointerEvent,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTheme } from "../hooks/useTheme";
 import { TOUCH } from "../constants/layout";
 import { sendCommand } from "../phone/commands";
+import { drifted, HOLD_MS } from "../utils/holdGesture";
 import { INLINE_FIELD_SELECTOR, TYPING_STYLE_MOVED } from "../utils/inlineFormatCommands";
 import {
   CloseIcon,
@@ -16,19 +25,24 @@ import {
   TextStyleIcon,
   UndoIcon,
 } from "./Icons";
+import { Tooltip } from "./Tooltip";
 import {
   type BarMode,
   barModeAfterSelection,
   barReach,
+  blockHint,
   type Caret,
+  FORMAT_MARKERS,
   headingCommand,
   isListKind,
   keyboardUp,
   kindCommand,
   litFormats,
+  notHere,
   type Pending,
   promise,
   type Reach,
+  rowContents,
   shownRow,
 } from "../phone/keyBar";
 
@@ -48,6 +62,10 @@ import {
  * greyed where Tab would move nothing. The list row's ✕ puts it away until
  * the caret leaves the list. In a block with its own field, what cannot act
  * there greys (`barReach`). A typed `/` is still the slash menu's.
+ *
+ * Tap acts, hold explains: a finger kept on a button names it in a chip
+ * above, with the Markdown typed for the same where it has one, and lifting
+ * after a hold does nothing (`useHoldToExplain`). A greyed button says why.
  *
  * Every button sends the desktop menu bar's command (`sendCommand`), so it
  * does what its key does; table, code and divider are the slash menu's
@@ -126,14 +144,29 @@ export default function PhoneKeyBar({
     };
   }, [editorRef]);
 
+  const explain = useHoldToExplain();
+  const refuseTouches = useCallback((bar: HTMLDivElement | null) => {
+    if (!bar) return;
+    // The bar takes its touches whole: left to Android, a long press focused
+    // the button, which closed the keyboard and the bar with it, and opened
+    // the system's menu. A tap acts at its lift instead (`holdFor`).
+    const refuse = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    bar.addEventListener("touchstart", refuse, { passive: false });
+    return () => bar.removeEventListener("touchstart", refuse);
+  }, []);
+
   // Each time the keyboard comes up the bar starts on its block buttons.
   const shown = (keyboardUp || always) && inText;
+  const hideChip = explain.hide;
   useEffect(() => {
     if (shown) return;
     held.current = false;
     setMode("blocks");
     setDismissed(false);
-  }, [shown]);
+    hideChip();
+  }, [shown, hideChip]);
 
   if (!shown) return null;
 
@@ -163,8 +196,11 @@ export default function PhoneKeyBar({
     label: string,
     glyph: ReactNode,
     onPress: () => void,
-    lit = false,
-    disabled = false,
+    {
+      lit = false,
+      disabled = false,
+      hint,
+    }: { lit?: boolean; disabled?: boolean; hint?: string } = {},
   ) => (
     <button
       key={key}
@@ -176,7 +212,12 @@ export default function PhoneKeyBar({
       tabIndex={-1}
       // The caret, the selection and the keyboard stay where they are.
       onMouseDown={(e) => e.preventDefault()}
-      onClick={disabled ? undefined : onPress}
+      {...explain.holdFor(
+        disabled
+          ? { key, label, note: notHere(active.kind) }
+          : { key, label, hint, detail: rowContents(key) },
+        disabled ? undefined : onPress,
+      )}
       className="press"
       style={{
         flex: `0 0 calc(100% / ${SLOTS})`,
@@ -194,6 +235,9 @@ export default function PhoneKeyBar({
         fontSize: 14,
         fontWeight: 600,
         cursor: "pointer",
+        // A hold is the bar's: no selection, no system menu.
+        userSelect: "none",
+        WebkitTouchCallout: "none",
       }}
     >
       {glyph}
@@ -208,7 +252,11 @@ export default function PhoneKeyBar({
   const inList = isListKind(active.kind);
   const kinds = !active.reach.kinds;
   const kind = (k: string, label: string, glyph: ReactNode) =>
-    button(k, label, glyph, run(kindCommand(k, active.kind)), active.kind === k, kinds);
+    button(k, label, glyph, run(kindCommand(k, active.kind)), {
+      lit: active.kind === k,
+      disabled: kinds,
+      hint: blockHint(k),
+    });
   // A choice in a row opened for one choice closes it.
   const once = (onPress: () => void) => () => {
     onPress();
@@ -220,6 +268,7 @@ export default function PhoneKeyBar({
       label,
       <SlashCommandIcon name={glyph} size={20} />,
       once(() => onInsert(command)),
+      { hint: blockHint(command) },
     );
 
   // Each row: the buttons from the left, then its last group at the right end.
@@ -227,23 +276,14 @@ export default function PhoneKeyBar({
     blocks: [
       [
         ...history,
-        button(
-          "heading",
-          "Heading",
-          <HeadingIcon />,
-          show("heading"),
-          /^h[1-6]$/.test(active.kind ?? ""),
-          kinds,
-        ),
-        button("lists", "Lists", <ListsIcon />, show("list"), inList, kinds),
-        button(
-          "format",
-          "Text style",
-          <TextStyleIcon />,
-          show("format", true),
-          false,
-          !active.reach.styles,
-        ),
+        button("heading", "Headings", <HeadingIcon />, show("heading"), {
+          lit: /^h[1-6]$/.test(active.kind ?? ""),
+          disabled: kinds,
+        }),
+        button("lists", "Lists", <ListsIcon />, show("list"), { lit: inList, disabled: kinds }),
+        button("format", "Text style", <TextStyleIcon />, show("format", true), {
+          disabled: !active.reach.styles,
+        }),
       ],
       [button("more", "More blocks", <MoreBlocksIcon />, show("more"))],
     ],
@@ -256,8 +296,7 @@ export default function PhoneKeyBar({
           "Quote",
           <SlashCommandIcon name="text-quote" size={20} />,
           once(run(kindCommand("blockquote", active.kind))),
-          active.kind === "blockquote",
-          kinds,
+          { lit: active.kind === "blockquote", disabled: kinds, hint: blockHint("blockquote") },
         ),
         insert("code", "Code block", "code"),
         insert("divider", "Divider", "minus"),
@@ -267,11 +306,13 @@ export default function PhoneKeyBar({
     list: [
       [
         ...history,
-        kind("bullet", "Bulleted list", <SlashCommandIcon name="list" size={20} />),
+        kind("bullet", "Bullet list", <SlashCommandIcon name="list" size={20} />),
         kind("numbered", "Numbered list", <SlashCommandIcon name="list-ordered" size={20} />),
-        kind("checkbox", "Task", <SlashCommandIcon name="square-check" size={20} />),
-        button("outdent", "Outdent", <OutdentIcon />, run("outdent"), false, !active.outdent),
-        button("indent", "Indent", <IndentIcon />, run("indent"), false, !active.indent),
+        kind("checkbox", "To-do list", <SlashCommandIcon name="square-check" size={20} />),
+        button("outdent", "Outdent", <OutdentIcon />, run("outdent"), {
+          disabled: !active.outdent,
+        }),
+        button("indent", "Indent", <IndentIcon />, run("indent"), { disabled: !active.indent }),
       ],
       [
         button("close", "Close", <CloseIcon size={18} />, () => {
@@ -284,14 +325,11 @@ export default function PhoneKeyBar({
       [
         ...history,
         ...(["bold", "italic", "strikethrough", "highlight", "code", "link"] as const).map((f) =>
-          button(
-            f,
-            FORMAT_LABELS[f],
-            <FormatIcon name={f} size={18} />,
-            run(f),
-            active.formats.has(f),
-            f === "link" ? !active.reach.link : !active.reach.styles,
-          ),
+          button(f, FORMAT_LABELS[f], <FormatIcon name={f} size={18} />, run(f), {
+            lit: active.formats.has(f),
+            disabled: f === "link" ? !active.reach.link : !active.reach.styles,
+            hint: FORMAT_MARKERS[f],
+          }),
         ),
       ],
       [close],
@@ -300,14 +338,11 @@ export default function PhoneKeyBar({
       [
         ...history,
         ...[1, 2, 3, 4, 5, 6].map((n) =>
-          button(
-            `h${n}`,
-            `Heading ${n}`,
-            `H${n}`,
-            once(run(headingCommand(n, active.kind))),
-            active.kind === `h${n}`,
-            kinds,
-          ),
+          button(`h${n}`, `Heading ${n}`, `H${n}`, once(run(headingCommand(n, active.kind))), {
+            lit: active.kind === `h${n}`,
+            disabled: kinds,
+            hint: blockHint(`h${n}`),
+          }),
         ),
       ],
       [close],
@@ -317,6 +352,7 @@ export default function PhoneKeyBar({
 
   return (
     <div
+      ref={refuseTouches}
       data-testid="phone-key-bar"
       role="toolbar"
       aria-label="Formatting"
@@ -332,6 +368,18 @@ export default function PhoneKeyBar({
       {lead}
       <span aria-hidden style={{ flex: 1 }} />
       {end}
+      {explain.chip && (
+        // One chip for a whole hold: a slide changes its words and place, not the lift-in.
+        <Tooltip
+          label={explain.chip.label}
+          shortcut={explain.chip.hint}
+          detail={explain.chip.detail}
+          note={explain.chip.note}
+          anchor={explain.chip.anchor}
+          touch
+          testId="key-bar-chip"
+        />
+      )}
     </div>
   );
 }
@@ -400,4 +448,144 @@ function useKeyboardUp() {
     return () => window.removeEventListener("resize", read);
   }, []);
   return up;
+}
+
+/** What a hold on a bar button says, and the button it names. */
+interface Explained {
+  key: string;
+  label: string;
+  /** The Markdown typed for the same (`##`), in the chip's grey pill. */
+  hint?: string;
+  /** What a button that opens a row holds, muted after its name (`rowContents`). */
+  detail?: string;
+  /** Why a greyed button does nothing here, muted under its name. */
+  note?: string;
+  anchor: HTMLElement;
+}
+
+/**
+ * Tap acts, hold explains. A finger kept still on a button for HOLD_MS (the
+ * block hold's time) shows its chip above the fingertip, read while the
+ * finger stays and gone the moment it lifts, as a keyboard's key preview is.
+ * Moving before then is no hold. Once a hold shows, the chip follows the
+ * finger from button to button at once (sliding off the bar hides it, coming
+ * back shows it), and lifting anywhere still does nothing. A finger's tap
+ * acts at its lift: the bar refuses the touch, so Android sends no click (and
+ * never focuses the button). A mouse acts on its click, except the click that
+ * ends a recognised hold. The caret, selection and keyboard stay put. The
+ * finger that pressed first owns the gesture until it lifts: another is
+ * ignored, as on a held block, so it can never turn a hold into a tap.
+ */
+function useHoldToExplain() {
+  const [chip, setChip] = useState<Explained | null>(null);
+  const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+  // A hold is showing, until the finger lifts: moves take the chip along.
+  const sliding = useRef(false);
+  // The button under the finger while sliding, wearing the press.
+  const under = useRef<HTMLElement | null>(null);
+  // The button whose hold was recognised: a mouse's click after it does nothing.
+  const explained = useRef<string | null>(null);
+  // The pointer whose press this is; null between gestures.
+  const owner = useRef<number | null>(null);
+  // Each button's words, by key, for the one a slide reaches.
+  const words = useRef(new Map<string, Omit<Explained, "anchor">>());
+
+  const stop = useCallback(() => {
+    if (press.current) clearTimeout(press.current.timer);
+    press.current = null;
+  }, []);
+  const settle = useCallback(() => {
+    if (under.current) delete under.current.dataset.pressed;
+    under.current = null;
+    sliding.current = false;
+    setChip(null);
+  }, []);
+  const hide = useCallback(() => {
+    stop();
+    settle();
+    explained.current = null;
+    owner.current = null;
+  }, [stop, settle]);
+  /** Whether this event is another finger's, while one already owns the gesture. */
+  const another = (e: PointerEvent<HTMLElement>) =>
+    owner.current !== null && e.pointerId !== owner.current;
+  useEffect(() => hide, [hide]);
+
+  /** The chip moves to the button under the finger; off the bar, it hides. */
+  const slideTo = (x: number, y: number) => {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-explain]") ?? null;
+    if (el === under.current) return;
+    if (under.current) delete under.current.dataset.pressed;
+    under.current = el;
+    const what = el && words.current.get(el.dataset.explain ?? "");
+    if (!el || !what) {
+      setChip(null);
+      return;
+    }
+    el.dataset.pressed = "";
+    setChip({ ...what, anchor: el });
+  };
+
+  const holdFor = (what: Omit<Explained, "anchor">, act: (() => void) | undefined) => {
+    words.current.set(what.key, what);
+    return {
+      "data-explain": what.key,
+      onPointerDown: (e: PointerEvent<HTMLElement>) => {
+        if (another(e)) return;
+        hide();
+        owner.current = e.pointerId;
+        const anchor = e.currentTarget;
+        anchor.dataset.pressed = "";
+        under.current = anchor;
+        press.current = {
+          x: e.clientX,
+          y: e.clientY,
+          timer: setTimeout(() => {
+            press.current = null;
+            sliding.current = true;
+            explained.current = what.key;
+            setChip({ ...what, anchor });
+          }, HOLD_MS),
+        };
+      },
+      onPointerMove: (e: PointerEvent<HTMLElement>) => {
+        if (another(e)) return;
+        if (sliding.current) slideTo(e.clientX, e.clientY);
+        else if (press.current && drifted(press.current, { x: e.clientX, y: e.clientY })) stop();
+      },
+      onPointerUp: (e: PointerEvent<HTMLElement>) => {
+        if (another(e)) return;
+        owner.current = null;
+        delete e.currentTarget.dataset.pressed;
+        // Still pending: neither held nor moved, so a tap.
+        const tap = !!press.current;
+        const held = sliding.current;
+        stop();
+        settle();
+        if (!held && tap && e.pointerType === "touch") act?.();
+      },
+      onPointerCancel: (e: PointerEvent<HTMLElement>) => {
+        if (another(e)) return;
+        owner.current = null;
+        delete e.currentTarget.dataset.pressed;
+        stop();
+        settle();
+      },
+      onPointerLeave: (e: PointerEvent<HTMLElement>) => {
+        // A mouse sliding a hold keeps the press on the button under it.
+        if (!sliding.current) delete e.currentTarget.dataset.pressed;
+      },
+      onClick: () => {
+        if (explained.current === what.key) {
+          explained.current = null;
+          return;
+        }
+        act?.();
+      },
+      // A mouse's right-click, or a long press that got past the refusal.
+      onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
+    };
+  };
+
+  return { chip, holdFor, hide };
 }

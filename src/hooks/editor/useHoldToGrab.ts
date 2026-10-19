@@ -156,6 +156,8 @@ export function useHoldToGrab({
       if (touch.field) touch.field.style.pointerEvents = "none";
       // A note focused with the keyboard put away would bring it back up.
       if (!touch.keyboard) blurEditor();
+      // Felt once, as the hold is recognised; a drag that follows adds nothing.
+      window.boojyPhoneAPI?.holdFelt();
       on.current.onHold(id);
     };
 

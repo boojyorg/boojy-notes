@@ -203,6 +203,8 @@ declare global {
     boojyPhoneAPI?: import("../phone/phoneVault").PhoneVaultAPI & {
       /** The bar above the keyboard's commands (src/phone/commands.ts). */
       onMenuCommand: (listener: (id: string) => void) => () => void;
+      /** The system's long-press tap, as a block hold is recognised (src/phone/haptics.ts). */
+      holdFelt: () => void;
       /** Sync's state, for Home's folder row (src/phone/useSyncStatus.ts). */
       sync: import("../phone/useSyncStatus").PhoneSyncAPI;
     };

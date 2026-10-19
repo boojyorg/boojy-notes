@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Z } from "../constants/zIndex";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useTheme } from "../hooks/useTheme";
+import { prefersReducedMotion } from "../tokens/motion";
 import { cssZoom } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
 
@@ -26,6 +28,15 @@ export const TOOLTIP_WARM_MS = 300;
  */
 const GAP = 4;
 const EDGE = 8;
+/**
+ * A touch chip's air above its control: clear of the fingertip on it (a chip
+ * 4px up was under the finger), near enough to read as the control's. Its
+ * tail spans most of it.
+ */
+const TOUCH_LIFT = 20;
+/** The tail's square, turned to a point; kept this far in from the chip's rounded corners. */
+const TAIL = 16;
+const TAIL_INSET = 18;
 
 let warmUntil = 0;
 
@@ -73,11 +84,21 @@ interface TooltipProps {
    * grip): the gesture in the label's ink, what it does muted.
    */
   lines?: ReadonlyArray<readonly [gesture: string, does: string]>;
+  /** A muted line under the label: why a greyed control does nothing here. */
+  note?: string;
+  /** Muted, smaller words under the label: what a control opens (Headings, H1–H6). */
+  detail?: string;
   shortcut?: string;
   /** The control the chip names; the chip is centred on it. */
   anchor: HTMLElement | null;
   /** Above for a control mid-page (the toolbar); below for one on the window's top row. */
   placement?: "above" | "below";
+  /**
+   * Named under a finger (the phone's key bar): larger, lifted clear of the
+   * fingertip, with a tail pointing at the control, since the chip can sit
+   * well above it and off its centre at the screen's edge.
+   */
+  touch?: boolean;
   testId?: string;
 }
 
@@ -93,15 +114,27 @@ interface TooltipProps {
 export function Tooltip({
   label,
   lines,
+  note,
+  detail,
   shortcut,
   anchor,
   placement = "above",
+  touch = false,
   testId,
 }: TooltipProps) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLSpanElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  // `glide`: placed before, so a move to another control eases there (a touch chip's slide).
+  const [pos, setPos] = useState<{
+    left: number;
+    top: number;
+    tail: number;
+    glide: boolean;
+  } | null>(null);
+  // A touch chip leaves as the menus do: gone at once, a copy fading behind it.
+  useExitGhost(ref, touch);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the words change the chip's size; a slide changes them with the control
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !anchor) return;
@@ -109,15 +142,26 @@ export function Tooltip({
     const c = el.getBoundingClientRect();
     const maxLeft = Math.max(EDGE, window.innerWidth - EDGE - c.width);
     const left = Math.min(maxLeft, Math.max(EDGE, a.left + a.width / 2 - c.width / 2));
-    const top = placement === "below" ? a.bottom + GAP : a.top - GAP - c.height;
+    const gap = touch ? TOUCH_LIFT : GAP;
+    const top = placement === "below" ? a.bottom + gap : a.top - gap - c.height;
+    // The tail points at the control's centre, wherever the edge moved the chip.
+    const tail = Math.min(c.width - TAIL_INSET, Math.max(TAIL_INSET, a.left + a.width / 2 - left));
     const zoom = cssZoom(document.documentElement);
-    setPos({ left: left / zoom, top: top / zoom });
-  }, [anchor, placement]);
+    setPos((was) => ({
+      left: left / zoom,
+      top: top / zoom,
+      tail: tail / zoom,
+      glide: !!was && touch && !prefersReducedMotion(),
+    }));
+  }, [anchor, placement, touch, label, detail, note, shortcut]);
   if (typeof document === "undefined") return null;
+  // Two lines under a finger sit centred over the tail; a hover chip's start at its left.
+  const centred = touch ? ({ alignItems: "center", textAlign: "center" } as const) : {};
   return createPortal(
     <span
       ref={ref}
-      className="motion-fade"
+      // A touch chip lifts in, as the selection toolbar does; a hover chip fades.
+      className={touch ? "motion-rise" : "motion-fade"}
       role="tooltip"
       aria-hidden="true"
       data-testid={testId}
@@ -127,11 +171,20 @@ export function Tooltip({
         left: pos?.left ?? 0,
         top: pos?.top ?? 0,
         visibility: pos ? "visible" : "hidden",
+        transition: pos?.glide
+          ? "left var(--motion-fast) var(--ease-enter), top var(--motion-fast) var(--ease-enter)"
+          : undefined,
         display: "flex",
         alignItems: "center",
-        gap: 8,
-        padding: shortcut ? "5px 6px 5px 10px" : "5px 10px",
-        borderRadius: 8,
+        gap: touch ? 10 : 8,
+        padding: touch
+          ? shortcut
+            ? "9px 10px 9px 14px"
+            : "9px 14px"
+          : shortcut
+            ? "5px 6px 5px 10px"
+            : "5px 10px",
+        borderRadius: touch ? 12 : 8,
         background: BG.elevated,
         // A hairline and no shadow: a shadow says "a surface you can act on",
         // which the menus are and a label is not. The border draws the edge on
@@ -141,9 +194,9 @@ export function Tooltip({
         // A control's label, read at a glance: 13px/500 in the primary ink.
         // The shortcut is a step smaller on a grey pill (the content-hover
         // grey, secondary ink), so it reads as a key and never as prose.
-        fontSize: 13,
+        fontSize: touch ? 16 : 13,
         fontWeight: 500,
-        lineHeight: "18px",
+        lineHeight: touch ? "22px" : "18px",
         whiteSpace: "nowrap",
         pointerEvents: "none",
         zIndex: Z.TOOLTIP,
@@ -157,23 +210,60 @@ export function Tooltip({
             </span>
           ))}
         </span>
+      ) : note ? (
+        <span style={{ display: "flex", flexDirection: "column", ...centred }}>
+          {label}
+          <span style={{ color: TEXT.muted, fontWeight: 400 }}>{note}</span>
+        </span>
       ) : (
-        <span>{label}</span>
+        <span style={{ display: "flex", flexDirection: "column", ...centred }}>
+          {label}
+          {detail && (
+            <span
+              style={{
+                color: TEXT.muted,
+                fontWeight: 400,
+                fontSize: touch ? 14 : 12,
+                lineHeight: touch ? "20px" : "16px",
+              }}
+            >
+              {detail}
+            </span>
+          )}
+        </span>
       )}
       {shortcut && (
         <span
           style={{
-            fontSize: 11,
+            fontSize: touch ? 15 : 11,
             fontWeight: 500,
-            lineHeight: "14px",
-            padding: "1px 5px",
-            borderRadius: 5,
+            lineHeight: touch ? "20px" : "14px",
+            padding: touch ? "1px 7px" : "1px 5px",
+            borderRadius: touch ? 6 : 5,
             background: BG.surface,
             color: TEXT.secondary,
           }}
         >
           {shortcut}
         </span>
+      )}
+      {touch && pos && placement === "above" && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: pos.tail - TAIL / 2,
+            transition: pos.glide ? "left var(--motion-fast) var(--ease-enter)" : undefined,
+            bottom: -TAIL / 2,
+            width: TAIL,
+            height: TAIL,
+            rotate: "45deg",
+            background: BG.elevated,
+            // The hairline continues round the point; its inner sides stay open.
+            borderRight: `1px solid ${BG.divider}`,
+            borderBottom: `1px solid ${BG.divider}`,
+          }}
+        />
       )}
     </span>,
     document.body,
