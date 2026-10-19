@@ -14,7 +14,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 const sent = vi.hoisted(() => [] as string[]);
 vi.mock("../../src/phone/commands", () => ({ sendCommand: (id: string) => sent.push(id) }));
 
-import PhoneKeyBar, { EXPLAIN_LINGER_MS } from "../../src/components/PhoneKeyBar";
+import PhoneKeyBar from "../../src/components/PhoneKeyBar";
 import { HOLD_MS } from "../../src/utils/holdGesture";
 import { TYPING_STYLE_MOVED } from "../../src/utils/inlineFormatCommands";
 
@@ -50,9 +50,9 @@ const MORE = ["Undo", "Redo", "Table", "Quote", "Code block", "Divider", "Close"
 const LIST = [
   "Undo",
   "Redo",
-  "Bulleted list",
+  "Bullet list",
   "Numbered list",
-  "Task",
+  "To-do list",
   "Outdent",
   "Indent",
   "Close",
@@ -129,13 +129,13 @@ describe("the bar above the keyboard", () => {
     caret(2);
     press("Lists");
     expect(row()).toEqual(LIST);
-    press("Task");
+    press("To-do list");
     press("Undo");
     press("Redo");
     expect(sent).toEqual(["todo", "undo", "redo"]);
     caret(1, 1, 2);
-    expect(lit("Bulleted list")).toBe("true");
-    press("Bulleted list");
+    expect(lit("Bullet list")).toBe("true");
+    press("Bullet list");
     expect(sent.at(-1)).toBe("body");
   });
 
@@ -186,7 +186,7 @@ describe("the bar above the keyboard", () => {
     press("Lists");
     caret(4);
     expect(row()).toEqual(LIST);
-    press("Bulleted list");
+    press("Bullet list");
     expect(sent).toEqual(["bullet"]);
     editor.children[0].setAttribute("data-block-type", "bullet");
     caret(4);
@@ -321,15 +321,20 @@ describe("the bar above the keyboard", () => {
 describe("tap acts, hold explains", () => {
   const button = (name: string) => screen.getByRole("button", { name });
   const chip = () => document.querySelector('[data-testid="key-bar-chip"]');
-  /** A finger kept on a button for `ms`, then lifted (and the click a lift gives). */
+  /**
+   * A finger kept on a button for `ms`, then lifted (and the click a lift
+   * gives): the chip's words while it was held.
+   */
   const hold = (name: string, ms = HOLD_MS) => {
     const b = button(name);
     fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
     act(() => {
       vi.advanceTimersByTime(ms);
     });
+    const seen = chip()?.textContent ?? null;
     fireEvent.pointerUp(b);
     fireEvent.click(b);
+    return seen;
   };
   beforeEach(() => {
     vi.useFakeTimers();
@@ -343,20 +348,19 @@ describe("tap acts, hold explains", () => {
 
   it("names a button held still, with the Markdown typed for the same, and does nothing", () => {
     press("Headings");
-    hold("Heading 2");
-    expect(chip()?.textContent).toBe("Heading 2##");
+    expect(hold("Heading 2")).toBe("Heading 2##");
     expect(sent).toEqual([]);
     // The row stays: lifting after a hold chose nothing.
     expect(button("Heading 2")).toBeTruthy();
   });
 
-  it("names a button that opens a row without a hint", () => {
-    hold("Headings");
-    expect(chip()?.textContent).toBe("Headings");
+  it("names a button that opens a row with what it holds, and no hint", () => {
+    expect(hold("Headings")).toBe("Headings H1–H6");
+    expect(hold("Lists")).toBe("Lists Bullet, numbered, to-do");
     expect(row()).toEqual(MAIN);
   });
 
-  it("keeps the chip while the finger stays, then lets it go after the lift", () => {
+  it("keeps the chip while the finger stays, and lets it go the moment it lifts", () => {
     const b = button("Lists");
     fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
     act(() => {
@@ -364,13 +368,6 @@ describe("tap acts, hold explains", () => {
     });
     expect(chip()).not.toBeNull();
     fireEvent.pointerUp(b);
-    act(() => {
-      vi.advanceTimersByTime(EXPLAIN_LINGER_MS - 1);
-    });
-    expect(chip()).not.toBeNull();
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
     expect(chip()).toBeNull();
   });
 
@@ -391,23 +388,55 @@ describe("tap acts, hold explains", () => {
       vi.advanceTimersByTime(HOLD_MS);
     });
     expect(chip()).toBeNull();
-    hold("Italic", HOLD_MS - 1);
-    expect(chip()).toBeNull();
+    expect(hold("Italic", HOLD_MS - 1)).toBeNull();
     expect(sent).toEqual(["italic"]);
   });
 
   it("takes the chip away at a new press", () => {
-    hold("Lists");
+    fireEvent.pointerDown(button("Lists"), { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
     expect(chip()).not.toBeNull();
     fireEvent.pointerDown(button("Undo"), { clientX: 10, clientY: 10 });
     expect(chip()).toBeNull();
   });
 
+  it("acts on a finger's tap at its lift, with no click to wait for", () => {
+    // The bar refuses the touch, so Android sends no click after it.
+    press("Text style");
+    const b = button("Bold");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10, pointerType: "touch" });
+    expect(b.hasAttribute("data-pressed")).toBe(true);
+    fireEvent.pointerUp(b, { pointerType: "touch" });
+    expect(b.hasAttribute("data-pressed")).toBe(false);
+    expect(sent).toEqual(["bold"]);
+  });
+
+  it("does nothing at the lift of a finger's hold, or of a finger that moved", () => {
+    press("Text style");
+    const b = button("Bold");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10, pointerType: "touch" });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    fireEvent.pointerUp(b, { pointerType: "touch" });
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10, pointerType: "touch" });
+    fireEvent.pointerMove(b, { clientX: 40, clientY: 10, pointerType: "touch" });
+    fireEvent.pointerUp(b, { pointerType: "touch" });
+    expect(sent).toEqual([]);
+  });
+
+  it("refuses the touch itself, so Android never focuses a button or opens its menu", () => {
+    const start = new Event("touchstart", { bubbles: true, cancelable: true });
+    button("Lists").dispatchEvent(start);
+    expect(start.defaultPrevented).toBe(true);
+  });
+
   it("says why a greyed button does nothing", () => {
     editor.innerHTML = '<p data-block-type="code">let x</p>';
     caret(2);
-    hold("Headings");
-    expect(chip()?.textContent).toBe("HeadingsNot in a code block");
+    expect(hold("Headings")).toBe("HeadingsNot in a code block");
     expect(row()).toEqual(MAIN);
   });
 });

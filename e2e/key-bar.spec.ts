@@ -223,7 +223,7 @@ test("a held button names itself and lifting changes nothing; the caret stays", 
   const box = (await button(page, "Headings").boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  await expect(chip).toHaveText("Headings");
+  await expect(chip).toHaveText("Headings H1–H6");
   // Above the bar, within the window.
   const c = (await chip.boundingBox())!;
   expect(c.y + c.height).toBeLessThanOrEqual(box.y);
@@ -232,9 +232,56 @@ test("a held button names itself and lifting changes nothing; the caret stays", 
   // The row it would open stayed shut, and the caret kept its place.
   await expect(button(page, "Heading 2")).toBeHidden();
   expect(await at()).toBe(before);
-  await expect(chip).toBeHidden({ timeout: 3000 });
+  await expect(chip).toBeHidden();
 
   // A tap still acts.
   await button(page, "Headings").click();
   await expect(button(page, "Heading 2")).toBeVisible();
+});
+
+test.describe("by touch", () => {
+  test.use({ hasTouch: true });
+
+  test("a finger's tap acts at its lift; its hold keeps the note focused and acts on nothing", async ({
+    page,
+  }) => {
+    await page.goto("/?keybar");
+    await page.locator("[data-title]").first().click();
+    await page.keyboard.type("Touch");
+    await page.locator('[data-editor] [data-block-type="p"]').first().click();
+    await page.keyboard.type("Some words");
+    const cdp = await page.context().newCDPSession(page);
+    const down = async (name: string) => {
+      const b = (await button(page, name).boundingBox())!;
+      const at = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [at] });
+      return b;
+    };
+    const up = () => cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    const touch = async (name: string) => {
+      await down(name);
+      await up();
+    };
+    const inNote = () => page.evaluate(() => !!document.activeElement?.closest("[data-editor]"));
+
+    await touch("Headings");
+    await expect(button(page, "Heading 2")).toBeVisible();
+    const held = await down("Heading 2");
+    const chip = page.getByTestId("key-bar-chip");
+    await expect(chip).toHaveText("Heading 2##");
+    // Clear of the fingertip, its tail pointing at the button.
+    const c = (await chip.boundingBox())!;
+    expect(held.y - (c.y + c.height)).toBeGreaterThanOrEqual(12);
+    expect(await inNote()).toBe(true);
+    await up();
+    await expect(chip).toBeHidden();
+    // Lifting chose nothing: the line is still text, the row still open.
+    await expect(page.locator('[data-editor] [data-block-type="p"]').first()).toHaveText(
+      "Some words",
+    );
+    await expect(button(page, "Heading 2")).toBeVisible();
+    await touch("Heading 2");
+    await expect(page.locator('[data-editor] [data-block-type="h2"]')).toHaveText("Some words");
+    expect(await inNote()).toBe(true);
+  });
 });

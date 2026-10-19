@@ -42,6 +42,7 @@ import {
   type Pending,
   promise,
   type Reach,
+  rowContents,
   shownRow,
 } from "../phone/keyBar";
 
@@ -144,6 +145,17 @@ export default function PhoneKeyBar({
   }, [editorRef]);
 
   const explain = useHoldToExplain();
+  const refuseTouches = useCallback((bar: HTMLDivElement | null) => {
+    if (!bar) return;
+    // The bar takes its touches whole: left to Android, a long press focused
+    // the button, which closed the keyboard and the bar with it, and opened
+    // the system's menu. A tap acts at its lift instead (`holdFor`).
+    const refuse = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    bar.addEventListener("touchstart", refuse, { passive: false });
+    return () => bar.removeEventListener("touchstart", refuse);
+  }, []);
 
   // Each time the keyboard comes up the bar starts on its block buttons.
   const shown = (keyboardUp || always) && inText;
@@ -201,12 +213,11 @@ export default function PhoneKeyBar({
       // The caret, the selection and the keyboard stay where they are.
       onMouseDown={(e) => e.preventDefault()}
       {...explain.holdFor(
-        disabled ? { key, label, note: notHere(active.kind) } : { key, label, hint },
+        disabled
+          ? { key, label, note: notHere(active.kind) }
+          : { key, label, hint, detail: rowContents(key) },
+        disabled ? undefined : onPress,
       )}
-      onClick={() => {
-        if (explain.endsHold(key) || disabled) return;
-        onPress();
-      }}
       className="press"
       style={{
         flex: `0 0 calc(100% / ${SLOTS})`,
@@ -295,9 +306,9 @@ export default function PhoneKeyBar({
     list: [
       [
         ...history,
-        kind("bullet", "Bulleted list", <SlashCommandIcon name="list" size={20} />),
+        kind("bullet", "Bullet list", <SlashCommandIcon name="list" size={20} />),
         kind("numbered", "Numbered list", <SlashCommandIcon name="list-ordered" size={20} />),
-        kind("checkbox", "Task", <SlashCommandIcon name="square-check" size={20} />),
+        kind("checkbox", "To-do list", <SlashCommandIcon name="square-check" size={20} />),
         button("outdent", "Outdent", <OutdentIcon />, run("outdent"), {
           disabled: !active.outdent,
         }),
@@ -341,6 +352,7 @@ export default function PhoneKeyBar({
 
   return (
     <div
+      ref={refuseTouches}
       data-testid="phone-key-bar"
       role="toolbar"
       aria-label="Formatting"
@@ -361,8 +373,10 @@ export default function PhoneKeyBar({
           key={explain.chip.key}
           label={explain.chip.label}
           shortcut={explain.chip.hint}
+          detail={explain.chip.detail}
           note={explain.chip.note}
           anchor={explain.chip.anchor}
+          touch
           testId="key-bar-chip"
         />
       )}
@@ -442,28 +456,26 @@ interface Explained {
   label: string;
   /** The Markdown typed for the same (`##`), in the chip's grey pill. */
   hint?: string;
+  /** What a button that opens a row holds, muted after its name (`rowContents`). */
+  detail?: string;
   /** Why a greyed button does nothing here, muted under its name. */
   note?: string;
   anchor: HTMLElement;
 }
 
-/** How long a chip stays after the finger lifts, as Android's own tooltips do. */
-export const EXPLAIN_LINGER_MS = 1500;
-
 /**
  * Tap acts, hold explains. A finger kept still on a button for HOLD_MS (the
- * block hold's time) shows its chip, which stays while the finger does and
- * for EXPLAIN_LINGER_MS after; a new press takes it away at once. Moving
- * before then is no hold. The click that ends a recognised hold, and only
- * that one, does nothing (`endsHold`): a press after it acts as ever. The
- * button keeps its `mousedown` refusal, so the caret, selection and keyboard
- * stay.
+ * block hold's time) shows its chip above the fingertip, read while the
+ * finger stays and gone the moment it lifts, as a keyboard's key preview is.
+ * Moving before then is no hold. A finger's tap acts at its lift: the bar refuses
+ * the touch, so Android sends no click (and never focuses the button). A
+ * mouse acts on its click, except the click that ends a recognised hold. The
+ * caret, selection and keyboard stay where they are.
  */
 function useHoldToExplain() {
   const [chip, setChip] = useState<Explained | null>(null);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
-  const linger = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // The button whose next click ends a recognised hold.
+  // The button whose hold was recognised: its lift, and a mouse's click after, do nothing.
   const explained = useRef<string | null>(null);
 
   const stop = useCallback(() => {
@@ -472,23 +484,16 @@ function useHoldToExplain() {
   }, []);
   const hide = useCallback(() => {
     stop();
-    clearTimeout(linger.current);
     explained.current = null;
     setChip(null);
   }, [stop]);
   useEffect(() => hide, [hide]);
 
-  const lift = (key: string) => () => {
-    stop();
-    if (explained.current !== key) return;
-    clearTimeout(linger.current);
-    linger.current = setTimeout(() => setChip(null), EXPLAIN_LINGER_MS);
-  };
-
-  const holdFor = (what: Omit<Explained, "anchor">) => ({
+  const holdFor = (what: Omit<Explained, "anchor">, act: (() => void) | undefined) => ({
     onPointerDown: (e: PointerEvent<HTMLElement>) => {
       hide();
       const anchor = e.currentTarget;
+      anchor.dataset.pressed = "";
       press.current = {
         x: e.clientX,
         y: e.clientY,
@@ -502,18 +507,32 @@ function useHoldToExplain() {
     onPointerMove: (e: PointerEvent<HTMLElement>) => {
       if (press.current && drifted(press.current, { x: e.clientX, y: e.clientY })) stop();
     },
-    onPointerUp: lift(what.key),
-    onPointerCancel: lift(what.key),
-    // Android's long-press would open the system's menu over the bar.
+    onPointerUp: (e: PointerEvent<HTMLElement>) => {
+      delete e.currentTarget.dataset.pressed;
+      // Still pending: neither held nor moved, so a tap.
+      const tap = !!press.current;
+      stop();
+      if (explained.current === what.key) setChip(null);
+      else if (tap && e.pointerType === "touch") act?.();
+    },
+    onPointerCancel: (e: PointerEvent<HTMLElement>) => {
+      delete e.currentTarget.dataset.pressed;
+      stop();
+      if (explained.current === what.key) setChip(null);
+    },
+    onPointerLeave: (e: PointerEvent<HTMLElement>) => {
+      delete e.currentTarget.dataset.pressed;
+    },
+    onClick: () => {
+      if (explained.current === what.key) {
+        explained.current = null;
+        return;
+      }
+      act?.();
+    },
+    // A mouse's right-click, or a long press that got past the refusal.
     onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
   });
 
-  /** Whether this click ends a recognised hold, and so does nothing. */
-  const endsHold = (key: string) => {
-    if (explained.current !== key) return false;
-    explained.current = null;
-    return true;
-  };
-
-  return { chip, holdFor, endsHold, hide };
+  return { chip, holdFor, hide };
 }

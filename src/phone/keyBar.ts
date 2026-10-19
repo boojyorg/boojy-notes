@@ -77,6 +77,19 @@ export const FORMAT_MARKERS: Record<string, string> = {
   code: "`",
 };
 
+/**
+ * What a hold on a button that opens a row says it holds, after its name,
+ * muted (Headings H1–H6): the row's own names, so the hold teaches what the
+ * next tap shows. Never in the hint's pill, which means "type this".
+ */
+const ROW_CONTENTS: Record<string, string> = {
+  heading: "H1–H6",
+  lists: "Bullet, numbered, to-do",
+  format: "Bold, italic and more",
+  more: "Table, quote, code, divider",
+};
+export const rowContents = (key: string) => ROW_CONTENTS[key];
+
 const FIELD_NAMES: Record<string, string> = {
   code: "Not in a code block",
   table: "Not in a table",
