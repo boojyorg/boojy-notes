@@ -212,9 +212,9 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **No touch layout, no overlay sidebar** at any desktop width.
 - **The phone is Home (the sidebar, full width) or the note, never both**; else the desktop's
   rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits for a hover. The
-  keyboard bar sends menu-bar commands; **a list item brings the list row** (✕ till the caret
-  leaves); in a field what can't act greys; **tap acts, hold explains**, a held slide following
-  (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.
+  keyboard bar sends menu-bar commands; **a list item brings the list row** (✕ till it
+  leaves); in a field what can't act greys; **tap acts, hold explains** (no Markdown),
+  a held slide following (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.
 - **Sync's state follows Home's folder name** (`syncStatus.ts`); synced means all settled.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`). **A line is at
   most `rhythm.measure` ems**, centred under the name; margins go first, then gutters.

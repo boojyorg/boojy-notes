@@ -30,9 +30,7 @@ import {
   type BarMode,
   barModeAfterSelection,
   barReach,
-  blockHint,
   type Caret,
-  FORMAT_MARKERS,
   headingCommand,
   isListKind,
   keyboardUp,
@@ -64,8 +62,8 @@ import {
  * there greys (`barReach`). A typed `/` is still the slash menu's.
  *
  * Tap acts, hold explains: a finger kept on a button names it in a chip
- * above, with the Markdown typed for the same where it has one, and lifting
- * after a hold does nothing (`useHoldToExplain`). A greyed button says why.
+ * above (a button that opens a row, with what it holds), and lifting after a
+ * hold does nothing (`useHoldToExplain`). A greyed button says why.
  *
  * Every button sends the desktop menu bar's command (`sendCommand`), so it
  * does what its key does; table, code and divider are the slash menu's
@@ -196,11 +194,7 @@ export default function PhoneKeyBar({
     label: string,
     glyph: ReactNode,
     onPress: () => void,
-    {
-      lit = false,
-      disabled = false,
-      hint,
-    }: { lit?: boolean; disabled?: boolean; hint?: string } = {},
+    { lit = false, disabled = false }: { lit?: boolean; disabled?: boolean } = {},
   ) => (
     <button
       key={key}
@@ -215,7 +209,7 @@ export default function PhoneKeyBar({
       {...explain.holdFor(
         disabled
           ? { key, label, note: notHere(active.kind) }
-          : { key, label, hint, detail: rowContents(key) },
+          : { key, label, detail: rowContents(key) },
         disabled ? undefined : onPress,
       )}
       className="press"
@@ -255,7 +249,6 @@ export default function PhoneKeyBar({
     button(k, label, glyph, run(kindCommand(k, active.kind)), {
       lit: active.kind === k,
       disabled: kinds,
-      hint: blockHint(k),
     });
   // A choice in a row opened for one choice closes it.
   const once = (onPress: () => void) => () => {
@@ -268,7 +261,6 @@ export default function PhoneKeyBar({
       label,
       <SlashCommandIcon name={glyph} size={20} />,
       once(() => onInsert(command)),
-      { hint: blockHint(command) },
     );
 
   // Each row: the buttons from the left, then its last group at the right end.
@@ -296,7 +288,7 @@ export default function PhoneKeyBar({
           "Quote",
           <SlashCommandIcon name="text-quote" size={20} />,
           once(run(kindCommand("blockquote", active.kind))),
-          { lit: active.kind === "blockquote", disabled: kinds, hint: blockHint("blockquote") },
+          { lit: active.kind === "blockquote", disabled: kinds },
         ),
         insert("code", "Code block", "code"),
         insert("divider", "Divider", "minus"),
@@ -328,7 +320,6 @@ export default function PhoneKeyBar({
           button(f, FORMAT_LABELS[f], <FormatIcon name={f} size={18} />, run(f), {
             lit: active.formats.has(f),
             disabled: f === "link" ? !active.reach.link : !active.reach.styles,
-            hint: FORMAT_MARKERS[f],
           }),
         ),
       ],
@@ -341,7 +332,6 @@ export default function PhoneKeyBar({
           button(`h${n}`, `Heading ${n}`, `H${n}`, once(run(headingCommand(n, active.kind))), {
             lit: active.kind === `h${n}`,
             disabled: kinds,
-            hint: blockHint(`h${n}`),
           }),
         ),
       ],
@@ -372,7 +362,6 @@ export default function PhoneKeyBar({
         // One chip for a whole hold: a slide changes its words and place, not the lift-in.
         <Tooltip
           label={explain.chip.label}
-          shortcut={explain.chip.hint}
           detail={explain.chip.detail}
           note={explain.chip.note}
           anchor={explain.chip.anchor}
@@ -454,8 +443,6 @@ function useKeyboardUp() {
 interface Explained {
   key: string;
   label: string;
-  /** The Markdown typed for the same (`##`), in the chip's grey pill. */
-  hint?: string;
   /** What a button that opens a row holds, muted after its name (`rowContents`). */
   detail?: string;
   /** Why a greyed button does nothing here, muted under its name. */

@@ -346,9 +346,9 @@ describe("tap acts, hold explains", () => {
     vi.useRealTimers();
   });
 
-  it("names a button held still, with the Markdown typed for the same, and does nothing", () => {
+  it("names a button held still, teaching no Markdown, and does nothing", () => {
     press("Headings");
-    expect(hold("Heading 2")).toBe("Heading 2##");
+    expect(hold("Heading 2")).toBe("Heading 2");
     expect(sent).toEqual([]);
     // The row stays: lifting after a hold chose nothing.
     expect(button("Heading 2")).toBeTruthy();
@@ -400,13 +400,13 @@ describe("tap acts, hold explains", () => {
     act(() => {
       vi.advanceTimersByTime(HOLD_MS);
     });
-    expect(chip()?.textContent).toBe("Heading 1#");
+    expect(chip()?.textContent).toBe("Heading 1");
     // A touch's moves keep coming to the button it began on; what is under the finger decides.
     // jsdom has no hit-testing: the element under the finger is given.
     const under = vi.fn((_x: number, _y: number): Element | null => button("Heading 3"));
     document.elementFromPoint = under;
     fireEvent.pointerMove(h1, { clientX: 120, clientY: 10, pointerType: "touch" });
-    expect(chip()?.textContent).toBe("Heading 3###");
+    expect(chip()?.textContent).toBe("Heading 3");
     expect(button("Heading 3").hasAttribute("data-pressed")).toBe(true);
     // Off the bar: no chip; back on: its chip again, with no new wait.
     under.mockReturnValue(document.body);
@@ -414,7 +414,7 @@ describe("tap acts, hold explains", () => {
     expect(chip()).toBeNull();
     under.mockReturnValue(button("Heading 2"));
     fireEvent.pointerMove(h1, { clientX: 80, clientY: 10, pointerType: "touch" });
-    expect(chip()?.textContent).toBe("Heading 2##");
+    expect(chip()?.textContent).toBe("Heading 2");
     fireEvent.pointerUp(h1, { pointerType: "touch" });
     expect(chip()).toBeNull();
     expect(button("Heading 2").hasAttribute("data-pressed")).toBe(false);
@@ -431,7 +431,7 @@ describe("tap acts, hold explains", () => {
       vi.advanceTimersByTime(HOLD_MS);
     });
     fireEvent.pointerDown(italic, { ...finger, pointerId: 2 });
-    expect(chip()?.textContent).toBe("Bold**");
+    expect(chip()?.textContent).toBe("Bold");
     fireEvent.pointerUp(bold, { pointerType: "touch", pointerId: 1 });
     fireEvent.pointerUp(italic, { pointerType: "touch", pointerId: 2 });
     expect(sent).toEqual([]);
