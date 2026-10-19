@@ -369,8 +369,8 @@ export default function PhoneKeyBar({
       <span aria-hidden style={{ flex: 1 }} />
       {end}
       {explain.chip && (
+        // One chip for a whole hold: a slide changes its words and place, not the lift-in.
         <Tooltip
-          key={explain.chip.key}
           label={explain.chip.label}
           shortcut={explain.chip.hint}
           detail={explain.chip.detail}
@@ -467,72 +467,110 @@ interface Explained {
  * Tap acts, hold explains. A finger kept still on a button for HOLD_MS (the
  * block hold's time) shows its chip above the fingertip, read while the
  * finger stays and gone the moment it lifts, as a keyboard's key preview is.
- * Moving before then is no hold. A finger's tap acts at its lift: the bar refuses
- * the touch, so Android sends no click (and never focuses the button). A
- * mouse acts on its click, except the click that ends a recognised hold. The
- * caret, selection and keyboard stay where they are.
+ * Moving before then is no hold. Once a hold shows, the chip follows the
+ * finger from button to button at once (sliding off the bar hides it, coming
+ * back shows it), and lifting anywhere still does nothing. A finger's tap
+ * acts at its lift: the bar refuses the touch, so Android sends no click (and
+ * never focuses the button). A mouse acts on its click, except the click that
+ * ends a recognised hold. The caret, selection and keyboard stay put.
  */
 function useHoldToExplain() {
   const [chip, setChip] = useState<Explained | null>(null);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
-  // The button whose hold was recognised: its lift, and a mouse's click after, do nothing.
+  // A hold is showing, until the finger lifts: moves take the chip along.
+  const sliding = useRef(false);
+  // The button under the finger while sliding, wearing the press.
+  const under = useRef<HTMLElement | null>(null);
+  // The button whose hold was recognised: a mouse's click after it does nothing.
   const explained = useRef<string | null>(null);
+  // Each button's words, by key, for the one a slide reaches.
+  const words = useRef(new Map<string, Omit<Explained, "anchor">>());
 
   const stop = useCallback(() => {
     if (press.current) clearTimeout(press.current.timer);
     press.current = null;
   }, []);
+  const settle = useCallback(() => {
+    if (under.current) delete under.current.dataset.pressed;
+    under.current = null;
+    sliding.current = false;
+    setChip(null);
+  }, []);
   const hide = useCallback(() => {
     stop();
+    settle();
     explained.current = null;
-    setChip(null);
-  }, [stop]);
+  }, [stop, settle]);
   useEffect(() => hide, [hide]);
 
-  const holdFor = (what: Omit<Explained, "anchor">, act: (() => void) | undefined) => ({
-    onPointerDown: (e: PointerEvent<HTMLElement>) => {
-      hide();
-      const anchor = e.currentTarget;
-      anchor.dataset.pressed = "";
-      press.current = {
-        x: e.clientX,
-        y: e.clientY,
-        timer: setTimeout(() => {
-          press.current = null;
-          explained.current = what.key;
-          setChip({ ...what, anchor });
-        }, HOLD_MS),
-      };
-    },
-    onPointerMove: (e: PointerEvent<HTMLElement>) => {
-      if (press.current && drifted(press.current, { x: e.clientX, y: e.clientY })) stop();
-    },
-    onPointerUp: (e: PointerEvent<HTMLElement>) => {
-      delete e.currentTarget.dataset.pressed;
-      // Still pending: neither held nor moved, so a tap.
-      const tap = !!press.current;
-      stop();
-      if (explained.current === what.key) setChip(null);
-      else if (tap && e.pointerType === "touch") act?.();
-    },
-    onPointerCancel: (e: PointerEvent<HTMLElement>) => {
-      delete e.currentTarget.dataset.pressed;
-      stop();
-      if (explained.current === what.key) setChip(null);
-    },
-    onPointerLeave: (e: PointerEvent<HTMLElement>) => {
-      delete e.currentTarget.dataset.pressed;
-    },
-    onClick: () => {
-      if (explained.current === what.key) {
-        explained.current = null;
-        return;
-      }
-      act?.();
-    },
-    // A mouse's right-click, or a long press that got past the refusal.
-    onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
-  });
+  /** The chip moves to the button under the finger; off the bar, it hides. */
+  const slideTo = (x: number, y: number) => {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-explain]") ?? null;
+    if (el === under.current) return;
+    if (under.current) delete under.current.dataset.pressed;
+    under.current = el;
+    const what = el && words.current.get(el.dataset.explain ?? "");
+    if (!el || !what) {
+      setChip(null);
+      return;
+    }
+    el.dataset.pressed = "";
+    setChip({ ...what, anchor: el });
+  };
+
+  const holdFor = (what: Omit<Explained, "anchor">, act: (() => void) | undefined) => {
+    words.current.set(what.key, what);
+    return {
+      "data-explain": what.key,
+      onPointerDown: (e: PointerEvent<HTMLElement>) => {
+        hide();
+        const anchor = e.currentTarget;
+        anchor.dataset.pressed = "";
+        under.current = anchor;
+        press.current = {
+          x: e.clientX,
+          y: e.clientY,
+          timer: setTimeout(() => {
+            press.current = null;
+            sliding.current = true;
+            explained.current = what.key;
+            setChip({ ...what, anchor });
+          }, HOLD_MS),
+        };
+      },
+      onPointerMove: (e: PointerEvent<HTMLElement>) => {
+        if (sliding.current) slideTo(e.clientX, e.clientY);
+        else if (press.current && drifted(press.current, { x: e.clientX, y: e.clientY })) stop();
+      },
+      onPointerUp: (e: PointerEvent<HTMLElement>) => {
+        delete e.currentTarget.dataset.pressed;
+        // Still pending: neither held nor moved, so a tap.
+        const tap = !!press.current;
+        const held = sliding.current;
+        stop();
+        settle();
+        if (!held && tap && e.pointerType === "touch") act?.();
+      },
+      onPointerCancel: (e: PointerEvent<HTMLElement>) => {
+        delete e.currentTarget.dataset.pressed;
+        stop();
+        settle();
+      },
+      onPointerLeave: (e: PointerEvent<HTMLElement>) => {
+        // A mouse sliding a hold keeps the press on the button under it.
+        if (!sliding.current) delete e.currentTarget.dataset.pressed;
+      },
+      onClick: () => {
+        if (explained.current === what.key) {
+          explained.current = null;
+          return;
+        }
+        act?.();
+      },
+      // A mouse's right-click, or a long press that got past the refusal.
+      onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
+    };
+  };
 
   return { chip, holdFor, hide };
 }

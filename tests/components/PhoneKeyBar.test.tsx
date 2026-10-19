@@ -355,8 +355,9 @@ describe("tap acts, hold explains", () => {
   });
 
   it("names a button that opens a row with what it holds, and no hint", () => {
-    expect(hold("Headings")).toBe("Headings H1–H6");
-    expect(hold("Lists")).toBe("Lists Bullet, numbered, to-do");
+    // Two lines: the name, then what it holds.
+    expect(hold("Headings")).toBe("HeadingsH1–H6");
+    expect(hold("Lists")).toBe("ListsBullet, numbered, to-do");
     expect(row()).toEqual(MAIN);
   });
 
@@ -390,6 +391,35 @@ describe("tap acts, hold explains", () => {
     expect(chip()).toBeNull();
     expect(hold("Italic", HOLD_MS - 1)).toBeNull();
     expect(sent).toEqual(["italic"]);
+  });
+
+  it("follows a held finger from button to button at once, and the lift still does nothing", () => {
+    press("Headings");
+    const h1 = button("Heading 1");
+    fireEvent.pointerDown(h1, { clientX: 10, clientY: 10, pointerType: "touch" });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    expect(chip()?.textContent).toBe("Heading 1#");
+    // A touch's moves keep coming to the button it began on; what is under the finger decides.
+    // jsdom has no hit-testing: the element under the finger is given.
+    const under = vi.fn((_x: number, _y: number): Element | null => button("Heading 3"));
+    document.elementFromPoint = under;
+    fireEvent.pointerMove(h1, { clientX: 120, clientY: 10, pointerType: "touch" });
+    expect(chip()?.textContent).toBe("Heading 3###");
+    expect(button("Heading 3").hasAttribute("data-pressed")).toBe(true);
+    // Off the bar: no chip; back on: its chip again, with no new wait.
+    under.mockReturnValue(document.body);
+    fireEvent.pointerMove(h1, { clientX: 120, clientY: -80, pointerType: "touch" });
+    expect(chip()).toBeNull();
+    under.mockReturnValue(button("Heading 2"));
+    fireEvent.pointerMove(h1, { clientX: 80, clientY: 10, pointerType: "touch" });
+    expect(chip()?.textContent).toBe("Heading 2##");
+    fireEvent.pointerUp(h1, { pointerType: "touch" });
+    expect(chip()).toBeNull();
+    expect(button("Heading 2").hasAttribute("data-pressed")).toBe(false);
+    expect(sent).toEqual([]);
+    delete (document as { elementFromPoint?: unknown }).elementFromPoint;
   });
 
   it("takes the chip away at a new press", () => {

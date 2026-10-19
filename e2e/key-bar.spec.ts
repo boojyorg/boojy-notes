@@ -223,7 +223,7 @@ test("a held button names itself and lifting changes nothing; the caret stays", 
   const box = (await button(page, "Headings").boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  await expect(chip).toHaveText("Headings H1–H6");
+  await expect(chip).toHaveText("HeadingsH1–H6");
   // Above the bar, within the window.
   const c = (await chip.boundingBox())!;
   expect(c.y + c.height).toBeLessThanOrEqual(box.y);
@@ -273,6 +273,13 @@ test.describe("by touch", () => {
     const c = (await chip.boundingBox())!;
     expect(held.y - (c.y + c.height)).toBeGreaterThanOrEqual(12);
     expect(await inNote()).toBe(true);
+    // Slid on to H3, the chip goes with the finger; lifting there chooses nothing.
+    const h3 = (await button(page, "Heading 3").boundingBox())!;
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: h3.x + h3.width / 2, y: h3.y + h3.height / 2 }],
+    });
+    await expect(chip).toHaveText("Heading 3###");
     await up();
     await expect(chip).toBeHidden();
     // Lifting chose nothing: the line is still text, the row still open.

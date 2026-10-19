@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Z } from "../constants/zIndex";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useTheme } from "../hooks/useTheme";
+import { prefersReducedMotion } from "../tokens/motion";
 import { cssZoom } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
 
@@ -84,7 +86,7 @@ interface TooltipProps {
   lines?: ReadonlyArray<readonly [gesture: string, does: string]>;
   /** A muted line under the label: why a greyed control does nothing here. */
   note?: string;
-  /** Muted words after the label on its line: what a control opens (Headings H1–H6). */
+  /** Muted, smaller words under the label: what a control opens (Headings, H1–H6). */
   detail?: string;
   shortcut?: string;
   /** The control the chip names; the chip is centred on it. */
@@ -123,7 +125,16 @@ export function Tooltip({
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLSpanElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number; tail: number } | null>(null);
+  // `glide`: placed before, so a move to another control eases there (a touch chip's slide).
+  const [pos, setPos] = useState<{
+    left: number;
+    top: number;
+    tail: number;
+    glide: boolean;
+  } | null>(null);
+  // A touch chip leaves as the menus do: gone at once, a copy fading behind it.
+  useExitGhost(ref, touch);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the words change the chip's size; a slide changes them with the control
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !anchor) return;
@@ -136,9 +147,16 @@ export function Tooltip({
     // The tail points at the control's centre, wherever the edge moved the chip.
     const tail = Math.min(c.width - TAIL_INSET, Math.max(TAIL_INSET, a.left + a.width / 2 - left));
     const zoom = cssZoom(document.documentElement);
-    setPos({ left: left / zoom, top: top / zoom, tail: tail / zoom });
-  }, [anchor, placement, touch]);
+    setPos((was) => ({
+      left: left / zoom,
+      top: top / zoom,
+      tail: tail / zoom,
+      glide: !!was && touch && !prefersReducedMotion(),
+    }));
+  }, [anchor, placement, touch, label, detail, note, shortcut]);
   if (typeof document === "undefined") return null;
+  // Two lines under a finger sit centred over the tail; a hover chip's start at its left.
+  const centred = touch ? ({ alignItems: "center", textAlign: "center" } as const) : {};
   return createPortal(
     <span
       ref={ref}
@@ -153,6 +171,9 @@ export function Tooltip({
         left: pos?.left ?? 0,
         top: pos?.top ?? 0,
         visibility: pos ? "visible" : "hidden",
+        transition: pos?.glide
+          ? "left var(--motion-fast) var(--ease-enter), top var(--motion-fast) var(--ease-enter)"
+          : undefined,
         display: "flex",
         alignItems: "center",
         gap: touch ? 10 : 8,
@@ -190,14 +211,25 @@ export function Tooltip({
           ))}
         </span>
       ) : note ? (
-        <span style={{ display: "flex", flexDirection: "column" }}>
+        <span style={{ display: "flex", flexDirection: "column", ...centred }}>
           {label}
           <span style={{ color: TEXT.muted, fontWeight: 400 }}>{note}</span>
         </span>
       ) : (
-        <span>
+        <span style={{ display: "flex", flexDirection: "column", ...centred }}>
           {label}
-          {detail && <span style={{ color: TEXT.muted, fontWeight: 400 }}> {detail}</span>}
+          {detail && (
+            <span
+              style={{
+                color: TEXT.muted,
+                fontWeight: 400,
+                fontSize: touch ? 14 : 12,
+                lineHeight: touch ? "20px" : "16px",
+              }}
+            >
+              {detail}
+            </span>
+          )}
         </span>
       )}
       {shortcut && (
@@ -221,6 +253,7 @@ export function Tooltip({
           style={{
             position: "absolute",
             left: pos.tail - TAIL / 2,
+            transition: pos.glide ? "left var(--motion-fast) var(--ease-enter)" : undefined,
             bottom: -TAIL / 2,
             width: TAIL,
             height: TAIL,
