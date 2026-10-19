@@ -1,5 +1,6 @@
 /** The phone's bar above the keyboard (PhoneKeyBar): its rules, kept pure. */
 
+import { SLASH_COMMANDS } from "../constants/data";
 import { hasOwnField } from "../utils/domHelpers";
 
 export type BarMode = "blocks" | "format" | "heading" | "list" | "more";
@@ -57,6 +58,33 @@ export function barReach(kind: string | null, inlineField: boolean): Reach {
   const field = hasOwnField({ type: kind });
   return { kinds: !field, styles: !field || inlineField, link: !field };
 }
+
+/**
+ * What a hold on a block button teaches: the Markdown typed for the same
+ * (`##`, `-`, `|||`), the slash menu's own hints, so the two never disagree.
+ * A button that opens a row (H, ≡, ⊞) names the row and teaches nothing: its
+ * row's buttons do.
+ */
+const TYPED = new Map(SLASH_COMMANDS.filter((c) => c.hint).map((c) => [c.id, c.hint]));
+export const blockHint = (id: string) => TYPED.get(id);
+
+/** The markers a text style is typed with. Link has none: its picker takes web and note links alike. */
+export const FORMAT_MARKERS: Record<string, string> = {
+  bold: "**",
+  italic: "*",
+  strikethrough: "~~",
+  highlight: "==",
+  code: "`",
+};
+
+const FIELD_NAMES: Record<string, string> = {
+  code: "Not in a code block",
+  table: "Not in a table",
+  callout: "Not in a callout",
+};
+
+/** Why a greyed button does nothing, said under its name: the field the caret is in, if any. */
+export const notHere = (kind: string | null) => FIELD_NAMES[kind ?? ""];
 
 /** The menu bar's command for a block kind, where its name is not the kind's. */
 const KIND_COMMANDS: Record<string, string> = { checkbox: "todo", blockquote: "quote" };

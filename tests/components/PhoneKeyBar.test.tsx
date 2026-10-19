@@ -14,7 +14,8 @@ vi.mock("../../src/hooks/useTheme", () => ({
 const sent = vi.hoisted(() => [] as string[]);
 vi.mock("../../src/phone/commands", () => ({ sendCommand: (id: string) => sent.push(id) }));
 
-import PhoneKeyBar from "../../src/components/PhoneKeyBar";
+import PhoneKeyBar, { EXPLAIN_LINGER_MS } from "../../src/components/PhoneKeyBar";
+import { HOLD_MS } from "../../src/utils/holdGesture";
 import { TYPING_STYLE_MOVED } from "../../src/utils/inlineFormatCommands";
 
 let editor: HTMLDivElement;
@@ -44,7 +45,7 @@ const press = (name: string) => fireEvent.click(screen.getByRole("button", { nam
 const lit = (name: string) => screen.getByRole("button", { name }).getAttribute("aria-pressed");
 const bar = () => screen.queryByRole("toolbar");
 const row = () => screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"));
-const MAIN = ["Undo", "Redo", "Heading", "Lists", "Text style", "More blocks"];
+const MAIN = ["Undo", "Redo", "Headings", "Lists", "Text style", "More blocks"];
 const MORE = ["Undo", "Redo", "Table", "Quote", "Code block", "Divider", "Close"];
 const LIST = [
   "Undo",
@@ -107,7 +108,7 @@ describe("the bar above the keyboard", () => {
       for (const b of screen.getAllByRole("button")) slots.add(b.style.flex);
     };
     read();
-    press("Heading");
+    press("Headings");
     read();
     press("Close");
     press("Text style");
@@ -294,7 +295,7 @@ describe("the bar above the keyboard", () => {
     mount();
     size(412, 532);
     caret(1, 1, 1);
-    press("Heading");
+    press("Headings");
     expect(row()).toEqual([
       "Undo",
       "Redo",
@@ -304,7 +305,7 @@ describe("the bar above the keyboard", () => {
     expect(lit("Heading 2")).toBe("true");
     press("Heading 2");
     expect(sent).toEqual(["body"]);
-    press("Heading");
+    press("Headings");
     press("Heading 6");
     expect(sent.at(-1)).toBe("h6");
     expect(row()).toEqual(MAIN);
@@ -314,5 +315,99 @@ describe("the bar above the keyboard", () => {
     render(<PhoneKeyBar editorRef={{ current: editor }} {...props} always />);
     caret(2);
     expect(bar()).not.toBeNull();
+  });
+});
+
+describe("tap acts, hold explains", () => {
+  const button = (name: string) => screen.getByRole("button", { name });
+  const chip = () => document.querySelector('[data-testid="key-bar-chip"]');
+  /** A finger kept on a button for `ms`, then lifted (and the click a lift gives). */
+  const hold = (name: string, ms = HOLD_MS) => {
+    const b = button(name);
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+    fireEvent.pointerUp(b);
+    fireEvent.click(b);
+  };
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mount();
+    size(412, 532);
+    caret(2);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("names a button held still, with the Markdown typed for the same, and does nothing", () => {
+    press("Headings");
+    hold("Heading 2");
+    expect(chip()?.textContent).toBe("Heading 2##");
+    expect(sent).toEqual([]);
+    // The row stays: lifting after a hold chose nothing.
+    expect(button("Heading 2")).toBeTruthy();
+  });
+
+  it("names a button that opens a row without a hint", () => {
+    hold("Headings");
+    expect(chip()?.textContent).toBe("Headings");
+    expect(row()).toEqual(MAIN);
+  });
+
+  it("keeps the chip while the finger stays, then lets it go after the lift", () => {
+    const b = button("Lists");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS + 3000);
+    });
+    expect(chip()).not.toBeNull();
+    fireEvent.pointerUp(b);
+    act(() => {
+      vi.advanceTimersByTime(EXPLAIN_LINGER_MS - 1);
+    });
+    expect(chip()).not.toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(chip()).toBeNull();
+  });
+
+  it("acts on a tap, and on the tap after a hold", () => {
+    press("Text style");
+    hold("Bold");
+    expect(sent).toEqual([]);
+    press("Bold");
+    expect(sent).toEqual(["bold"]);
+  });
+
+  it("is no hold once the finger moves, and a short press shows nothing", () => {
+    press("Text style");
+    const b = button("Italic");
+    fireEvent.pointerDown(b, { clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(b, { clientX: 40, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    expect(chip()).toBeNull();
+    hold("Italic", HOLD_MS - 1);
+    expect(chip()).toBeNull();
+    expect(sent).toEqual(["italic"]);
+  });
+
+  it("takes the chip away at a new press", () => {
+    hold("Lists");
+    expect(chip()).not.toBeNull();
+    fireEvent.pointerDown(button("Undo"), { clientX: 10, clientY: 10 });
+    expect(chip()).toBeNull();
+  });
+
+  it("says why a greyed button does nothing", () => {
+    editor.innerHTML = '<p data-block-type="code">let x</p>';
+    caret(2);
+    hold("Headings");
+    expect(chip()?.textContent).toBe("HeadingsNot in a code block");
+    expect(row()).toEqual(MAIN);
   });
 });

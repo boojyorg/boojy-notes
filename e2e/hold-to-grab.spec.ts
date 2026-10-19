@@ -416,3 +416,27 @@ test("a focus the hold takes back places no caret and never scrolls the note", a
   expect(await scroller.evaluate((el) => el.scrollTop)).toBe(before);
   expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
 });
+
+test("a hold is felt once, as it is recognised, and the drag after adds nothing", async ({
+  page,
+}) => {
+  // The phone's API carries the system's long-press tap (src/phone/haptics.ts).
+  await page.addInitScript(() => {
+    const w = window as unknown as { felt: number; boojyPhoneAPI: unknown };
+    w.felt = 0;
+    w.boojyPhoneAPI = { holdFelt: () => w.felt++ };
+  });
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const felt = () => page.evaluate(() => (window as unknown as { felt: number }).felt);
+  const from = await centre(page, 0);
+
+  await f.down(from.x, from.y);
+  await page.waitForTimeout(HOLD / 2);
+  expect(await felt()).toBe(0);
+  await page.waitForTimeout(HOLD);
+  expect(await felt()).toBe(1);
+  for (let i = 1; i <= 4; i++) await f.move(from.x, from.y + 15 * i);
+  await f.up();
+  expect(await felt()).toBe(1);
+});

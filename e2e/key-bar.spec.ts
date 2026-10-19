@@ -65,7 +65,7 @@ test("undo and redo stand in the same place in every row", async ({ page }) => {
   await button(page, "Close").click();
   await expect(button(page, "Lists")).toBeVisible();
   expect(await at()).toEqual(list);
-  await button(page, "Heading").click();
+  await button(page, "Headings").click();
   await expect(button(page, "Heading 6")).toBeVisible();
   expect(await at()).toEqual(list);
   await button(page, "Close").click();
@@ -178,7 +178,7 @@ test("in a table cell the kind buttons grey and the text styles act, all but Lin
   await page.locator('[data-editor] [data-block-type="p"]').first().click();
   await page.keyboard.type("||| ");
   await page.keyboard.type("cell words");
-  await greyed(page, "Heading");
+  await greyed(page, "Headings");
   await greyed(page, "Lists");
   await live(page, "Text style");
   await button(page, "More blocks").click();
@@ -201,9 +201,40 @@ test("in a code block only undo and the inserts act", async ({ page }) => {
   await page.locator('[data-editor] [data-block-type="p"]').first().click();
   await page.keyboard.type("``` ");
   await page.keyboard.type("let x = 1");
-  await greyed(page, "Heading");
+  await greyed(page, "Headings");
   await greyed(page, "Lists");
   await greyed(page, "Text style");
   await live(page, "Undo");
   await live(page, "More blocks");
+});
+
+test("a held button names itself and lifting changes nothing; the caret stays", async ({
+  page,
+}) => {
+  await page.goto("/?keybar");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Hold");
+  await page.locator('[data-editor] [data-block-type="p"]').first().click();
+  await page.keyboard.type("Some words");
+  const chip = page.getByTestId("key-bar-chip");
+  const at = () => page.evaluate(() => getSelection()!.anchorOffset);
+  const before = await at();
+
+  const box = (await button(page, "Headings").boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(chip).toHaveText("Headings");
+  // Above the bar, within the window.
+  const c = (await chip.boundingBox())!;
+  expect(c.y + c.height).toBeLessThanOrEqual(box.y);
+  expect(c.x).toBeGreaterThanOrEqual(0);
+  await page.mouse.up();
+  // The row it would open stayed shut, and the caret kept its place.
+  await expect(button(page, "Heading 2")).toBeHidden();
+  expect(await at()).toBe(before);
+  await expect(chip).toBeHidden({ timeout: 3000 });
+
+  // A tap still acts.
+  await button(page, "Headings").click();
+  await expect(button(page, "Heading 2")).toBeVisible();
 });

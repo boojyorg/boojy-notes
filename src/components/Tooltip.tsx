@@ -73,6 +73,8 @@ interface TooltipProps {
    * grip): the gesture in the label's ink, what it does muted.
    */
   lines?: ReadonlyArray<readonly [gesture: string, does: string]>;
+  /** A muted line under the label: why a greyed control does nothing here. */
+  note?: string;
   shortcut?: string;
   /** The control the chip names; the chip is centred on it. */
   anchor: HTMLElement | null;
@@ -93,6 +95,7 @@ interface TooltipProps {
 export function Tooltip({
   label,
   lines,
+  note,
   shortcut,
   anchor,
   placement = "above",
@@ -156,6 +159,11 @@ export function Tooltip({
               {gesture} <span style={{ color: TEXT.muted, fontWeight: 400 }}>{does}</span>
             </span>
           ))}
+        </span>
+      ) : note ? (
+        <span style={{ display: "flex", flexDirection: "column" }}>
+          {label}
+          <span style={{ color: TEXT.muted, fontWeight: 400 }}>{note}</span>
         </span>
       ) : (
         <span>{label}</span>
