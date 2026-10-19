@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   barModeAfterSelection,
+  barReach,
   headingCommand,
   isListKind,
   keyboardUp,
@@ -131,5 +132,22 @@ describe("the keyboard is up", () => {
     expect(keyboardUp(tallest, 845, 412)).toBe(false);
     expect(keyboardUp(tallest, 845, 200)).toBe(true);
     expect(keyboardUp(tallest, 412, 845)).toBe(false);
+  });
+});
+
+describe("in a block with its own field, what cannot act there greys", () => {
+  it("acts everywhere in a text block", () => {
+    expect(barReach("p", false)).toEqual({ kinds: true, styles: true, link: true });
+    expect(barReach("bullet", false)).toEqual({ kinds: true, styles: true, link: true });
+  });
+
+  it("keeps a table cell's or callout body's text styles, but not its kind or a link", () => {
+    expect(barReach("table", true)).toEqual({ kinds: false, styles: true, link: false });
+    expect(barReach("callout", true)).toEqual({ kinds: false, styles: true, link: false });
+  });
+
+  it("acts on nothing but inserts and undo in code or a callout's title", () => {
+    expect(barReach("code", false)).toEqual({ kinds: false, styles: false, link: false });
+    expect(barReach("callout", false)).toEqual({ kinds: false, styles: false, link: false });
   });
 });

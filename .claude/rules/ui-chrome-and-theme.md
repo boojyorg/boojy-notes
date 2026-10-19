@@ -213,8 +213,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **The phone is Home (the sidebar, full width) or the note, never both**; else the desktop's
   rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits for a hover. The
   keyboard bar sends menu-bar commands (`phone/commands.ts`); **a list item brings the list
-  row**, its ✕ holding until the caret leaves the list (`keyBar.ts`). **The top clears
-  `STATUS_BAR_H`** (a new WebView leaves it to the page).
+  row**, its ✕ holding till the caret leaves; in a field, what can't act greys (`keyBar.ts`).
+  **The top clears `STATUS_BAR_H`**.
 - **Sync's state follows Home's folder name** (`syncStatus.ts`); synced means all settled.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
   is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems**, centred under the

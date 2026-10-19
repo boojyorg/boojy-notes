@@ -2,7 +2,7 @@ import { type ReactNode, type RefObject, useEffect, useRef, useState } from "rea
 import { useTheme } from "../hooks/useTheme";
 import { TOUCH } from "../constants/layout";
 import { sendCommand } from "../phone/commands";
-import { TYPING_STYLE_MOVED } from "../utils/inlineFormatCommands";
+import { INLINE_FIELD_SELECTOR, TYPING_STYLE_MOVED } from "../utils/inlineFormatCommands";
 import {
   CloseIcon,
   FormatIcon,
@@ -19,6 +19,7 @@ import {
 import {
   type BarMode,
   barModeAfterSelection,
+  barReach,
   type Caret,
   headingCommand,
   isListKind,
@@ -27,6 +28,7 @@ import {
   litFormats,
   type Pending,
   promise,
+  type Reach,
   shownRow,
 } from "../phone/keyBar";
 
@@ -44,7 +46,8 @@ import {
  * row; the right end is more or close (⊞, or ✕). The kind a line already has
  * is lit; tapping it makes the line text again. ⇤ ⇥ are Tab and Shift+Tab,
  * greyed where Tab would move nothing. The list row's ✕ puts it away until
- * the caret leaves the list. A typed `/` is still the slash menu's.
+ * the caret leaves the list. In a block with its own field, what cannot act
+ * there greys (`barReach`). A typed `/` is still the slash menu's.
  *
  * Every button sends the desktop menu bar's command (`sendCommand`), so it
  * does what its key does; table, code and divider are the slash menu's
@@ -80,6 +83,7 @@ export default function PhoneKeyBar({
   const [active, setActive] = useState<Active>({
     formats: new Set(),
     kind: null,
+    reach: barReach(null, false),
     indent: false,
     outdent: false,
   });
@@ -202,8 +206,9 @@ export default function PhoneKeyBar({
   ];
   const close = button("close", "Close", <CloseIcon size={18} />, show("blocks"));
   const inList = isListKind(active.kind);
+  const kinds = !active.reach.kinds;
   const kind = (k: string, label: string, glyph: ReactNode) =>
-    button(k, label, glyph, run(kindCommand(k, active.kind)), active.kind === k);
+    button(k, label, glyph, run(kindCommand(k, active.kind)), active.kind === k, kinds);
   // A choice in a row opened for one choice closes it.
   const once = (onPress: () => void) => () => {
     onPress();
@@ -228,9 +233,17 @@ export default function PhoneKeyBar({
           <HeadingIcon />,
           show("heading"),
           /^h[1-6]$/.test(active.kind ?? ""),
+          kinds,
         ),
-        button("lists", "Lists", <ListsIcon />, show("list"), inList),
-        button("format", "Text style", <TextStyleIcon />, show("format", true)),
+        button("lists", "Lists", <ListsIcon />, show("list"), inList, kinds),
+        button(
+          "format",
+          "Text style",
+          <TextStyleIcon />,
+          show("format", true),
+          false,
+          !active.reach.styles,
+        ),
       ],
       [button("more", "More blocks", <MoreBlocksIcon />, show("more"))],
     ],
@@ -244,6 +257,7 @@ export default function PhoneKeyBar({
           <SlashCommandIcon name="text-quote" size={20} />,
           once(run(kindCommand("blockquote", active.kind))),
           active.kind === "blockquote",
+          kinds,
         ),
         insert("code", "Code block", "code"),
         insert("divider", "Divider", "minus"),
@@ -276,6 +290,7 @@ export default function PhoneKeyBar({
             <FormatIcon name={f} size={18} />,
             run(f),
             active.formats.has(f),
+            f === "link" ? !active.reach.link : !active.reach.styles,
           ),
         ),
       ],
@@ -291,6 +306,7 @@ export default function PhoneKeyBar({
             `H${n}`,
             once(run(headingCommand(n, active.kind))),
             active.kind === `h${n}`,
+            kinds,
           ),
         ),
       ],
@@ -338,10 +354,11 @@ const caretOf = (sel: Selection): Caret => ({
   collapsed: sel.isCollapsed,
 });
 
-/** What is on at the caret, and whether ⇥ and ⇤ would move anything there. */
+/** What is on at the caret, what the bar can act on there, and whether ⇥ and ⇤ would move anything. */
 interface Active {
   formats: Set<string>;
   kind: string | null;
+  reach: Reach;
   indent: boolean;
   outdent: boolean;
 }
@@ -350,7 +367,7 @@ interface Active {
 function readActive(
   sel: Selection,
   pending: { current: Pending | null },
-): { formats: Set<string>; kind: string | null } {
+): { formats: Set<string>; kind: string | null; reach: Reach } {
   const node = sel.anchorNode;
   const el = node?.nodeType === Node.ELEMENT_NODE ? (node as Element) : node?.parentElement;
   const around = new Set<string>();
@@ -365,7 +382,11 @@ function readActive(
   const lit = litFormats(around, pending.current, caretOf(sel));
   pending.current = lit.pending;
   const kind = el?.closest("[data-block-type]")?.getAttribute("data-block-type") ?? null;
-  return { formats: lit.formats, kind };
+  return {
+    formats: lit.formats,
+    kind,
+    reach: barReach(kind, !!el?.closest(INLINE_FIELD_SELECTOR)),
+  };
 }
 
 /** The keyboard is up when the window has shrunk well below its tallest at this width. */
