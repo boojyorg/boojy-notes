@@ -1,5 +1,6 @@
 // @ts-check
 /** @typedef {import("../types/notes").SlashCommand} SlashCommand */
+import { addsFiles } from "../utils/platform";
 
 export const SCALE_OPTIONS = [50, 67, 80, 90, 100, 110, 120, 133, 150, 170, 200];
 
@@ -76,6 +77,11 @@ export const SLASH_COMMANDS = [
   },
 ];
 
+/** The commands this platform can run: no Image or File where nothing can be added (`addsFiles`). */
+const OFFERED = addsFiles
+  ? SLASH_COMMANDS
+  : SLASH_COMMANDS.filter((c) => c.type !== "image" && c.type !== "file");
+
 /**
  * The commands to show for a given `/` query — the one place the tier rule lives.
  * Both the menu and its keyboard navigation call this, so the list you arrow
@@ -87,7 +93,7 @@ export const SLASH_COMMANDS = [
 export function filterSlashCommands(query) {
   const q = (query || "").toLowerCase();
   // Empty query = the opening screen: tier 1 only. Any query searches everything.
-  const pool = q ? SLASH_COMMANDS : SLASH_COMMANDS.filter((c) => !c.advanced);
+  const pool = q ? OFFERED : OFFERED.filter((c) => !c.advanced);
   return pool.filter(
     (c) => c.label.toLowerCase().includes(q) || (/^h[1-6]$/.test(c.id) && c.id === q),
   );

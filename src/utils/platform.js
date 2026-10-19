@@ -6,6 +6,10 @@ export const isPhone =
 // `isNative` means a file-backed platform (local .md storage via the native API).
 export const isNative = isElectron || isPhone;
 export const isWeb = !isNative;
+// Whether a picture or file can be added to a note. The phone's vault has no
+// attachment store yet: the web fallback would write the file into the note
+// as a data: URI, which sync then carries everywhere.
+export const addsFiles = !isPhone;
 // `?keybar` shows the phone's bar above the keyboard in the web build, with
 // no keyboard to wait for: the e2e suite drives it there.
 export const keyBarInWeb =

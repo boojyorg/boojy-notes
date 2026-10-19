@@ -28,6 +28,7 @@ vi.mock("../../src/context/LayoutContext", () => ({
 // the sidebar is hidden, so the collapsed group shifts right of them.
 vi.mock("../../src/utils/platform", () => ({
   isPhone: false,
+  addsFiles: true,
   isElectronMac: true,
   isMac: true,
   hasWindowStrip: false,

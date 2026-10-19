@@ -6,6 +6,7 @@ import { reorderFloor } from "../utils/blockOrder";
 import { indentRun } from "../utils/blockRun";
 import { fileExtension, saveFileAsBlock } from "../utils/savedFile";
 import { getAPI } from "../services/apiProvider";
+import { addsFiles } from "../utils/platform";
 import { editBlocks, patchBlock } from "../utils/editBlocks";
 import { settleTypedSpaces } from "../utils/inlineFormatting";
 
@@ -241,6 +242,12 @@ export function useBlockOperations({
    * reads finished.
    */
   const saveAndInsertFiles = async (noteId, afterIndex, files) => {
+    if (!addsFiles) {
+      onError?.("Pictures and files can't be added on the phone yet", "notice", {
+        key: "adds-files",
+      });
+      return;
+    }
     let at = afterIndex;
     for (const file of files) {
       if (await saveAndInsertImage(noteId, at, file)) at += 2;

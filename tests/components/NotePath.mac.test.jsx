@@ -14,6 +14,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 }));
 vi.mock("../../src/utils/platform", () => ({
   isPhone: false,
+  addsFiles: true,
   isElectronMac: true,
   isMac: true,
   hasWindowStrip: false,

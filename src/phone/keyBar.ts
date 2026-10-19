@@ -1,5 +1,7 @@
 /** The phone's bar above the keyboard (PhoneKeyBar): its rules, kept pure. */
 
+import { hasOwnField } from "../utils/domHelpers";
+
 export type BarMode = "blocks" | "format" | "heading" | "list" | "more";
 
 const LIST_KINDS = new Set(["bullet", "numbered", "checkbox"]);
@@ -33,6 +35,27 @@ export function barModeAfterSelection(
 export function shownRow(mode: BarMode, inList: boolean, dismissed: boolean): BarMode {
   if (mode !== "blocks") return mode;
   return inList && !dismissed ? "list" : "blocks";
+}
+
+/** What the bar's buttons can act on where the caret is (`barReach`). */
+export interface Reach {
+  /** Heading, list, task and quote: turning the line into another kind. */
+  kinds: boolean;
+  /** Bold, italic and the other text styles. */
+  styles: boolean;
+  link: boolean;
+}
+
+/**
+ * A block with its own field (a table cell, a callout, a code block) keeps its
+ * kind, so the kind buttons grey there. Text styles act only in a field that
+ * owns its formatting (`data-inline-field`: a cell, a callout's body), and a
+ * link in none, as on the desktop's selection toolbar. Greyed, not hidden, so
+ * no button moves.
+ */
+export function barReach(kind: string | null, inlineField: boolean): Reach {
+  const field = hasOwnField({ type: kind });
+  return { kinds: !field, styles: !field || inlineField, link: !field };
 }
 
 /** The menu bar's command for a block kind, where its name is not the kind's. */

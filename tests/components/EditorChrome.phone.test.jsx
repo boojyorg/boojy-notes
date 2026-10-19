@@ -17,6 +17,7 @@ vi.mock("../../src/context/LayoutContext", () => ({
 }));
 vi.mock("../../src/utils/platform", () => ({
   isPhone: true,
+  addsFiles: false,
   isElectronMac: false,
   isMac: false,
   hasWindowStrip: false,

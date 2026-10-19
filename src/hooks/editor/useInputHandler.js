@@ -14,6 +14,7 @@ import {
   typedTableColumns,
 } from "../../utils/blockTriggers";
 import { editBlocks } from "../../utils/editBlocks";
+import { addsFiles } from "../../utils/platform";
 
 // Pre-compiled markdown shortcut patterns (avoid re-creating RegExp on every keystroke)
 const S = "[\\s\\u00a0]";
@@ -62,11 +63,12 @@ const LINE_MARKER_TYPE = (marker) =>
  * table needs a shape, an image a picker), so they run the menu's command
  * rather than a second copy of it. Both wait for the space: the table's pipes
  * are the row it draws, and `![]` waits so `![alt](url)`, matched below, can
- * still be typed through it.
+ * still be typed through it. Where nothing can be added (`addsFiles`), `![] `
+ * stays text.
  */
 const MENU_TRIGGERS = [
   { regex: TYPED_TABLE_RE, id: "table" },
-  { regex: new RegExp(`^!\\[\\]${S}$`), id: "image" },
+  ...(addsFiles ? [{ regex: new RegExp(`^!\\[\\]${S}$`), id: "image" }] : []),
 ];
 
 /** An open `[[` not yet closed: the wikilink menu's trigger. */

@@ -163,3 +163,47 @@ test("a divider under a line of text is one Undo", async ({ page }) => {
     "Some words",
   );
 });
+
+const greyed = (page: Page, name: string) =>
+  expect(button(page, name)).toHaveAttribute("aria-disabled", "true");
+const live = (page: Page, name: string) =>
+  expect(button(page, name)).not.toHaveAttribute("aria-disabled");
+
+test("in a table cell the kind buttons grey and the text styles act, all but Link", async ({
+  page,
+}) => {
+  await page.goto("/?keybar");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Cell");
+  await page.locator('[data-editor] [data-block-type="p"]').first().click();
+  await page.keyboard.type("||| ");
+  await page.keyboard.type("cell words");
+  await greyed(page, "Heading");
+  await greyed(page, "Lists");
+  await live(page, "Text style");
+  await button(page, "More blocks").click();
+  await greyed(page, "Quote");
+  await live(page, "Table");
+  await button(page, "Close").click();
+
+  await button(page, "Text style").click();
+  await live(page, "Bold");
+  await greyed(page, "Link");
+  await page.locator("[data-inline-field]").first().selectText();
+  await button(page, "Bold").click();
+  await expect(page.locator("[data-inline-field] strong")).toHaveText("cell words");
+});
+
+test("in a code block only undo and the inserts act", async ({ page }) => {
+  await page.goto("/?keybar");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Code");
+  await page.locator('[data-editor] [data-block-type="p"]').first().click();
+  await page.keyboard.type("``` ");
+  await page.keyboard.type("let x = 1");
+  await greyed(page, "Heading");
+  await greyed(page, "Lists");
+  await greyed(page, "Text style");
+  await live(page, "Undo");
+  await live(page, "More blocks");
+});
