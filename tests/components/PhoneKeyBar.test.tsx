@@ -422,6 +422,22 @@ describe("tap acts, hold explains", () => {
     delete (document as { elementFromPoint?: unknown }).elementFromPoint;
   });
 
+  it("leaves the gesture to the first finger: a second never turns its hold into a tap", () => {
+    press("Text style");
+    const [bold, italic] = [button("Bold"), button("Italic")];
+    const finger = { clientX: 10, clientY: 10, pointerType: "touch" };
+    fireEvent.pointerDown(bold, { ...finger, pointerId: 1 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS);
+    });
+    fireEvent.pointerDown(italic, { ...finger, pointerId: 2 });
+    expect(chip()?.textContent).toBe("Bold**");
+    fireEvent.pointerUp(bold, { pointerType: "touch", pointerId: 1 });
+    fireEvent.pointerUp(italic, { pointerType: "touch", pointerId: 2 });
+    expect(sent).toEqual([]);
+    expect(italic.hasAttribute("data-pressed")).toBe(false);
+  });
+
   it("takes the chip away at a new press", () => {
     fireEvent.pointerDown(button("Lists"), { clientX: 10, clientY: 10 });
     act(() => {

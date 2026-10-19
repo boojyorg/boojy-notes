@@ -242,6 +242,38 @@ test("a held button names itself and lifting changes nothing; the caret stays", 
 test.describe("by touch", () => {
   test.use({ hasTouch: true });
 
+  test("a second finger never turns the first finger's hold into a tap", async ({ page }) => {
+    await page.goto("/?keybar");
+    await page.locator("[data-title]").first().click();
+    await page.keyboard.type("Fingers");
+    await page.locator('[data-editor] [data-block-type="p"]').first().click();
+    await page.keyboard.type("Some words ");
+    await button(page, "Text style").click();
+    const cdp = await page.context().newCDPSession(page);
+    const centre = async (name: string, id: number) => {
+      const b = (await button(page, name).boundingBox())!;
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2, id };
+    };
+    const touch = (
+      type: "touchStart" | "touchEnd",
+      touchPoints: { x: number; y: number; id: number }[],
+    ) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints });
+    const bold = await centre("Bold", 0);
+    const italic = await centre("Italic", 1);
+
+    await touch("touchStart", [bold]);
+    await expect(page.getByTestId("key-bar-chip")).toHaveText("Bold**");
+    await touch("touchStart", [bold, italic]);
+    // A touchEnd names the fingers that lift: the first, then the second.
+    await touch("touchEnd", [bold]);
+    await touch("touchEnd", [italic]);
+
+    await expect(button(page, "Bold")).not.toHaveAttribute("aria-pressed");
+    await expect(button(page, "Italic")).not.toHaveAttribute("aria-pressed");
+    await page.keyboard.type("x");
+    await expect(page.locator("[data-editor] strong, [data-editor] em")).toHaveCount(0);
+  });
+
   test("a finger's tap acts at its lift; its hold keeps the note focused and acts on nothing", async ({
     page,
   }) => {

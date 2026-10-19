@@ -472,7 +472,9 @@ interface Explained {
  * back shows it), and lifting anywhere still does nothing. A finger's tap
  * acts at its lift: the bar refuses the touch, so Android sends no click (and
  * never focuses the button). A mouse acts on its click, except the click that
- * ends a recognised hold. The caret, selection and keyboard stay put.
+ * ends a recognised hold. The caret, selection and keyboard stay put. The
+ * finger that pressed first owns the gesture until it lifts: another is
+ * ignored, as on a held block, so it can never turn a hold into a tap.
  */
 function useHoldToExplain() {
   const [chip, setChip] = useState<Explained | null>(null);
@@ -483,6 +485,8 @@ function useHoldToExplain() {
   const under = useRef<HTMLElement | null>(null);
   // The button whose hold was recognised: a mouse's click after it does nothing.
   const explained = useRef<string | null>(null);
+  // The pointer whose press this is; null between gestures.
+  const owner = useRef<number | null>(null);
   // Each button's words, by key, for the one a slide reaches.
   const words = useRef(new Map<string, Omit<Explained, "anchor">>());
 
@@ -500,7 +504,11 @@ function useHoldToExplain() {
     stop();
     settle();
     explained.current = null;
+    owner.current = null;
   }, [stop, settle]);
+  /** Whether this event is another finger's, while one already owns the gesture. */
+  const another = (e: PointerEvent<HTMLElement>) =>
+    owner.current !== null && e.pointerId !== owner.current;
   useEffect(() => hide, [hide]);
 
   /** The chip moves to the button under the finger; off the bar, it hides. */
@@ -523,7 +531,9 @@ function useHoldToExplain() {
     return {
       "data-explain": what.key,
       onPointerDown: (e: PointerEvent<HTMLElement>) => {
+        if (another(e)) return;
         hide();
+        owner.current = e.pointerId;
         const anchor = e.currentTarget;
         anchor.dataset.pressed = "";
         under.current = anchor;
@@ -539,10 +549,13 @@ function useHoldToExplain() {
         };
       },
       onPointerMove: (e: PointerEvent<HTMLElement>) => {
+        if (another(e)) return;
         if (sliding.current) slideTo(e.clientX, e.clientY);
         else if (press.current && drifted(press.current, { x: e.clientX, y: e.clientY })) stop();
       },
       onPointerUp: (e: PointerEvent<HTMLElement>) => {
+        if (another(e)) return;
+        owner.current = null;
         delete e.currentTarget.dataset.pressed;
         // Still pending: neither held nor moved, so a tap.
         const tap = !!press.current;
@@ -552,6 +565,8 @@ function useHoldToExplain() {
         if (!held && tap && e.pointerType === "touch") act?.();
       },
       onPointerCancel: (e: PointerEvent<HTMLElement>) => {
+        if (another(e)) return;
+        owner.current = null;
         delete e.currentTarget.dataset.pressed;
         stop();
         settle();
