@@ -65,7 +65,7 @@ import { App } from "@capacitor/app";
 import { DropboxHttpError } from "../../src/sync/dropboxClient";
 import { CursorResetError } from "../../src/sync/types";
 import { FAILING_AFTER } from "../../src/sync/syncStatus";
-import { createPhoneSync } from "../../src/phone/phoneSync";
+import { createPhoneSync, readSecrets } from "../../src/phone/phoneSync";
 
 const done = (again = false): PassResult => ({ again, attention: [], log: [] });
 const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
@@ -311,9 +311,55 @@ describe("signing in again", () => {
     const attempt = sync.signInAgain();
     await vi.advanceTimersByTimeAsync(0);
     await attempt;
-    expect(sync.status.status().problems).toEqual([{ kind: "other-account" }]);
+    // The kept sign-in is still the dead one: both are said.
+    expect(sync.status.status().problems).toEqual([
+      { kind: "other-account" },
+      { kind: "signed-out" },
+    ]);
     expect(decode(await files.read("state/dropbox.json")).refreshToken).toBe("old");
     expect(passes).toHaveBeenCalledTimes(1);
+    // The kept sign-in syncs a save; the warning stays…
+    passes.mockResolvedValue(done());
+    sync.localChanged();
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(passes).toHaveBeenCalledTimes(2);
+    expect(sync.status.status().problems).toEqual([{ kind: "other-account" }]);
+    // …until the right account signs in.
+    exchangeCode.mockResolvedValue({ refreshToken: "new", accountId: "dbid:A" });
+    const again = sync.signInAgain();
+    await vi.advanceTimersByTimeAsync(0);
+    await again;
+    expect(sync.status.status().problems).toEqual([]);
+  });
+
+  it("takes only the notes' own account when a damaged sign-in is replaced", async () => {
+    const files = memoryFiles();
+    await files.write("state/dropbox.json", new TextEncoder().encode('{"refreshTo'));
+    const sync = createPhoneSync(files, { loadRecord: async () => SYNCED_ONE } as never);
+    dropboxAnswers(files);
+    exchangeCode.mockResolvedValue({ refreshToken: "theirs", accountId: "dbid:B" });
+    const other = sync.signIn();
+    const refusal = expect(other).rejects.toThrow(/isn't the one these notes sync with/);
+    await vi.advanceTimersByTimeAsync(0);
+    await refusal;
+    expect(await sync.signedIn()).toBe(false);
+
+    exchangeCode.mockResolvedValue({ refreshToken: "new", accountId: "dbid:A" });
+    const own = sync.signIn();
+    await vi.advanceTimersByTimeAsync(0);
+    await own;
+    expect(decode(await files.read("state/dropbox.json"))).toEqual({
+      refreshToken: "new",
+      accountId: "dbid:A",
+    });
+  });
+
+  it("reads a damaged sign-in file as signed out, never failing the start", async () => {
+    const files = memoryFiles();
+    await files.write("state/dropbox.json", new TextEncoder().encode('{"refreshTo'));
+    expect(await readSecrets(files)).toBeNull();
+    const sync = createPhoneSync(files, { loadRecord: async () => null } as never);
+    expect(await sync.signedIn()).toBe(false);
   });
 
   describe("a sign-in kept before accounts were checked", () => {
@@ -330,7 +376,10 @@ describe("signing in again", () => {
 
     it("refuses an account that holds none of the notes it synced", async () => {
       const { files, sync } = await signInAs("theirs", "dbid:B");
-      expect(sync.status.status().problems).toEqual([{ kind: "other-account" }]);
+      expect(sync.status.status().problems).toEqual([
+        { kind: "other-account" },
+        { kind: "signed-out" },
+      ]);
       expect(decode(await files.read("state/dropbox.json"))).toEqual({ refreshToken: "old" });
     });
 

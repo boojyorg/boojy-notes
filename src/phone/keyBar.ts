@@ -82,6 +82,25 @@ const FIELD_NAMES: Record<string, string> = {
 /** Why a greyed button does nothing, said under its name: the field the caret is in, if any. */
 export const notHere = (kind: string | null) => FIELD_NAMES[kind ?? ""];
 
+export const SELECT_FIRST = "Select text first";
+
+/**
+ * Why a text style can't act where the caret is, or null when it can. With
+ * nothing selected a style formats no text: bold and italic are promised to
+ * the next letters, in a text block only (a field's formatting wraps what it
+ * holds), and the others wait for a selection, as on the desktop.
+ */
+export function styleBlocked(
+  format: string,
+  at: { kind: string | null; reach: Reach; collapsed: boolean; inField: boolean },
+): string | null {
+  if (format === "link") return at.reach.link ? null : (notHere(at.kind) ?? "");
+  if (!at.reach.styles) return notHere(at.kind) ?? "";
+  if (!at.collapsed) return null;
+  const promised = (format === "bold" || format === "italic") && !at.inField;
+  return promised ? null : SELECT_FIRST;
+}
+
 /** The menu bar's command for a block kind, where its name is not the kind's. */
 const KIND_COMMANDS: Record<string, string> = { checkbox: "todo", blockquote: "quote" };
 

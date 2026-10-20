@@ -11,6 +11,7 @@ vi.mock("../../src/phone/phoneVault", () => ({
   createPhoneVault: () => ({ api: {}, store: {} }),
 }));
 vi.mock("../../src/phone/phoneSync", () => ({
+  readSecrets: async () => null,
   createPhoneSync: () => ({
     signedIn: async () => true,
     start: async () => {},

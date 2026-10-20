@@ -538,4 +538,40 @@ describe("tap acts, hold explains", () => {
     expect(hold("Headings")).toBe("HeadingsNot in a code block");
     expect(row()).toEqual(MAIN);
   });
+
+  it("greys a style that needs a selection, and says so; a selection lets it act", () => {
+    caret(2);
+    press("Text style");
+    for (const name of ["Strikethrough", "Highlight", "Inline code"]) {
+      expect(button(name)).toHaveAttribute("aria-disabled", "true");
+    }
+    expect(hold("Highlight")).toBe("HighlightSelect text first");
+    // Bold and italic are promised to the next letters in text.
+    expect(button("Bold")).not.toHaveAttribute("aria-disabled");
+    caret(0, 3);
+    expect(button("Highlight")).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("in a table cell, greys every style until text is selected, never lighting Bold", () => {
+    editor.innerHTML =
+      '<div data-block-type="table"><div data-inline-field="true">cell text</div></div>';
+    const text = editor.querySelector("[data-inline-field]")?.firstChild as Text;
+    const select = (from: number, to: number) =>
+      act(() => {
+        const range = document.createRange();
+        range.setStart(text, from);
+        range.setEnd(text, to);
+        window.getSelection()?.removeAllRanges();
+        window.getSelection()?.addRange(range);
+        document.dispatchEvent(new Event("selectionchange"));
+      });
+    select(2, 2);
+    press("Text style");
+    expect(button("Bold")).toHaveAttribute("aria-disabled", "true");
+    expect(hold("Bold")).toBe("BoldSelect text first");
+    expect(sent).toEqual([]);
+    expect(lit("Bold")).toBeNull();
+    select(0, 4);
+    expect(button("Bold")).not.toHaveAttribute("aria-disabled");
+  });
 });

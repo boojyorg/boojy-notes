@@ -80,11 +80,13 @@ export function createSyncStatus({ now = Date.now } = {}) {
   let lastSynced: number | null = null;
   let held: Attention[] = [];
   let stopped: SyncProblem | null = null;
+  /** A sign-in refused: passes go on with the kept one, so no pass ends it. */
+  let refusal: SyncProblem | null = null;
   let failures = 0;
   const listeners = new Set<(status: SyncStatus) => void>();
 
   const status = (): SyncStatus => {
-    const problems = [...(stopped ? [stopped] : []), ...held];
+    const problems = [...(refusal ? [refusal] : []), ...(stopped ? [stopped] : []), ...held];
     const state: SyncState = problems.length
       ? "problem"
       : offline
@@ -147,7 +149,12 @@ export function createSyncStatus({ now = Date.now } = {}) {
     },
     /** A sign-in that can't be used (a different account) is a problem until the right one. */
     refused(problem: SyncProblem) {
-      stopped = problem;
+      refusal = problem;
+      emit();
+    },
+    /** The right sign-in, taken: a refusal before it is over. */
+    accepted() {
+      refusal = null;
       emit();
     },
   };

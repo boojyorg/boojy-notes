@@ -341,14 +341,19 @@ const ContextMenu = memo(function ContextMenu({
                     setCtxMenu(null);
                   },
                 },
-                {
-                  label: "Duplicate folder",
-                  icon: <CopyIcon />,
-                  action: () => {
-                    duplicateFolder(ctxMenu.id);
-                    setCtxMenu(null);
-                  },
-                },
+                // The phone's vault cannot copy a folder yet: offered there, it only failed.
+                ...(isPhone
+                  ? []
+                  : [
+                      {
+                        label: "Duplicate folder",
+                        icon: <CopyIcon />,
+                        action: () => {
+                          duplicateFolder(ctxMenu.id);
+                          setCtxMenu(null);
+                        },
+                      },
+                    ]),
                 moveItem({ kind: "folder", path: ctxMenu.id }),
                 {
                   label: "Delete folder",

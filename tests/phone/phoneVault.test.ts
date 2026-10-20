@@ -242,6 +242,42 @@ describe("the sync engine's calls, as the editor sees them", () => {
   });
 });
 
+describe("folders, named as the desktop names them", () => {
+  const dirs = async (rel = "") =>
+    (await fs.readdir(path.join(root, "vault", rel), { withFileTypes: true }))
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort();
+
+  it("never makes a folder the desktop would hide or Windows would rename", async () => {
+    expect(await vault.api.createFolder("attachments")).toEqual({ path: "_attachments" });
+    expect(await vault.api.createFolder("Notes.")).toEqual({ path: "Notes" });
+    expect(await vault.api.renameFolder("Notes", "attachments")).toEqual({
+      path: "_attachments-2",
+    });
+  });
+
+  it("gives a rename onto a taken name a -2, capitals or not, and the notes go with it", async () => {
+    await vault.api.createFolder("Work");
+    await vault.api.createFolder("Home");
+    await vault.api.writeNote(note("n1", "Plan", "text", "Home"));
+    expect(await vault.api.renameFolder("Home", "work")).toEqual({ path: "work-2" });
+    expect(await dirs()).toEqual(["Work", "work-2"]);
+    const notes = await vault.api.readAllNotes();
+    expect(notes.n1).toMatchObject({ folder: "work-2" });
+  });
+
+  it("keeps a moved folder's own name and refuses a move into itself", async () => {
+    await fs.mkdir(path.join(root, "vault", "Old."), { recursive: true });
+    await vault.api.createFolder("Archive");
+    expect(await vault.api.renameFolder("Old.", "Archive/Old.")).toEqual({ path: "Archive/Old." });
+    await expect(vault.api.renameFolder("Archive", "Archive/Old./Archive")).rejects.toThrow(
+      /into itself/,
+    );
+    expect(await vault.api.renameFolder("Archive", "Archive")).toEqual({ path: "Archive" });
+  });
+});
+
 describe("names Dropbox cannot tell apart", () => {
   it("gives a note differing only in case from another a -2", async () => {
     const phone = createPhoneVault(memoryFiles());

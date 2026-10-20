@@ -110,6 +110,17 @@ export function sanitizeFilename(name: string) {
   return safe;
 }
 
+/**
+ * A folder's name, as the desktop's (`electron/folders.ts`): a filename's
+ * rules, no trailing dots or spaces (Windows drops them from a folder), and
+ * never `attachments`, the desktop's attachment store, which hides its notes.
+ */
+export function sanitizeFolderName(name: string) {
+  const trailing = /[. ]+$/;
+  const safe = sanitizeFilename(name.replace(trailing, "")).replace(trailing, "") || "Untitled";
+  return safe === "attachments" ? `_${safe}` : safe;
+}
+
 const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join("/");
 const parentOf = (rel: string) => rel.split("/").slice(0, -1).join("/") || null;
 const baseName = (rel: string) => (rel.split("/").pop() ?? "").replace(/\.md$/, "");
@@ -531,7 +542,7 @@ export function createPhoneVault(
 
     createFolder: (rel) =>
       lock(async () => {
-        const name = sanitizeFilename(rel.split("/").pop() ?? "");
+        const name = sanitizeFolderName(rel.split("/").pop() ?? "");
         const path = await freeName(parentOf(rel), name, "");
         await files.mkdir(abs(path));
         onLocalChange();
@@ -540,7 +551,18 @@ export function createPhoneVault(
 
     renameFolder: (from, to) =>
       lock(async () => {
-        const path = join(parentOf(to), sanitizeFilename(to.split("/").pop() ?? ""));
+        if (to === from || to.startsWith(`${from}/`)) {
+          if (to === from) return { path: from };
+          throw new Error("A folder cannot be moved into itself");
+        }
+        // A new name is the app's to make safe; a move keeps the name the disk holds.
+        const own = from.split("/").pop() ?? "";
+        const asked = to.split("/").pop() ?? "";
+        const name = asked === own ? own : sanitizeFolderName(asked);
+        const sameParent = parentOf(from) === parentOf(to);
+        // Its own name never counts as taken: a change of capitals alone is a rename.
+        const path = await freeName(parentOf(to), name, "", sameParent ? own : undefined);
+        if (path === from) return { path };
         await files.rename(abs(from), abs(path));
         const idx = await loadIndex();
         for (const [id, rel] of Object.entries(idx)) {
