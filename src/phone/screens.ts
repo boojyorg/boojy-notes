@@ -7,10 +7,12 @@
 /** Where Back acts first: a field outside the note owns Escape (search, a
  *  dialog's field), while the note's own text would take it as "select the
  *  block", so Escape goes to the page instead and only a menu or dialog
- *  listening there can claim it. */
+ *  listening there can claim it. A tree row is the same: its Escape means
+ *  "back to the note", which on Home is hidden, so it would swallow Back. */
 export function escapeTarget(active: Element | null): Element {
   if (!active || active === document.body) return document.body;
   if ((active as HTMLElement).isContentEditable) return document.body;
+  if (active.hasAttribute("data-tree-key")) return document.body;
   return active;
 }
 

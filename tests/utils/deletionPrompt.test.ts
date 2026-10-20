@@ -59,3 +59,26 @@ describe("deletionPrompt — web (permanent)", () => {
     expect(deletionPrompt("bulk", { count: 2, isWeb: true })?.title).toBe("Delete 2 notes?");
   });
 });
+
+describe("deletionPrompt — phone (notes go to Recently Deleted)", () => {
+  const phone = { isWeb: false, isPhone: true };
+
+  it("never promises a system Trash the phone does not have", () => {
+    const folder = deletionPrompt("folder", { ...phone, count: 3, name: "Work" });
+    const bulk = deletionPrompt("bulk", { ...phone, count: 2 });
+    for (const p of [folder, bulk]) {
+      expect(p?.title).toMatch(/to Recently Deleted\?$/);
+      expect(p?.message).toContain("Recently Deleted for 30 days");
+      expect(p?.message).not.toMatch(/Trash/);
+      expect(p?.confirmLabel).toBe("Delete");
+      expect(p?.danger).toBe(false);
+    }
+    expect(folder?.message).toContain("stays exactly where it is");
+  });
+
+  it("asks only where the desktop asks", () => {
+    expect(deletionPrompt("note", { ...phone, count: 1, name: "A" })).toBeNull();
+    expect(deletionPrompt("folder", { ...phone, count: 0, name: "Empty" })).toBeNull();
+    expect(deletionPrompt("bulk", { ...phone, count: 0 })).toBeNull();
+  });
+});

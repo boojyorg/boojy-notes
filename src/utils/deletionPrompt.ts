@@ -8,6 +8,7 @@
  * not a Boojy Notes note is never touched; the folder itself is removed only
  * when nothing is left in it, and the prompt says so. The web build has no
  * Trash: deletion is permanent there, so every kind asks, in the danger colour.
+ * The phone has no system Trash either: its notes go to Recently Deleted.
  */
 
 export type DeletionKind = "note" | "folder" | "bulk";
@@ -26,6 +27,8 @@ export interface DeletionContext {
   name?: string;
   /** Web deletion is permanent; desktop deletion is a move to the Trash. */
   isWeb: boolean;
+  /** The phone's notes go to its Recently Deleted, not a system Trash. */
+  isPhone?: boolean;
 }
 
 const notes = (n: number) => `${n} note${n === 1 ? "" : "s"}`;
@@ -64,6 +67,13 @@ export function deletionPrompt(kind: DeletionKind, ctx: DeletionContext): Deleti
   if (kind === "folder") {
     // No note is at stake: an empty directory goes, one holding other files stays.
     if (count === 0) return null;
+    if (ctx.isPhone)
+      return {
+        title: `Move ${notes(count)} to Recently Deleted?`,
+        message: `The ${count === 1 ? "note" : "notes"} in "${name}" will wait in Recently Deleted for 30 days. Any file in it that is not a note stays exactly where it is, and the folder is removed only if nothing is left in it.`,
+        confirmLabel: "Delete",
+        danger: false,
+      };
     return {
       title: `Move ${notes(count)} to the Trash?`,
       message: `The ${count === 1 ? "note" : "notes"} in "${name}" will move to the system Trash. Any file in it that is not a note stays exactly where it is, and the folder is removed only if nothing is left in it.`,
@@ -73,6 +83,13 @@ export function deletionPrompt(kind: DeletionKind, ctx: DeletionContext): Deleti
   }
 
   if (count === 0) return null;
+  if (ctx.isPhone)
+    return {
+      title: `Move ${notes(count)} to Recently Deleted?`,
+      message: `${count === 1 ? "It" : "They"} can be restored from Recently Deleted for 30 days. Nothing else is touched.`,
+      confirmLabel: "Delete",
+      danger: false,
+    };
   return {
     title: `Move ${notes(count)} to the Trash?`,
     message: `${count === 1 ? "It" : "They"} can be restored from the system Trash. Nothing else is touched.`,

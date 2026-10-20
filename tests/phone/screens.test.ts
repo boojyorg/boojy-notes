@@ -20,6 +20,20 @@ describe("Back is Escape first", () => {
     text.remove();
   });
 
+  it("goes to the page when a sidebar row has the focus, which would swallow it", () => {
+    // A tapped folder row keeps the focus; its Escape goes back to the
+    // (hidden) note and was taken, so Back on Home never left the app.
+    const row = document.createElement("button");
+    row.dataset.treeKey = "folder:Work";
+    document.body.append(row);
+    expect(escapeTarget(row)).toBe(document.body);
+    // A rename field inside the row still owns its Escape.
+    const field = document.createElement("input");
+    row.append(field);
+    expect(escapeTarget(field)).toBe(field);
+    row.remove();
+  });
+
   it("goes to the page when nothing has the focus", () => {
     expect(escapeTarget(null)).toBe(document.body);
     expect(escapeTarget(document.body)).toBe(document.body);
