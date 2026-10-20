@@ -17,8 +17,7 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
   `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`),
-  a note's selection (one teal, `bandFill`, below the ==highlight==), a
-  search hit's words, briefly.
+  a note's selection (`bandFill`, below the ==highlight==), a search hit's words, briefly.
 - **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
   alone. A choice is ticked. A surface it cannot be uses `menuSurface` and `MenuRule`. `Menu.test.tsx`.
@@ -41,8 +40,9 @@ a key, the newer replacing the older, and end when it stops being true** (`write
   every `::-webkit-scrollbar-*` rule. They live only in `@supports not
   selector(::-webkit-scrollbar)`.
 - State rules set `background-color`, never `background` (it resets the clip).
-- The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the centred path).
+- The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the path).
 - `.editor-scroll` stays a class: components query it.
+- **The phone styles no scrollbar**: Android's own is drawn over the content.
 
 ## Icons: Lucide only
 
@@ -78,7 +78,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   after `TOOLTIP_REST_MS`, at once while warm; portalled to `body` above every surface,
   placed via `cssZoom`. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
 - **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes and files opened
-  (`useNoteHistory`, memory only). `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
+  (`useNoteHistory`, memory only). `⌘K` is link, not Search. `⇧⌘L`/`E`/`R` align a
   table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`. Sort has none.
 - **`⌘0`–`9` apply a block kind, never toggle** (`KIND_KEYS`); Actual Size is `⇧⌘0`.
   `block-kind-keys.spec.ts`.
@@ -110,14 +110,14 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 (`MOTION_*`) moves popovers, dialogs, toasts, ticks and presses; never a spring. No third clock.
 
 - **A surface leaves by unmounting at once and leaving a copy** (`useExitGhost`: inert,
-  timer-removed), never by staying mounted, which would keep its focus trap and keys. Its root
+  timer-removed), never by staying mounted (it would keep its focus trap and keys). Its root
   is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
-- **A press shades the button and dips an icon-only one's glyph, never scales the button**: it
-  would pull its edge from under the pointer and lose an edge press. `.press` opts a control in.
-- Reduced motion plays no keyframe and makes no copy; the suites run with it, `motion.spec.ts`
+- **A press shades the button and dips an icon-only one's glyph, never scales the button**
+  (an edge press was lost). `.press` opts a control in.
+- Reduced motion plays no keyframe, makes no copy; the suites run with it, `motion.spec.ts`
   without.
 - The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the window edge;
-  `transform: none` at rest. `sidebar-motion.spec.ts`.
+  no transform at rest. `sidebar-motion.spec.ts`.
 
 ## The note's path is centred in the chrome row
 

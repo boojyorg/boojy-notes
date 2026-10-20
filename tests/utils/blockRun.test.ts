@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   belowItem,
   indentRun,
+  moveStep,
   selectedIds,
   selectionRange,
   stepHead,
@@ -49,6 +50,57 @@ describe("subtreeEnd", () => {
 
   it("gives a block that is not a list item no children", () => {
     expect(subtreeEnd([p("a"), li("b", 1)], 0)).toBe(0);
+  });
+});
+
+describe("moveStep", () => {
+  const order = (blocks: Block[] | null) =>
+    blocks?.map((b) => `${b.id}${b.indent || 0}`).join(" ") ?? null;
+  // Two parents with different numbers of children, then a paragraph.
+  const two = [li("a"), li("a1", 1), li("a2", 1), li("b"), li("b1", 1), p("x")];
+
+  it("moves a parent down past the next parent, both keeping their children", () => {
+    expect(order(moveStep(two, 0, 1))).toBe("b0 b11 a0 a11 a21 x0");
+  });
+
+  it("moves a parent up past the previous parent, both keeping their children", () => {
+    expect(order(moveStep(two, 3, -1))).toBe("b0 b11 a0 a11 a21 x0");
+  });
+
+  it("moves a nested item among its siblings, with its own children", () => {
+    const list = [li("a"), li("a1", 1), li("a1x", 2), li("a2", 1)];
+    expect(order(moveStep(list, 1, 1))).toBe("a0 a21 a11 a1x2");
+    expect(order(moveStep(list, 3, -1))).toBe("a0 a21 a11 a1x2");
+  });
+
+  it("does nothing at the first or last of a parent's children", () => {
+    expect(moveStep(two, 1, -1)).toBeNull();
+    expect(moveStep(two, 2, 1)).toBeNull();
+    expect(moveStep(two, 4, 1)).toBeNull();
+  });
+
+  it("carries a paragraph past a whole list group, never into it", () => {
+    expect(order(moveStep(two, 5, -1))).toBe("a0 a11 a21 x0 b0 b11");
+    const above = [p("x"), li("a"), li("a1", 1), p("y")];
+    expect(order(moveStep(above, 0, 1))).toBe("a0 a11 x0 y0");
+  });
+
+  it("does nothing at the note's ends or across the frontmatter", () => {
+    expect(moveStep(two, 0, -1)).toBeNull();
+    expect(moveStep(two, 5, 1)).toBeNull();
+    const withFm = [fm, p("x"), p("y")];
+    expect(moveStep(withFm, 1, -1)).toBeNull();
+    expect(moveStep(withFm, 0, 1)).toBeNull();
+    expect(order(moveStep(withFm, 2, -1))).toBe("fm0 y0 x0");
+  });
+
+  it("keeps every block exactly once", () => {
+    for (let i = 0; i < two.length; i++) {
+      for (const dir of [1, -1] as const) {
+        const moved = moveStep(two, i, dir);
+        if (moved) expect(moved.map((b) => b.id).sort()).toEqual(two.map((b) => b.id).sort());
+      }
+    }
   });
 });
 

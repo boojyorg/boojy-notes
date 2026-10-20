@@ -32,6 +32,49 @@ export function subtreeEnd(blocks: readonly Block[], i: number): number {
 }
 
 /**
+ * Cmd+Shift+↑/↓: block `i` with what is nested under it trades places with
+ * its neighbour on that side, the neighbour's nested blocks included, so no
+ * item changes parent. A nested item moves among its siblings only (Tab and
+ * Shift+Tab change its level): at the first or last of them, and at the
+ * frontmatter or the note's end, the new blocks are null.
+ */
+export function moveStep(blocks: readonly Block[], i: number, dir: 1 | -1): Block[] | null {
+  const floor = reorderFloor(blocks);
+  if (i < floor || i >= blocks.length) return null;
+  const depth = (k: number) => blocks[k].indent || 0;
+  const end = subtreeEnd(blocks, i);
+  let from: number;
+  let to: number;
+  if (dir === 1) {
+    from = end + 1;
+    if (from >= blocks.length || depth(from) < depth(i)) return null;
+    to = subtreeEnd(blocks, from);
+  } else {
+    to = i - 1;
+    if (to < floor) return null;
+    from = to;
+    while (from > floor && depth(from) > depth(i)) from--;
+    if (depth(from) < depth(i)) return null;
+  }
+  const [first, second] =
+    dir === 1
+      ? [
+          [i, end],
+          [from, to],
+        ]
+      : [
+          [from, to],
+          [i, end],
+        ];
+  return [
+    ...blocks.slice(0, first[0]),
+    ...blocks.slice(second[0], second[1] + 1),
+    ...blocks.slice(first[0], first[1] + 1),
+    ...blocks.slice(second[1] + 1),
+  ];
+}
+
+/**
  * Where a block goes "under" block `i` without breaking a list apart: after
  * the top-level item that holds `i`, with everything nested under it.
  * Anywhere else, straight after `i`.

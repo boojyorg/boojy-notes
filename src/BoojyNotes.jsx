@@ -1373,6 +1373,7 @@ export default function BoojyNotes() {
     blockSelectionIds,
     updateBlockIndent: blockOps.updateBlockIndent,
     indentBlockRange,
+    moveBlock: blockOps.moveBlock,
     updateTableRows: blockOps.updateTableRows,
     openFind: (mode) => openFindRef.current?.(mode),
     detectActiveFormats,

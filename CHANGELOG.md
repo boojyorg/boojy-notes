@@ -6,6 +6,10 @@
 
 - **⌘ and a number turns a line into any kind** — ⌘1 to ⌘6 make it Heading 1 to 6, ⌘7 a numbered list, ⌘8 a bullet list, ⌘9 a to-do list, and ⌘0 plain text again (Ctrl on Windows and Linux). The key sets the kind rather than switching it on and off, so pressing ⌘2 on a Heading 2 leaves it alone. The keys are shown beside each item in the Format menu, where Headings 4 to 6 now sit under More Headings, and in a block's Turn into menu, where they work while the menu is open. **Actual Size, which resets the app's size, moves to ⇧⌘0** (Ctrl+Shift+0), since ⌘0 is now Text.
 
+### Bug Fixes
+
+- **Moving a list item with ⌘⇧↑ or ⌘⇧↓ brings its nested items** — Moving an item with the keyboard took only its own line: the items nested under it stayed behind and ended up under whichever item took its place. The item now moves with everything nested under it, past the next item and its nested items too, so every item keeps its parent, as dragging with the grip already did. A nested item moves among the items beside it; Tab and Shift+Tab still change its level. The cursor stays where it was in the text, and one ⌘Z undoes the move.
+
 ## v0.16.0 — 2026-10-17
 
 ### Bug Fixes

@@ -31,7 +31,6 @@ import {
 } from "../../utils/crossBlockEdit";
 import { SLASH_COMMANDS, filterSlashCommands } from "../../constants/data";
 import { bareFenceLang, bareTableColumns, isBareDivider } from "../../utils/blockTriggers";
-import { reorderFloor } from "../../utils/blockOrder";
 import { measureBlockPlaces, settleBlocks } from "../../utils/blockSettle";
 import { stepIndex } from "../../utils/menuKeys";
 import { editBlocks } from "../../utils/editBlocks";
@@ -154,21 +153,17 @@ export function useKeyboardHandlers({
       return;
     }
 
-    // Cmd/Ctrl+Shift+ArrowUp/Down — move the current block up/down. This is the
-    // keyboard-accessible equivalent of the pointer hold-drag (useBlockDrag), and
-    // the markdown-native "move a line" operation: reordering the block array
-    // re-serialises to clean markdown losslessly (docs/SPEC-markdown-source-of-truth.md).
+    // Cmd/Ctrl+Shift+ArrowUp/Down — move the current block up/down, with the
+    // items nested under it (utils/blockRun `moveStep`). This is the
+    // keyboard-accessible equivalent of the grip's drag (useBlockDrag), and the
+    // markdown-native "move a line" operation. The blocks trade places by
+    // gliding, as a dropped block settles.
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
       e.preventDefault();
-      const target = blockIndex + (e.key === "ArrowUp" ? -1 : 1);
-      // Boundary: nothing to move into — bail without committing a no-op history
-      // step. The top is the reorder floor: frontmatter is the file's head, and
-      // the first block under it is the first block there is to move.
-      if (target < reorderFloor(blocks) || target >= blocks.length) return;
-      // The two blocks trade places by gliding, as a dropped block settles.
       const places = measureBlockPlaces(editorRef.current);
-      moveBlock(noteId, blockIndex, target);
-      settleBlocks(editorRef.current, places);
+      if (moveBlock(noteId, blockIndex, e.key === "ArrowUp" ? -1 : 1)) {
+        settleBlocks(editorRef.current, places);
+      }
       return;
     }
 
