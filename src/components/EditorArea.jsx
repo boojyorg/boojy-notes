@@ -66,6 +66,7 @@ import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
 import { atScale } from "../utils/uiScale";
 import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../utils/blockRun";
+import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
 import { LIST_TYPES } from "../utils/crossBlockEdit";
 import BlockMenu from "./BlockMenu";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
@@ -247,6 +248,7 @@ const EditorArea = memo(
       deleteBlockRange,
       duplicateBlockRange,
       indentBlockRange,
+      moveBlock,
       setBlockKind,
     } = useEditorContext();
     const { theme } = useTheme();
@@ -627,7 +629,9 @@ const EditorArea = memo(
     // that side, and Shift+arrows grow or shrink the run; Backspace and Delete
     // remove it, Cmd+C copies it whole and Cmd+X both; Enter opens a paragraph
     // under it; Tab and Shift+Tab move its list items a level, the selection
-    // staying (a run with none leaves Tab to the editor); a printable
+    // staying (a run with none leaves Tab to the editor); Cmd+Shift+Up/Down
+    // moves one selected block as the caret's key does, and a longer run not
+    // at all (the caret's block alone would leave the run); a printable
     // character deselects and types where the caret already is. True when
     // consumed.
     const handleSelectedBlockKey = useCallback(
@@ -708,6 +712,16 @@ const EditorArea = memo(
           indentBlockRange(activeNote, range.from, range.to, e.shiftKey ? -1 : 1);
           return true;
         }
+        if (mod && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+          e.preventDefault();
+          const i = blocks.findIndex((b) => b.id === blockSelection.anchor);
+          if (blockSelection.anchor !== blockSelection.head || i !== range.from) return true;
+          const places = measureBlockPlaces(editorRef.current);
+          if (moveBlock(activeNote, i, e.key === "ArrowUp" ? -1 : 1, false)) {
+            settleBlocks(editorRef.current, places);
+          }
+          return true;
+        }
         if (e.key === "F10" && e.shiftKey) {
           e.preventDefault();
           openBlockMenuAt(blocks[range.from].id);
@@ -733,6 +747,7 @@ const EditorArea = memo(
         copySelectedBlocks,
         insertBlockAfter,
         indentBlockRange,
+        moveBlock,
         openBlockMenuAt,
       ],
     );

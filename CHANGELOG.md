@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Bug Fixes
+
+- **Moving a list item with ⌘⇧↑ or ⌘⇧↓ brings its nested items** — Moving an item with the keyboard took only its own line: the items nested under it stayed behind and ended up under whichever item took its place. The item now moves with everything nested under it, past the next item and its nested items too, so every item keeps its parent, as dragging with the grip already did. A nested item moves among the items beside it; Tab and Shift+Tab still change its level. The cursor stays where it was in the text, and one ⌘Z undoes the move.
+
 ## v0.16.0 — 2026-10-17
 
 ### Bug Fixes

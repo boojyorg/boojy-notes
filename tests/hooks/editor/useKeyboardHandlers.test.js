@@ -229,7 +229,7 @@ describe("useKeyboardHandlers", () => {
     Object.defineProperty(event, "preventDefault", { value: vi.fn() });
 
     result.current.handleBlockKeyDown("note-1", 1, event);
-    expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 1, 0);
+    expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 1, -1);
   });
 
   it("Ctrl+Shift+ArrowDown moves a block down", () => {
@@ -244,20 +244,6 @@ describe("useKeyboardHandlers", () => {
 
     result.current.handleBlockKeyDown("note-1", 0, event);
     expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 0, 1);
-  });
-
-  it("does not move past the top boundary", () => {
-    const { result } = renderHook(() => useKeyboardHandlers(deps));
-    const event = new KeyboardEvent("keydown", {
-      key: "ArrowUp",
-      metaKey: true,
-      shiftKey: true,
-      bubbles: true,
-    });
-    Object.defineProperty(event, "preventDefault", { value: vi.fn() });
-
-    result.current.handleBlockKeyDown("note-1", 0, event); // already first
-    expect(deps.moveBlock).not.toHaveBeenCalled();
   });
 
   it("handleBlockKeyDown skips Tab for code blocks", () => {
@@ -750,20 +736,20 @@ describe("useKeyboardHandlers", () => {
       ];
     });
 
-    it("the first block under the frontmatter is at the top: ArrowUp moves nothing", () => {
+    it("the key is taken at an edge too, which moveBlock refuses (moveStep)", () => {
       const { result } = renderHook(() => useKeyboardHandlers(deps));
       const event = shiftArrow("ArrowUp");
       result.current.handleBlockKeyDown("note-1", 1, event);
-      expect(deps.moveBlock).not.toHaveBeenCalled();
+      expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 1, -1);
       expect(event.preventDefault).toHaveBeenCalled();
     });
 
-    it("ArrowDown from it, and ArrowUp from the block below, still reorder under the frontmatter", () => {
+    it("ArrowDown and ArrowUp ask for one step each way", () => {
       const { result } = renderHook(() => useKeyboardHandlers(deps));
       result.current.handleBlockKeyDown("note-1", 1, shiftArrow("ArrowDown"));
-      expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 1, 2);
+      expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 1, 1);
       result.current.handleBlockKeyDown("note-1", 2, shiftArrow("ArrowUp"));
-      expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 2, 1);
+      expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 2, -1);
     });
   });
 });

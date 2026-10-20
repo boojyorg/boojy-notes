@@ -3,7 +3,7 @@ import { genBlockId } from "../utils/storage";
 import { getCaretOffset } from "../utils/domHelpers";
 import { withCell } from "../utils/tableShape";
 import { reorderFloor } from "../utils/blockOrder";
-import { indentRun } from "../utils/blockRun";
+import { indentRun, moveStep } from "../utils/blockRun";
 import { fileExtension, saveFileAsBlock } from "../utils/savedFile";
 import { getAPI } from "../services/apiProvider";
 import { addsFiles } from "../utils/platform";
@@ -316,42 +316,38 @@ export function useBlockOperations({
     [commitNoteData],
   );
 
-  // Move a block to a new position. Reordering the block array IS the edit —
-  // because blocksToMarkdown walks the array in order, a reorder re-serialises to
-  // clean markdown for free (this is what makes reorder safe under the
-  // markdown-source-of-truth constraint; see docs/SPEC-markdown-source-of-truth.md).
-  // No syncGeneration bump is needed: React's key-based reconciliation moves each
-  // block's DOM node (keyed by id) to its new slot, carrying its live content — the
-  // same mechanism the pointer drag (useBlockDrag) already relies on. Callers should
-  // guard against boundary no-ops (don't call when the target index is out of range)
-  // so we don't push an empty history step. The top boundary is `reorderFloor`:
-  // with frontmatter first, index 0 is the file's head and no move touches it.
+  // Cmd+Shift+Arrow: move a block one step, with what is nested under it, past
+  // its neighbour's whole group (utils/blockRun `moveStep`, which also refuses
+  // the edges, so a no-op pushes no history step). Reordering the block array
+  // IS the edit: blocksToMarkdown walks the array in order, so a reorder
+  // re-serialises to clean markdown for free (see
+  // docs/SPEC-markdown-source-of-truth.md). No syncGeneration bump is needed:
+  // React's key-based reconciliation moves each block's DOM node (keyed by id)
+  // to its new slot, carrying its live content, as the pointer drag
+  // (useBlockDrag) relies on. A selected block moves with the caret left
+  // where it rests (`takeCaret` false). True when something moved.
   const moveBlock = useCallback(
-    (noteId, fromIndex, toIndex) => {
+    (noteId, blockIndex, dir, takeCaret = true) => {
       let movedId = null;
+      let caret = -1;
       commitNoteData(
         editBlocks(noteId, (blocks) => {
-          const floor = reorderFloor(blocks);
-          if (
-            fromIndex < floor ||
-            fromIndex >= blocks.length ||
-            toIndex < floor ||
-            toIndex >= blocks.length ||
-            fromIndex === toIndex
-          ) {
-            return false; // no-op safety net (caller should pre-guard boundaries)
-          }
-          const [moved] = blocks.splice(fromIndex, 1);
-          blocks.splice(toIndex, 0, moved);
-          movedId = moved.id;
+          const moved = moveStep(blocks, blockIndex, dir);
+          if (!moved) return false;
+          movedId = blocks[blockIndex].id;
+          // A move changes the block's place, not its text, so the caret stays
+          // on its character, read before the state changes (as an indent).
+          caret = getCaretOffset(blockRefs.current[movedId]);
+          blocks.splice(0, blocks.length, ...moved);
         }),
       );
-      if (movedId) {
-        focusBlockId.current = movedId;
-        focusCursorPos.current = 0;
-      }
+      if (!movedId) return false;
+      if (!takeCaret) return true;
+      focusBlockId.current = movedId;
+      focusCursorPos.current = Math.max(0, caret);
+      return true;
     },
-    [commitNoteData, focusBlockId, focusCursorPos],
+    [commitNoteData, focusBlockId, focusCursorPos, blockRefs],
   );
 
   // `withChildren` (Tab, Shift+Tab): the item moves with the items nested
