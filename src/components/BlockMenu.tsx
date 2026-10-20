@@ -20,6 +20,24 @@ export const TURN_INTO = TURN_INTO_IDS.map((id) => {
   if (!c) throw new Error(`no slash command ${id}`);
   return { type: c.type, label: c.label, icon: c.icon };
 });
+/**
+ * Cmd + a number applies a kind, as the menu bar's Format items say
+ * (electron/appMenu.ts): 0 Text, 1–6 the headings, 7–9 the lists.
+ */
+export const KIND_KEYS: Record<string, string> = {
+  p: "0",
+  h1: "1",
+  h2: "2",
+  h3: "3",
+  h4: "4",
+  h5: "5",
+  h6: "6",
+  numbered: "7",
+  bullet: "8",
+  checkbox: "9",
+};
+const KIND_BY_KEY = Object.fromEntries(Object.entries(KIND_KEYS).map(([t, k]) => [k, t]));
+
 /** The text kinds a block can be turned from (H4–H6 included: they turn into the listed ones). */
 export const TURNABLE = new Set([...TURN_INTO.map((k) => k.type), "h4", "h5", "h6"]);
 
@@ -120,14 +138,16 @@ export default function BlockMenu({
     role: "menuitemradio",
     checked: kind.type === same,
     action: () => onTurnInto(kind.type),
+    hint: KIND_KEYS[kind.type] && shortcutLabel({ key: KIND_KEYS[kind.type] }),
   }));
+  const turnable = types.some((t) => TURNABLE.has(t));
   const items: MenuItem[] = [];
   if (turning) {
     items.push(
       { label: "Turn into", icon: <ChevronLeftIcon />, action: () => setTurning(null) },
       ...kinds.map((k, i) => (i === 0 ? { ...k, rule: true } : k)),
     );
-  } else if (types.some((t) => TURNABLE.has(t))) {
+  } else if (turnable) {
     items.push(
       under
         ? {
@@ -155,6 +175,11 @@ export default function BlockMenu({
   // The shortcuts the rows show, answered while the menu holds the keys.
   const onKey = (e: KeyboardEvent) => {
     const mod = e.metaKey || e.ctrlKey;
+    const kind = mod && !e.shiftKey && !e.altKey && KIND_BY_KEY[e.code.replace("Digit", "")];
+    if (kind && turnable) {
+      onTurnInto(kind);
+      return true;
+    }
     const run =
       mod && !e.shiftKey && !e.altKey && e.code === "KeyD"
         ? onDuplicate

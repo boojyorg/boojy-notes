@@ -394,7 +394,7 @@ test("at a UI scale above 100% the popup still lands under the crumb", async () 
     expect(Math.abs(box.width - 280 * zoom!)).toBeLessThanOrEqual(1);
     await popup(h.page).getByText("Old plan").click();
     await expect.poll(() => editorTitle(h.page)).toBe("Old plan");
-    await h.page.keyboard.press(`${MOD}+0`);
+    await h.page.keyboard.press(`${MOD}+Shift+0`);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

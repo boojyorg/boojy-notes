@@ -17,8 +17,7 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
   `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`),
-  a note's selection (one teal, `bandFill`, below the ==highlight==), a
-  search hit's words, briefly.
+  a note's selection (`bandFill`, below the ==highlight==), a search hit's words, briefly.
 - **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
   alone. A choice is ticked. A surface it cannot be uses `menuSurface` and `MenuRule`. `Menu.test.tsx`.
@@ -79,8 +78,10 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   after `TOOLTIP_REST_MS`, at once while warm; portalled to `body` above every surface,
   placed via `cssZoom`. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
 - **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes and files opened
-  (`useNoteHistory`, memory only). `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
-  table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`, since `⇧⌘E` is taken. Sort has none.
+  (`useNoteHistory`, memory only). `⌘K` is link, not Search. `⇧⌘L`/`E`/`R` align a
+  table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`. Sort has none.
+- **`⌘0`–`9` apply a block kind, never toggle** (`KIND_KEYS`); Actual Size is `⇧⌘0`.
+  `block-kind-keys.spec.ts`.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
   renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and action
   block are `inert` (the whole column broke rename). `header-controls.spec.ts`.
@@ -92,14 +93,14 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   dead control; elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
 - **Interface size is one segmented control; every press applies at once** (a debounce
   overwrote newer values). The figure is a field committed on Enter/blur; an outside change
-  cancels an unfinished edit. `stepScale` is the one rule shared with `Cmd+±`.
+  cancels an unfinished edit. `stepScale` is the one rule shared with `⌘±`.
 - **Settings keeps the scale it opened with**, so the pane holds still. Centred by a wrapper,
   never a transform (it would contain the `fixed` children). A menu inside it passes
   `overSettings` (else it stacks under the pane) and owns Escape; the scale keys are the one
   shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
 - **`vw`/`vh` ignore the UI scale**: anything sized against the viewport divides by it
   (`atScale()`).
-- **One zoom system**: the app's UI scale. `main.js` resets Chromium's zoom on `dom-ready`. A scale shortcut always answers with `UiScaleChip`.
+- **One zoom system**: the app's UI scale; `main.js` resets Chromium's on `dom-ready`. A scale key answers with `UiScaleChip`.
 - **First-run setup** (`SetupDialog`): every way out saves the choice and never shows again;
   nothing is written until the first keystroke. `first-run.spec.ts`.
 
@@ -109,14 +110,14 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 (`MOTION_*`) moves popovers, dialogs, toasts, ticks and presses; never a spring. No third clock.
 
 - **A surface leaves by unmounting at once and leaving a copy** (`useExitGhost`: inert,
-  timer-removed), never by staying mounted, which would keep its focus trap and keys. Its root
+  timer-removed), never by staying mounted (it would keep its focus trap and keys). Its root
   is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
-- **A press shades the button and dips an icon-only one's glyph, never scales the button**: it
-  would pull its edge from under the pointer and lose an edge press. `.press` opts a control in.
-- Reduced motion plays no keyframe and makes no copy; the suites run with it, `motion.spec.ts`
+- **A press shades the button and dips an icon-only one's glyph, never scales the button**
+  (an edge press was lost). `.press` opts a control in.
+- Reduced motion plays no keyframe, makes no copy; the suites run with it, `motion.spec.ts`
   without.
 - The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the window edge;
-  `transform: none` at rest. `sidebar-motion.spec.ts`.
+  no transform at rest. `sidebar-motion.spec.ts`.
 
 ## The note's path is centred in the chrome row
 

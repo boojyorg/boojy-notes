@@ -159,10 +159,11 @@ export function useAppKeyboard({
       // other shortcut still stands down over every modal, and these stand down
       // over any other modal — including a confirm dialog opened *from*
       // Settings, which holds the focus the test below asks about.
-      if ((e.ctrlKey || e.metaKey) && SCALE_KEYS.has(e.key)) {
+      const scaleKey = scaleKeyOf(e);
+      if (scaleKey) {
         if (owner !== "modal" || settingsHoldsKeys()) {
           e.preventDefault();
-          L.setUiScale(scaleFor(e.key, L.uiScale));
+          L.setUiScale(scaleFor(scaleKey, L.uiScale));
           return;
         }
       }
@@ -614,8 +615,19 @@ function runMenuCommand(id, L, titleRef) {
   }
 }
 
-/** The keys that change the UI scale, with `+` in both its spellings. */
-const SCALE_KEYS = new Set(["=", "+", "-", "0"]);
+/** The keys that step the UI scale, with `+` in both its spellings. */
+const SCALE_KEYS = new Set(["=", "+", "-"]);
+
+/**
+ * The scale a key press asks for, as `scaleFor` reads it ("0" the reset), or
+ * null. The reset is Shift+Cmd+0, read by its key's place: Shift turns the 0
+ * into a different character on every layout, and Cmd+0 is Text.
+ */
+function scaleKeyOf(e) {
+  if (!(e.ctrlKey || e.metaKey)) return null;
+  if (e.code === "Digit0") return e.shiftKey ? "0" : null;
+  return SCALE_KEYS.has(e.key) ? e.key : null;
+}
 
 /**
  * The scale a key asks for. A press at either end of the range answers with

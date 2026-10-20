@@ -66,10 +66,29 @@ describe("BlockMenu", () => {
     const panel = kinds();
     expect(panel).not.toBeNull();
     const current = panel?.querySelector('[aria-checked="true"]');
-    expect(current?.textContent).toBe("Heading 2");
+    expect(current?.textContent).toMatch(/^Heading 2/);
     key("ArrowDown");
     key("Enter");
     expect(onTurnInto).toHaveBeenCalledWith("h3");
+  });
+
+  it("each kind shows its number key, and the key turns the block while the menu is open", () => {
+    const { onTurnInto } = mount(["bullet"]);
+    key("ArrowDown");
+    key("ArrowRight");
+    const rows = Array.from(kinds()?.querySelectorAll('[role="menuitemradio"]') ?? []);
+    expect(rows.map((r) => r.textContent?.match(/\d$/)?.[0])).toEqual([
+      "0",
+      "1",
+      "2",
+      "3",
+      "8",
+      "7",
+      "9",
+      undefined, // Quote has no number
+    ]);
+    key("7", { code: "Digit7", ctrlKey: true, metaKey: true });
+    expect(onTurnInto).toHaveBeenCalledWith("numbered");
   });
 
   it("← and Escape step back out of the kinds; Escape again closes", () => {
