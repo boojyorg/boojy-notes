@@ -27,7 +27,7 @@ import type { FileOps } from "./files";
  * the bin's entry is written before its file moves in and dropped after it
  * moves out (an entry without its file is dropped, a file without an entry is
  * adopted under a new id, kept from then on). A restore is also noted for
- * sync (`state/restored.json`, `takeRestored`): a pass that binned the note
+ * sync (`state/restored.json`, `restored`): a pass that binned the note
  * and died before recording it would otherwise delete it again.
  *
  * Every operation runs one at a time. A save the editor asked for before the
@@ -37,6 +37,7 @@ import type { FileOps } from "./files";
  */
 
 const VAULT = "vault";
+const UNREADABLE = Symbol("unreadable");
 const STATE = "state";
 const TRASH = "deleted";
 const DAY = 24 * 60 * 60 * 1000;
@@ -232,20 +233,40 @@ export function createPhoneVault(
     return null;
   };
 
-  const readText = async (rel: string) => {
+  /** The file's text; null when it is gone, UNREADABLE when it is not UTF-8. */
+  const readText = async (rel: string): Promise<string | null | typeof UNREADABLE> => {
     const bytes = await files.read(abs(rel));
     if (!bytes) return null;
     try {
       return strictUtf8.decode(bytes);
     } catch {
-      return null;
+      return UNREADABLE;
     }
   };
 
-  /** A note as its file holds it; a file the editor cannot hold as text is left out. */
+  /**
+   * A note as its file holds it; null only when the file is gone. A file the
+   * editor cannot hold as text is listed as unreadable, as on the desktop:
+   * no blocks, never written, only moved.
+   */
   const parse = async (rel: string): Promise<PhoneNote | null> => {
     const raw = await readText(rel);
     if (raw === null) return null;
+    if (raw === UNREADABLE) {
+      const idx = await loadIndex();
+      const id = idAt(rel) ?? genNoteId();
+      idx[id] = rel;
+      seen.delete(id);
+      const title = baseName(rel);
+      return {
+        id,
+        title,
+        folder: parentOf(rel),
+        content: { title, blocks: [] },
+        lastModified: (await files.mtime(abs(rel))) ?? Date.now(),
+        unreadable: "encoding",
+      };
+    }
     let body = raw;
     let legacyId: string | null = null;
     const fm = parseFrontmatter(raw);
@@ -327,7 +348,7 @@ export function createPhoneVault(
   const saveBin = () =>
     files.write(join(STATE, "deleted.json"), encoder.encode(JSON.stringify(bin)));
 
-  /** Paths put back from the bin, kept for the next sync pass (LocalStore's `takeRestored`). */
+  /** Paths put back from the bin, kept until a sync pass has recorded them (LocalStore's `restored`). */
   const readRestored = async (): Promise<string[]> => {
     const bytes = await files.read(join(STATE, "restored.json"));
     return bytes ? JSON.parse(new TextDecoder().decode(bytes)) : [];
@@ -444,10 +465,13 @@ export function createPhoneVault(
           // The engine changed the file after this save was asked for, or the
           // file holds text the editor has not seen: the save would put the
           // editor's version over it.
+          // A file that is no longer text is never written over either.
           const stale =
             ownRel &&
             onDisk !== null &&
-            ((changedAt.get(id) ?? 0) > askedAt || (seen.has(id) && seen.get(id) !== onDisk));
+            ((changedAt.get(id) ?? 0) > askedAt ||
+              (seen.has(id) && seen.get(id) !== onDisk) ||
+              (onDisk === UNREADABLE && !note.unreadable));
           if (stale) return { stale: true as const, note: await parse(ownRel) };
 
           // Renamed by the engine after this save was asked for, and the save
@@ -467,6 +491,11 @@ export function createPhoneVault(
             await files.rename(abs(ownRel), abs(target));
             idx[id] = target;
             await saveIndex();
+          }
+          // An unreadable note holds no text of its own: it is only ever moved.
+          if (note.unreadable) {
+            if (renaming) onLocalChange();
+            return { title: baseName(target) };
           }
           const body = applyEol(blocksToMarkdown(note.content?.blocks || []), note.content?.eol);
           // A rename with unchanged text is the rename alone (PR #350's rule).
@@ -713,11 +742,13 @@ export function createPhoneVault(
         emit(listeners.folders, undefined);
       }),
 
-    takeRestored: () =>
+    restored: () => lock(readRestored),
+
+    forgetRestored: (taken) =>
       lock(async () => {
         const paths = await readRestored();
-        if (paths.length) await writeRestored([]);
-        return paths;
+        const left = paths.filter((p) => !taken.includes(p));
+        if (left.length !== paths.length) await writeRestored(left);
       }),
 
     loadRecord: async () => {

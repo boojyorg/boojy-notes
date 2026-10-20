@@ -9,6 +9,7 @@ import {
   type RemoteEntry,
   type RemoteFile,
   RemoteNotFoundError,
+  RemoteRefusedError,
   RemoteTooLargeError,
   type WriteMode,
 } from "../../src/sync/types";
@@ -62,6 +63,13 @@ export class FakeDropbox implements Remote {
   /** The largest upload taken, in bytes (Dropbox's is 150 MB). */
   maxUpload = Number.POSITIVE_INFINITY;
   calls: Op[] = [];
+  /** Names Dropbox won't take (a disallowed name, a path too long), by key. */
+  refused = new Set<string>();
+  /**
+   * Dropbox's `path_display` promises only the last part's capitals: folders
+   * may come back in others. True answers every folder in lower case.
+   */
+  lowerFolders = false;
   private nextRev = 1;
   private nextId = 1;
   private generation = 0;
@@ -94,7 +102,11 @@ export class FakeDropbox implements Remote {
   }
 
   private meta(f: StoredFile): RemoteFile {
-    return { kind: "file", path: f.path, id: f.id, rev: f.rev, hash: f.hash };
+    const slash = f.path.lastIndexOf("/");
+    const path = this.lowerFolders
+      ? f.path.slice(0, slash + 1).toLowerCase() + f.path.slice(slash + 1)
+      : f.path;
+    return { kind: "file", path, id: f.id, rev: f.rev, hash: f.hash };
   }
 
   private async put(path: string, bytes: Uint8Array, id?: string): Promise<RemoteFile> {
@@ -229,6 +241,7 @@ export class FakeDropbox implements Remote {
 
   async upload(path: string, bytes: Uint8Array, mode: WriteMode) {
     await this.enter("upload");
+    if (this.refused.has(keyOf(path))) throw new RemoteRefusedError(path);
     if (bytes.length > this.maxUpload) throw new RemoteTooLargeError(path);
     const existing = this.files.get(keyOf(path));
     if (mode.kind === "add" && existing) throw new RemoteConflictError(path);
@@ -240,8 +253,10 @@ export class FakeDropbox implements Remote {
 
   async move(id: string, to: string) {
     await this.enter("move");
+    if (this.refused.has(keyOf(to))) throw new RemoteRefusedError(to);
     const file = [...this.files.values()].find((f) => f.id === id);
     if (!file) throw new RemoteNotFoundError(id);
+    // As Dropbox: a move to the same name in other capitals is refused too.
     if (this.files.has(keyOf(to))) throw new RemoteConflictError(to);
     this.macMove(file.path, to);
     this.leave("move");
@@ -259,6 +274,7 @@ export class FakeDropbox implements Remote {
 
   async createFolder(path: string) {
     await this.enter("createFolder");
+    if (this.refused.has(keyOf(path))) throw new RemoteRefusedError(path);
     if (path === "") this.rootExists = true;
     else if (!this.folders.has(keyOf(path))) {
       this.folders.set(keyOf(path), path);
@@ -279,6 +295,8 @@ export class FakeLocal implements LocalStore {
   files = new Map<string, Uint8Array>();
   folders = new Set<string>();
   record: string | null = null;
+  /** Paths put back from Recently Deleted, until a pass has recorded them. */
+  restoredPaths: string[] = [];
   private failures: Failure<LocalOp>[] = [];
   private hooks: { op: LocalOp; run: () => void }[] = [];
 
@@ -362,6 +380,14 @@ export class FakeLocal implements LocalStore {
       [...this.files.keys()].some((p) => p.startsWith(under)) ||
       [...this.folders].some((p) => p.startsWith(under));
     if (!busy) this.folders.delete(path);
+  }
+
+  async restored() {
+    return [...this.restoredPaths];
+  }
+
+  async forgetRestored(paths: string[]) {
+    this.restoredPaths = this.restoredPaths.filter((p) => !paths.includes(p));
   }
 
   async loadRecord() {

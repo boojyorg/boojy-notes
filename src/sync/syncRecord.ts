@@ -29,6 +29,17 @@ export interface ClashPlan {
   step: 0 | 1 | 2;
 }
 
+/**
+ * A rename on the phone that changes only capitals. Dropbox won't move a
+ * file to its own name in other capitals, so it goes by way of a hidden name
+ * (`tempPath`); written before the first move, so a restart finishes it
+ * rather than taking the hidden name for a rename of its own.
+ */
+export interface CaseMove {
+  id: string;
+  to: string;
+}
+
 export interface SyncRecord {
   version: 1;
   /** Where Dropbox's change feed continues from; null before the first full listing. */
@@ -40,6 +51,8 @@ export interface SyncRecord {
   /** Folders present on both sides at some sync. */
   syncedFolders: Record<string, string>;
   plan: ClashPlan | null;
+  /** Absent from records written before it existed. */
+  caseMove?: CaseMove | null;
 }
 
 const empty = (): SyncRecord => ({

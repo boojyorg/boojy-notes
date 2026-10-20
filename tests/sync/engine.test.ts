@@ -524,3 +524,152 @@ describe("clashCopyPath", () => {
     );
   });
 });
+
+describe("a rename that changes only capitals", () => {
+  it("is sent from the phone by way of a hidden name, keeping the Dropbox id", async () => {
+    const env = await started({ "meeting.md": "notes" });
+    const id = env.dropbox.files.get("meeting.md")?.id;
+    await env.phone.rename("meeting.md", "Meeting.md");
+    await env.settle();
+    expectBoth(env, { "Meeting.md": "notes" });
+    expect(env.dropbox.files.get("meeting.md")?.id).toBe(id);
+    // Settled means settled: the next pass moves nothing.
+    expect(await env.callsDuring(env.sync)).not.toContain("move");
+  });
+
+  it("is followed on the phone when made on the Mac", async () => {
+    const env = await started({ "meeting.md": "notes" });
+    env.dropbox.macMove("meeting.md", "Meeting.md");
+    const calls = await env.callsDuring(env.settle);
+    expect(calls).not.toContain("download");
+    expectBoth(env, { "Meeting.md": "notes" });
+  });
+
+  it("takes Dropbox's capitals when both sides changed them", async () => {
+    const env = await started({ "meeting.md": "notes" });
+    await env.phone.rename("meeting.md", "MEETING.md");
+    env.dropbox.macMove("meeting.md", "Meeting.md");
+    await env.settle();
+    expectBoth(env, { "Meeting.md": "notes" });
+  });
+
+  it("finishes after the app is killed between its two moves, never taking the hidden name", async () => {
+    const env = await started({ "meeting.md": "notes" });
+    await env.phone.rename("meeting.md", "Meeting.md");
+    env.dropbox.failAt("move", "before", { skip: 1 });
+    await expect(env.sync()).rejects.toBeInstanceOf(Crash);
+    expect(env.dropbox.paths()).toEqual([".~Meeting.md.case"]);
+    await env.settle();
+    expectBoth(env, { "Meeting.md": "notes" });
+  });
+
+  it("keeps both, nothing hidden, when another device takes the name between the two moves", async () => {
+    const env = await started({ "meeting.md": "notes" });
+    await env.phone.rename("meeting.md", "Meeting.md");
+    env.dropbox.before("move", () => {}); // the first move, to the hidden name
+    env.dropbox.before("move", async () => {
+      await env.dropbox.macWrite("meeting.md", "theirs");
+    });
+    await env.settle();
+    await env.settle(); // the pass Dropbox's long-poll asks for after the Mac's write
+    expectBoth(env, { [`Meeting ${COPY}.md`]: "notes", "meeting.md": "theirs" });
+  });
+
+  it("finishes when Dropbox answers the hidden name's folder in other capitals", async () => {
+    const env = await started({});
+    env.dropbox.lowerFolders = true;
+    env.phone.folders.add("Work");
+    env.phone.type("Work/meeting.md", "notes");
+    await env.settle();
+    await env.phone.rename("Work/meeting.md", "Work/Meeting.md");
+    await env.settle();
+    expect(env.phone.paths()).toEqual(["Work/Meeting.md"]);
+    expect(env.dropbox.paths()).toEqual(["Work/Meeting.md"]);
+    expect(await env.callsDuring(env.sync)).not.toContain("move");
+  });
+
+  it("follows a Mac rename of the name alone when Dropbox answers its folder in other capitals", async () => {
+    const env = await started({});
+    env.dropbox.lowerFolders = true;
+    env.phone.folders.add("Work");
+    env.phone.type("Work/meeting.md", "notes");
+    await env.settle();
+    env.dropbox.macMove("Work/meeting.md", "Work/Meeting.md");
+    await env.settle();
+    expect(env.phone.paths()).toEqual(["Work/Meeting.md"]);
+  });
+
+  it("carries an edit made with it", async () => {
+    const env = await started({ "meeting.md": "notes" });
+    await env.phone.rename("meeting.md", "Meeting.md");
+    env.phone.type("Meeting.md", "notes, edited");
+    await env.settle();
+    expectBoth(env, { "Meeting.md": "notes, edited" });
+  });
+});
+
+describe("a name Dropbox won't take", () => {
+  it("holds that file back, says so, and syncs everything else", async () => {
+    const env = await started({ "A.md": "alpha" });
+    env.dropbox.refused.add("bad:name.md");
+    env.phone.type("bad:name.md", "held");
+    env.phone.type("B.md", "beta");
+    env.phone.type("A.md", "alpha, edited");
+    const result = await env.settle();
+    expect(result.attention).toEqual([{ kind: "refused", path: "bad:name.md" }]);
+    expect(env.dropbox.paths()).toEqual(["A.md", "B.md"]);
+    expect(env.dropbox.read("A.md")).toBe("alpha, edited");
+    expect(env.phone.text("bad:name.md")).toBe("held");
+  });
+
+  it("holds back a phone rename to such a name, leaving the note in Dropbox as it was", async () => {
+    const env = await started({ "A.md": "alpha", "B.md": "beta" });
+    env.dropbox.refused.add("bad:name.md");
+    await env.phone.rename("A.md", "bad:name.md");
+    env.phone.type("B.md", "beta, edited");
+    const result = await env.sync();
+    expect(result.attention).toContainEqual({ kind: "refused", path: "bad:name.md" });
+    expect(env.dropbox.read("A.md")).toBe("alpha");
+    expect(env.dropbox.read("B.md")).toBe("beta, edited");
+  });
+
+  it("holds back such a folder and makes the others", async () => {
+    const env = await started({});
+    env.dropbox.refused.add("bad:folder");
+    env.phone.folders.add("bad:folder");
+    env.phone.folders.add("Good");
+    const result = await env.settle();
+    expect(result.attention).toEqual([{ kind: "refused", path: "bad:folder" }]);
+    expect([...env.dropbox.folders.values()]).toEqual(["Good"]);
+  });
+});
+
+describe("a note put back from Recently Deleted", () => {
+  it("goes back up even when the app is killed before the pass records it", async () => {
+    const env = await started({ "A.md": "alpha", "B.md": "beta" });
+    // A pass binned A in Dropbox and died before recording it…
+    env.phone.files.delete("A.md");
+    env.dropbox.failAt("remove", "after");
+    await expect(env.sync()).rejects.toBeInstanceOf(Crash);
+    // …the note is restored on the phone…
+    env.phone.type("A.md", "alpha");
+    env.phone.restoredPaths = ["A.md"];
+    // …and the next pass dies too, just after taking the restore in.
+    env.phone.failAt("saveRecord", "before", { skip: 1 });
+    await expect(env.sync()).rejects.toBeInstanceOf(Crash);
+    await env.settle();
+    expectBoth(env, { "A.md": "alpha", "B.md": "beta" });
+    expect(env.phone.restoredPaths).toEqual([]);
+  });
+});
+
+describe("capitals Dropbox reports differently", () => {
+  it("never moves a note because Dropbox spells its folder in other capitals", async () => {
+    const env = await started({ "Work/A.md": "alpha" });
+    // Dropbox's listing says `work/`, the phone's folder is `Work/`.
+    env.dropbox.macMove("Work/A.md", "work/A.md");
+    const calls = await env.callsDuring(env.settle);
+    expect(calls).not.toContain("move");
+    expect(env.phone.paths()).toEqual(["Work/A.md"]);
+  });
+});

@@ -191,6 +191,8 @@ export function describeProblem(problem: SyncProblem): {
       return {
         text: `“${problem.path}” is over 150 MB, and Dropbox won't take files that big. Make it smaller or move it out of the folder.`,
       };
+    case "refused":
+      return { text: `“${problem.path}” has a name Dropbox won't take. Rename it.` };
   }
 }
 

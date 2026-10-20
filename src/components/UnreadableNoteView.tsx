@@ -5,11 +5,11 @@ import { SHOW_IN_FOLDER_LABEL, SmallButton } from "./settings/SettingsPrimitives
 
 interface Props {
   reason: NonNullable<Note["unreadable"]>;
-  /** Opens the file in the app the system gives it. */
-  openFile: () => void;
-  revealFile: () => void;
+  /** Opens the file in the app the system gives it. None on the phone. */
+  openFile?: () => void;
+  revealFile?: () => void;
   /** Reads the file again, as a note that now holds text. */
-  retry: () => void;
+  retry?: () => void;
 }
 
 const SAYS: Record<Props["reason"], string> = {
@@ -23,6 +23,7 @@ const SAYS: Record<Props["reason"], string> = {
  * In the note's place when its file cannot be edited as text: the note is
  * listed, never hidden, and nothing can be typed into it, so its bytes are
  * never written. The file opens in its own app, or is shown where it is.
+ * The phone has neither, and sync brings a fixed file in by itself.
  */
 export default function UnreadableNoteView({ reason, openFile, revealFile, retry }: Props) {
   const { theme } = useTheme();
@@ -42,9 +43,9 @@ export default function UnreadableNoteView({ reason, openFile, revealFile, retry
     >
       <UnreadableIcon />
       <span>{SAYS[reason]}</span>
-      <SmallButton onClick={openFile}>Open in Default App</SmallButton>
-      <SmallButton onClick={revealFile}>{SHOW_IN_FOLDER_LABEL}</SmallButton>
-      <SmallButton onClick={retry}>Try again</SmallButton>
+      {openFile && <SmallButton onClick={openFile}>Open in Default App</SmallButton>}
+      {revealFile && <SmallButton onClick={revealFile}>{SHOW_IN_FOLDER_LABEL}</SmallButton>}
+      {retry && <SmallButton onClick={retry}>Try again</SmallButton>}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { syncPass } from "../sync/engine";
 import { loadRecord } from "../sync/syncRecord";
 import { createSyncRunner } from "../sync/syncRunner";
 import { createSyncStatus, type FailureMeaning } from "../sync/syncStatus";
-import type { LocalStore } from "../sync/types";
+import { CursorResetError, type LocalStore } from "../sync/types";
 import type { FileOps } from "./files";
 import { SYNC_FOLDER } from "./syncFolder";
 
@@ -221,6 +221,12 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
           unreachable = false;
           if (backoff) await wait(backoff * 1000);
         } catch (error) {
+          if (error instanceof CursorResetError) {
+            // Dropbox expired the cursor: a pass lists afresh and saves a new one.
+            request();
+            await wait(10_000);
+            continue;
+          }
           if (!unreachable) log("long-poll failed:", message(error));
           unreachable = true;
           await wait(10_000);

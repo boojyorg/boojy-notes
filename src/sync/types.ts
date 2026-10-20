@@ -75,6 +75,11 @@ export class RemoteTooLargeError extends Error {
   name = "RemoteTooLargeError";
 }
 
+/** Dropbox won't take this path at all (a name it disallows, a path too long). */
+export class RemoteRefusedError extends Error {
+  name = "RemoteRefusedError";
+}
+
 /** The cursor is too old to continue from; list again from the start. */
 export class CursorResetError extends Error {
   name = "CursorResetError";
@@ -109,10 +114,12 @@ export interface LocalStore {
   /** Replaces the record whole, so a crash leaves the previous one. */
   saveRecord(text: string): Promise<void>;
   /**
-   * The paths put back from Recently Deleted since the last call, forgotten as
-   * they are handed over. Only a store with a bin has it (the phone's vault).
+   * The paths put back from Recently Deleted and not yet forgotten. Only a
+   * store with a bin has it (the phone's vault).
    */
-  takeRestored?(): Promise<string[]>;
+  restored?(): Promise<string[]>;
+  /** Forgets these restored paths, once the record that took them is saved. */
+  forgetRestored?(paths: string[]): Promise<void>;
 }
 
 /** Dropbox's comparison key for a path. */

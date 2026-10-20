@@ -314,6 +314,39 @@ describe("restoring, as sync sees it", () => {
     expect(await next.api.listDeletedNotes()).toEqual([]);
   });
 
+  // The restore is forgotten only once a pass has recorded it: a pass killed
+  // after taking it in, before saving, hands it over again.
+  it("restored, and the pass taking it in is killed before saving: it still stays restored", async () => {
+    let binned = false;
+    const files = memoryFiles({
+      failOn: (op, path) => {
+        if (op === "rename" && path === "vault/A.md") binned = true;
+        return binned && op === "write" && path === "state/sync-record.json";
+      },
+    });
+    const env = await synced({ "A.md": "alpha" }, files);
+    env.dropbox.macDelete("A.md");
+    await expect(syncPass({ local: env.vault.store, remote: env.dropbox })).rejects.toThrow(
+      /killed/,
+    );
+    const next = env.restart();
+    const [row] = await next.api.listDeletedNotes();
+    await next.api.restoreDeletedNote(row.id);
+    // The pass after the restore: its listing is saved, its next save dies.
+    let saves = 0;
+    const dying = {
+      ...next.store,
+      saveRecord: async (text: string) => {
+        if (++saves === 2) throw new Error("killed at saving the record");
+        return next.store.saveRecord(text);
+      },
+    };
+    await expect(syncPass({ local: dying, remote: env.dropbox })).rejects.toThrow(/killed/);
+    await env.settle(env.restart());
+    expect(textOf(env.files, "vault/A.md")).toBe("alpha");
+    expect(env.dropbox.read("A.md")).toBe("alpha");
+  });
+
   it("deleted here but edited on the Mac: sync brings it back, and a restore keeps both", async () => {
     const env = await synced({ "A.md": "alpha" });
     const id = env.idOf("A");
