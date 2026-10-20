@@ -332,6 +332,28 @@ describe("signing in again", () => {
     expect(sync.status.status().problems).toEqual([]);
   });
 
+  it("takes only the notes' own account when a damaged sign-in is replaced", async () => {
+    const files = memoryFiles();
+    await files.write("state/dropbox.json", new TextEncoder().encode('{"refreshTo'));
+    const sync = createPhoneSync(files, { loadRecord: async () => SYNCED_ONE } as never);
+    dropboxAnswers(files);
+    exchangeCode.mockResolvedValue({ refreshToken: "theirs", accountId: "dbid:B" });
+    const other = sync.signIn();
+    const refusal = expect(other).rejects.toThrow(/isn't the one these notes sync with/);
+    await vi.advanceTimersByTimeAsync(0);
+    await refusal;
+    expect(await sync.signedIn()).toBe(false);
+
+    exchangeCode.mockResolvedValue({ refreshToken: "new", accountId: "dbid:A" });
+    const own = sync.signIn();
+    await vi.advanceTimersByTimeAsync(0);
+    await own;
+    expect(decode(await files.read("state/dropbox.json"))).toEqual({
+      refreshToken: "new",
+      accountId: "dbid:A",
+    });
+  });
+
   it("reads a damaged sign-in file as signed out, never failing the start", async () => {
     const files = memoryFiles();
     await files.write("state/dropbox.json", new TextEncoder().encode('{"refreshTo'));

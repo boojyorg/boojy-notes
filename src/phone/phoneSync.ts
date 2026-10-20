@@ -284,9 +284,19 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
   return {
     status,
     signedIn: async () => !!(await readSecrets(files))?.refreshToken,
-    /** The first sign-in, before the app shows. */
+    /**
+     * The first sign-in, before the app shows. A copy that has synced before
+     * (its sign-in lost or damaged) takes only its own account, as Sign in
+     * again does: another's folder would read as every note deleted there.
+     */
     async signIn() {
-      await files.write(SECRETS, encode(await signIn()));
+      const fresh = await signIn();
+      if (!(await sameAccount(null, fresh))) {
+        throw new Error(
+          "That Dropbox account isn't the one these notes sync with. Sign in with that one.",
+        );
+      }
+      await files.write(SECRETS, encode(fresh));
     },
     start,
     /**
