@@ -320,18 +320,21 @@ test("Tidy table lines a compact table up in the file, and Cmd+Z puts it back", 
     expect(h.vault.read(NOTE)).toBe(
       ["Above.", "| Name | Qty |", "| ---- | --- |", "| Tea  | 2   |", "", "Below.", ""].join("\n"),
     );
-    // Lined up now: the menu offers it no more.
+    // Lined up now: the menu offers it no more. On Windows the menu opens
+    // only once the system's spelling for the right-click is in, so it is
+    // waited for: before it shows, "no Tidy table" is true of nothing, and
+    // the Escape below would close nothing.
     await table(h)
       .locator("td")
       .first()
       .click({ button: "right", position: { x: 18, y: 12 } });
-    await expect(
-      h.page.getByRole("menu", { name: "Edit" }).getByRole("menuitem", { name: "Tidy table" }),
-    ).toHaveCount(0);
+    const textMenu = h.page.getByRole("menu", { name: "Edit" });
+    await expect(textMenu.getByRole("menuitem", { name: /^Cut/ })).toBeVisible();
+    await expect(textMenu.getByRole("menuitem", { name: "Tidy table" })).toHaveCount(0);
     // The text menu never takes focus (it reads its keys from the document);
     // the undo goes to the cell once Escape has closed it.
     await h.page.keyboard.press("Escape");
-    await expect(h.page.getByRole("menu", { name: "Edit" })).toHaveCount(0);
+    await expect(textMenu).toHaveCount(0);
     await h.page.keyboard.press(`${MOD}+z`);
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Name | Qty |\n| --- | --- |"));
     expect(h.pageErrors).toEqual([]);
