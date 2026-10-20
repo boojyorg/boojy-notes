@@ -10,6 +10,7 @@ import BoojyNotes from "./BoojyNotes";
 import { installTraceProbes } from "./utils/trace";
 import { isPhone } from "./utils/platform";
 import { PHONE_UI_SCALE } from "./constants/layout";
+import { showStartupFailure } from "./phone/startupFailure";
 
 // The crash screen promises "your notes have been backed up to local
 // storage"; that only happens if the boundary can reach the live note store.
@@ -56,35 +57,40 @@ installTraceProbes();
 // The phone's vault and sign-in come before the app's first render.
 const ready = isPhone ? import("./phone/install").then((m) => m.installPhone()) : Promise.resolve();
 
-ready.then(() =>
-  createRoot(document.getElementById("root")).render(
-    <StrictMode>
-      <ThemeProvider>
-        <NoteDataProvider>
-          <SettingsProvider>
-            <LayoutProvider>
-              <SidebarProvider>
-                <AppErrorBoundary>
-                  <BoojyNotes />
-                </AppErrorBoundary>
-              </SidebarProvider>
-            </LayoutProvider>
-          </SettingsProvider>
-        </NoteDataProvider>
-        {ThemeTweaker && (
-          <Suspense fallback={null}>
-            {PhoneTweaker ? (
-              <PhoneTweaker />
-            ) : (
-              <>
-                <ThemeTweaker />
-                <RhythmTweaker />
-                <MotionTweaker />
-              </>
-            )}
-          </Suspense>
-        )}
-      </ThemeProvider>
-    </StrictMode>,
-  ),
+ready.then(
+  () =>
+    createRoot(document.getElementById("root")).render(
+      <StrictMode>
+        <ThemeProvider>
+          <NoteDataProvider>
+            <SettingsProvider>
+              <LayoutProvider>
+                <SidebarProvider>
+                  <AppErrorBoundary>
+                    <BoojyNotes />
+                  </AppErrorBoundary>
+                </SidebarProvider>
+              </LayoutProvider>
+            </SettingsProvider>
+          </NoteDataProvider>
+          {ThemeTweaker && (
+            <Suspense fallback={null}>
+              {PhoneTweaker ? (
+                <PhoneTweaker />
+              ) : (
+                <>
+                  <ThemeTweaker />
+                  <RhythmTweaker />
+                  <MotionTweaker />
+                </>
+              )}
+            </Suspense>
+          )}
+        </ThemeProvider>
+      </StrictMode>,
+    ),
+  (error) => {
+    console.error("[startup]", error);
+    showStartupFailure(error);
+  },
 );

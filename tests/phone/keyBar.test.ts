@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   barModeAfterSelection,
   barReach,
+  SELECT_FIRST,
+  styleBlocked,
   headingCommand,
   isListKind,
   keyboardUp,
@@ -149,5 +151,34 @@ describe("in a block with its own field, what cannot act there greys", () => {
   it("acts on nothing but inserts and undo in code or a callout's title", () => {
     expect(barReach("code", false)).toEqual({ kinds: false, styles: false, link: false });
     expect(barReach("callout", false)).toEqual({ kinds: false, styles: false, link: false });
+  });
+});
+
+describe("a text style with nothing selected", () => {
+  const at = (kind: string, inField: boolean, collapsed = true) => ({
+    kind,
+    inField,
+    collapsed,
+    reach: barReach(kind, inField),
+  });
+
+  it("promises bold and italic to the next letters in text; the rest wait for a selection", () => {
+    expect(styleBlocked("bold", at("p", false))).toBeNull();
+    expect(styleBlocked("italic", at("p", false))).toBeNull();
+    for (const f of ["strikethrough", "highlight", "code"]) {
+      expect(styleBlocked(f, at("p", false))).toBe(SELECT_FIRST);
+      expect(styleBlocked(f, at("p", false, false))).toBeNull();
+    }
+  });
+
+  it("promises nothing in a field, which formats only what it holds", () => {
+    expect(styleBlocked("bold", at("table", true))).toBe(SELECT_FIRST);
+    expect(styleBlocked("bold", at("table", true, false))).toBeNull();
+  });
+
+  it("says the field first where styles cannot act at all", () => {
+    expect(styleBlocked("bold", at("code", false, false))).toBe("Not in a code block");
+    expect(styleBlocked("link", at("table", true, false))).toBe("Not in a table");
+    expect(styleBlocked("link", at("p", false))).toBeNull();
   });
 });

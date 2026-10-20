@@ -55,6 +55,19 @@ const decode = (bytes: Uint8Array | null) =>
   bytes ? JSON.parse(new TextDecoder().decode(bytes)) : null;
 const message = (error: unknown) => (error as Error)?.message ?? String(error);
 
+/**
+ * The kept sign-in. A file that doesn't read as one (damaged) is no sign-in:
+ * the sign-in screen shows, and signing in replaces it. Notes are untouched.
+ */
+export async function readSecrets(files: FileOps): Promise<Secrets | null> {
+  try {
+    const secrets = decode(await files.read(SECRETS));
+    return typeof secrets?.refreshToken === "string" ? secrets : null;
+  } catch {
+    return null;
+  }
+}
+
 const log = (...parts: unknown[]) => console.log("[sync]", ...parts);
 
 export function createPhoneSync(files: FileOps, local: LocalStore) {
@@ -67,7 +80,6 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
   let notBefore = 0;
   let token: () => Promise<string> = () => Promise.reject(new Error("not signed in"));
 
-  const readSecrets = async (): Promise<Secrets | null> => decode(await files.read(SECRETS));
   const takeSecrets = (secrets: Secrets) => {
     token = refreshingToken({ clientId: APP_KEY, refreshToken: secrets.refreshToken });
   };
@@ -146,7 +158,7 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
   };
 
   async function start() {
-    const secrets = await readSecrets();
+    const secrets = await readSecrets(files);
     if (!secrets) throw new Error("not signed in");
     takeSecrets(secrets);
     let accountKnown = !!secrets.accountId;
@@ -242,7 +254,7 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
   async function noteAccount(accountId: () => Promise<string>) {
     try {
       const id = await accountId();
-      const secrets = await readSecrets();
+      const secrets = await readSecrets(files);
       if (secrets && !secrets.accountId) {
         await files.write(SECRETS, encode({ ...secrets, accountId: id }));
       }
@@ -271,7 +283,7 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
 
   return {
     status,
-    signedIn: async () => !!(await readSecrets())?.refreshToken,
+    signedIn: async () => !!(await readSecrets(files))?.refreshToken,
     /** The first sign-in, before the app shows. */
     async signIn() {
       await files.write(SECRETS, encode(await signIn()));
@@ -284,12 +296,13 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
      */
     async signInAgain() {
       const fresh = await signIn();
-      if (!(await sameAccount(await readSecrets(), fresh))) {
+      if (!(await sameAccount(await readSecrets(files), fresh))) {
         status.refused({ kind: "other-account" });
         return;
       }
       await files.write(SECRETS, encode(fresh));
       takeSecrets(fresh);
+      status.accepted();
       request(true);
     },
     /** Try again, from the sync menu. */
