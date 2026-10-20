@@ -138,7 +138,7 @@ test("opened at 50%, 100% and 200%: the pane fits the window and its controls wo
   try {
     for (const size of [50, 200, 100]) {
       // Set the scale with the keyboard, from outside Settings.
-      await h.page.keyboard.press(`${MOD}+0`);
+      await h.page.keyboard.press(`${MOD}+Shift+0`);
       const steps = size === 50 ? 5 : size === 200 ? 6 : 0;
       const key = size === 50 ? `${MOD}+-` : `${MOD}+=`;
       for (let i = 0; i < steps; i++) await h.page.keyboard.press(key);
@@ -246,7 +246,7 @@ test("the scale keys work over Settings, and the chip stands down there", async 
     // An unfinished typed value cannot land on top of a shortcut.
     await figure.click();
     await h.page.getByTestId("ui-scale-input").fill("77");
-    await h.page.keyboard.press(`${MOD}+0`);
+    await h.page.keyboard.press(`${MOD}+Shift+0`);
     expect(await scale(h.page)).toBe("100%");
     await expect(h.page.getByTestId("ui-scale-input")).toHaveCount(0);
     await expect(figure).toHaveText("100%");
@@ -276,11 +276,11 @@ test("a scale shortcut says what it did, the reset included, and goes by itself"
     await h.page.keyboard.press(`${MOD}+=`);
     await expect(chip).toContainText("Interface size 110%");
     // Off 100% it carries the key that goes back, as a key and not as prose.
-    await expect(chip).toContainText(MOD === "Meta" ? "⌘0" : "Ctrl+0");
+    await expect(chip).toContainText(MOD === "Meta" ? "⇧⌘0" : "Ctrl+Shift+0");
     await expect(chip).toContainText("resets");
 
     // The reset answers too, and then there is nothing to reset to.
-    await h.page.keyboard.press(`${MOD}+0`);
+    await h.page.keyboard.press(`${MOD}+Shift+0`);
     await expect(chip).toContainText("Interface size 100%");
     await expect(chip).not.toContainText("resets");
     expect(await scale(h.page)).toBe("100%");

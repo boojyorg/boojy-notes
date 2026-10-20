@@ -38,6 +38,8 @@ describe("UiScaleChip", () => {
     );
     expect(screen.getByTestId("ui-scale-chip")).toHaveTextContent("Interface size 120%");
     expect(screen.getByTestId("ui-scale-chip")).toHaveTextContent(/resets/);
+    // Shift: Cmd+0 alone is Text.
+    expect(screen.getByTestId("ui-scale-chip")).toHaveTextContent(/⇧⌘0|Ctrl\+Shift\+0/);
 
     // At 100% there is nothing to reset to, so it is the figure alone.
     rerender(<UiScaleChip hint={{ at: 2, scale: 100 }} onHide={vi.fn()} left={240} />);

@@ -100,7 +100,7 @@ export default function UiScaleChip({ hint, onHide, left }: UiScaleChipProps) {
                 color: TEXT.secondary,
               }}
             >
-              {shortcutLabel({ key: "0" })}
+              {shortcutLabel({ key: "0", shift: true })}
             </span>
             <span style={{ fontSize: 12, fontWeight: 400, color: TEXT.secondary }}>resets</span>
           </span>

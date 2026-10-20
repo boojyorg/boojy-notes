@@ -79,7 +79,9 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   placed via `cssZoom`. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
 - **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes and files opened
   (`useNoteHistory`, memory only). `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
-  table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`, since `⇧⌘E` is taken. Sort has none.
+  table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`. Sort has none.
+- **`⌘0`–`9` apply a block kind, never toggle** (`KIND_KEYS`); Actual Size is `⇧⌘0`.
+  `block-kind-keys.spec.ts`.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
   renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and action
   block are `inert` (the whole column broke rename). `header-controls.spec.ts`.
@@ -91,14 +93,14 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   dead control; elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
 - **Interface size is one segmented control; every press applies at once** (a debounce
   overwrote newer values). The figure is a field committed on Enter/blur; an outside change
-  cancels an unfinished edit. `stepScale` is the one rule shared with `Cmd+±`.
+  cancels an unfinished edit. `stepScale` is the one rule shared with `⌘±`.
 - **Settings keeps the scale it opened with**, so the pane holds still. Centred by a wrapper,
   never a transform (it would contain the `fixed` children). A menu inside it passes
   `overSettings` (else it stacks under the pane) and owns Escape; the scale keys are the one
   shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
 - **`vw`/`vh` ignore the UI scale**: anything sized against the viewport divides by it
   (`atScale()`).
-- **One zoom system**: the app's UI scale. `main.js` resets Chromium's zoom on `dom-ready`. A scale shortcut always answers with `UiScaleChip`.
+- **One zoom system**: the app's UI scale; `main.js` resets Chromium's on `dom-ready`. A scale key answers with `UiScaleChip`.
 - **First-run setup** (`SetupDialog`): every way out saves the choice and never shows again;
   nothing is written until the first keystroke. `first-run.spec.ts`.
 

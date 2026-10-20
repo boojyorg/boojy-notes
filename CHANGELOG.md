@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+- **⌘ and a number turns a line into any kind** — ⌘1 to ⌘6 make it Heading 1 to 6, ⌘7 a numbered list, ⌘8 a bullet list, ⌘9 a to-do list, and ⌘0 plain text again (Ctrl on Windows and Linux). The key sets the kind rather than switching it on and off, so pressing ⌘2 on a Heading 2 leaves it alone. The keys are shown beside each item in the Format menu, where Headings 4 to 6 now sit under More Headings, and in a block's Turn into menu, where they work while the menu is open. **Actual Size, which resets the app's size, moves to ⇧⌘0** (Ctrl+Shift+0), since ⌘0 is now Text.
+
 ## v0.16.0 — 2026-10-17
 
 ### Bug Fixes

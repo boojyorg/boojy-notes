@@ -282,13 +282,25 @@ describe("key ownership", () => {
     );
     key("=", { metaKey: true });
     expect(deps.setUiScale).toHaveBeenCalledWith(110);
-    key("0", { metaKey: true });
+    key(")", { metaKey: true, shiftKey: true, code: "Digit0" });
     expect(deps.setUiScale).toHaveBeenCalledWith(100);
     // And nothing else does.
     key("n", { metaKey: true });
     key("p", { metaKey: true });
     expect(deps.createNote).not.toHaveBeenCalled();
     expect(deps.openSearch).not.toHaveBeenCalled();
+  });
+
+  // Cmd+0 is Text (the menu bar's Format → Text), so the reset is Shift+Cmd+0,
+  // read by its key's place: Shift+0 types "=" on a German keyboard.
+  it("Shift+Cmd+0 resets the scale and Cmd+0 leaves it alone", () => {
+    const deps = makeDeps({ uiScale: 120 });
+    renderHook(() => useAppKeyboard(deps));
+    const plain = key("0", { metaKey: true, code: "Digit0" });
+    expect(plain.defaultPrevented).toBe(false);
+    expect(deps.setUiScale).not.toHaveBeenCalled();
+    key("=", { ctrlKey: true, shiftKey: true, code: "Digit0" });
+    expect(deps.setUiScale).toHaveBeenCalledWith(100);
   });
 
   // The pane's focus trap places focus a frame after it opens, and a key

@@ -902,7 +902,7 @@ export default function BoojyNotes() {
   }, [openNoteTitle]);
 
   // The scale's own feedback: a shortcut says what it changed the scale to,
-  // Cmd+0 included, and a press at either end of the range answers with the
+  // Shift+Cmd+0 included, and a press at either end of the range answers with the
   // scale it is on. Settings' own control needs none of this — the figure is
   // beside the buttons — so only the keyboard path raises it.
   const [scaleHint, setScaleHint] = useState(null);

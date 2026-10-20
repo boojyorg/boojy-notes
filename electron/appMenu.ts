@@ -240,18 +240,29 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
           icon: icon("link"),
         }),
         { type: "separator" },
+        // Cmd + a number applies a kind (never toggles it): 0 Text, 1–6 the
+        // headings, 7–9 the lists. H4–H6 wait in a submenu, as in the `/` menu.
         kind("h1", "h1", "Heading 1", "#", "CmdOrCtrl+1"),
         kind("h2", "h2", "Heading 2", "##", "CmdOrCtrl+2"),
         kind("h3", "h3", "Heading 3", "###", "CmdOrCtrl+3"),
-        kind("body", "p", "Text"),
+        {
+          label: "More Headings",
+          enabled: !noteless,
+          submenu: [
+            kind("h4", "h4", "Heading 4", "####", "CmdOrCtrl+4"),
+            kind("h5", "h5", "Heading 5", "#####", "CmdOrCtrl+5"),
+            kind("h6", "h6", "Heading 6", "######", "CmdOrCtrl+6"),
+          ],
+        },
+        kind("body", "p", "Text", undefined, "CmdOrCtrl+0"),
         { type: "separator" },
         {
           label: "List",
           enabled: !noteless,
           submenu: [
-            kind("bullet", "bullet", "Bullet List", "-"),
-            kind("numbered", "numbered", "Numbered List", "1."),
-            kind("todo", "checkbox", "To-do List", "[]"),
+            kind("bullet", "bullet", "Bullet List", "-", "CmdOrCtrl+8"),
+            kind("numbered", "numbered", "Numbered List", "1.", "CmdOrCtrl+7"),
+            kind("todo", "checkbox", "To-do List", "[]", "CmdOrCtrl+9"),
           ],
         },
         kind("quote", "blockquote", "Quote", ">"),
@@ -304,7 +315,8 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         // rule, "One zoom system"): these run the same step the keys do.
         item("bigger", "Zoom In", "CmdOrCtrl+Plus"),
         item("smaller", "Zoom Out", "CmdOrCtrl+-"),
-        item("actualSize", "Actual Size", "CmdOrCtrl+0"),
+        // Shift: Cmd+0 is Text (Typora's arrangement).
+        item("actualSize", "Actual Size", "Shift+CmdOrCtrl+0"),
         { type: "separator" },
         // Reload is a developer's key: it drops the renderer, and with it up
         // to ~800 ms of typing still inside the text-commit and write
