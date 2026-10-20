@@ -75,6 +75,7 @@ export function clashCopyPath(path: string, day: string, taken: (key: string) =>
 }
 
 const folderOf = (path: string) => path.slice(0, path.lastIndexOf("/") + 1);
+const nameOf = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
 /** Where a capitals-only rename waits between its two moves: hidden, so no side syncs it. */
 export const tempPath = (to: string) => {
@@ -221,35 +222,42 @@ class Pass {
   /**
    * A note whose name changed only in capitals keeps its key, so the other
    * rename steps never see it. The side that changed it is followed; when
-   * both did, Dropbox's name wins, as for any rename. Only the name itself:
-   * Dropbox may report a folder in other capitals than the phone spells it,
-   * and following that would split one folder into two on the phone.
+   * both did, Dropbox's name wins, as for any rename. Only the name itself is
+   * compared: Dropbox promises the capitals of a path's last part alone, and
+   * may answer its folders in others. Its change feed may also leave out a
+   * rename of capitals alone, so one made elsewhere can wait for a full
+   * listing (an expired cursor, a new phone); a rename from Finder arrived.
    */
   private async followCaseRenames() {
     for (const [key, synced] of Object.entries(this.record.synced)) {
       const here = this.files.get(key);
       const there = this.record.remote[key];
       if (!here || !there || there.id !== synced.id || this.skip.has(key)) continue;
-      if (here.path === there.path || folderOf(here.path) !== folderOf(there.path)) continue;
-      if (there.path === synced.path) {
+      const name = nameOf(there.path);
+      if (nameOf(here.path) === name) continue;
+      if (name === nameOf(synced.path)) {
         this.record.caseMove = { id: synced.id, to: here.path };
         await this.save();
         await this.finishCaseMove();
         continue;
       }
-      await this.local.rename(here.path, there.path);
-      this.files.set(key, { ...here, path: there.path });
+      // The phone keeps its own spelling of the folder.
+      const to = folderOf(here.path) + name;
+      await this.local.rename(here.path, to);
+      this.files.set(key, { ...here, path: to });
       this.record.synced[key] = { ...synced, path: there.path };
       await this.save();
-      this.note(`renamed here: ${here.path} → ${there.path}`);
+      this.note(`renamed here: ${here.path} → ${to}`);
     }
   }
 
   /**
    * Carries a capitals-only rename to Dropbox: to the hidden name, then to the
    * new one. Where the file is now (from the listing) says which moves are
-   * left; a file renamed or deleted meanwhile by another device ends the plan,
-   * and the ordinary rules take it from there.
+   * left, keys compared, as Dropbox may answer a folder in other capitals. A
+   * file renamed or deleted meanwhile by another device ends the plan, and the
+   * ordinary rules take it from there. Once at the hidden name the plan holds
+   * until the file has left it: a note is never left hidden.
    */
   private async finishCaseMove() {
     const plan = this.record.caseMove;
@@ -260,28 +268,47 @@ class Pass {
       this.record.caseMove = null;
       await this.save();
     };
+    const moveTo = async (file: RemoteFile, to: string) => {
+      const moved = await this.remote.move(plan.id, to);
+      delete this.record.remote[keyOf(file.path)];
+      this.record.remote[keyOf(moved.path)] = moved;
+      return moved;
+    };
     let file = Object.values(this.record.remote).find((f) => f.id === plan.id);
-    if (!file || (keyOf(file.path) !== key && file.path !== temp)) return end();
-    try {
-      if (file.path !== plan.to && file.path !== temp) {
-        const from = keyOf(file.path);
-        file = await this.remote.move(plan.id, temp);
-        delete this.record.remote[from];
-        this.record.remote[keyOf(temp)] = file;
-        await this.save();
+    if (!file || (keyOf(file.path) !== key && keyOf(file.path) !== keyOf(temp))) return end();
+    if (keyOf(file.path) === key && nameOf(file.path) !== nameOf(plan.to)) {
+      try {
+        file = await moveTo(file, temp);
+      } catch (error) {
+        if (error instanceof RemoteConflictError || error instanceof RemoteNotFoundError) {
+          this.result.again = true;
+          return end();
+        }
+        if (this.refused(error, plan.to)) return end();
+        throw error;
       }
-      if (file.path === temp) {
-        file = await this.remote.move(plan.id, plan.to);
-        delete this.record.remote[keyOf(temp)];
-        this.record.remote[key] = file;
-      }
-    } catch (error) {
-      if (error instanceof RemoteConflictError || error instanceof RemoteNotFoundError) {
+      await this.save();
+    }
+    if (keyOf(file.path) === keyOf(temp)) {
+      try {
+        file = await moveTo(file, plan.to);
+      } catch (error) {
+        if (error instanceof RemoteNotFoundError) {
+          // Deleted at the hidden name by another device: nothing is hidden.
+          this.result.again = true;
+          return end();
+        }
+        if (!(error instanceof RemoteConflictError)) throw error;
+        // Another device took the name meanwhile: both are kept, this one as a
+        // conflicted copy, which the phone's note follows as a rename. Any other
+        // failure throws with the plan kept, so the next pass tries again.
+        const taken = (k: string) =>
+          this.files.has(k) || k in this.record.remote || k in this.record.synced;
+        file = await moveTo(file, clashCopyPath(plan.to, dayOf(this.now()), taken));
         this.result.again = true;
+        this.note(`kept both: ${plan.to} and ${file.path}`);
         return end();
       }
-      if (this.refused(error, plan.to)) return end();
-      throw error;
     }
     const synced = this.record.synced[key];
     if (synced) this.record.synced[key] = { ...synced, path: file.path, rev: file.rev };

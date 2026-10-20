@@ -563,6 +563,42 @@ describe("a rename that changes only capitals", () => {
     expectBoth(env, { "Meeting.md": "notes" });
   });
 
+  it("keeps both, nothing hidden, when another device takes the name between the two moves", async () => {
+    const env = await started({ "meeting.md": "notes" });
+    await env.phone.rename("meeting.md", "Meeting.md");
+    env.dropbox.before("move", () => {}); // the first move, to the hidden name
+    env.dropbox.before("move", async () => {
+      await env.dropbox.macWrite("meeting.md", "theirs");
+    });
+    await env.settle();
+    await env.settle(); // the pass Dropbox's long-poll asks for after the Mac's write
+    expectBoth(env, { [`Meeting ${COPY}.md`]: "notes", "meeting.md": "theirs" });
+  });
+
+  it("finishes when Dropbox answers the hidden name's folder in other capitals", async () => {
+    const env = await started({});
+    env.dropbox.lowerFolders = true;
+    env.phone.folders.add("Work");
+    env.phone.type("Work/meeting.md", "notes");
+    await env.settle();
+    await env.phone.rename("Work/meeting.md", "Work/Meeting.md");
+    await env.settle();
+    expect(env.phone.paths()).toEqual(["Work/Meeting.md"]);
+    expect(env.dropbox.paths()).toEqual(["Work/Meeting.md"]);
+    expect(await env.callsDuring(env.sync)).not.toContain("move");
+  });
+
+  it("follows a Mac rename of the name alone when Dropbox answers its folder in other capitals", async () => {
+    const env = await started({});
+    env.dropbox.lowerFolders = true;
+    env.phone.folders.add("Work");
+    env.phone.type("Work/meeting.md", "notes");
+    await env.settle();
+    env.dropbox.macMove("Work/meeting.md", "Work/Meeting.md");
+    await env.settle();
+    expect(env.phone.paths()).toEqual(["Work/Meeting.md"]);
+  });
+
   it("carries an edit made with it", async () => {
     const env = await started({ "meeting.md": "notes" });
     await env.phone.rename("meeting.md", "Meeting.md");

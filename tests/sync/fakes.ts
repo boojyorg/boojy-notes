@@ -65,6 +65,11 @@ export class FakeDropbox implements Remote {
   calls: Op[] = [];
   /** Names Dropbox won't take (a disallowed name, a path too long), by key. */
   refused = new Set<string>();
+  /**
+   * Dropbox's `path_display` promises only the last part's capitals: folders
+   * may come back in others. True answers every folder in lower case.
+   */
+  lowerFolders = false;
   private nextRev = 1;
   private nextId = 1;
   private generation = 0;
@@ -97,7 +102,11 @@ export class FakeDropbox implements Remote {
   }
 
   private meta(f: StoredFile): RemoteFile {
-    return { kind: "file", path: f.path, id: f.id, rev: f.rev, hash: f.hash };
+    const slash = f.path.lastIndexOf("/");
+    const path = this.lowerFolders
+      ? f.path.slice(0, slash + 1).toLowerCase() + f.path.slice(slash + 1)
+      : f.path;
+    return { kind: "file", path, id: f.id, rev: f.rev, hash: f.hash };
   }
 
   private async put(path: string, bytes: Uint8Array, id?: string): Promise<RemoteFile> {
