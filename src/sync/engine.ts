@@ -184,12 +184,19 @@ class Pass {
     return `${this.localFolder(path.slice(0, slash))}/${path.slice(slash + 1)}`;
   }
 
-  /** A folder, and each above it, as the phone spells it; one new here is kept as Dropbox gave it. */
+  /**
+   * A folder, and each above it, as the phone spells it. One new here takes
+   * its name from Dropbox's listing of the folder itself, whose last part is
+   * the one spelling Dropbox promises: a note listed under it may spell it
+   * otherwise, and the folder made after would stand beside the note's.
+   */
   private localFolder(path: string) {
     let folder = "";
     for (const part of path.split("/")) {
-      const asked = folder ? `${folder}/${part}` : part;
-      folder = this.folders.get(keyOf(asked)) ?? asked;
+      const key = keyOf(folder ? `${folder}/${part}` : part);
+      const listed = this.record.remoteFolders[key];
+      const name = listed ? listed.slice(listed.lastIndexOf("/") + 1) : part;
+      folder = this.folders.get(key) ?? (folder ? `${folder}/${name}` : name);
     }
     return folder;
   }

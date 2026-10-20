@@ -698,6 +698,17 @@ describe("folders Dropbox answers in other capitals than the phone's", () => {
     expect(env.phone.paths()).toEqual(["Work/C.md"]);
   });
 
+  it("puts a new folder's first note in it, by the folder's own spelling, never a second one", async () => {
+    const env = await workOnPhone();
+    // The folder's listing spells it `Sub`; the note's own path says `sub`.
+    env.dropbox.folders.set("work/sub", "work/Sub");
+    env.dropbox.log.push({ kind: "folder", path: "work/Sub" });
+    await env.dropbox.macWrite("work/sub/N.md", "new");
+    await env.settle();
+    expect(env.phone.paths()).toEqual(["Work/A.md", "Work/Sub/N.md"]);
+    expect([...env.phone.folders].sort()).toEqual(["Work", "Work/Sub"]);
+  });
+
   it("makes a new folder from the Mac inside the phone's own folder", async () => {
     const env = await workOnPhone();
     env.dropbox.folders.set("work/sub", "work/Sub");
