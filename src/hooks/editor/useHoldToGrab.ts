@@ -1,13 +1,84 @@
 import { type RefObject, useEffect, useRef } from "react";
 import { keyboardUp } from "../../phone/keyBar";
 import {
+  DOUBLE_TAP_SLOP,
   drifted,
   HOLD_MS,
   HOLD_SLOP,
   isSecondTap,
+  type Point,
   type Tap,
   tapFrom,
+  wordsNear,
 } from "../../utils/holdGesture";
+
+/** How long after a double-tap's lift the browser has had its turn at the word. */
+const MISSED_WORD_MS = 100;
+
+/**
+ * The text of the line `node` is in (its nearest block-level element), with
+ * where each text node starts in it: a word may cross formatting (`**Hi**`
+ * is a text node of its own). A soft break counts as a newline, so words
+ * either side of it never join.
+ */
+function lineText(root: HTMLElement, node: Node) {
+  let line = node.parentElement as HTMLElement;
+  while (line !== root && line.parentElement && getComputedStyle(line).display.startsWith("inline"))
+    line = line.parentElement;
+  const parts: { node: Text; at: number }[] = [];
+  let text = "";
+  const walk = document.createTreeWalker(line, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (n.nodeName === "BR") text += "\n";
+    else if (n.nodeType === Node.TEXT_NODE) {
+      parts.push({ node: n as Text, at: text.length });
+      text += n.textContent ?? "";
+    }
+  }
+  /** The text node and offset at `i` in the line's text; an end prefers the node it ends. */
+  const position = (i: number, end: boolean): [Text, number] | null => {
+    const hit = parts.find(
+      (p) => i >= p.at && (end ? i <= p.at + p.node.length : i < p.at + p.node.length),
+    );
+    return hit ? [hit.node, i - hit.at] : null;
+  };
+  return { text, parts, position };
+}
+
+/**
+ * The word a double-tap at `point` meant, when the browser selected nothing:
+ * of the words beside the point, the nearest as drawn, if near enough. Only
+ * the note's own text (a code block's box selects its own words).
+ */
+function missedWord(root: HTMLElement, point: Point): Range | null {
+  const at = document.caretRangeFromPoint?.(point.x, point.y);
+  const node = at?.startContainer;
+  if (!at || !node || node.nodeType !== Node.TEXT_NODE || !root.contains(node)) return null;
+  if (!node.parentElement?.isContentEditable) return null;
+  const line = lineText(root, node);
+  const here = line.parts.find((p) => p.node === node);
+  if (!here) return null;
+  let best: Range | null = null;
+  let nearest = Number.POSITIVE_INFINITY;
+  for (const [from, to] of wordsNear(line.text, here.at + at.startOffset)) {
+    const start = line.position(from, false);
+    const end = line.position(to, true);
+    if (!start || !end) continue;
+    const range = document.createRange();
+    range.setStart(...start);
+    range.setEnd(...end);
+    const r = range.getBoundingClientRect();
+    const away = Math.hypot(
+      Math.max(r.left - point.x, 0, point.x - r.right),
+      Math.max(r.top - point.y, 0, point.y - r.bottom),
+    );
+    if (away < nearest) {
+      best = range;
+      nearest = away;
+    }
+  }
+  return nearest <= DOUBLE_TAP_SLOP ? best : null;
+}
 
 /** The block root under a point, frontmatter never; through an open menu's backdrop too. */
 function blockAt(root: HTMLElement, x: number, y: number): string | null {
@@ -123,6 +194,36 @@ export function useHoldToGrab({
     const area = (root.closest(".editor-scroll") as HTMLElement | null) ?? root;
     let touch: Touch | null = null;
     let lastTap: Tap | null = null;
+    /** The long press the app makes on a missed word: the WebView's to select, never a hold. */
+    let pressing: (Point & { until: number }) | null = null;
+    let missTimer: ReturnType<typeof setTimeout> | undefined;
+
+    /**
+     * A double-tap the browser selected nothing for: its second press landed
+     * just past the word (on the space after a short one, or beyond the
+     * line's end). The word is selected by a long press on it, the WebView's
+     * own, so it comes with handles and the system's Copy menu; without the
+     * native plugin (the web build) the app selects it, with neither.
+     */
+    const selectMissedWord = (point: Point) => {
+      const sel = document.getSelection();
+      if (!sel || !sel.isCollapsed) return;
+      const word = missedWord(root, point);
+      if (!word) return;
+      const r = word.getBoundingClientRect();
+      const centre = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      const selectHere = () => {
+        sel.removeAllRanges();
+        sel.addRange(word);
+      };
+      const press = window.boojyPhoneAPI?.selectWordAt;
+      if (!press) return selectHere();
+      pressing = { ...centre, until: performance.now() + 2000 };
+      press(centre.x, centre.y).catch(() => {
+        pressing = null;
+        selectHere();
+      });
+    };
     // The window's tallest at each width, as the key bar reads the keyboard.
     const tallest = new Map<number, number>();
     keyboardUp(tallest, window.innerWidth, window.innerHeight);
@@ -164,6 +265,19 @@ export function useHoldToGrab({
     };
 
     const onTouchStart = (e: TouchEvent) => {
+      const first = e.touches[0];
+      if (
+        pressing &&
+        performance.now() < pressing.until &&
+        e.touches.length === 1 &&
+        Math.hypot(first.clientX - pressing.x, first.clientY - pressing.y) < 2
+      ) {
+        pressing = null;
+        touch = null;
+        lastTap = null;
+        return;
+      }
+      clearTimeout(missTimer);
       // A second finger on a held block is ignored: the first still holds
       // it (Android hands the app an edge swipe made while a finger is down).
       // Before the hold, two fingers are a pinch.
@@ -279,6 +393,10 @@ export function useHoldToGrab({
           : null;
       // A hold's release is no tap: no caret, no click, no tick.
       if (touch.claimed && e.cancelable) e.preventDefault();
+      const lift = { x: t.clientX, y: t.clientY };
+      if (touch.second && !touch.claimed && e.type === "touchend" && !drifted(touch, lift)) {
+        missTimer = setTimeout(() => selectMissedWord(lift), MISSED_WORD_MS);
+      }
       if (touch.dragging) on.current.onDragEnd(e.type !== "touchend");
       else if (touch.claimed && touch.blockId && !touch.moved && e.type === "touchend")
         on.current.onRelease(touch.blockId, t.clientX, t.clientY);
@@ -349,6 +467,7 @@ export function useHoldToGrab({
     area.addEventListener("dragstart", onDragStart, true);
     return () => {
       area.removeEventListener("dragstart", onDragStart, true);
+      clearTimeout(missTimer);
       abort();
       window.removeEventListener("blur", abort);
       window.removeEventListener("resize", onResize);

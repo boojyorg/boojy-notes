@@ -205,6 +205,8 @@ declare global {
       onMenuCommand: (listener: (id: string) => void) => () => void;
       /** The system's long-press tap, as a block hold is recognised (src/phone/haptics.ts). */
       holdFelt: () => void;
+      /** A finger's long press on the word at a point, for a double-tap that missed it (src/phone/selectWord.ts). */
+      selectWordAt: (x: number, y: number) => Promise<void>;
       /** Sync's state, for Home's folder row (src/phone/useSyncStatus.ts). */
       sync: import("../phone/useSyncStatus").PhoneSyncAPI;
     };
