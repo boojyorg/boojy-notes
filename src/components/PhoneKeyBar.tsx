@@ -39,6 +39,7 @@ import {
   kindCommand,
   litFormats,
   notHere,
+  styleBlocked,
   type Pending,
   promise,
   type Reach,
@@ -103,6 +104,8 @@ export default function PhoneKeyBar({
     formats: new Set(),
     kind: null,
     reach: barReach(null, false),
+    collapsed: true,
+    inField: false,
     indent: false,
     outdent: false,
   });
@@ -200,9 +203,17 @@ export default function PhoneKeyBar({
     {
       lit = false,
       disabled = false,
+      note = notHere(active.kind),
       look,
       mark,
-    }: { lit?: boolean; disabled?: boolean; look?: CSSProperties; mark?: ReactNode } = {},
+    }: {
+      lit?: boolean;
+      disabled?: boolean;
+      /** Why it is greyed, said on a hold. */
+      note?: string;
+      look?: CSSProperties;
+      mark?: ReactNode;
+    } = {},
   ) => (
     <button
       key={key}
@@ -215,9 +226,7 @@ export default function PhoneKeyBar({
       // The caret, the selection and the keyboard stay where they are.
       onMouseDown={(e) => e.preventDefault()}
       {...explain.holdFor(
-        disabled
-          ? { key, label, note: notHere(active.kind) }
-          : { key, label, detail: rowContents(key), look, mark },
+        disabled ? { key, label, note } : { key, label, detail: rowContents(key), look, mark },
         disabled ? undefined : onPress,
       )}
       className="press"
@@ -375,13 +384,15 @@ export default function PhoneKeyBar({
     format: [
       [
         ...history,
-        ...(["bold", "italic", "strikethrough", "highlight", "code", "link"] as const).map((f) =>
-          button(f, FORMAT_LABELS[f], <FormatIcon name={f} size={18} />, run(f), {
+        ...(["bold", "italic", "strikethrough", "highlight", "code", "link"] as const).map((f) => {
+          const blocked = styleBlocked(f, active);
+          return button(f, FORMAT_LABELS[f], <FormatIcon name={f} size={18} />, run(f), {
             lit: active.formats.has(f),
-            disabled: f === "link" ? !active.reach.link : !active.reach.styles,
+            disabled: blocked !== null,
+            note: blocked || undefined,
             look: looks[f],
-          }),
-        ),
+          });
+        }),
       ],
       [close],
     ],
@@ -459,6 +470,9 @@ interface Active {
   formats: Set<string>;
   kind: string | null;
   reach: Reach;
+  collapsed: boolean;
+  /** In a field that owns its formatting (a table cell, a callout's body). */
+  inField: boolean;
   indent: boolean;
   outdent: boolean;
 }
@@ -467,7 +481,7 @@ interface Active {
 function readActive(
   sel: Selection,
   pending: { current: Pending | null },
-): { formats: Set<string>; kind: string | null; reach: Reach } {
+): Omit<Active, "indent" | "outdent"> {
   const node = sel.anchorNode;
   const el = node?.nodeType === Node.ELEMENT_NODE ? (node as Element) : node?.parentElement;
   const around = new Set<string>();
@@ -482,10 +496,13 @@ function readActive(
   const lit = litFormats(around, pending.current, caretOf(sel));
   pending.current = lit.pending;
   const kind = el?.closest("[data-block-type]")?.getAttribute("data-block-type") ?? null;
+  const inField = !!el?.closest(INLINE_FIELD_SELECTOR);
   return {
     formats: lit.formats,
     kind,
-    reach: barReach(kind, !!el?.closest(INLINE_FIELD_SELECTOR)),
+    reach: barReach(kind, inField),
+    collapsed: sel.isCollapsed,
+    inField,
   };
 }
 

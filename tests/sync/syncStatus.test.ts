@@ -104,6 +104,20 @@ describe("sync's state", () => {
     expect(sync.status()).toMatchObject({ state: "synced", problems: [] });
   });
 
+  it("keeps a refused sign-in through settled passes, until the right sign-in", () => {
+    // The kept sign-in syncs on: a settled pass says nothing about the refusal.
+    const sync = settled();
+    sync.refused({ kind: "other-account" });
+    sync.started();
+    sync.finished(done());
+    expect(sync.status()).toMatchObject({
+      state: "problem",
+      problems: [{ kind: "other-account" }],
+    });
+    sync.accepted();
+    expect(sync.status()).toMatchObject({ state: "synced", problems: [] });
+  });
+
   it(`calls unknown failures a problem only after ${FAILING_AFTER} passes in a row`, () => {
     const sync = settled();
     for (let i = 1; i < FAILING_AFTER; i++) {

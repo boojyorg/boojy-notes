@@ -1,7 +1,7 @@
 import { onCommand } from "./commands";
 import { capacitorFiles } from "./files";
 import { settleFolder } from "./folderSwitch";
-import { createPhoneSync } from "./phoneSync";
+import { createPhoneSync, readSecrets } from "./phoneSync";
 import { createPhoneVault } from "./phoneVault";
 import { holdFelt } from "./haptics";
 import { selectWordAt } from "./selectWord";
@@ -19,8 +19,7 @@ export async function installPhone() {
   await files.recover("state");
   await files.recover("vault");
   // The copy is the synced folder's, or set aside, before the vault or sync reads it.
-  const secrets = await files.read("state/dropbox.json");
-  const accountId = secrets ? JSON.parse(new TextDecoder().decode(secrets)).accountId : undefined;
+  const accountId = (await readSecrets(files))?.accountId;
   await settleFolder(files, { folder: SYNC_FOLDER, accountId });
   let sync: ReturnType<typeof createPhoneSync> | null = null;
   const vault = createPhoneVault(files, { onLocalChange: () => sync?.localChanged() });

@@ -139,6 +139,8 @@ interface Touch {
   blockId: string | null;
   /** The held block has lifted and follows the finger. */
   dragging: boolean;
+  /** The held finger moved past the slop, lifting the block or not (one block can't move). */
+  moved: boolean;
   timer: ReturnType<typeof setTimeout> | undefined;
   /** Whether the keyboard was up when the finger landed. */
   keyboard: boolean;
@@ -320,6 +322,7 @@ export function useHoldToGrab({
         claimed: false,
         blockId: null,
         dragging: false,
+        moved: false,
         timer: undefined,
         keyboard,
         keep: null,
@@ -343,9 +346,10 @@ export function useHoldToGrab({
       }
       if (touch.claimed) {
         if (e.cancelable) e.preventDefault();
-        if (!touch.dragging && touch.blockId && drifted(touch, { x, y })) {
+        if (!touch.moved && touch.blockId && drifted(touch, { x, y })) {
           // The caret is the drag's now: it goes with the keyboard.
           touch.keep = null;
+          touch.moved = true;
           touch.dragging = on.current.onDragStart(touch.blockId, x, y);
         } else if (touch.dragging) on.current.onDragMove(x, y);
         return;
@@ -394,7 +398,7 @@ export function useHoldToGrab({
         missTimer = setTimeout(() => selectMissedWord(lift), MISSED_WORD_MS);
       }
       if (touch.dragging) on.current.onDragEnd(e.type !== "touchend");
-      else if (touch.claimed && touch.blockId && e.type === "touchend")
+      else if (touch.claimed && touch.blockId && !touch.moved && e.type === "touchend")
         on.current.onRelease(touch.blockId, t.clientX, t.clientY);
       const field = touch.field;
       if (field) requestAnimationFrame(() => field.style.removeProperty("pointer-events"));

@@ -146,6 +146,29 @@ test("a double-tap just past a bold short word selects that word, not the next",
   await expect.poll(() => page.evaluate(() => document.getSelection()?.toString())).toBe("Hi");
 });
 
+test("a held finger that moves never ends in the menu, even where the block can't move", async ({
+  page,
+}) => {
+  // A note of one block has nowhere to put it: the drag never starts, and
+  // the lift was taken for a still finger's.
+  await page.goto("/?hold");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Hold");
+  await paragraphs(page).first().click();
+  await page.keyboard.type("Only");
+  const f = finger(await page.context().newCDPSession(page));
+  const from = await centre(page, 0);
+
+  await f.down(from.x, from.y);
+  await page.waitForTimeout(HOLD);
+  for (let i = 1; i <= 8; i++) await f.move(from.x, from.y + 25 * i);
+  await f.up();
+
+  await page.waitForTimeout(300);
+  await expect(menu(page)).toHaveCount(0);
+  await expect(paragraphs(page)).toHaveText(["Only"]);
+});
+
 test("a finger that moves before the hold is a scroll, never a hold", async ({ page }) => {
   await threeParagraphs(page);
   const f = finger(await page.context().newCDPSession(page));

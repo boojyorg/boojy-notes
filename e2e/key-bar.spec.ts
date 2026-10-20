@@ -169,7 +169,7 @@ const greyed = (page: Page, name: string) =>
 const live = (page: Page, name: string) =>
   expect(button(page, name)).not.toHaveAttribute("aria-disabled");
 
-test("in a table cell the kind buttons grey and the text styles act, all but Link", async ({
+test("in a table cell the kind buttons grey and the text styles act on a selection, all but Link", async ({
   page,
 }) => {
   await page.goto("/?keybar");
@@ -187,9 +187,11 @@ test("in a table cell the kind buttons grey and the text styles act, all but Lin
   await button(page, "Close").click();
 
   await button(page, "Text style").click();
-  await live(page, "Bold");
+  // Nothing selected: a cell formats only what it holds, so nothing is promised.
+  await greyed(page, "Bold");
   await greyed(page, "Link");
   await page.locator("[data-inline-field]").first().selectText();
+  await live(page, "Bold");
   await button(page, "Bold").click();
   await expect(page.locator("[data-inline-field] strong")).toHaveText("cell words");
 });
