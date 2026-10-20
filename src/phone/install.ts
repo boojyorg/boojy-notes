@@ -4,6 +4,7 @@ import { settleFolder } from "./folderSwitch";
 import { createPhoneSync } from "./phoneSync";
 import { createPhoneVault } from "./phoneVault";
 import { holdFelt } from "./haptics";
+import { selectWordAt } from "./selectWord";
 import { SYNC_FOLDER } from "./syncFolder";
 
 /**
@@ -30,6 +31,7 @@ export async function installPhone() {
     ...vault.api,
     onMenuCommand: onCommand,
     holdFelt,
+    selectWordAt,
     sync: {
       status: sync.status.status,
       subscribe: sync.status.subscribe,

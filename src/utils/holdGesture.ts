@@ -40,3 +40,33 @@ export function tapFrom(start: Point & { at: number }, end: Point, at: number): 
   if (drifted(start, end) || at - start.at >= HOLD_MS) return null;
   return { x: end.x, y: end.y, at };
 }
+
+/** What a double-tap selects as a word: letters, digits, marks and an apostrophe inside one. */
+const WORD_CHAR = /[\p{L}\p{N}\p{M}_'’]/u;
+
+/**
+ * The words a double-tap at `offset` in `text` may have meant, as [start,
+ * end) pairs: the one the point is in or ends, and the ones either side of a
+ * single space at it. The browser selects only a word under the finger, so a
+ * tap just past a short word (on the space after it, or beyond the line's
+ * end) selected nothing; which of these the finger was nearest is a question
+ * of where they are drawn, answered by the caller.
+ */
+export function wordsNear(text: string, offset: number): [number, number][] {
+  const isWord = (i: number) => i >= 0 && i < text.length && WORD_CHAR.test(text[i]);
+  const wordAround = (i: number): [number, number] | null => {
+    if (!isWord(i)) return null;
+    let start = i;
+    let end = i + 1;
+    while (isWord(start - 1)) start--;
+    while (isWord(end)) end++;
+    return [start, end];
+  };
+  const found = [
+    wordAround(offset - 1),
+    wordAround(offset),
+    /\s/.test(text[offset - 1] ?? "") ? wordAround(offset - 2) : null,
+    /\s/.test(text[offset] ?? "") ? wordAround(offset + 1) : null,
+  ].filter((w): w is [number, number] => !!w);
+  return found.filter((w, i) => found.findIndex((v) => v[0] === w[0]) === i);
+}

@@ -85,6 +85,45 @@ test("a held finger that moves drags the block, one commit on the drop", async (
   await expect(paragraphs(page)).toHaveText(["One", "Two", "Three"]);
 });
 
+test("a double-tap just past a short word selects the word", async ({ page }) => {
+  // The browser selects only a word under the finger: a tap on the space
+  // after `Hi`, or beyond the line's end after `ok`, selected nothing.
+  await page.goto("/?hold");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Words");
+  await paragraphs(page).first().click();
+  await page.keyboard.type("Hi there ok");
+  const f = finger(await page.context().newCDPSession(page));
+  const past = (from: number, to: number, nudge: number) =>
+    paragraphs(page)
+      .first()
+      .evaluate(
+        (p, [from, to, nudge]) => {
+          const range = document.createRange();
+          range.setStart(p.firstChild as Text, from);
+          range.setEnd(p.firstChild as Text, to);
+          const r = range.getBoundingClientRect();
+          return { x: r.right + nudge, y: r.top + r.height / 2 };
+        },
+        [from, to, nudge],
+      );
+  const doubleTap = async ({ x, y }: { x: number; y: number }) => {
+    await f.down(x, y);
+    await f.up();
+    await page.waitForTimeout(80);
+    await f.down(x, y);
+    await f.up();
+  };
+  const selected = () => page.evaluate(() => document.getSelection()?.toString());
+
+  await doubleTap(await past(0, 2, 1)); // on the space after `Hi`, nearer `Hi`
+  await expect.poll(selected).toBe("Hi");
+  await page.waitForTimeout(400);
+  await doubleTap(await past(9, 11, 6)); // beyond the line's end, after `ok`
+  await expect.poll(selected).toBe("ok");
+  await expect(menu(page)).toHaveCount(0);
+});
+
 test("a finger that moves before the hold is a scroll, never a hold", async ({ page }) => {
   await threeParagraphs(page);
   const f = finger(await page.context().newCDPSession(page));
