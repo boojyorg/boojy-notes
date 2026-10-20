@@ -6,6 +6,7 @@ import { useRhythm } from "../tokens/rhythm";
 import { bandFill, withAlpha } from "../utils/selectionBand";
 import { SEARCH_HIT_ALPHA, SEARCH_HIT_STEPS } from "../utils/searchHighlight";
 import { settingsStyles } from "./settings/SettingsPrimitives";
+import { isPhone } from "../utils/platform";
 
 export default function GlobalStyles() {
   const { theme } = useTheme();
@@ -127,6 +128,13 @@ export default function GlobalStyles() {
         @supports not selector(::-webkit-scrollbar) {
           * { scrollbar-width: thin; scrollbar-color: ${theme.scrollbar.thumb} transparent; }
         }
+        /* The phone styles no scrollbar: an unstyled one is Android's own,
+           drawn over the content while it scrolls and gone at rest, as in
+           every app there. A styled bar would take a lane of its own. */
+        ${
+          isPhone
+            ? ""
+            : `
         ::-webkit-scrollbar { width: ${SCROLLBAR_W}px; height: ${SCROLLBAR_W}px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-corner { background: transparent; }
@@ -152,6 +160,8 @@ export default function GlobalStyles() {
         .sidebar-scroll::-webkit-scrollbar-thumb {
           border-left-width: 4px;
           border-right-width: 1px;
+        }
+        `
         }
         /* Note-row ··· reveal. Hidden at rest and on a merely-selected row;
            row hover or keyboard focus shows muted dots; hovering the control

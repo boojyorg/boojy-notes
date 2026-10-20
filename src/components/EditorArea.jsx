@@ -1021,9 +1021,10 @@ const EditorArea = memo(
     // Width the editor actually has: the viewport less whatever the sidebar and
     // its handle are occupying.
     // In CSS pixels: `vw` ignores the UI scale (`atScale`), and the scroller
-    // keeps a stable scrollbar gutter the column is centred beside.
+    // keeps a stable scrollbar gutter the column is centred beside (the
+    // phone's scrollbar is drawn over the content and takes none).
     const editorW = `(${atScale("100vw")} - ${
-      (sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0) + SCROLLBAR_W
+      (sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0) + (isPhone ? 0 : SCROLLBAR_W)
     }px)`;
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
     const colMax = `calc(${rhythm.measure * rhythm.bodySize}px + 2 * ${colPad})`;

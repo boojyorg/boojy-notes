@@ -41,8 +41,9 @@ a key, the newer replacing the older, and end when it stops being true** (`write
   every `::-webkit-scrollbar-*` rule. They live only in `@supports not
   selector(::-webkit-scrollbar)`.
 - State rules set `background-color`, never `background` (it resets the clip).
-- The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the centred path).
+- The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the path).
 - `.editor-scroll` stays a class: components query it.
+- **The phone styles no scrollbar**: Android's own is drawn over the content.
 
 ## Icons: Lucide only
 
