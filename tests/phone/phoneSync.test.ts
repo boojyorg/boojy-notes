@@ -25,13 +25,16 @@ vi.mock("@capacitor/browser", () => ({
 
 const remotes: { token: () => Promise<string> }[] = [];
 let dropboxReachable = true;
+/** Dropbox's long-poll; by default it never answers. */
+const hang = () => new Promise<never>(() => {});
+let longpoll: () => Promise<unknown> = hang;
 const exchangeCode = vi.fn();
 vi.mock("../../src/sync/dropboxClient", async (actual) => ({
   ...(await actual<typeof import("../../src/sync/dropboxClient")>()),
   createDropboxRemote: (opts: { token: () => Promise<string> }) => {
     remotes.push(opts);
     return {
-      longpoll: () => new Promise(() => {}),
+      longpoll: () => longpoll(),
       accountId: async () => {
         if (!dropboxReachable) throw new TypeError("Failed to fetch");
         return (await opts.token()) === "access-for-theirs" ? "dbid:B" : "dbid:A";
@@ -60,6 +63,7 @@ vi.mock("../../src/sync/engine", () => ({
 
 import { App } from "@capacitor/app";
 import { DropboxHttpError } from "../../src/sync/dropboxClient";
+import { CursorResetError } from "../../src/sync/types";
 import { FAILING_AFTER } from "../../src/sync/syncStatus";
 import { createPhoneSync } from "../../src/phone/phoneSync";
 
@@ -134,6 +138,7 @@ beforeEach(() => {
   listeners.clear();
   remotes.length = 0;
   dropboxReachable = true;
+  longpoll = hang;
   tokensUsed.length = 0;
   passes.mockReset();
   browserOpen.mockReset();
@@ -158,6 +163,19 @@ describe("the phone's sync worker", () => {
     await vi.advanceTimersByTimeAsync(1500); // the save's own pass
     await passGate.end();
     expect(sync.status.status().state).toBe("synced");
+    expect(passes).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks for a pass at once when Dropbox expires the long-poll's cursor", async () => {
+    // The pass lists afresh and saves a new cursor; without it, edits made on
+    // the Mac went unnoticed until the next save or return to the app.
+    passes.mockResolvedValue(done());
+    longpoll = async () => {
+      longpoll = hang;
+      throw new CursorResetError("reset/");
+    };
+    await started();
+    await vi.advanceTimersByTimeAsync(100);
     expect(passes).toHaveBeenCalledTimes(2);
   });
 

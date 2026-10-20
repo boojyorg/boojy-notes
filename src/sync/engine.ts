@@ -7,6 +7,7 @@ import {
   RemoteConflictError,
   type RemoteFile,
   RemoteNotFoundError,
+  RemoteRefusedError,
   RemoteTooLargeError,
 } from "./types";
 
@@ -30,7 +31,9 @@ export type Attention =
   /** Phone names that differ only in case, which Dropbox takes for one. */
   | { kind: "case"; paths: string[] }
   /** Over Dropbox's single-upload limit. */
-  | { kind: "too-large"; path: string };
+  | { kind: "too-large"; path: string }
+  /** A name or path Dropbox won't take at all. */
+  | { kind: "refused"; path: string };
 
 export interface PassResult {
   /** Something changed while the pass ran, or a condition failed: run another pass. */
@@ -71,6 +74,14 @@ export function clashCopyPath(path: string, day: string, taken: (key: string) =>
   }
 }
 
+const folderOf = (path: string) => path.slice(0, path.lastIndexOf("/") + 1);
+
+/** Where a capitals-only rename waits between its two moves: hidden, so no side syncs it. */
+export const tempPath = (to: string) => {
+  const slash = to.lastIndexOf("/");
+  return `${to.slice(0, slash + 1)}.~${to.slice(slash + 1)}.case`;
+};
+
 const syncedFrom = (file: RemoteFile, hash: string): Synced => ({
   path: file.path,
   id: file.id,
@@ -103,7 +114,9 @@ class Pass {
     await this.save();
     await this.adoptRestored();
     if (this.record.plan) await this.finishClash();
+    if (this.record.caseMove) await this.finishCaseMove();
     await this.scan();
+    await this.followCaseRenames();
     await this.followRemoteRenames();
     await this.sendLocalRenames();
     const keys = new Set([
@@ -113,7 +126,13 @@ class Pass {
     ]);
     for (const key of [...keys].sort()) {
       if (this.skip.has(key) || isIgnored(key)) continue;
-      await this.reconcile(key);
+      try {
+        await this.reconcile(key);
+      } catch (error) {
+        // One file Dropbox won't take is held back; the rest still sync.
+        const path = this.files.get(key)?.path ?? this.record.remote[key]?.path ?? key;
+        if (!this.refused(error, path)) throw error;
+      }
     }
     await this.reconcileFolders();
     return this.result;
@@ -123,16 +142,26 @@ class Pass {
     return saveRecord(this.local, this.record);
   }
 
+  /** Holds `path` back if Dropbox refused it; false for any other failure. */
+  private refused(error: unknown, path: string) {
+    if (!(error instanceof RemoteRefusedError)) return false;
+    this.result.attention.push({ kind: "refused", path });
+    return true;
+  }
+
   /**
    * Notes put back from Recently Deleted. One that Dropbox deleted while the
    * record still holds it as synced was binned by a pass that died before
    * recording it: the delete is recorded now, so the restored note reads as
    * new and goes back up, not as unchanged and deleted again. Any other
-   * restore the ordinary rules already handle.
+   * restore the ordinary rules already handle. The store forgets the paths
+   * only once the record is saved, so a crash between hands them over again.
    */
   private async adoptRestored() {
+    const paths = (await this.local.restored?.()) ?? [];
+    if (!paths.length) return;
     let changed = false;
-    for (const path of (await this.local.takeRestored?.()) ?? []) {
+    for (const path of paths) {
       const key = keyOf(path);
       if (this.record.synced[key] && !this.record.remote[key]) {
         delete this.record.synced[key];
@@ -140,6 +169,7 @@ class Pass {
       }
     }
     if (changed) await this.save();
+    await this.local.forgetRestored?.(paths);
   }
 
   private note(line: string) {
@@ -188,6 +218,77 @@ class Pass {
     return twins.length === 1 ? twins[0][1] : null;
   }
 
+  /**
+   * A note whose name changed only in capitals keeps its key, so the other
+   * rename steps never see it. The side that changed it is followed; when
+   * both did, Dropbox's name wins, as for any rename. Only the name itself:
+   * Dropbox may report a folder in other capitals than the phone spells it,
+   * and following that would split one folder into two on the phone.
+   */
+  private async followCaseRenames() {
+    for (const [key, synced] of Object.entries(this.record.synced)) {
+      const here = this.files.get(key);
+      const there = this.record.remote[key];
+      if (!here || !there || there.id !== synced.id || this.skip.has(key)) continue;
+      if (here.path === there.path || folderOf(here.path) !== folderOf(there.path)) continue;
+      if (there.path === synced.path) {
+        this.record.caseMove = { id: synced.id, to: here.path };
+        await this.save();
+        await this.finishCaseMove();
+        continue;
+      }
+      await this.local.rename(here.path, there.path);
+      this.files.set(key, { ...here, path: there.path });
+      this.record.synced[key] = { ...synced, path: there.path };
+      await this.save();
+      this.note(`renamed here: ${here.path} → ${there.path}`);
+    }
+  }
+
+  /**
+   * Carries a capitals-only rename to Dropbox: to the hidden name, then to the
+   * new one. Where the file is now (from the listing) says which moves are
+   * left; a file renamed or deleted meanwhile by another device ends the plan,
+   * and the ordinary rules take it from there.
+   */
+  private async finishCaseMove() {
+    const plan = this.record.caseMove;
+    if (!plan) return;
+    const key = keyOf(plan.to);
+    const temp = tempPath(plan.to);
+    const end = async () => {
+      this.record.caseMove = null;
+      await this.save();
+    };
+    let file = Object.values(this.record.remote).find((f) => f.id === plan.id);
+    if (!file || (keyOf(file.path) !== key && file.path !== temp)) return end();
+    try {
+      if (file.path !== plan.to && file.path !== temp) {
+        const from = keyOf(file.path);
+        file = await this.remote.move(plan.id, temp);
+        delete this.record.remote[from];
+        this.record.remote[keyOf(temp)] = file;
+        await this.save();
+      }
+      if (file.path === temp) {
+        file = await this.remote.move(plan.id, plan.to);
+        delete this.record.remote[keyOf(temp)];
+        this.record.remote[key] = file;
+      }
+    } catch (error) {
+      if (error instanceof RemoteConflictError || error instanceof RemoteNotFoundError) {
+        this.result.again = true;
+        return end();
+      }
+      if (this.refused(error, plan.to)) return end();
+      throw error;
+    }
+    const synced = this.record.synced[key];
+    if (synced) this.record.synced[key] = { ...synced, path: file.path, rev: file.rev };
+    this.note(`renamed in Dropbox: ${plan.to}`);
+    return end();
+  }
+
   /** A file Dropbox now holds under another name keeps its id: the phone's copy follows it. */
   private async followRemoteRenames() {
     const byId = new Map(Object.values(this.record.remote).map((f) => [f.id, f]));
@@ -223,6 +324,12 @@ class Pass {
       try {
         file = await this.remote.move(there.id, here.path);
       } catch (error) {
+        if (this.refused(error, here.path)) {
+          // Both names wait for a name Dropbox takes: the old one is no delete.
+          this.skip.add(key);
+          this.skip.add(keyOf(here.path));
+          continue;
+        }
         if (!(error instanceof RemoteConflictError || error instanceof RemoteNotFoundError)) {
           throw error;
         }
@@ -429,6 +536,8 @@ class Pass {
           // The copy stays on the phone, a file with no record, and each pass
           // holds it back as any other file too big.
           this.result.attention.push({ kind: "too-large", path: plan.copyPath });
+        } else if (this.refused(error, plan.copyPath)) {
+          // Held back as any file Dropbox won't take: the copy stays on the phone.
         } else if (error instanceof RemoteConflictError) {
           // Already there (an upload whose answer was lost): the next pass
           // compares the two and records them if they match.
@@ -472,7 +581,12 @@ class Pass {
           await this.local.removeFolderIfEmpty(here);
           delete syncedFolders[key];
         } else {
-          await this.remote.createFolder(here);
+          try {
+            await this.remote.createFolder(here);
+          } catch (error) {
+            if (this.refused(error, here)) continue;
+            throw error;
+          }
           remoteFolders[key] = here;
           syncedFolders[key] = here;
         }

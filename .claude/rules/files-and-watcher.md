@@ -10,7 +10,7 @@
   non-note files are never touched.
 - **The phone's bin**: `deleted/<when>/<path>`, ids in `state/deleted.json` (sync's deletes
   too); a crash between steps leaves the note in one place; a restore is handed to sync
-  (`takeRestored`), so a pass cut short never bins it again. `recentlyDeleted.test.ts`.
+  (`restored`), so a pass cut short never bins it again. `recentlyDeleted.test.ts`.
 - **The phone's copy is one account's folder**: a change sets it aside (`old-folders/`)
   before sync, resumably. `folderSwitch.test.ts`.
 - Desktop confirms only several files; one note goes at once, its toast with Undo.

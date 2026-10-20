@@ -1045,6 +1045,7 @@ export default function BoojyNotes() {
   const unreadableReason = note?.unreadable ?? null;
   const unreadable = useMemo(() => {
     if (!unreadableReason || !activeNote) return null;
+    if (isPhone) return { reason: unreadableReason };
     const n = noteDataRef.current[activeNote];
     const rel = `${n?.folder ? `${n.folder}/` : ""}${n?.title}.md`;
     return {

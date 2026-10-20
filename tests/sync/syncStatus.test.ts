@@ -183,6 +183,12 @@ describe("what a problem says", () => {
     expect(action).toBeUndefined();
   });
 
+  it("names a file Dropbox refused and asks for a new name", () => {
+    const { text, action } = describeProblem({ kind: "refused", path: "Work/a:b.md" });
+    expect(text).toBe("“Work/a:b.md” has a name Dropbox won't take. Rename it.");
+    expect(action).toBeUndefined();
+  });
+
   it("offers sign-in for a dead sign-in and another account", () => {
     expect(describeProblem({ kind: "signed-out" }).action).toBe("sign-in");
     expect(describeProblem({ kind: "other-account" }).action).toBe("sign-in");

@@ -13,6 +13,7 @@ import {
   CursorResetError,
   RemoteConflictError,
   RemoteNotFoundError,
+  RemoteRefusedError,
   RemoteTooLargeError,
 } from "../../src/sync/types";
 
@@ -107,6 +108,15 @@ describe("createDropboxRemote", () => {
   it("turns an expired cursor into CursorResetError", async () => {
     const { remote } = remoteWith(error(409, "reset/..."));
     await expect(remote.listContinue("old")).rejects.toBeInstanceOf(CursorResetError);
+  });
+
+  it("turns a name or path Dropbox won't take into RemoteRefusedError", async () => {
+    for (const summary of ["path/disallowed_name/..", "path/malformed_path/.."]) {
+      const { remote } = remoteWith(error(409, summary));
+      await expect(remote.upload("A.md", new Uint8Array(), { kind: "add" })).rejects.toBeInstanceOf(
+        RemoteRefusedError,
+      );
+    }
   });
 
   it("downloads with the path in an ASCII-only header and reads the metadata back", async () => {

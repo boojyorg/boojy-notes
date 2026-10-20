@@ -121,6 +121,46 @@ describe("the editor's calls", () => {
   });
 });
 
+describe("a file that is not UTF-8 text", () => {
+  // "café" in Windows-1252: the é is a lone 0xE9 byte.
+  const latin1 = new Uint8Array([0x63, 0x61, 0x66, 0xe9, 0x0a]);
+
+  it("is listed as unreadable, never left out", async () => {
+    await fs.mkdir(path.join(root, "vault"), { recursive: true });
+    await fs.writeFile(path.join(root, "vault", "Old.md"), latin1);
+    const notes = Object.values(await vault.api.readAllNotes());
+    expect(notes).toEqual([
+      expect.objectContaining({ title: "Old", unreadable: "encoding", content: expect.anything() }),
+    ]);
+    expect(notes[0].content.blocks).toEqual([]);
+  });
+
+  it("is never written over by a save of the text the editor had", async () => {
+    await vault.api.writeNote(note("n1", "Plan", "mine"));
+    const changed = vi.fn();
+    vault.api.onFileChanged(changed);
+    // Sync brings in a version the Mac saved in another encoding.
+    const hash = await contentHash(bytes("mine"));
+    expect(await vault.store.writeIfUnchanged("Plan.md", latin1, hash)).toBe(true);
+    expect(changed).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "n1", unreadable: "encoding" }),
+    );
+    const answer = await vault.api.writeNote(note("n1", "Plan", "mine, edited"));
+    expect(answer).toMatchObject({ stale: true, note: { id: "n1", unreadable: "encoding" } });
+    expect(new Uint8Array(await fs.readFile(path.join(root, "vault", "Plan.md")))).toEqual(latin1);
+  });
+
+  it("is only ever moved: a rename keeps its bytes", async () => {
+    await fs.mkdir(path.join(root, "vault"), { recursive: true });
+    await fs.writeFile(path.join(root, "vault", "Old.md"), latin1);
+    const [old] = Object.values(await vault.api.readAllNotes());
+    expect(await vault.api.writeNote({ ...old, title: "Renamed" })).toEqual({ title: "Renamed" });
+    expect(new Uint8Array(await fs.readFile(path.join(root, "vault", "Renamed.md")))).toEqual(
+      latin1,
+    );
+  });
+});
+
 describe("the sync engine's calls, as the editor sees them", () => {
   it("reports a downloaded note as changed on disk, under the id it already has", async () => {
     await vault.api.writeNote(note("n1", "Note", "old"));

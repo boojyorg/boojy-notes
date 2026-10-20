@@ -6,6 +6,7 @@ import {
   type RemoteEntry,
   type RemoteFile,
   RemoteNotFoundError,
+  RemoteRefusedError,
   RemoteTooLargeError,
   type WriteMode,
 } from "./types";
@@ -69,6 +70,7 @@ async function failure(res: Response): Promise<Error> {
   }
   if (res.status === 409) {
     if (summary.startsWith("reset/")) return new CursorResetError(summary);
+    if (/malformed_path|disallowed_name/.test(summary)) return new RemoteRefusedError(summary);
     if (summary.includes("not_found")) return new RemoteNotFoundError(summary);
     if (summary.includes("conflict")) return new RemoteConflictError(summary);
   }
