@@ -74,6 +74,13 @@ describe("the words a double-tap may have meant", () => {
     expect(words("Hi there ok", 11)).toEqual(["ok"]);
   });
 
+  it("steps over the caret's zero-width anchor beside a bold word", () => {
+    // `**Hi** there`: the caret's anchor sits after the bold, before the space.
+    // Which is nearer is the caller's question: the order says nothing.
+    expect(words("Hi\u200B there", 3).sort()).toEqual(["Hi", "there"]);
+    expect(words("Hi\u200B there", 4).sort()).toEqual(["Hi", "there"]);
+  });
+
   it("offers nothing in a run of spaces, and keeps apostrophes and accents", () => {
     expect(words("a    b", 3)).toEqual([]);
     expect(words("don’t café", 2)).toEqual(["don’t"]);

@@ -16,6 +16,36 @@ import {
 const MISSED_WORD_MS = 100;
 
 /**
+ * The text of the line `node` is in (its nearest block-level element), with
+ * where each text node starts in it: a word may cross formatting (`**Hi**`
+ * is a text node of its own). A soft break counts as a newline, so words
+ * either side of it never join.
+ */
+function lineText(root: HTMLElement, node: Node) {
+  let line = node.parentElement as HTMLElement;
+  while (line !== root && line.parentElement && getComputedStyle(line).display.startsWith("inline"))
+    line = line.parentElement;
+  const parts: { node: Text; at: number }[] = [];
+  let text = "";
+  const walk = document.createTreeWalker(line, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (n.nodeName === "BR") text += "\n";
+    else if (n.nodeType === Node.TEXT_NODE) {
+      parts.push({ node: n as Text, at: text.length });
+      text += n.textContent ?? "";
+    }
+  }
+  /** The text node and offset at `i` in the line's text; an end prefers the node it ends. */
+  const position = (i: number, end: boolean): [Text, number] | null => {
+    const hit = parts.find(
+      (p) => i >= p.at && (end ? i <= p.at + p.node.length : i < p.at + p.node.length),
+    );
+    return hit ? [hit.node, i - hit.at] : null;
+  };
+  return { text, parts, position };
+}
+
+/**
  * The word a double-tap at `point` meant, when the browser selected nothing:
  * of the words beside the point, the nearest as drawn, if near enough. Only
  * the note's own text (a code block's box selects its own words).
@@ -25,12 +55,18 @@ function missedWord(root: HTMLElement, point: Point): Range | null {
   const node = at?.startContainer;
   if (!at || !node || node.nodeType !== Node.TEXT_NODE || !root.contains(node)) return null;
   if (!node.parentElement?.isContentEditable) return null;
+  const line = lineText(root, node);
+  const here = line.parts.find((p) => p.node === node);
+  if (!here) return null;
   let best: Range | null = null;
   let nearest = Number.POSITIVE_INFINITY;
-  for (const [start, end] of wordsNear(node.textContent ?? "", at.startOffset)) {
+  for (const [from, to] of wordsNear(line.text, here.at + at.startOffset)) {
+    const start = line.position(from, false);
+    const end = line.position(to, true);
+    if (!start || !end) continue;
     const range = document.createRange();
-    range.setStart(node, start);
-    range.setEnd(node, end);
+    range.setStart(...start);
+    range.setEnd(...end);
     const r = range.getBoundingClientRect();
     const away = Math.hypot(
       Math.max(r.left - point.x, 0, point.x - r.right),

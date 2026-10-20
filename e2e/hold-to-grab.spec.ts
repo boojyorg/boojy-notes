@@ -124,6 +124,28 @@ test("a double-tap just past a short word selects the word", async ({ page }) =>
   await expect(menu(page)).toHaveCount(0);
 });
 
+test("a double-tap just past a bold short word selects that word, not the next", async ({
+  page,
+}) => {
+  // `**Hi**` is a text node of its own: the point lands in the one after it.
+  await page.goto("/?hold");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Bold");
+  await paragraphs(page).first().click();
+  await page.keyboard.type("**Hi** there");
+  await expect(paragraphs(page).first().locator("strong")).toHaveText("Hi");
+  const f = finger(await page.context().newCDPSession(page));
+  const r = (await paragraphs(page).first().locator("strong").boundingBox())!;
+  const x = r.x + r.width + 1;
+  const y = r.y + r.height / 2;
+  await f.down(x, y);
+  await f.up();
+  await page.waitForTimeout(80);
+  await f.down(x, y);
+  await f.up();
+  await expect.poll(() => page.evaluate(() => document.getSelection()?.toString())).toBe("Hi");
+});
+
 test("a finger that moves before the hold is a scroll, never a hold", async ({ page }) => {
   await threeParagraphs(page);
   const f = finger(await page.context().newCDPSession(page));
