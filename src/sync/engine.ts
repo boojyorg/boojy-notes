@@ -173,6 +173,27 @@ class Pass {
     await this.local.forgetRestored?.(paths);
   }
 
+  /**
+   * Where a Dropbox path goes on the phone: its folders as the phone already
+   * spells them. Dropbox promises the capitals of a path's last part alone,
+   * and on the phone, unlike the Mac, `work` beside `Work` is a second folder.
+   */
+  private localPath(path: string) {
+    const slash = path.lastIndexOf("/");
+    if (slash < 0) return path;
+    return `${this.localFolder(path.slice(0, slash))}/${path.slice(slash + 1)}`;
+  }
+
+  /** A folder, and each above it, as the phone spells it; one new here is kept as Dropbox gave it. */
+  private localFolder(path: string) {
+    let folder = "";
+    for (const part of path.split("/")) {
+      const asked = folder ? `${folder}/${part}` : part;
+      folder = this.folders.get(keyOf(asked)) ?? asked;
+    }
+    return folder;
+  }
+
   private note(line: string) {
     this.result.log.push(line);
   }
@@ -328,9 +349,10 @@ class Pass {
       // Renamed on the phone too: Dropbox's name wins, the contents are the same.
       const here = this.files.get(key) ?? this.renamedHere(synced);
       if (here) {
-        await this.local.rename(here.path, moved.path);
+        const to = this.localPath(moved.path);
+        await this.local.rename(here.path, to);
         this.files.delete(keyOf(here.path));
-        this.files.set(target, { path: moved.path, hash: here.hash });
+        this.files.set(target, { path: to, hash: here.hash });
       }
       this.record.synced[target] = { ...synced, path: moved.path };
       delete this.record.synced[key];
@@ -457,7 +479,7 @@ class Pass {
     // and the next pass judges the two versions.
     if (
       !(await this.local.writeIfUnchanged(
-        here?.path ?? got.file.path,
+        here?.path ?? this.localPath(got.file.path),
         got.bytes,
         here?.hash ?? null,
       ))
@@ -619,7 +641,7 @@ class Pass {
         }
       } else if (there) {
         if (!known) {
-          await this.local.makeFolder(there);
+          await this.local.makeFolder(this.localFolder(there));
           syncedFolders[key] = there;
         }
       } else if (known) {

@@ -673,3 +673,36 @@ describe("capitals Dropbox reports differently", () => {
     expect(env.phone.paths()).toEqual(["Work/A.md"]);
   });
 });
+
+describe("folders Dropbox answers in other capitals than the phone's", () => {
+  async function workOnPhone() {
+    const env = await started({});
+    env.phone.folders.add("Work");
+    env.phone.type("Work/A.md", "alpha");
+    await env.settle();
+    env.dropbox.lowerFolders = true; // Dropbox now answers `work/…`
+    return env;
+  }
+
+  it("downloads a new note into the phone's own folder, never a second one", async () => {
+    const env = await workOnPhone();
+    await env.dropbox.macWrite("Work/B.md", "beta");
+    await env.settle();
+    expect(env.phone.paths()).toEqual(["Work/A.md", "Work/B.md"]);
+  });
+
+  it("follows a Mac rename into the phone's own folder", async () => {
+    const env = await workOnPhone();
+    env.dropbox.macMove("Work/A.md", "Work/C.md");
+    await env.settle();
+    expect(env.phone.paths()).toEqual(["Work/C.md"]);
+  });
+
+  it("makes a new folder from the Mac inside the phone's own folder", async () => {
+    const env = await workOnPhone();
+    env.dropbox.folders.set("work/sub", "work/Sub");
+    env.dropbox.log.push({ kind: "folder", path: "work/Sub" });
+    await env.settle();
+    expect([...env.phone.folders].sort()).toEqual(["Work", "Work/Sub"]);
+  });
+});
