@@ -166,7 +166,7 @@ describe("useBlockOperations", () => {
       const { result, noteId, getNoteData } = setup(blocks);
 
       act(() => {
-        result.current.moveBlock(noteId, 2, 1);
+        result.current.moveBlock(noteId, 2, -1);
       });
 
       const blks = getNoteData()[noteId].content.blocks;
@@ -191,24 +191,55 @@ describe("useBlockOperations", () => {
       const movedId = getNoteData()[noteId].content.blocks[2].id;
 
       act(() => {
-        result.current.moveBlock(noteId, 2, 0);
+        result.current.moveBlock(noteId, 2, -1);
       });
 
       expect(focusBlockId.current).toBe(movedId);
-      expect(getNoteData()[noteId].content.blocks[0].id).toBe(movedId);
+      expect(getNoteData()[noteId].content.blocks[1].id).toBe(movedId);
     });
 
-    it("is a no-op for out-of-range or equal indices", () => {
+    it("is a no-op at the note's ends or out of range, and says so", () => {
       const blocks = [paragraph("a"), paragraph("b")];
+      const { result, noteId, getNoteData } = setup(blocks);
+      const before = getNoteData();
+      const moved = [];
+
+      act(() => {
+        moved.push(result.current.moveBlock(noteId, 0, -1)); // already first
+        moved.push(result.current.moveBlock(noteId, 1, 1)); // already last
+        moved.push(result.current.moveBlock(noteId, 5, -1)); // out of range
+      });
+
+      expect(moved).toEqual([false, false, false]);
+      expect(getNoteData()).toBe(before);
+    });
+
+    it("moves a list item with its nested items, past the next item's", () => {
+      const blocks = [
+        { ...paragraph("a"), type: "bullet" },
+        { ...paragraph("a1"), type: "bullet", indent: 1 },
+        { ...paragraph("b"), type: "bullet" },
+      ];
       const { result, noteId, getNoteData } = setup(blocks);
 
       act(() => {
-        result.current.moveBlock(noteId, 0, 0); // same
-        result.current.moveBlock(noteId, 0, 5); // out of range
-        result.current.moveBlock(noteId, -1, 1); // out of range
+        result.current.moveBlock(noteId, 0, 1);
       });
 
-      expect(getNoteData()[noteId].content.blocks.map((b) => b.text)).toEqual(["a", "b"]);
+      expect(getNoteData()[noteId].content.blocks.map((b) => b.text)).toEqual(["b", "a", "a1"]);
+    });
+
+    it("leaves the caret where it rests when asked not to take it", () => {
+      const blocks = [paragraph("a"), paragraph("b")];
+      const { result, noteId, focusBlockId } = setup(blocks);
+      let moved;
+
+      act(() => {
+        moved = result.current.moveBlock(noteId, 0, 1, false);
+      });
+
+      expect(moved).toBe(true);
+      expect(focusBlockId.current).toBe(null);
     });
   });
 
@@ -408,8 +439,7 @@ describe("useBlockOperations", () => {
    * Frontmatter is the file's head, not a block of the body: a note's
    * `---` must stay on line 1 or every reader loses the properties. The
    * reorder primitive refuses a move that would put anything above it or
-   * lift it, whatever the caller asked (the callers pre-guard so no empty
-   * history step is pushed; this is the net under them).
+   * lift it (utils/blockRun `moveStep`), so no empty history step is pushed.
    */
   describe("moveBlock keeps the frontmatter first", () => {
     it("refuses to move a block above the frontmatter, and refuses to move the frontmatter", () => {
@@ -418,9 +448,8 @@ describe("useBlockOperations", () => {
       const before = getNoteData();
 
       act(() => {
-        result.current.moveBlock(noteId, 1, 0); // a above the frontmatter
+        result.current.moveBlock(noteId, 1, -1); // a above the frontmatter
         result.current.moveBlock(noteId, 0, 1); // the frontmatter into the body
-        result.current.moveBlock(noteId, 0, 2);
       });
 
       expect(getNoteData()).toBe(before);
@@ -437,7 +466,7 @@ describe("useBlockOperations", () => {
       const { result, noteId, getNoteData } = setup(blocks);
 
       act(() => {
-        result.current.moveBlock(noteId, 2, 1);
+        result.current.moveBlock(noteId, 2, -1);
       });
 
       expect(getNoteData()[noteId].content.blocks.map((b) => b.text)).toEqual([
