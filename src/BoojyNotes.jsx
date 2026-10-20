@@ -1158,7 +1158,7 @@ export default function BoojyNotes() {
   // note are never touched. Web deletion is permanent, so every kind asks.
   const askBeforeDeleting = useCallback(
     async (kind, ctx) => {
-      const prompt = deletionPrompt(kind, { ...ctx, isWeb });
+      const prompt = deletionPrompt(kind, { ...ctx, isWeb, isPhone });
       return prompt ? requestConfirm(prompt) : true;
     },
     [requestConfirm],

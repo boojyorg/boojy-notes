@@ -1,8 +1,10 @@
 import { useEffect } from "react";
-import { isElectron } from "../utils/platform";
+import { isElectron, isPhone } from "../utils/platform";
 
 /**
- * Flushes pending edits to disk before the window closes and on window blur.
+ * Flushes pending edits to disk before the window closes and on window blur;
+ * on the phone, when the app leaves the screen (Android may then close it
+ * without a word, and a swipe away does).
  *
  * Typed text sits in two debounces (300ms text-commit + 500ms disk-write), so
  * the main process holds the window close until the renderer reports the
@@ -13,6 +15,16 @@ import { isElectron } from "../utils/platform";
  * React state, which lags during typing.
  */
 export function useQuitFlush(flushAll) {
+  useEffect(() => {
+    if (!isPhone) return;
+    const onHidden = () => {
+      if (document.visibilityState !== "hidden") return;
+      flushAll().catch((err) => console.error("useQuitFlush: flush on leaving failed", err));
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => document.removeEventListener("visibilitychange", onHidden);
+  }, [flushAll]);
+
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onAppWillClose) return;
 
