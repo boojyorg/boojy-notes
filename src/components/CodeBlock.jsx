@@ -13,7 +13,6 @@ import "prismjs/components/prism-json";
 import "prismjs/components/prism-bash";
 import "prismjs/components/prism-sql";
 import "prismjs/components/prism-markup";
-import { fromTouch } from "../utils/touch";
 
 /**
  * The languages offered, Plain then alphabetical: one editorial exception,
@@ -96,7 +95,6 @@ export default memo(function CodeBlock({
   onDelete,
 }) {
   const [copied, setCopied] = useState(false);
-  const [hovered, setHovered] = useState(false);
   const [ctxMenu, setCtxMenu] = useState(null);
   // The language menu's anchor: the label's rect while it is open, null otherwise.
   const [langMenu, setLangMenu] = useState(null);
@@ -353,11 +351,6 @@ export default memo(function CodeBlock({
   return (
     <div
       className="code-block"
-      onMouseEnter={(e) => {
-        if (fromTouch(e)) return;
-        setHovered(true);
-      }}
-      onMouseLeave={() => setHovered(false)}
       onContextMenu={handleContextMenu}
       onInput={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
@@ -379,8 +372,9 @@ export default memo(function CodeBlock({
         </pre>
       </div>
 
-      {/* Copy button — top right, hover only */}
-      <div className="code-copy-wrapper" style={{ opacity: hovered ? 1 : 0 }}>
+      {/* Copy, top right: shown on the pointer, or while the block has focus,
+          which is how a tap (or the keyboard) reaches it (GlobalStyles). */}
+      <div className="code-copy-wrapper">
         <button
           className="code-copy-btn"
           onClick={handleCopy}

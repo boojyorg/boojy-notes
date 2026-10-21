@@ -251,10 +251,8 @@ function ImageBlock({
       <div
         ref={containerRef}
         data-selection-surface
-        onMouseEnter={(e) => {
-          if (fromTouch(e)) return;
-          setHovered(true);
-        }}
+        // A reveal, not a look: a tap brings the bar up on the phone too.
+        onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         // Selected on the press, not the release: the Mac's own
         // grammar, and the press that deselects elsewhere is the same event.
