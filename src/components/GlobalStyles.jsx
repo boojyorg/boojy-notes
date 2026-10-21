@@ -305,13 +305,13 @@ export default function GlobalStyles() {
         .sidebar-vault-label:hover,
         .sidebar-vault-label:focus-visible,
         .sidebar-vault-label.is-open {
-          background: ${theme.BG.surface};
+          background: ${theme.BG.hover};
           color: ${theme.TEXT.primary};
         }
         .sidebar-section-header .sidebar-section-action:hover,
         .sidebar-section-header .sidebar-section-action:focus-visible,
         .sidebar-section-header .sidebar-section-action.is-active {
-          background: ${theme.BG.surface};
+          background: ${theme.BG.hover};
           color: ${theme.TEXT.primary};
           opacity: 1;
         }
@@ -329,7 +329,7 @@ export default function GlobalStyles() {
         }
         .sidebar-section-header .sidebar-section-action:active,
         html.is-phone .sidebar-section-header .sidebar-section-action:active {
-          background: ${theme.BG.surface};
+          background: ${theme.BG.hover};
           color: ${theme.TEXT.primary};
           opacity: 1;
         }

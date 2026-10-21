@@ -172,7 +172,7 @@ export function ChromeButton({
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const tip = useTooltip();
-  const restBg = lit ? tagPillGround(theme) : active ? BG.surface : "none";
+  const restBg = lit ? tagPillGround(theme) : active ? BG.hover : "none";
   const restInk = lit || on ? ACCENT.text : active ? TEXT.primary : TEXT.muted;
   const ref = useRef(null);
   return (
@@ -225,7 +225,7 @@ export function ChromeButton({
       onMouseEnter={(e) => {
         tip.handlers.onMouseEnter();
         if (disabled) return;
-        e.currentTarget.style.background = lit ? tagPillGround(theme, true) : BG.surface;
+        e.currentTarget.style.background = lit ? tagPillGround(theme, true) : BG.hover;
         e.currentTarget.style.color = lit || on ? ACCENT.text : TEXT.primary;
       }}
       onMouseLeave={(e) => {
