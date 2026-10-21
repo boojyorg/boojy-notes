@@ -68,6 +68,8 @@ export function LayoutProvider({ children }) {
     setSidebarWidth,
     maxWidth: sidebarMaxWidth,
     handleActiveBg: theme.sidebarHandle.active,
+    handleHoverBg: theme.sidebarHandle.hover,
+    handleRestBg: theme.BG.divider,
     sidebarWidth,
   });
 

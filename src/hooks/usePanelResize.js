@@ -13,6 +13,8 @@ export function usePanelResize({
   setSidebarWidth,
   maxWidth = SIDEBAR_MAX_W,
   handleActiveBg,
+  handleHoverBg,
+  handleRestBg,
   sidebarWidth,
 }) {
   const isDragging = useRef(false);
@@ -27,8 +29,7 @@ export function usePanelResize({
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
       document.documentElement.classList.add("sidebar-dragging");
-      // Held state: one step stronger than hover, still neutral. Cleared to ""
-      // in onUp so the React style prop takes the handle back over.
+      // Held state: one step stronger than hover, still neutral.
       if (handleActiveBg) {
         for (const handle of sidebarHandles.current) {
           if (handle) handle.style.background = handleActiveBg;
@@ -43,8 +44,11 @@ export function usePanelResize({
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
         document.documentElement.classList.remove("sidebar-dragging");
+        // Set, never cleared: React would not repaint a style prop it thinks
+        // unchanged, and the line would vanish. Hover if the pointer stayed.
+        const hovered = sidebarHandles.current.some((h) => h?.matches(":hover"));
         for (const handle of sidebarHandles.current) {
-          if (handle) handle.style.background = "";
+          if (handle) handle.style.background = hovered ? handleHoverBg : handleRestBg;
         }
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup", onUp);
@@ -52,7 +56,15 @@ export function usePanelResize({
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [setSidebarWidth, sidebarHandles, maxWidth, handleActiveBg, sidebarWidth],
+    [
+      setSidebarWidth,
+      sidebarHandles,
+      maxWidth,
+      handleActiveBg,
+      handleHoverBg,
+      handleRestBg,
+      sidebarWidth,
+    ],
   );
 
   return { isDragging, startDrag };

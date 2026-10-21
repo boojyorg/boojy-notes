@@ -1454,7 +1454,7 @@ export default function BoojyNotes() {
       onMouseLeave={() => {
         if (!isDragging.current) {
           for (const handle of sidebarHandles.current) {
-            if (handle) handle.style.background = "";
+            if (handle) handle.style.background = theme.BG.divider;
           }
         }
       }}

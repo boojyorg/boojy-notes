@@ -262,6 +262,28 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
   }
 });
 
+test("the divider keeps its line after a hover and a drag", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    await h.openNote("Alpha");
+    await setWidth(h, 1100);
+    const line = h.page.locator("#main-content").getByTestId("sidebar-divider");
+    const paint = () => line.evaluate((el) => getComputedStyle(el).backgroundColor);
+    const rest = await paint();
+    expect(rest).not.toBe("rgba(0, 0, 0, 0)");
+    const box = (await line.boundingBox())!;
+    await h.page.mouse.move(box.x + 2, 400);
+    await expect.poll(paint).not.toBe(rest);
+    await h.page.mouse.down();
+    await h.page.mouse.move(box.x + 40, 400, { steps: 5 });
+    await h.page.mouse.up();
+    await h.page.mouse.move(box.x + 300, 400);
+    await expect.poll(paint).toBe(rest);
+  } finally {
+    await h.close();
+  }
+});
+
 test("no window-drag rectangle lies under a chrome button, in either sidebar state", async () => {
   test.skip(process.platform !== "darwin", "drag regions are macOS's");
   const h = await launchApp({ "University/Archive/Todd's Note.md": "Alpha.\n" });
