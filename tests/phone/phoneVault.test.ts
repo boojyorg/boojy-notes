@@ -507,6 +507,25 @@ describe("reading the vault at start", () => {
     expect(deleted.calls).toContain("write state/ids.json");
   });
 
+  it("tries the index again on the next read when its write failed", async () => {
+    await put("One.md", "one");
+    const flaky = scrambled();
+    const write = flaky.ops.write;
+    let fails = 1;
+    flaky.ops.write = async (p, b) => {
+      if (p === "state/ids.json" && fails-- > 0) throw new Error("disk full");
+      return write(p, b);
+    };
+    const running = createPhoneVault(flaky.ops);
+    await expect(running.api.readAllNotes()).rejects.toThrow("disk full");
+    const notes = await running.api.readAllNotes();
+    expect(flaky.calls.filter((c) => c === "write state/ids.json")).toHaveLength(1);
+
+    // After a restart the note keeps the id it was given.
+    const again = await createPhoneVault(scrambled().ops).api.readAllNotes();
+    expect(idsByPath(again)).toEqual(idsByPath(notes));
+  });
+
   it("publishes nothing when a file cannot be read", async () => {
     await put("One.md", "one");
     await put("Two.md", "two");

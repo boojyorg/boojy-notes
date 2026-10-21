@@ -255,14 +255,20 @@ export function createPhoneVault(
       return () => set.delete(cb);
     };
 
+  /** The index as `ids.json` holds it, last read or written; null before it exists. */
+  let savedIndex: string | null = null;
   const loadIndex = async () => {
     if (index) return index;
     const bytes = await files.read(join(STATE, "ids.json"));
     index = bytes ? JSON.parse(new TextDecoder().decode(bytes)) : {};
+    if (bytes) savedIndex = JSON.stringify(index);
     return index as Record<string, string>;
   };
-  const saveIndex = () =>
-    files.write(join(STATE, "ids.json"), encoder.encode(JSON.stringify(index)));
+  const saveIndex = async () => {
+    const text = JSON.stringify(index);
+    await files.write(join(STATE, "ids.json"), encoder.encode(text));
+    savedIndex = text;
+  };
   const idAt = (rel: string) => {
     const key = rel.toLowerCase();
     for (const [id, p] of Object.entries(index ?? {})) if (p.toLowerCase() === key) return id;
@@ -498,7 +504,6 @@ export function createPhoneVault(
     readAllNotes: () =>
       lock(async () => {
         const idx = await loadIndex();
-        const before = JSON.stringify(idx);
         const notes: NoteData = {};
         const { files: paths, mtimes } = await walk();
         const notePaths = paths.filter(isNote);
@@ -515,8 +520,9 @@ export function createPhoneVault(
             if (!(await files.exists(abs(rel)))) delete idx[id];
           }
         }
-        // Unchanged, the index is not written again (four round trips).
-        if (JSON.stringify(idx) !== before) await saveIndex();
+        // Written only when the file holds something else: never twice the
+        // same (four round trips), and a write that failed is tried again.
+        if (JSON.stringify(idx) !== savedIndex) await saveIndex();
         return notes;
       }),
 
