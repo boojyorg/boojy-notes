@@ -125,6 +125,9 @@ export default function GlobalStyles() {
           transition: top var(--motion-fast) var(--ease-enter);
         }
         * { box-sizing: border-box; }
+        /* Android's tap flash: a faint wash of the text's ink, neutral like
+           every other press, never the system's blue. */
+        * { -webkit-tap-highlight-color: ${withAlpha(theme.TEXT.primary, 0.08)}; }
         /* Firefox only. Chromium 121+ IGNORES every ::-webkit-scrollbar rule on any
            element that sets scrollbar-width or scrollbar-color, so declaring these
            globally silently killed the thumb hover state in Electron and Chrome.
