@@ -476,13 +476,22 @@ ${tagPillCss(theme)}
               SEARCH_HIT_ALPHA[theme.name === "night" ? "night" : "day"][i],
             )}; }`,
         ).join("\n        ")}
-        /* A misspelled word (hooks/editor/useSpellingMarks): the app's own
-           underline, painted over the text, drawn as Chromium draws its own
-           (2px dots, 2px apart, touching the letters). */
-        ::highlight(spelling) {
-          text-decoration: underline dotted ${theme.SEMANTIC.misspelled} 2px;
-          text-underline-offset: 1px;
-          text-decoration-skip-ink: none;
+        /* A misspelled word's line (hooks/editor/useSpellingMarks): laid
+           over the text, as Chromium drew its own (2px dots, about 2px apart,
+           touching the letters); the hook places and spaces each one. */
+        .spelling-layer {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          overflow: hidden;
+        }
+        .spelling-layer > i {
+          position: absolute;
+          height: 2px;
+          /* One dot at the start of each tile; the tile is the hook's pitch. */
+          background-image: radial-gradient(circle at 1px 1px, ${theme.SEMANTIC.misspelled} 1px, transparent 1px);
+          background-repeat: repeat-x;
+          background-position: 0 0;
         }
         /* The words the link picker will link, while it holds focus: the
            selection's colour, standing in for it, unwrapped before the block

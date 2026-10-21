@@ -141,12 +141,13 @@ app's, made through state.**
 ## Right-click is Cut, Copy and Paste
 
 - `EditorContextMenu`: a misspelled word's guesses and Add to dictionary, or a
-  link's actions; then Cut, Copy, Paste; in a table cell Delete table last. Media and code
-  keep their own.
+  link's actions; then Cut, Copy, Paste; in a cell Delete table last. Media and code
+  keep theirs.
 - **Items run the keys' own path** (a guess as `insertText`, Paste by IPC).
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is
-  late): whole note on open; not code, tags, links. Guesses only on a marked word; a Mac by
-  paragraph language. Windows: Chromium's line, the menu event's guesses. `spelling.spec.ts`.
+  late) on a layer (a highlight clips a leaning glyph): whole note on open; not code, tags,
+  links. Guesses only on a marked word; a Mac by paragraph language. Windows: Chromium's line
+  and guesses. `spelling.spec.ts`, `spelling-line.spec.ts`.
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`); never focused, so the selection
   stays blue. `text-context-menu.spec.ts`.
 
@@ -211,10 +212,9 @@ is app-wide in `LayoutContext`, never saved.
 - **The caret, and a selection's ends, never rest beside a marker** (arrows cross by hand;
   `caretIntoTextRoot`, `selectionIntoTextRoots` guard the rest). Tab keeps the caret on its character.
   `list-caret.spec.ts`.
-- **Tab moves an item with its nested items; over several, all of them** (caret, text range or
-  block selection, `indentRun`): in is all or nothing, out each that can; one undo, selection kept. `multi-item-indent.spec.ts`.
+- **Tab moves an item with its nested items; over several, all of them** (`indentRun`): in is all or nothing, out each that can; one undo, selection kept. `multi-item-indent.spec.ts`.
 - `listLayout` owns numbers and prefixes; authored spellings stay; a text edit never renumbers
-  an imported list (`reconcileListEdit` runs at structural commits only).
+  an imported list (`reconcileListEdit`: structural commits only).
 
 ## The paragraph model
 

@@ -35,14 +35,17 @@ async function rightClick(page: Page, word: string) {
   await page.mouse.click(at.x, at.y, { button: "right" });
 }
 
-/** The words the underline is drawn under, as the browser holds them. */
+/** The words the underline is drawn under, as the line's layer holds them. */
 const underlined = (page: Page) =>
-  page.evaluate(() => {
-    const h = (CSS as unknown as { highlights: Map<string, Set<Range>> }).highlights.get(
-      "spelling",
-    );
-    return h ? [...h].map((r) => r.toString()).sort() : [];
-  });
+  page.evaluate(() =>
+    [
+      ...new Set(
+        [...document.querySelectorAll<HTMLElement>(".spelling-layer > i")].map(
+          (i) => i.dataset.word!,
+        ),
+      ),
+    ].sort(),
+  );
 
 const rows = (page: Page) => page.locator(".editor-context-menu [role=menuitem]").allInnerTexts();
 const closeMenu = async (page: Page) => {
