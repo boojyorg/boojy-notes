@@ -1,8 +1,8 @@
 import { onCommand } from "./commands";
-import { capacitorFiles } from "./files";
+import { capacitorFiles, fileAddress } from "./files";
 import { settleFolder } from "./folderSwitch";
 import { createPhoneSync, readSecrets } from "./phoneSync";
-import { createPhoneVault } from "./phoneVault";
+import { createPhoneVault, VAULT } from "./phoneVault";
 import { holdFelt } from "./haptics";
 import { selectWordAt } from "./selectWord";
 import { SYNC_FOLDER } from "./syncFolder";
@@ -28,6 +28,7 @@ export async function installPhone() {
   // keyboard sends on it), the feel of a hold, and sync's state for Home's folder row.
   (window as unknown as { boojyPhoneAPI: unknown }).boojyPhoneAPI = {
     ...vault.api,
+    vaultAddress: await fileAddress(VAULT),
     onMenuCommand: onCommand,
     holdFelt,
     selectWordAt,

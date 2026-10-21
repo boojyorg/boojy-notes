@@ -257,6 +257,19 @@ describe("folders, named as the desktop names them", () => {
     });
   });
 
+  it("lists neither the attachment store nor its notes, as the desktop, but syncs them", async () => {
+    await fs.mkdir(path.join(root, "vault", "attachments", "old"), { recursive: true });
+    await fs.writeFile(path.join(root, "vault", "attachments", "pic.png"), "png");
+    await fs.writeFile(path.join(root, "vault", "attachments", "Stray.md"), "x");
+    await vault.api.createFolder("Work");
+    expect(await vault.api.readFolders()).toEqual(["Work"]);
+    expect(await vault.api.readAllNotes()).toEqual({});
+    expect((await vault.store.list()).files.sort()).toEqual([
+      "attachments/Stray.md",
+      "attachments/pic.png",
+    ]);
+  });
+
   it("gives a rename onto a taken name a -2, capitals or not, and the notes go with it", async () => {
     await vault.api.createFolder("Work");
     await vault.api.createFolder("Home");

@@ -95,6 +95,8 @@ Rule + one reason. Incidents and measurements are in git; command details in
 - **The app icons are generated, never hand-edited**: `assets/make-app-icons.sh`, from the
   full-bleed source. macOS on Apple's grid (full-bleed is too large in the Dock); Windows and
   Linux fill the canvas, wordmark enlarged (the Mac margin reads smaller on a taskbar).
+  Android is an adaptive icon: the wordmark alone inside the 66dp safe circle on the tile
+  colour, which is also the launch screen's ground (Android draws the icon on it).
 - **Daily-driver build**: `pnpm build:electron` on master, quit the running app (its quit flush
   saves edits), replace `/Applications/Boojy Notes.app`, check `codesign --verify --deep
   --strict` and the version in Settings. Rebuild at coherent checkpoints, not per PR.

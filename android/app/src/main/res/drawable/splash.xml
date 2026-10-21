@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Behind Android's launch screen, which draws the app icon itself: the icon's tile colour. -->
+<color xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/ic_launcher_background" />

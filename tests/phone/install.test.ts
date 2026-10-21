@@ -5,9 +5,11 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/phone/files", () => ({
   capacitorFiles: () => ({ recover: async () => {}, read: async () => null }),
+  fileAddress: async () => "https://localhost/_capacitor_file_/vault",
 }));
 vi.mock("../../src/phone/folderSwitch", () => ({ settleFolder: async () => {} }));
 vi.mock("../../src/phone/phoneVault", () => ({
+  VAULT: "vault",
   createPhoneVault: () => ({ api: {}, store: {} }),
 }));
 vi.mock("../../src/phone/phoneSync", () => ({
