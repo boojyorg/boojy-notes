@@ -161,7 +161,8 @@ app's, made through state.**
   `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`, not the system's
   long-press): moved, it drags; let go, `BlockMenu` under it. A scroll, a double-tap or
-  selected text is the browser's; text never drags (unseen). `hold-to-grab.spec.ts`.
+  selected text is the browser's; text never drags (unseen). A lone new finger ends a hold
+  whose lift was lost (Android reuses finger ids). `hold-to-grab.spec.ts`.
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.
 - **The page is still mid-drag.** A reorder glides moved blocks from their old places
