@@ -80,36 +80,46 @@ function firstBlockLift(type, r) {
 /**
  * Bullet markers alternate by depth: a filled dot at the top level, a hollow
  * ring one level in, filled again at the third, and so on (the filled third
- * level keeps sibling groups apart without Notion's square). Drawn as boxes rather
+ * level keeps sibling groups apart without Notion's square). Painted rather
  * than the ● and ○ glyphs, so the pair shares one geometry in every font and
- * on every platform and scales cleanly under the UI zoom; the ring is 1px
- * wider because a ring reads optically smaller than a dot of its diameter.
- * Both centre on the first line's x-height, about 13px into the 25.5px line
- * box, so a wrapped item keeps its marker on its first line. Primary ink,
- * never the accent: the marker is typography, the checkbox is a control.
- * Presentation only: the file's own marker character and indentation are
- * untouched (`block.marker`, `block.indentStr`).
+ * on every platform; the ring is 1px wider because a ring reads optically
+ * smaller than a dot of its diameter. Both centre on the first line's
+ * x-height, about 13px into the 25.5px line box, so a wrapped item keeps its
+ * marker on its first line. Primary ink, never the accent: the marker is
+ * typography, the checkbox is a control. Presentation only: the file's own
+ * marker character and indentation are untouched (`block.marker`,
+ * `block.indentStr`).
+ *
+ * A circle painted inside a larger box, never a rounded box: Chromium rounds
+ * a box's width and height to device pixels apart, so under a UI scale or a
+ * phone's density a 6px round box came out 13×14 or 19×21 device pixels. The
+ * box may still move by half a pixel; the circle keeps its shape.
  */
 const BULLET_DOT = 6;
 const BULLET_RING = 7;
 const BULLET_RING_STROKE = 1.25;
+/** The box the circle is painted in: room for its soft edge wherever the box lands. */
+const BULLET_BOX = 10;
+/** Half the soft edge, in CSS px, either side of the circle's outline. */
+const BULLET_EDGE = 0.4;
 /** Where the marker's centre sits, as a share of the line box: 13px of 25.5 at the default rhythm. */
 const BULLET_LINE_CENTRE = 13 / 25.5;
 
 function bulletMarkerStyle(hollow, ink, linePx) {
-  const size = hollow ? BULLET_RING : BULLET_DOT;
+  const r = (hollow ? BULLET_RING : BULLET_DOT) / 2;
+  const outer = `${ink} ${r - BULLET_EDGE}px, transparent ${r + BULLET_EDGE}px`;
+  const inner = r - BULLET_RING_STROKE;
   return {
-    width: size,
-    height: size,
-    marginTop: BULLET_LINE_CENTRE * linePx - size / 2,
+    width: BULLET_BOX,
+    height: BULLET_BOX,
+    marginTop: BULLET_LINE_CENTRE * linePx - BULLET_BOX / 2,
     // Centred in the list's marker column.
-    marginInline: (LIST_MARKER_W - size) / 2,
-    borderRadius: "50%",
-    boxSizing: "border-box",
+    marginInline: (LIST_MARKER_W - BULLET_BOX) / 2,
     flexShrink: 0,
     userSelect: "none",
-    background: hollow ? "transparent" : ink,
-    border: hollow ? `${BULLET_RING_STROKE}px solid ${ink}` : undefined,
+    background: hollow
+      ? `radial-gradient(circle ${r + BULLET_EDGE}px, transparent ${inner - BULLET_EDGE}px, ${ink} ${inner + BULLET_EDGE}px, ${outer})`
+      : `radial-gradient(circle ${r + BULLET_EDGE}px, ${outer})`,
   };
 }
 
