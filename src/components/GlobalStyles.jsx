@@ -315,6 +315,24 @@ export default function GlobalStyles() {
           color: ${theme.TEXT.primary};
           opacity: 1;
         }
+        /* The phone: no hover left behind by a tap (a touch leaves :hover on
+           what it last touched), and no system tap flash, whose square sat
+           over the rounded press. The press is this rounded surface alone,
+           held while the finger is down; .is-active (its menu open) stays. */
+        html.is-phone .sidebar-section-header .sidebar-section-action {
+          -webkit-tap-highlight-color: transparent;
+        }
+        html.is-phone .sidebar-section-header .sidebar-section-action:hover:not(.is-active):not(:active) {
+          background: transparent;
+          color: ${theme.TEXT.secondary};
+          opacity: 0.55;
+        }
+        .sidebar-section-header .sidebar-section-action:active,
+        html.is-phone .sidebar-section-header .sidebar-section-action:active {
+          background: ${theme.BG.surface};
+          color: ${theme.TEXT.primary};
+          opacity: 1;
+        }
         /* A window drag region takes the press before the page sees it, so
            while the path's folder popup is open every drag region stands down
            and a press on the empty top row closes the popup instead.
