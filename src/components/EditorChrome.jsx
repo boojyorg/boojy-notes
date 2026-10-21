@@ -56,9 +56,6 @@ import { tagPillGround } from "../styles/tagPill";
  */
 
 export const CHROME_INSET = 10;
-/** The right-hand group's inset: nearer the edge than the left's, as the
- *  note's scrollbar starts below the row. The phone keeps the ordinary one. */
-export const CHROME_RIGHT_INSET = isPhone ? CHROME_INSET : 8;
 /** Top of the chrome row's buttons; centres them on the traffic lights
  *  (main.js trafficLightPosition.y = CHROME_TOP + CHROME_BTN / 2). */
 export const CHROME_TOP = 7;
@@ -119,7 +116,7 @@ export const chromePathInset = (collapsed, fullScreen = false) =>
  * the room the Markdown view's `</>` takes beside it, and the air. Reserved
  * whether the view is on or not, so switching never moves the path.
  */
-export const CHROME_PATH_RIGHT_INSET = CHROME_RIGHT_INSET + groupWidth(isPhone ? 1 : 2) + PATH_AIR;
+export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + groupWidth(isPhone ? 1 : 2) + PATH_AIR;
 
 /**
  * The same for a viewed file, whose controls stand where `</>` would: the
@@ -127,7 +124,7 @@ export const CHROME_PATH_RIGHT_INSET = CHROME_RIGHT_INSET + groupWidth(isPhone ?
  */
 export const chromePathRightInset = (controlsW) =>
   controlsW > 0
-    ? CHROME_RIGHT_INSET + CHROME_BOX + BTN_GAP + controlsW + PATH_AIR
+    ? CHROME_INSET + CHROME_BOX + BTN_GAP + controlsW + PATH_AIR
     : CHROME_PATH_RIGHT_INSET;
 
 /**
@@ -324,7 +321,7 @@ export default function EditorChrome({
         style={{
           position: "fixed",
           top: fixedTop(CHROME_TOP),
-          right: CHROME_RIGHT_INSET,
+          right: CHROME_INSET,
           zIndex: Z.TOOLBAR,
           display: "flex",
           alignItems: "center",
@@ -381,7 +378,7 @@ export default function EditorChrome({
             style={{
               position: "fixed",
               top: fixedTop(CHROME_TOP + CHROME_BTN + 6),
-              right: CHROME_RIGHT_INSET + CHROME_BTN + BTN_GAP,
+              right: CHROME_INSET + CHROME_BTN + BTN_GAP,
               width: 290,
               background: theme.BG.elevated,
               border: `1px solid ${theme.BG.divider}`,
