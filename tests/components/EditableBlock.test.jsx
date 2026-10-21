@@ -182,8 +182,11 @@ describe("EditableBlock", () => {
     expect(marker).toHaveAttribute("data-marker", "filled");
     expect(marker).toHaveAttribute("aria-hidden", "true");
     expect(marker.textContent).toBe("");
-    expect(marker.style.background).toBe("rgb(238, 238, 238)");
-    expect(marker.style.borderRadius).toBe("50%");
+    // A circle painted in its box, never a rounded box (Chromium snaps a
+    // box's sides apart: a 6px round box came out 13×14 device pixels).
+    const style = marker.getAttribute("style");
+    expect(style).toContain("radial-gradient(circle 3.4px, rgb(238, 238, 238) 2.6px");
+    expect(style).not.toContain("border-radius");
   });
 
   it("alternates filled and hollow markers by nesting depth", () => {
@@ -193,11 +196,14 @@ describe("EditableBlock", () => {
       const { container, unmount } = renderBlock(block);
       const marker = container.querySelector(`[data-block-id="${block.id}"] [data-marker]`);
       expect(marker).toHaveAttribute("data-marker", kind);
+      const style = marker.getAttribute("style");
       if (kind === "hollow") {
-        expect(marker.style.background).toBe("transparent");
-        expect(marker.style.border).toBe("1.25px solid rgb(238, 238, 238)");
+        // A 7px ring, 1.25px of ink inside its outline.
+        expect(style).toContain(
+          "radial-gradient(circle 3.9px, transparent 1.85px, rgb(238, 238, 238) 2.65px",
+        );
       } else {
-        expect(marker.style.border).toBe("");
+        expect(style).toContain("radial-gradient(circle 3.4px, rgb(238, 238, 238)");
       }
       unmount();
     });
