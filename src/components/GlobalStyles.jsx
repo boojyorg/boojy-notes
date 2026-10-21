@@ -341,6 +341,18 @@ export default function GlobalStyles() {
           [role="option"], [role="treeitem"]
         ):active:not(:disabled):not([aria-disabled="true"]) {
           background-color: ${theme.BG.hover} !important;
+          transition: none !important;
+        }
+        /* The press comes at once and leaves slowly: a quick tap holds :active
+           for a few frames, too short to see, so the grey fades out after it. */
+        html.is-phone :is(
+          .chrome-button, .sidebar-row, .sidebar-action-row, .sidebar-vault-label,
+          .settings-location, .code-copy-btn, .callout-icon-btn,
+          [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"],
+          [role="option"], [role="treeitem"]
+        ) {
+          transition: background-color var(--motion-enter), color var(--motion-fast),
+            opacity var(--motion-fast) !important;
         }
         /* A window drag region takes the press before the page sees it, so
            while the path's folder popup is open every drag region stands down

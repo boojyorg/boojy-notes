@@ -33,3 +33,18 @@ test("a row wears the row grey while pressed, and nothing after", async ({ page 
   await page.mouse.up();
   await expect(row).not.toHaveCSS("background-color", ROW_GREY);
 });
+
+test("the note's ··· stays lit while its menu is open, and only then", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Lit");
+  const more = page.locator("button[aria-label='Note actions']");
+  await more.click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  // The pointer gone from it: the menu's being open is what holds it.
+  await page.mouse.move(5, 400);
+  await expect(more).toHaveCSS("background-color", ROW_GREY);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(more).not.toHaveCSS("background-color", ROW_GREY);
+});

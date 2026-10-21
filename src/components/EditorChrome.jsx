@@ -254,6 +254,8 @@ export function ChromeButton({
 export default function EditorChrome({
   activeNote,
   onNoteActions,
+  // The ···'s menu (or Version History in its place) is open: the ··· stays lit.
+  noteActionsOpen = false,
   onNewNote,
   onOpenSearch,
   onToggleSourceView,
@@ -457,6 +459,7 @@ export default function EditorChrome({
             onNoteActions({ x: r.right, y: r.bottom + 4 });
           }}
           label={activeNote ? "Note actions" : fileView ? "File actions" : "App options"}
+          active={noteActionsOpen}
         >
           <MoreHorizontalIcon />
         </ChromeButton>
