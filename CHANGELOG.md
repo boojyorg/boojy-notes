@@ -13,7 +13,6 @@
 
 ### Bug Fixes
 
-- **Notes appear sooner when the phone app opens** — Your folders and notes took over three seconds to show after the app opened; they now show in about one. The phone was reading your notes in about 150 small steps, one after another; it now reads several at a time and skips steps it didn't need. Syncing after the app opens is about twice as fast for the same reason.
 - **Bullet points are round** — At an interface size other than 100%, and on the phone, a bullet's dot could come out a pixel narrower than it was tall, so it looked slightly squashed; a nested item's ring too. Both are now drawn as true circles at every size.
 - **A misspelled word no longer cuts off its last letter** — The red dotted line under a misspelled word could slice the top off a letter leaning into the next character, such as the y in "boojy.", where the full stop tucks under it. The line is now drawn beneath the text rather than into it, so every letter stays whole. It looks the same as before.
 - **Moving a list item with ⌘⇧↑ or ⌘⇧↓ brings its nested items** — Moving an item with the keyboard took only its own line: the items nested under it stayed behind and ended up under whichever item took its place. The item now moves with everything nested under it, past the next item and its nested items too, so every item keeps its parent, as dragging with the grip already did. A nested item moves among the items beside it; Tab and Shift+Tab still change its level. The cursor stays where it was in the text, and one ⌘Z undoes the move.
