@@ -23,6 +23,7 @@ import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTheme } from "./hooks/useTheme";
 import { Z } from "./constants/zIndex";
 import { SIDEBAR_GRAB_OVERLAP, SIDEBAR_GRAB_W, SIDEBAR_HANDLE_W } from "./constants/layout";
+import { paintHandles } from "./hooks/usePanelResize";
 const SettingsModal = React.lazy(() => import("./components/settings/SettingsModal"));
 const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
 import ContextMenu from "./components/ContextMenu";
@@ -1443,19 +1444,15 @@ export default function BoojyNotes() {
       }}
       onMouseEnter={() => {
         // Neutral, never accent: the handle is chrome, and the accent is
-        // reserved for identity/focus/markers. The line darkens but stays
-        // thin; the col-resize cursor announces the affordance.
+        // reserved for identity/focus/markers. The line darkens and takes a
+        // second pixel; the col-resize cursor announces the affordance.
         if (!isDragging.current) {
-          for (const handle of sidebarHandles.current) {
-            if (handle) handle.style.background = theme.sidebarHandle.hover;
-          }
+          paintHandles(sidebarHandles.current, theme.sidebarHandle.hover, true);
         }
       }}
       onMouseLeave={() => {
         if (!isDragging.current) {
-          for (const handle of sidebarHandles.current) {
-            if (handle) handle.style.background = theme.BG.divider;
-          }
+          paintHandles(sidebarHandles.current, theme.BG.divider, false);
         }
       }}
     >

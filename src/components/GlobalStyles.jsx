@@ -157,13 +157,13 @@ export default function GlobalStyles() {
         ::-webkit-scrollbar-thumb:hover { background-color: ${theme.scrollbar.thumbHover}; }
         ::-webkit-scrollbar-thumb:active { background-color: ${theme.scrollbar.thumbActive}; }
         /* Sidebar-only scrollbar geometry. Same 7px
-           visible pill as the global bar, but hugging the divider: 4px border
-           on the content side, 1px on the edge side, so the ink's outer edge
-           sits 1px off the divider instead of centred. Same colours as the
-           global bar. Pairs with ROW_INSET_RIGHT in Sidebar.jsx. */
+           visible pill as the global bar, but beside the divider: 3px border
+           on the content side, 2px on the edge side, so the ink sits 2px off
+           the line (the divider's grab area takes the nearer pixel). Same
+           colours as the global bar. Pairs with ROW_INSET_RIGHT in Sidebar.jsx. */
         .sidebar-scroll::-webkit-scrollbar-thumb {
-          border-left-width: 4px;
-          border-right-width: 1px;
+          border-left-width: 3px;
+          border-right-width: 2px;
         }
         `
         }

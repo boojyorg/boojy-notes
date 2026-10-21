@@ -274,6 +274,9 @@ test("the divider keeps its line after a hover and a drag, and a drag lights not
     const box = (await line.boundingBox())!;
     await h.page.mouse.move(box.x + 2, 400);
     await expect.poll(paint).not.toBe(rest);
+    // Hovered, the line is 2px: a shadow over the editor, the layout unmoved.
+    expect(await line.evaluate((el) => getComputedStyle(el).boxShadow)).toContain("1px 0px 0px");
+    expect((await line.boundingBox())!.width).toBe(box.width);
     await h.page.mouse.down();
     await h.page.mouse.move(box.x + 40, 400, { steps: 5 });
     // Mid-drag, nothing under the pointer answers it: a row passed over
