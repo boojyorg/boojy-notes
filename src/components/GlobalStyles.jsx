@@ -332,21 +332,24 @@ export default function GlobalStyles() {
            (Chromium shows :active only once a touch is not a scroll). No
            system tap flash over it, and no hover left behind (hover rules
            sit under @media (hover: hover); JS hover returns on fromTouch).
+           A control that refuses the touch (the key bar) is pressed by its
+           data-pressed instead, since no :active follows.
            !important: menu and list rows set their background inline. */
         html.is-phone * { -webkit-tap-highlight-color: transparent; }
         html.is-phone :is(
-          .chrome-button, .sidebar-row, .sidebar-action-row, .sidebar-vault-label,
+          .press, .chrome-button, .sidebar-row, .sidebar-action-row, .sidebar-vault-label,
           .settings-location, .code-copy-btn, .callout-icon-btn,
           [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"],
           [role="option"], [role="treeitem"]
-        ):active:not(:disabled):not([aria-disabled="true"]) {
+        ):active:not(:disabled):not([aria-disabled="true"]),
+        html.is-phone .press[data-pressed]:not(:disabled):not([aria-disabled="true"]) {
           background-color: ${theme.BG.hover} !important;
           transition: none !important;
         }
         /* The press comes at once and leaves slowly: a quick tap holds :active
            for a few frames, too short to see, so the grey fades out after it. */
         html.is-phone :is(
-          .chrome-button, .sidebar-row, .sidebar-action-row, .sidebar-vault-label,
+          .press, .chrome-button, .sidebar-row, .sidebar-action-row, .sidebar-vault-label,
           .settings-location, .code-copy-btn, .callout-icon-btn,
           [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"],
           [role="option"], [role="treeitem"]
@@ -761,7 +764,8 @@ ${tagPillCss(theme)}
           transition: opacity var(--motion-fast);
           pointer-events: auto;
         }
-        .code-block:hover .code-copy-wrapper {
+        .code-block:hover .code-copy-wrapper,
+        .code-block:focus-within .code-copy-wrapper {
           opacity: 1;
         }
         .code-copy-btn {

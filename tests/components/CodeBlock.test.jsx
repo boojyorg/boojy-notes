@@ -136,15 +136,11 @@ describe("CodeBlock", () => {
     expect(document.body.querySelector(".code-ctx-menu")).toBeNull();
   });
 
-  it("shows copy button on hover", () => {
+  it("leaves the copy button's showing to the stylesheet (hover, or focus within)", () => {
     const { container } = render(<CodeBlock {...defaultProps} />);
-    const codeBlock = container.querySelector(".code-block");
     const copyWrapper = container.querySelector(".code-copy-wrapper");
-    // Initially hidden
-    expect(copyWrapper.style.opacity).toBe("0");
-    // Hover
-    fireEvent.mouseEnter(codeBlock);
-    expect(copyWrapper.style.opacity).toBe("1");
+    // No inline opacity: one would outrank the :hover and :focus-within rules.
+    expect(copyWrapper.style.opacity).toBe("");
   });
 
   it("handles Tab key to insert spaces", () => {
