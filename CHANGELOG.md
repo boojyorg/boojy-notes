@@ -2,10 +2,11 @@
 
 ## Unreleased
 
+## v0.17.0 — 2026-10-21
+
 ### Improvements
 
 - **Buttons light up clearly** — Pointing at Search, the sidebar toggle, the ··· and the other small buttons now shows the same grey as a selected note, instead of a grey so faint it was hard to see on the sidebar. The ··· stays lit while its menu is open.
-- **Taps on the phone feel like the rest of the app** — A tap shows a soft rounded grey under your finger that fades as you lift it, instead of Android's blue box, and nothing stays grey after the tap.
 - **Lists line up** — Bullets, to-dos and numbered items now share one column for their markers: a bullet sits in line with a to-do's tick box, every kind of item starts its text at the same place, and a nested item's marker sits under its parent's text.
 - **A thin line between the sidebar and the note** — The sidebar now ends in a 1px line instead of a grey strip. Pointing at it or dragging it thickens it slightly, and while you drag, nothing else in the window lights up under the pointer. Scrollbars are a little easier to see, and the note's scrollbar starts below the top row instead of running behind the ··· button.
 - **⌘ and a number turns a line into any kind** — ⌘1 to ⌘6 make it Heading 1 to 6, ⌘7 a numbered list, ⌘8 a bullet list, ⌘9 a to-do list, and ⌘0 plain text again (Ctrl on Windows and Linux). The key sets the kind rather than switching it on and off, so pressing ⌘2 on a Heading 2 leaves it alone. The keys are shown beside each item in the Format menu, where Headings 4 to 6 now sit under More Headings, and in a block's Turn into menu, where they work while the menu is open. **Actual Size, which resets the app's size, moves to ⇧⌘0** (Ctrl+Shift+0), since ⌘0 is now Text.
@@ -13,10 +14,21 @@
 ### Bug Fixes
 
 - **Bullet points are round** — At an interface size other than 100%, and on the phone, a bullet's dot could come out a pixel narrower than it was tall, so it looked slightly squashed; a nested item's ring too. Both are now drawn as true circles at every size.
-- **Pictures show on the phone** — Every picture in a note showed "Not found" on the phone, though it had synced: the phone didn't know where to load it from. Pictures now show as they do on the computer, at the width you set, and open full size. Home also stops listing the `attachments` folder, as the computer already did.
-- **Scrolling on the phone no longer stops working** — Very occasionally, after holding a finger on a block, the note stopped scrolling until the app was restarted: the app missed the finger lifting and went on treating every later touch as part of the hold. A new touch now ends a hold whose finger has already gone.
 - **A misspelled word no longer cuts off its last letter** — The red dotted line under a misspelled word could slice the top off a letter leaning into the next character, such as the y in "boojy.", where the full stop tucks under it. The line is now drawn beneath the text rather than into it, so every letter stays whole. It looks the same as before.
 - **Moving a list item with ⌘⇧↑ or ⌘⇧↓ brings its nested items** — Moving an item with the keyboard took only its own line: the items nested under it stayed behind and ended up under whichever item took its place. The item now moves with everything nested under it, past the next item and its nested items too, so every item keeps its parent, as dragging with the grip already did. A nested item moves among the items beside it; Tab and Shift+Tab still change its level. The cursor stays where it was in the text, and one ⌘Z undoes the move.
+
+### Android (in testing)
+
+The phone app isn't available to download yet; these are for the testing build.
+
+- **Hold a block to move it** — On the phone, keeping a finger still on a paragraph, heading or list item picks it up: move it to drag it elsewhere in the note, or let go to open its menu (Turn into, Copy, Duplicate, Delete). Scrolling, tapping and double-tapping work as before.
+- **A calmer bar above the keyboard** — The row of formatting buttons above the phone's keyboard is simpler, a list row appears while the cursor is in a list, and holding a button explains what it does instead of acting.
+- **Boojy's own icon** — The Android app shows the Boojy Notes icon on the home screen and while it opens, instead of a placeholder.
+- **Steadier syncing** — A file Dropbox won't take no longer stops the rest from syncing, renames that only change capitals sync both ways, and typing is saved when the app leaves the screen.
+- **Taps on the phone feel like the rest of the app** — A tap shows a soft rounded grey under your finger that fades as you lift it, instead of Android's blue box, and nothing stays grey after the tap.
+- **Pictures show on the phone** — Every picture in a note showed "Not found" on the phone, though it had synced: the phone didn't know where to load it from. Pictures now show as they do on the computer, at the width you set, and open full size. Home also stops listing the `attachments` folder, as the computer already did.
+- **Scrolling on the phone no longer stops working** — Very occasionally, after holding a finger on a block, the note stopped scrolling until the app was restarted: the app missed the finger lifting and went on treating every later touch as part of the hold. A new touch now ends a hold whose finger has already gone.
+- **Notes appear sooner when the phone app opens** — Your folders and notes took over three seconds to show after the app opened; they now show in about one. The phone was reading your notes in about 150 small steps, one after another; it now reads several at a time and skips steps it didn't need. Syncing after the app opens is about twice as fast for the same reason.
 
 ## v0.16.0 — 2026-10-17
 
