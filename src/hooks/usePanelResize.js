@@ -49,6 +49,8 @@ export function usePanelResize({
         if (!isDragging.current) return;
         setSidebarWidth(Math.min(maxWidth, Math.max(SIDEBAR_MIN_W, ev.clientX - grab)));
       };
+      // Ends on release, or when the window loses focus: a release in another
+      // app never reaches us, and the pointer lock would outlive the drag.
       const onUp = () => {
         isDragging.current = false;
         document.body.style.cursor = "";
@@ -59,9 +61,11 @@ export function usePanelResize({
         paintHandles(sidebarHandles.current, hovered ? handleHoverBg : handleRestBg, hovered);
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup", onUp);
+        window.removeEventListener("blur", onUp);
       };
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
+      window.addEventListener("blur", onUp);
     },
     [
       setSidebarWidth,

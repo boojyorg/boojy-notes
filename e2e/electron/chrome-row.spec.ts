@@ -296,6 +296,37 @@ test("the divider keeps its line after a hover and a drag, and a drag lights not
   }
 });
 
+test("a divider drag ends when the window loses focus", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    await h.openNote("Alpha");
+    await setWidth(h, 1100);
+    const line = h.page.locator("#main-content").getByTestId("sidebar-divider");
+    const box = (await line.boundingBox())!;
+    await h.page.mouse.move(box.x + 2, 400);
+    await h.page.mouse.down();
+    await h.page.mouse.move(box.x + 40, 400, { steps: 5 });
+    // Released in another app: the window only hears that it lost focus.
+    await h.page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    const width = (await line.boundingBox())!.x;
+    expect(
+      await h.page.evaluate(() => document.documentElement.classList.contains("sidebar-dragging")),
+    ).toBe(false);
+    expect(
+      await h.page.evaluate(
+        ([px, py]) => document.elementFromPoint(px, py)?.tagName,
+        [box.x + 300, 400],
+      ),
+    ).not.toBe("BODY");
+    // Moving on no longer resizes.
+    await h.page.mouse.move(box.x + 120, 400, { steps: 5 });
+    expect((await line.boundingBox())!.x).toBe(width);
+    await h.page.mouse.up();
+  } finally {
+    await h.close();
+  }
+});
+
 test("no window-drag rectangle lies under a chrome button, in either sidebar state", async () => {
   test.skip(process.platform !== "darwin", "drag regions are macOS's");
   const h = await launchApp({ "University/Archive/Todd's Note.md": "Alpha.\n" });
