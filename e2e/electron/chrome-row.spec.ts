@@ -209,19 +209,23 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
     await setWidth(h, 1200);
     const row = h.page.locator("[data-note-id]").first();
     const sidebarWidth = async () => {
-      // The wrapper the width is set on is the row's nearest ancestor with an
-      // explicit pixel width; read it off the drag handle's left edge instead,
-      // which sits exactly at the sidebar's right edge. (On Windows and Linux
-      // its top piece in the window strip is a second match; take the main one.)
-      const handle = await h.page.locator("#main-content [style*='col-resize']").boundingBox();
+      // Read it off the divider's left edge, which sits exactly at the
+      // sidebar's right edge. (On Windows and Linux its top piece in the
+      // window strip is a second match; take the main one.)
+      const handle = await h.page
+        .locator("#main-content")
+        .getByTestId("sidebar-divider")
+        .boundingBox();
       expect(handle, "drag handle").not.toBeNull();
       return Math.round(handle!.x);
     };
     // Drag the divider out to 380px.
     const start = await sidebarWidth();
-    await h.page.mouse.move(start + SIDEBAR_HANDLE_W / 2, 400);
+    // Pressed 3px into the grab area, beside the line: the divider keeps
+    // that offset rather than jumping to the pointer.
+    await h.page.mouse.move(start + 3, 400);
     await h.page.mouse.down();
-    await h.page.mouse.move(380, 400, { steps: 8 });
+    await h.page.mouse.move(383, 400, { steps: 8 });
     await h.page.mouse.up();
     await expect.poll(sidebarWidth).toBe(380);
 
@@ -253,6 +257,71 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
     await setWidth(h, 1200);
     await expect.poll(sidebarWidth).toBe(380);
     expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("the divider keeps its line after a hover and a drag, and a drag lights nothing else", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    await h.openNote("Alpha");
+    await setWidth(h, 1100);
+    const line = h.page.locator("#main-content").getByTestId("sidebar-divider");
+    const paint = () => line.evaluate((el) => getComputedStyle(el).backgroundColor);
+    const rest = await paint();
+    expect(rest).not.toBe("rgba(0, 0, 0, 0)");
+    const box = (await line.boundingBox())!;
+    await h.page.mouse.move(box.x + 2, 400);
+    await expect.poll(paint).not.toBe(rest);
+    // Hovered, the line is 2px, centred: shadows each side, the layout unmoved.
+    const shadow = await line.evaluate((el) => getComputedStyle(el).boxShadow);
+    expect(shadow).toContain("-0.5px 0px 0px");
+    expect(shadow).toContain(" 0.5px 0px 0px");
+    expect((await line.boundingBox())!.width).toBe(box.width);
+    await h.page.mouse.down();
+    await h.page.mouse.move(box.x + 40, 400, { steps: 5 });
+    // Mid-drag, nothing under the pointer answers it: a row passed over
+    // would otherwise light up.
+    for (const x of [box.x - 120, box.x + 300]) {
+      expect(
+        await h.page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.tagName, [x, 400]),
+      ).toBe("BODY");
+    }
+    await h.page.mouse.up();
+    await h.page.mouse.move(box.x + 300, 400);
+    await expect.poll(paint).toBe(rest);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a divider drag ends when the window loses focus", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    await h.openNote("Alpha");
+    await setWidth(h, 1100);
+    const line = h.page.locator("#main-content").getByTestId("sidebar-divider");
+    const box = (await line.boundingBox())!;
+    await h.page.mouse.move(box.x + 2, 400);
+    await h.page.mouse.down();
+    await h.page.mouse.move(box.x + 40, 400, { steps: 5 });
+    // Released in another app: the window only hears that it lost focus.
+    await h.page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    const width = (await line.boundingBox())!.x;
+    expect(
+      await h.page.evaluate(() => document.documentElement.classList.contains("sidebar-dragging")),
+    ).toBe(false);
+    expect(
+      await h.page.evaluate(
+        ([px, py]) => document.elementFromPoint(px, py)?.tagName,
+        [box.x + 300, 400],
+      ),
+    ).not.toBe("BODY");
+    // Moving on no longer resizes.
+    await h.page.mouse.move(box.x + 120, 400, { steps: 5 });
+    expect((await line.boundingBox())!.x).toBe(width);
+    await h.page.mouse.up();
   } finally {
     await h.close();
   }

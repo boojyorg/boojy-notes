@@ -22,6 +22,8 @@ import { useMultiSelect } from "./hooks/useMultiSelect";
 import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTheme } from "./hooks/useTheme";
 import { Z } from "./constants/zIndex";
+import { SIDEBAR_GRAB_OVERLAP, SIDEBAR_GRAB_W, SIDEBAR_HANDLE_W } from "./constants/layout";
+import { paintHandles } from "./hooks/usePanelResize";
 const SettingsModal = React.lazy(() => import("./components/settings/SettingsModal"));
 const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
 import ContextMenu from "./components/ContextMenu";
@@ -1430,33 +1432,42 @@ export default function BoojyNotes() {
         // detached node once the sidebar collapses.
         sidebarHandles.current[slot] = el;
       }}
+      data-testid="sidebar-divider"
       onMouseDown={startDrag}
       style={{
-        cursor: "col-resize",
-        // The sidebar and editor already use different surface tones, so a
-        // permanent border would repeat the same separation signal.
-        background: chromeBg,
+        position: "relative",
+        zIndex: Z.SIDEBAR_DIVIDER,
+        // The line itself; hover and drag repaint only this element.
+        background: theme.BG.divider,
         transition: "background var(--motion-fast)",
         ...style,
       }}
       onMouseEnter={() => {
         // Neutral, never accent: the handle is chrome, and the accent is
-        // reserved for identity/focus/markers. Hover is a whisper; the
-        // col-resize cursor is what actually announces the affordance.
+        // reserved for identity/focus/markers. The line darkens and takes a
+        // second pixel; the col-resize cursor announces the affordance.
         if (!isDragging.current) {
-          for (const handle of sidebarHandles.current) {
-            if (handle) handle.style.background = theme.sidebarHandle.hover;
-          }
+          paintHandles(sidebarHandles.current, theme.sidebarHandle.hover, true);
         }
       }}
       onMouseLeave={() => {
         if (!isDragging.current) {
-          for (const handle of sidebarHandles.current) {
-            if (handle) handle.style.background = chromeBg;
-          }
+          paintHandles(sidebarHandles.current, theme.BG.divider, false);
         }
       }}
-    />
+    >
+      {/* The grab area: wider than the line, invisible. */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          left: -SIDEBAR_GRAB_OVERLAP,
+          width: SIDEBAR_GRAB_W,
+          cursor: "col-resize",
+        }}
+      />
+    </div>
   );
 
   // ── Render ──────────────────────────────────────────────────────────
@@ -1499,7 +1510,7 @@ export default function BoojyNotes() {
               top: 0,
               bottom: 0,
               left: sidebarWidth,
-              width: 4,
+              width: SIDEBAR_HANDLE_W,
               WebkitAppRegion: "no-drag",
             })
           }
@@ -1616,11 +1627,9 @@ export default function BoojyNotes() {
             }
           />
         </div>
-        {/* Sidebar drag handle — desktop only, and only while the sidebar is
-            showing. Hidden when collapsed (its 4px fill + 1px border left a
-            hairline strip down the left edge instead of the sidebar fully
-            disappearing). */}
-        {sidebarVisible && !isPhone && sidebarHandle(1, { width: 4, flexShrink: 0 })}
+        {/* Sidebar divider — desktop only, and only while the sidebar is
+            showing (collapsed, it left a hairline down the window's edge). */}
+        {sidebarVisible && !isPhone && sidebarHandle(1, { width: SIDEBAR_HANDLE_W, flexShrink: 0 })}
         {/* Editor area */}
         {/* Kept mounted behind Home on the phone, so the note keeps its place. */}
         <div

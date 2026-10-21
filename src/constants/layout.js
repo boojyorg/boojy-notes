@@ -69,8 +69,16 @@ export const SIDEBAR_MIN_W = SIDEBAR_HEADER_W + HEADER_AIR;
 /** Widest the sidebar can be dragged. */
 export const SIDEBAR_MAX_W = 400;
 
-/** The drag handle between the sidebar and the editor. */
-export const SIDEBAR_HANDLE_W = 4;
+/** The sidebar's divider: a hairline in the layout between sidebar and editor. */
+export const SIDEBAR_HANDLE_W = 1;
+
+/**
+ * The divider's grab area, invisible and wider than the line: it reaches
+ * SIDEBAR_GRAB_OVERLAP into the sidebar (onto the transparent pixel beside the
+ * scrollbar thumb, never the thumb) and the rest into the editor's margin.
+ */
+export const SIDEBAR_GRAB_W = 6;
+export const SIDEBAR_GRAB_OVERLAP = 1;
 
 /**
  * Narrowest editor the sidebar is allowed to leave beside itself. Below this

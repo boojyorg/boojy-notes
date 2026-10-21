@@ -3,7 +3,7 @@
  * Always use these constants instead of hardcoded numbers.
  *
  * Scale overview (low → high):
- *   BASE → ELEMENT_OVERLAY → BLOCK_HANDLE → PATH_ROW → FIND_BAR
+ *   BASE → ELEMENT_OVERLAY → BLOCK_HANDLE → PATH_ROW → SIDEBAR_DIVIDER → FIND_BAR
  *   → TOOLBAR → WIKILINK_MENU → MENU_BACKDROP
  *   → DROPDOWN → CONTEXT_BACKDROP → CONTEXT_MENU → SETTINGS → SETTINGS_MENU → LIGHTBOX
  *   → OVERLAY → CALLOUT_BACKDROP
@@ -22,6 +22,9 @@ export const Z = {
    *  above the blocks and the grip the note scrolls under it with, below the
    *  find bar and the fixed chrome buttons. */
   PATH_ROW: 8,
+  /** The sidebar's divider: its grab area reaches into the editor's margin,
+   *  over the path band beside it. */
+  SIDEBAR_DIVIDER: 9,
   FIND_BAR: 50,
   TOOLBAR: 100,
   WIKILINK_MENU: 110,

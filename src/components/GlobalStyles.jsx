@@ -1,6 +1,7 @@
 import { useTheme } from "../hooks/useTheme";
 import { tagPillCss } from "../styles/tagPill";
-import { LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
+import { CHROME_BTN, LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
+import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
 import { bandFill, withAlpha } from "../utils/selectionBand";
@@ -33,6 +34,10 @@ export default function GlobalStyles() {
           to { opacity: 1; }
         }
         .sidebar-dragging *, .window-resizing * { transition: none !important; }
+        /* While the divider is dragged nothing else answers the pointer: a row
+           or button passed over would light up as if it could be pressed. The
+           drag itself listens on the window, and body keeps the cursor. */
+        .sidebar-dragging body * { pointer-events: none !important; }
         /* The small clock (tokens/motion.js). A surface arrives wearing one
            of these: .motion-pop (a menu or dialog grows in), .motion-rise
            (a toast or the selection toolbar lifts in), .motion-fade (a scrim
@@ -153,13 +158,16 @@ export default function GlobalStyles() {
         ::-webkit-scrollbar-thumb:hover { background-color: ${theme.scrollbar.thumbHover}; }
         ::-webkit-scrollbar-thumb:active { background-color: ${theme.scrollbar.thumbActive}; }
         /* Sidebar-only scrollbar geometry. Same 7px
-           visible pill as the global bar, but hugging the divider: 4px border
-           on the content side, 1px on the edge side, so the ink's outer edge
-           sits 1px off the divider instead of centred. Same colours as the
-           global bar. Pairs with ROW_INSET_RIGHT in Sidebar.jsx. */
+           visible pill as the global bar, but beside the divider: 3px border
+           on the content side, 2px on the edge side, so the ink sits 2px off
+           the line (the divider's grab area takes the nearer pixel). Same
+           colours as the global bar. Pairs with ROW_INSET_RIGHT in Sidebar.jsx. */
+        /* The note's bar starts below the chrome row (NotePath's sticky band,
+           measured from the scroller's own top), never behind the ···. */
+        .editor-scroll::-webkit-scrollbar-track { margin-top: ${CHROME_TOP + CHROME_BTN}px; }
         .sidebar-scroll::-webkit-scrollbar-thumb {
-          border-left-width: 4px;
-          border-right-width: 1px;
+          border-left-width: 3px;
+          border-right-width: 2px;
         }
         `
         }

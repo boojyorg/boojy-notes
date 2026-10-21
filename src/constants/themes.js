@@ -48,17 +48,17 @@ export const NIGHT = {
     misspelled: "rgba(255, 59, 48, 0.76)",
   },
   scrollbar: {
-    thumb: "#313131",
-    thumbHover: "#414141",
-    thumbActive: "#525252",
+    thumb: "#383838",
+    thumbHover: "#474747",
+    thumbActive: "#575757",
   },
   // Sidebar resize handle. Neutral by rule — the accent is identity, not a
   // surface, and a full-height accent bar was the loudest violation in the app.
-  // Mirrors the scrollbar's rest/hover steps on purpose: both are draggable
-  // chrome, so they should speak one neutral language.
+  // At rest the divider is BG.divider; hover and drag are the next two steps
+  // up, spelled out here so a change to the scrollbar's greys leaves them be.
   sidebarHandle: {
-    hover: "#313131",
-    active: "#414141",
+    hover: "#414141",
+    active: "#525252",
   },
   codeBlockBg: "#121212",
   codeBlockBorder: "rgba(255,255,255,0.10)",
@@ -171,18 +171,15 @@ export const DAY = {
     misspelled: "rgba(255, 59, 48, 0.76)", // Chromium's dots, by decision (NIGHT says why)
   },
   scrollbar: {
-    // thumb matches BG.divider on purpose — that is the resting grey the app has
-    // actually been rendering, and it is the one being kept.
-    thumb: "#E9E9E9",
-    thumbHover: "#C9C7C5",
+    // A step past BG.divider, so the thumb shows at rest on the sidebar's grey.
+    thumb: "#DEDCDA",
+    thumbHover: "#C4C2BF",
     thumbActive: "#A8A5A2",
   },
-  // See NIGHT.sidebarHandle. Note DAY's BG.hover (#ECECEC) is *lighter* than
-  // BG.divider (#E9E9E9), so the two-step ramp is spelled out rather than
-  // borrowed from the BG roles.
+  // See NIGHT.sidebarHandle.
   sidebarHandle: {
-    hover: "#E9E9E9",
-    active: "#C9C7C5",
+    hover: "#C9C7C5",
+    active: "#A8A5A2",
   },
   codeBlockBg: "#F4F4F5",
   codeBlockBorder: "rgba(0,0,0,0.08)",
