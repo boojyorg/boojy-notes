@@ -29,7 +29,7 @@ const HEADER = 56;
  */
 export default function ImageLightbox({ src, alt, name, onClose }: ImageLightboxProps) {
   const { theme } = useTheme();
-  const { url, next } = useAttachmentSrc(src);
+  const { url, next, loaded } = useAttachmentSrc(src);
   const { scrim, ink, hover } = theme.lightbox;
   const containerRef = useRef<HTMLDivElement>(null);
   const [closeHot, setCloseHot] = useState(false);
@@ -152,6 +152,7 @@ export default function ImageLightbox({ src, alt, name, onClose }: ImageLightbox
         <img
           src={url}
           onError={next}
+          onLoad={loaded}
           alt={alt || ""}
           onClick={(e) => e.stopPropagation()}
           style={{

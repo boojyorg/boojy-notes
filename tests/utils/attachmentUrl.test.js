@@ -23,12 +23,18 @@ describe("attachmentUrls on the phone", () => {
     delete window.boojyPhoneAPI;
   });
 
-  it("tries the name as written, then under attachments/, each encoded in the path", () => {
+  it("tries a bare name under attachments/ first, then as written, each encoded in the path", () => {
     expect(attachmentUrls("Captura de pantalla #2.png")).toEqual([
-      `${base}/Captura%20de%20pantalla%20%232.png`,
       `${base}/attachments/Captura%20de%20pantalla%20%232.png`,
+      `${base}/Captura%20de%20pantalla%20%232.png`,
     ]);
-    expect(attachmentUrls("photos/Beach day.jpg")[0]).toBe(`${base}/photos/Beach%20day.jpg`);
+  });
+
+  it("tries a path as written first", () => {
+    expect(attachmentUrls("photos/Beach day.jpg")).toEqual([
+      `${base}/photos/Beach%20day.jpg`,
+      `${base}/attachments/photos/Beach%20day.jpg`,
+    ]);
   });
 
   it("leaves a web address and inline data alone", () => {

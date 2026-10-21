@@ -169,7 +169,7 @@ function ImageBlock({
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const { url: resolvedSrc, next: tryNextPlace } = useAttachmentSrc(src);
+  const { url: resolvedSrc, next: tryNextPlace, loaded } = useAttachmentSrc(src);
   // Found again (Find it…): a new load, remounted so no failed load is reused.
   const [attempt, setAttempt] = useState(0);
   const findMissing = async () => {
@@ -302,7 +302,10 @@ function ImageBlock({
           alt={alt || ""}
           draggable="false"
           loading={resolvedSrc?.startsWith("data:") ? undefined : "lazy"}
-          onLoad={() => setLoading(false)}
+          onLoad={() => {
+            loaded();
+            setLoading(false);
+          }}
           onError={() => {
             if (tryNextPlace()) return;
             setErrored(true);
