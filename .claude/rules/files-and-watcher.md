@@ -107,8 +107,8 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
 **path, never the host** (Chromium refuses spaces and brackets there), served only through
 `insideVault`. `attachment-names.spec.ts`.
 **On the phone, Capacitor's address for the vault** (`vaultAddress`): it can't ask whether a
-file exists, so a picture tries its places in turn: a bare name `attachments/` first, a path
-as written first; the place that loaded first next time (`useAttachmentSrc`).
+file exists, so a picture tries the desktop's two places in its order; the place that loaded
+first next time (`useAttachmentSrc`).
 `attachmentUrl.test.js`.
 
 ## Version history keeps what the file held

@@ -17,19 +17,16 @@ export function resolveAttachmentUrl(filename) {
  * The addresses to try for an attachment, in order. The desktop's protocol
  * looks in two places itself. The phone's files are served by Capacitor from
  * the vault's own address, which cannot ask whether a file exists, so the
- * picture tries the same two in turn. A bare name (`![[name.png]]`) almost
- * always lives under `attachments/`, so it is tried there first: a miss
- * costs the phone a request before the picture shows. A path tries itself first.
+ * picture tries the same two in the desktop's order, so a name both places
+ * hold shows the same file on both: as written, then under `attachments/`.
+ * A web address, `//host/…` too, is left alone.
  */
 export function attachmentUrls(filename) {
   if (!filename || filename.startsWith("data:")) return [filename];
   if (isElectron) return [`boojy-att://vault/${encodePath(filename)}`];
   const base = isPhone ? window.boojyPhoneAPI?.vaultAddress : null;
-  if (base && !/^[a-z][a-z0-9+.-]*:/i.test(filename)) {
-    const places = [filename, `attachments/${filename}`];
-    if (!filename.includes("/")) places.reverse();
-    return places.map((rel) => `${base}/${encodePath(rel)}`);
-  }
+  if (base && !/^([a-z][a-z0-9+.-]*:|\/\/)/i.test(filename))
+    return [filename, `attachments/${filename}`].map((rel) => `${base}/${encodePath(rel)}`);
   return [filename];
 }
 

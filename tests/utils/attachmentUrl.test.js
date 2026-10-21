@@ -23,14 +23,11 @@ describe("attachmentUrls on the phone", () => {
     delete window.boojyPhoneAPI;
   });
 
-  it("tries a bare name under attachments/ first, then as written, each encoded in the path", () => {
+  it("tries the desktop's order, as written then under attachments/, each encoded in the path", () => {
     expect(attachmentUrls("Captura de pantalla #2.png")).toEqual([
-      `${base}/attachments/Captura%20de%20pantalla%20%232.png`,
       `${base}/Captura%20de%20pantalla%20%232.png`,
+      `${base}/attachments/Captura%20de%20pantalla%20%232.png`,
     ]);
-  });
-
-  it("tries a path as written first", () => {
     expect(attachmentUrls("photos/Beach day.jpg")).toEqual([
       `${base}/photos/Beach%20day.jpg`,
       `${base}/attachments/photos/Beach%20day.jpg`,
@@ -39,6 +36,7 @@ describe("attachmentUrls on the phone", () => {
 
   it("leaves a web address and inline data alone", () => {
     expect(attachmentUrls("https://example.com/a.png")).toEqual(["https://example.com/a.png"]);
+    expect(attachmentUrls("//example.com/a.png")).toEqual(["//example.com/a.png"]);
     expect(attachmentUrls("data:image/png;base64,AAAA")).toEqual(["data:image/png;base64,AAAA"]);
   });
 });
