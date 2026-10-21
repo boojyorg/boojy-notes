@@ -40,7 +40,8 @@ a key, the newer replacing the older, and end when it stops being true** (`write
   every `::-webkit-scrollbar-*` rule. They live only in `@supports not
   selector(::-webkit-scrollbar)`.
 - State rules set `background-color`, never `background` (it resets the clip).
-- The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the path).
+- The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the path); its track
+  starts below the chrome row.
 - `.editor-scroll` stays a class: components query it.
 - **The phone styles no scrollbar**: Android's own is drawn over the content.
 
@@ -70,20 +71,19 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   room.
 - **The menu bar is every command with its shortcut** (`electron/appMenu.ts`). **An item does
   nothing itself**: it sends its id (`menu-command`) and `useAppKeyboard` runs what the key runs,
-  under the key's ownership rules. The window reports its state (`menu-state`) and the menu is
-  rebuilt only on change. A held format or kind is checked. Undo is not the `undo` role (it
+  under the key's ownership rules. It rebuilds only when the window's
+  `menu-state` changes. A held format or kind is checked. Undo is not the `undo` role (it
   bypasses the app's history); no zoom roles (they steal the UI scale's keys); Reload is dev
   only. `app-menu.spec.ts`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`):
-  after `TOOLTIP_REST_MS`, at once while warm; portalled to `body` above every surface,
+  after `TOOLTIP_REST_MS`, at once while warm; portalled above every surface,
   placed via `cssZoom`. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
 - **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes and files opened
   (`useNoteHistory`, memory only). `⌘K` is link, not Search. `⇧⌘L`/`E`/`R` align a
   table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`. Sort has none.
 - **`⌘0`–`9` apply a block kind, never toggle** (`KIND_KEYS`); Actual Size is `⇧⌘0`.
   `block-kind-keys.spec.ts`.
-- **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
-  renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and action
+- **The collapsed header carries the sidebar's three controls**, never both sets at once. Only the hidden sidebar's chrome row and action
   block are `inert` (the whole column broke rename). `header-controls.spec.ts`.
 
 ## Settings, setup and UI scale
@@ -136,8 +136,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 ## A folder crumb opens the sidebar's tree under itself
 
 - `PathTreeMenu` shows the crumb's parent's contents with the path to the open note expanded
-  (`crumbScope`); `…` shows the root. A root note carries a folder glyph so the path always has
-  a clickable location. Click only, never hover.
+  (`crumbScope`); `…` shows the root. A root note's path carries a folder glyph to
+  click. Click only, never hover.
 - Tree keys on a document listener; **a press outside closes and is not swallowed** (no
   backdrop: a first press on a top-row button read as dead).
 - **Rows drag with the sidebar's drag** (`useSidebarDrag`); the head row (`data-drop-scope`) is
@@ -163,8 +163,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   renamed or dragged. The attachment store is the root's last row.
 - The wordmark is generated per theme (`dev/wordmarks.sh`), never the master PNG.
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
-  note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` is the
-  sidebar's own and never baked into the shared constants.
+  note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` stays
+  out of the shared constants.
 - The active note is never bold or accent. Only structure and actions get a glyph. An unnamed
   note reads `Untitled` muted.
 - Row controls (note ···, folder New note + ···) are zero-width at rest and `span
@@ -180,8 +180,10 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   row's menu, Escape back to the note (not under a menu or dialog); ⌃⌘S lands on the open
   row. Focus returns to the row after a rename, its neighbour after a delete.
   `tree-keyboard.spec.ts`.
-- **Sort is a preference, not an arrangement**: Most recent means most recently *modified*
-  (`recencyOf()`), never opened, so opening never reorders.
+- **Sort is a preference, not an arrangement**: Most recent is *modified* (`recencyOf()`),
+  never opened.
+- **The divider is 1px; hovered or held, 2px centred**, the layout unmoved; mid-drag nothing
+  else takes the pointer. `chrome-row.spec.ts`.
 - **Drag means location, not order**: dragging moves the file or directory. A drag starts past
   `DRAG_THRESHOLD`, no hold. Dropping on the editor doesn't open the note.
 
