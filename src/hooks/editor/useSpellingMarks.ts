@@ -1,27 +1,62 @@
 import { type RefObject, useCallback, useEffect, useRef } from "react";
+import { cssZoom } from "../../utils/domHelpers";
 import { caretOffsetIn, overlaps, spellParagraphs, wordRanges } from "../../utils/spellingMarks";
 
-/** The highlight's name; GlobalStyles draws it as the red dotted line. */
-export const SPELLING_HIGHLIGHT = "spelling";
 /** A pause in the typing before a changed paragraph is checked. */
 const SETTLE_MS = 150;
+/** Where Chromium put its dotted underline (measured on Inter, as the line
+ *  was drawn before): up from the bottom of the word's box by this much of
+ *  the font size, then down by the line's 1px offset. */
+const LINE_RISE_EM = 0.207;
+const LINE_DROP_PX = 1;
+/** A dot's size and its pitch: 2px dots, about 2px apart. */
+const DOT_PX = 2;
+const DOT_PITCH_PX = 4;
 
-interface HighlightApi {
-  highlights: { set(name: string, h: unknown): void; delete(name: string): void };
-  Highlight: new (...r: Range[]) => unknown;
-}
-function highlightApi(): HighlightApi | null {
-  const g = globalThis as {
-    CSS?: { highlights?: HighlightApi["highlights"] };
-    Highlight?: HighlightApi["Highlight"];
-  };
-  return g.CSS?.highlights && g.Highlight
-    ? { highlights: g.CSS.highlights, Highlight: g.Highlight }
-    : null;
+/**
+ * Lay a dotted line under each range, on `layer` (absolutely placed over the
+ * editor, never inside it). Drawn rather than a CSS highlight: Chromium paints
+ * a highlighted run apart from its neighbours and clips each to its own box,
+ * cutting off a glyph that leans past its edge (the y in "y." when the font
+ * tucks the full stop under it). Dots run from the word's first letter to its
+ * last, evenly, as Chromium's did.
+ */
+function paintLines(layer: HTMLElement, ranges: Range[]) {
+  const zoom = cssZoom(layer);
+  const box = layer.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const snap = (v: number) => Math.round(v * dpr) / dpr;
+  let used = 0;
+  for (const r of ranges) {
+    const host = r.startContainer.parentElement;
+    if (!host) continue;
+    const fontPx = parseFloat(getComputedStyle(host).fontSize) * zoom;
+    const word = r.toString();
+    for (const rect of r.getClientRects()) {
+      if (rect.width < 1) continue;
+      const top = snap(rect.bottom - LINE_RISE_EM * fontPx + LINE_DROP_PX * zoom);
+      const width = rect.width / zoom;
+      const dots = Math.max(1, Math.round((width - DOT_PX) / DOT_PITCH_PX) + 1);
+      const pitch = dots > 1 ? (width - DOT_PX) / (dots - 1) : width;
+      let el = layer.children[used] as HTMLElement | undefined;
+      if (!el) {
+        el = document.createElement("i");
+        layer.appendChild(el);
+      }
+      el.dataset.word = word;
+      el.style.left = `${(rect.left - box.left) / zoom}px`;
+      el.style.top = `${(top - box.top) / zoom}px`;
+      el.style.width = `${width}px`;
+      el.style.backgroundSize = `${pitch}px ${DOT_PX}px`;
+      used++;
+    }
+  }
+  while (layer.children.length > used) layer.lastChild?.remove();
 }
 
 /**
  * The editor's spelling underline, drawn by the app rather than Chromium,
+ * on `layerRef` (see `paintLines`),
  * whose own checker underlines only a focused editor and the rest of a note
  * only when idle (a second or two after a click). The words come from the
  * system's checker (`checkParagraphs`, a Mac's in each paragraph's
@@ -40,6 +75,8 @@ function highlightApi(): HighlightApi | null {
  */
 export function useSpellingMarks(
   editorRef: RefObject<HTMLElement | null>,
+  /** The element the lines are laid on: over the editor, outside it. */
+  layerRef: RefObject<HTMLElement | null>,
   enabled: boolean,
   /** Anything after which the editor element or its note is new. */
   noteKey: unknown,
@@ -51,11 +88,11 @@ export function useSpellingMarks(
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `noteKey` names a new editor element or note
   useEffect(() => {
-    const api = highlightApi();
     const editor = editorRef.current;
+    const layer = layerRef.current;
     const check = window.electronAPI?.checkParagraphs;
-    if (!enabled || !api || !editor || !check) {
-      api?.highlights.delete(SPELLING_HIGHLIGHT);
+    if (!enabled || !editor || !layer || !check) {
+      layer?.replaceChildren();
       marks.current = [];
       return;
     }
@@ -85,7 +122,7 @@ export function useSpellingMarks(
         ranges.push(...wordRanges(p, words, skip));
       }
       marks.current = ranges;
-      api.highlights.set(SPELLING_HIGHLIGHT, new api.Highlight(...ranges));
+      paintLines(layer, ranges);
     };
     const ask = () => {
       if (asking) return;
@@ -114,7 +151,15 @@ export function useSpellingMarks(
     redrawRef.current = draw;
 
     const observer = new MutationObserver(draw);
-    observer.observe(editor, { childList: true, subtree: true, characterData: true });
+    // Attributes too: an indent or a kind change restyles a block, moving its
+    // words without touching their text or the editor's size.
+    observer.observe(editor, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["style", "class"],
+    });
     const onInput = () => {
       const sel = window.getSelection();
       typedAt = sel ? { node: sel.anchorNode, offset: sel.anchorOffset } : null;
@@ -129,18 +174,29 @@ export function useSpellingMarks(
     };
     editor.addEventListener("input", onInput);
     document.addEventListener("selectionchange", onSelection);
+    // The words move without a change to the text: the column rewraps (the
+    // window, the sidebar, the UI scale), an image loads above them, a block
+    // glides into place, the font arrives.
+    const resized = new ResizeObserver(draw);
+    resized.observe(editor);
+    editor.addEventListener("transitionend", draw);
+    editor.addEventListener("animationend", draw);
+    document.fonts?.ready.then(() => live && draw());
     draw();
     ask(); // a note just opened is checked at once, not after a pause
     return () => {
       live = false;
       clearTimeout(timer);
       observer.disconnect();
+      resized.disconnect();
       editor.removeEventListener("input", onInput);
+      editor.removeEventListener("transitionend", draw);
+      editor.removeEventListener("animationend", draw);
       document.removeEventListener("selectionchange", onSelection);
-      api.highlights.delete(SPELLING_HIGHLIGHT);
+      layer.replaceChildren();
       marks.current = [];
     };
-  }, [editorRef, enabled, noteKey]);
+  }, [editorRef, layerRef, enabled, noteKey]);
 
   const recheck = useCallback(() => {
     answers.current.clear();

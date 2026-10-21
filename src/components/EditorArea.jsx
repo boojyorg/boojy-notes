@@ -331,8 +331,10 @@ const EditorArea = memo(
     // Chromium's (electron/spelling.ts).
     const { spelling } = useSettings();
     const ownSpelling = !!getAPI()?.checkParagraphs;
+    const spellingLayerRef = useRef(null);
     const spellingMarks = useSpellingMarks(
       editorRef,
+      spellingLayerRef,
       !!spelling?.enabled,
       `${activeNote}:${hasNote}:${sourceView}`,
     );
@@ -1453,6 +1455,9 @@ const EditorArea = memo(
                       });
                     })()}
                   </div>
+                  {/* The spelling underline (useSpellingMarks): laid over the
+                      text, outside it, so the text is never split to draw it. */}
+                  <div ref={spellingLayerRef} className="spelling-layer" aria-hidden="true" />
                   {/* Desktop only: on the phone a press in the text is the
                       caret's, and the bar above the keyboard does the rest. */}
                   {!isPhone && (
