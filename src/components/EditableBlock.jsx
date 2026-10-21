@@ -508,8 +508,13 @@ const EditableBlock = memo(
               flexShrink: 0,
               fontSize: rhythm.bodySize,
               userSelect: "none",
-              minWidth: LIST_MARKER_W,
-              textAlign: "right",
+              // The column's width, never more: a number ends at its right
+              // edge, and one too wide for it (10.) hangs out to the left, so
+              // the text never moves.
+              width: LIST_MARKER_W,
+              display: "flex",
+              justifyContent: "flex-end",
+              whiteSpace: "nowrap",
             }}
           >
             {numberedIndex}.
@@ -521,6 +526,8 @@ const EditableBlock = memo(
             style={{ color: TEXT.primary, outline: "none", flex: 1 }}
           />
         </>,
+        // Layout kept in, paint not: a number hanging left of the row would be cut.
+        { contain: "layout style" },
       );
     }
 
