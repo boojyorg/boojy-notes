@@ -281,6 +281,10 @@ export function useHoldToGrab({
       // A second finger on a held block is ignored: the first still holds
       // it (Android hands the app an edge swipe made while a finger is down).
       // Before the hold, two fingers are a pinch.
+      // A hold with no finger left on the glass lost its lift (heard nowhere):
+      // it ends here, or it would refuse every later scroll, since Android
+      // gives each new finger the same identifier.
+      if (touch?.claimed && e.touches.length === 1) abort();
       if (touch?.claimed) return;
       if (touch) clearTimeout(touch.timer);
       if (e.touches.length !== 1) {
