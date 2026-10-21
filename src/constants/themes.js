@@ -48,9 +48,9 @@ export const NIGHT = {
     misspelled: "rgba(255, 59, 48, 0.76)",
   },
   scrollbar: {
-    thumb: "#313131",
-    thumbHover: "#414141",
-    thumbActive: "#525252",
+    thumb: "#383838",
+    thumbHover: "#474747",
+    thumbActive: "#575757",
   },
   // Sidebar resize handle. Neutral by rule — the accent is identity, not a
   // surface, and a full-height accent bar was the loudest violation in the app.
@@ -171,10 +171,9 @@ export const DAY = {
     misspelled: "rgba(255, 59, 48, 0.76)", // Chromium's dots, by decision (NIGHT says why)
   },
   scrollbar: {
-    // thumb matches BG.divider on purpose — that is the resting grey the app has
-    // actually been rendering, and it is the one being kept.
-    thumb: "#E9E9E9",
-    thumbHover: "#C9C7C5",
+    // A step past BG.divider, so the thumb shows at rest on the sidebar's grey.
+    thumb: "#DEDCDA",
+    thumbHover: "#C4C2BF",
     thumbActive: "#A8A5A2",
   },
   // See NIGHT.sidebarHandle.

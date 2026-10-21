@@ -262,7 +262,7 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
   }
 });
 
-test("the divider keeps its line after a hover and a drag", async () => {
+test("the divider keeps its line after a hover and a drag, and a drag lights nothing else", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha.\n" });
   try {
     await h.openNote("Alpha");
@@ -276,6 +276,13 @@ test("the divider keeps its line after a hover and a drag", async () => {
     await expect.poll(paint).not.toBe(rest);
     await h.page.mouse.down();
     await h.page.mouse.move(box.x + 40, 400, { steps: 5 });
+    // Mid-drag, nothing under the pointer answers it: a row passed over
+    // would otherwise light up.
+    for (const x of [box.x - 120, box.x + 300]) {
+      expect(
+        await h.page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.tagName, [x, 400]),
+      ).toBe("BODY");
+    }
     await h.page.mouse.up();
     await h.page.mouse.move(box.x + 300, 400);
     await expect.poll(paint).toBe(rest);

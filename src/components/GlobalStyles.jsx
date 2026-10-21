@@ -33,6 +33,10 @@ export default function GlobalStyles() {
           to { opacity: 1; }
         }
         .sidebar-dragging *, .window-resizing * { transition: none !important; }
+        /* While the divider is dragged nothing else answers the pointer: a row
+           or button passed over would light up as if it could be pressed. The
+           drag itself listens on the window, and body keeps the cursor. */
+        .sidebar-dragging body * { pointer-events: none !important; }
         /* The small clock (tokens/motion.js). A surface arrives wearing one
            of these: .motion-pop (a menu or dialog grows in), .motion-rise
            (a toast or the selection toolbar lifts in), .motion-fade (a scrim
