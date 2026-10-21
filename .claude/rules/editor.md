@@ -93,8 +93,8 @@ app's, made through state.**
 - **A caret at a link's edge rests on a U+200B inside a `caret-anchor` span**, placed only by
   `placeCaret`: Chromium put an edge caret inside the link, and typing rewrote the alias. Walkers drop U+200B only inside a `caret-anchor`; elsewhere it is
   the file's byte. Never strip it by value.
-- **The browser's own caret is fixed at the keystroke** (`beforeinput` in `useEditorFocusUX`:
-  `caretOutOfLinkEnd`/`Start`), never on `selectionchange`, which would trap ArrowLeft.
+- **The browser's caret is fixed at the keystroke** (`beforeinput`: `caretOutOfLinkEnd`/`Start`),
+  never on `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
   (`utils/wikilinkTarget.ts`, shared by click, picker and the broken mark). An explicit path is
   the path. A name two notes share, or none, draws dashed and opens the link picker in fix mode.
@@ -161,8 +161,8 @@ app's, made through state.**
   `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`, not the system's
   long-press): moved, it drags; let go, `BlockMenu` under it. A scroll, a double-tap or
-  selected text is the browser's; text never drags (unseen). A lone new finger ends a hold
-  whose lift was lost (Android reuses finger ids). `hold-to-grab.spec.ts`.
+  selected text is the browser's; text never drags (unseen). A lone new finger ends a lost
+  hold (Android reuses finger ids). `hold-to-grab.spec.ts`.
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.
 - **The page is still mid-drag.** A reorder glides moved blocks from their old places
@@ -203,8 +203,7 @@ is app-wide in `LayoutContext`, never saved.
 
 - **Switching commits nothing**, so it changes no byte. Each input is parsed with
   `markdownToBlocks` and committed via `commitTextChange` (one undo burst).
-- **It repaints only when the blocks aren't the ones it committed** (identity: a text
-  comparison respelled under the caret).
+- **It repaints only when the blocks aren't the ones it committed** (by identity).
 - The caret crosses by block (`utils/sourceView.ts`). The entry place is read once in
   `useState` (StrictMode runs effects twice). `source-view.spec.ts`.
 

@@ -3,14 +3,11 @@
 ## Delete follows the platform
 
 - Electron sends `.md` files to the OS Trash; **Recently Deleted is the recovery surface**: the
-  note's last text and history stay in the store 30 days, listed by where it was, shown
-  read-only on a click; restored where it was (folder remade, `-2` on a clash, same id, never
-  written back), or deleted for good after asking.
-  `recently-deleted.spec.ts`. A folder's directory goes only once just OS cruft is left;
-  non-note files are never touched.
-- **The phone's bin**: `deleted/<when>/<path>`, ids in `state/deleted.json` (sync's deletes
-  too); a crash between steps leaves the note in one place; a restore is handed to sync
-  (`restored`), so a pass cut short never bins it again. `recentlyDeleted.test.ts`.
+  note's last text and history kept 30 days, shown read-only; restored where it was (folder
+  remade, `-2` on a clash, same id). `recently-deleted.spec.ts`. A folder's directory goes only
+  once just OS cruft is left; non-note files are never touched.
+- **The phone's bin**: `deleted/<when>/<path>`; a crash between steps leaves the note in one
+  place; a restore is handed to sync (`restored`). `recentlyDeleted.test.ts`.
 - **The phone's copy is one account's folder**: a change sets it aside (`old-folders/`)
   before sync, resumably. `folderSwitch.test.ts`.
 - Desktop confirms only several files; one note goes at once, its toast with Undo.
@@ -22,8 +19,7 @@
 eviction). `watcher-scale.spec.ts`.
 
 - **`write-note` claims the bytes it wrote**: a later event whose file holds exactly those bytes
-  is the echo, however late. The claim ends at
-  the first event showing other bytes or the file gone.
+  is the echo, however late; the claim ends at the first other bytes or the file gone.
 - **An unlink the app causes** (Trash, a rename's old path) is claimed once and consumed. A
   Trash move's end forgets the file and looks again (`unlinkDone`; a quick Put Back was lost).
   An unclaimed unlink is real, however soon.
@@ -70,10 +66,9 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - Rename and move are one `renameSync`, after flushing edits under it; not undoable. Delete waits for the Trash flush. A folder outlives its notes.
 - Duplicate folder: one directory copy (`Name (copy)`), adopted from disk.
 - **A missing chosen vault is never recreated**; writes refuse.
-- **Storage locations** (`electron/vaults.ts`): config's `vaults`; `add-vault`
-  adds without switching; `open-vault` takes only a listed, present path. Remove never touches
-  the folder; **Rename is a label (`vaultLabels`), never the folder's name**: other apps may
-  point at it. A switch flushes, empties, reloads.
+- **Storage locations** (`electron/vaults.ts`): `open-vault` takes only a listed, present path.
+  Remove never touches the folder; **Rename is a label (`vaultLabels`), never the folder's
+  name**: other apps may point at it.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
   folders and on window focus. `trash-file` refuses a note (notes go by id, `trash-note`).
   `vault-switcher.spec.ts`.
@@ -90,10 +85,8 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - A name the app makes is sanitised; a name the disk holds is kept (`Why?.md` stays).
   `disk-names.spec.ts`.
 - A note's own file is never its own collision (`ensureUniqueFilePath(target, ownPath)`).
-- **The name field is the user's while focused**: answers are held and adopted on blur
-  (`settleTitle`); nothing is painted into a focused field. A new note starts blank with an
-  `Untitled` placeholder. A paste into the name keeps its first non-empty line.
-  `title-is-filename.spec.ts`.
+- **The name field is the user's while focused**: answers are adopted on blur (`settleTitle`).
+  A new note starts blank with an `Untitled` placeholder. `title-is-filename.spec.ts`.
 - A save keeps the mode, on macOS xattrs and birthtime (`cp -p`); a symlink is written
   through. `file-mode.spec.ts`.
 - **A rename moves the file first**, then the index, then the text: one file at every instant,
@@ -106,25 +99,21 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, name in the
 **path, never the host** (Chromium refuses spaces and brackets there), served only through
 `insideVault`. `attachment-names.spec.ts`.
-**On the phone, Capacitor's address for the vault** (`vaultAddress`): it can't ask whether a
-file exists, so a picture tries the desktop's two places in its order; the place that loaded
-first next time (`useAttachmentSrc`).
-`attachmentUrl.test.js`.
+**The phone loads from Capacitor's vault address**, which can't say whether a file exists, so
+a picture tries the desktop's two places in turn (`useAttachmentSrc`). `attachmentUrl.test.js`.
 
 ## Version history keeps what the file held
 
 - **A version is the file's text, taken where it is written or read** (`electron/history.ts`,
   fed by `write-note` and `parseNoteFile`), never the editor's state: a restore can only bring
   back what the file was. Kept outside the vault (`userData/history/`).
-- **What makes one**: a session's end (leaving it, closing, a pause; one soon after replaces
-  the last), a note's text before its first edit, and before a large delete, an outside change,
-  Replace All or a restore; `⌘S` makes a save point. Nothing unchanged is kept twice.
-- **Save points are kept for good; Autosaves over a month thin to a day's last.** Naming an
-  Autosave makes it a save point. History off keeps nothing new; off with Delete removes the texts at once.
-- **The list is the ··· menu in place** (`VersionHistoryList`). A chosen version shows read-only
-  (`PastVersionView`; an edit asks), with a pill in the `</>` slot.
-  A restore keeps the note's text first (`Before restore`) and is one commit, so Undo and ⌘Z
-  take it back. `version-history.spec.ts`.
+- **What makes one**: a session's end, a note's text before its first edit, and before a large
+  delete, an outside change, Replace All or a restore; `⌘S` makes a save point. Nothing
+  unchanged is kept twice.
+- **Save points are kept for good; Autosaves over a month thin to a day's last.**
+- **The list is the ··· menu in place** (`VersionHistoryList`); a chosen version shows
+  read-only. A restore keeps the note's text first (`Before restore`) and is one commit, so ⌘Z
+  takes it back. `version-history.spec.ts`.
 - **A note renamed while the app was closed keeps its id** if it holds the text its history
   last kept. `version-store.spec.ts`, `history.test.ts`.
 

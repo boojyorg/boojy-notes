@@ -44,12 +44,12 @@ Rule + one reason. Incidents and measurements are in git; command details in
 - The workflow's token fires no `published` event, so `release.yml` calls `site-rebuild.yml`
   (a hand-published release fires it), which polls boojy.org/notes/ 10 minutes for the macOS
   link; red means the site shows the old version (`boojy-web/docs/WEBSITE-VERSION-UPDATES.md`).
-- Every job carries `timeout-minutes` sized from actuals (a stalled job once ran six hours).
-  `release.yml` is sized loose on purpose: Apple's notarisation queue is the variable.
+- Every job carries `timeout-minutes` sized from actuals; `release.yml` loose (Apple's
+  notarisation queue varies).
 
 ## CI
 
-- **Node is pinned to 22**: Node 24 hangs the Playwright browser install on the runner.
+- **Node is pinned to 22**: Node 24 hangs the Playwright browser install.
 - **`playwright install chromium`, never `--with-deps`**: the apt half stalls on slow mirrors
   and adds only fonts. If Chromium fails to launch naming a library, confirm it is really absent
   before adding anything. The browser is cached on the lockfile hash; the install runs in a
@@ -95,8 +95,7 @@ Rule + one reason. Incidents and measurements are in git; command details in
 - **The app icons are generated, never hand-edited**: `assets/make-app-icons.sh`, from the
   full-bleed source. macOS on Apple's grid (full-bleed is too large in the Dock); Windows and
   Linux fill the canvas, wordmark enlarged (the Mac margin reads smaller on a taskbar).
-  Android is an adaptive icon: the wordmark alone inside the 66dp safe circle on the tile
-  colour, which is also the launch screen's ground (Android draws the icon on it).
+  Android: the wordmark in the 66dp safe circle on the tile colour, also the launch screen.
 - **Daily-driver build**: `pnpm build:electron` on master, quit the running app (its quit flush
   saves edits), replace `/Applications/Boojy Notes.app`, check `codesign --verify --deep
   --strict` and the version in Settings. Rebuild at coherent checkpoints, not per PR.
