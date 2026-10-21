@@ -33,14 +33,20 @@ const CHECKBOX_SIZE = 16;
  * The hit area is that footprint and no more: the target is the box you can
  * see, and slop around it would tick tasks the pointer was not on.
  */
-/** Air between the drawn box and the task's text. */
-const CHECKBOX_TEXT_GAP = 9;
 
 // One render path for all heading levels: type and margins come from the
 // rhythm (tokens/rhythm.ts); the smaller levels keep body-sized text and use
 // weight and spacing to remain headings. No extra editor chrome.
 
 const INDENT_PX = 24;
+/**
+ * Every list item's marker takes one column, then the air, then the text: a
+ * dot is centred in it (so it lines up with a task's box), a number sits at
+ * its right. Column and air make one indent, so every kind's text starts at
+ * the same x and a nested item's marker stands under its parent's text.
+ */
+const LIST_MARKER_W = CHECKBOX_SIZE;
+const LIST_TEXT_GAP = INDENT_PX - LIST_MARKER_W;
 
 /** Padding a row carries above its own first line, which sits between the
  *  block's top edge and its baseline like leading does. */
@@ -96,6 +102,8 @@ function bulletMarkerStyle(hollow, ink, linePx) {
     width: size,
     height: size,
     marginTop: BULLET_LINE_CENTRE * linePx - size / 2,
+    // Centred in the list's marker column.
+    marginInline: (LIST_MARKER_W - size) / 2,
     borderRadius: "50%",
     boxSizing: "border-box",
     flexShrink: 0,
@@ -453,7 +461,7 @@ const EditableBlock = memo(
           contain: "content",
           display: "flex",
           alignItems: "flex-start",
-          gap: 9,
+          gap: LIST_TEXT_GAP,
           padding: "2px 0",
           fontSize: rhythm.bodySize,
           lineHeight: rhythm.lineHeight,
@@ -500,8 +508,13 @@ const EditableBlock = memo(
               flexShrink: 0,
               fontSize: rhythm.bodySize,
               userSelect: "none",
-              minWidth: 18,
-              textAlign: "right",
+              // The column's width, never more: a number ends at its right
+              // edge, and one too wide for it (10.) hangs out to the left, so
+              // the text never moves.
+              width: LIST_MARKER_W,
+              display: "flex",
+              justifyContent: "flex-end",
+              whiteSpace: "nowrap",
             }}
           >
             {numberedIndex}.
@@ -513,6 +526,8 @@ const EditableBlock = memo(
             style={{ color: TEXT.primary, outline: "none", flex: 1 }}
           />
         </>,
+        // Layout kept in, paint not: a number hanging left of the row would be cut.
+        { contain: "layout style" },
       );
     }
 
@@ -587,7 +602,7 @@ const EditableBlock = memo(
             }}
           />
         </>,
-        { gap: CHECKBOX_TEXT_GAP, padding: "2.5px 0", lineHeight: CHECKBOX_LINE_HEIGHT },
+        { padding: "2.5px 0", lineHeight: CHECKBOX_LINE_HEIGHT },
       );
     }
 
