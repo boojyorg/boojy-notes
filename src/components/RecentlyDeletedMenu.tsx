@@ -15,6 +15,7 @@ import { isPhone } from "../utils/platform";
 import { STATUS_BAR_H } from "../utils/uiScale";
 import { TrashIcon, RestoreIcon } from "./Icons";
 import RowAction from "./RowAction";
+import { fromTouch } from "../utils/touch";
 
 interface Props {
   items: DeletedNote[];
@@ -194,7 +195,10 @@ export default function RecentlyDeletedMenu({
               id={`deleted-${item.id}`}
               role="option"
               aria-selected={i === active}
-              onMouseEnter={() => setHovered(item.id)}
+              onMouseEnter={(e) => {
+                if (fromTouch(e)) return;
+                setHovered(item.id);
+              }}
               onClick={() => {
                 setActive(i);
                 view(item);

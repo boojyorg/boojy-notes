@@ -293,7 +293,7 @@ describe("NotePath", () => {
       expect(glyph.getAttribute("aria-expanded")).toBe("true");
       // Held in its hover state while open.
       expect(glyph.style.color).toBe("rgb(20, 17, 15)");
-      expect(glyph.style.background).toBe("rgb(244, 244, 245)");
+      expect(glyph.style.background).toBe("rgb(236, 236, 236)");
       fireEvent.click(glyph);
       expect(stub(container)).toBeNull();
     });

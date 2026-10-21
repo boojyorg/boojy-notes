@@ -4,6 +4,8 @@
 
 ### Improvements
 
+- **Buttons light up clearly** — Pointing at Search, the sidebar toggle, the ··· and the other small buttons now shows the same grey as a selected note, instead of a grey so faint it was hard to see on the sidebar. The ··· stays lit while its menu is open.
+- **Taps on the phone feel like the rest of the app** — A tap shows a soft rounded grey under your finger that fades as you lift it, instead of Android's blue box, and nothing stays grey after the tap.
 - **Lists line up** — Bullets, to-dos and numbered items now share one column for their markers: a bullet sits in line with a to-do's tick box, every kind of item starts its text at the same place, and a nested item's marker sits under its parent's text.
 - **A thin line between the sidebar and the note** — The sidebar now ends in a 1px line instead of a grey strip. Pointing at it or dragging it thickens it slightly, and while you drag, nothing else in the window lights up under the pointer. Scrollbars are a little easier to see, and the note's scrollbar starts below the top row instead of running behind the ··· button.
 - **⌘ and a number turns a line into any kind** — ⌘1 to ⌘6 make it Heading 1 to 6, ⌘7 a numbered list, ⌘8 a bullet list, ⌘9 a to-do list, and ⌘0 plain text again (Ctrl on Windows and Linux). The key sets the kind rather than switching it on and off, so pressing ⌘2 on a Heading 2 leaves it alone. The keys are shown beside each item in the Format menu, where Headings 4 to 6 now sit under More Headings, and in a block's Turn into menu, where they work while the menu is open. **Actual Size, which resets the app's size, moves to ⇧⌘0** (Ctrl+Shift+0), since ⌘0 is now Text.

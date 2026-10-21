@@ -20,6 +20,7 @@ import Menu, { type MenuAnchor, type MenuItem } from "../Menu";
 import { Tooltip, useTooltip } from "../Tooltip";
 import { locationPath, type StorageLocation as VaultEntry } from "../../utils/storageLocations";
 import { SHOW_IN_FOLDER_LABEL, SmallButton } from "./SettingsPrimitives";
+import { fromTouch } from "../../utils/touch";
 
 /**
  * Settings → Storage locations: one row per location, A–Z (the main process
@@ -170,7 +171,8 @@ function LocationRow({ v, editing, menuOpen, onMenu, onSwitch, onRename, moreRef
             ref={pathRef}
             className="settings-location-path"
             style={{ color: TEXT.muted }}
-            onMouseEnter={() => {
+            onMouseEnter={(e) => {
+              if (fromTouch(e)) return;
               const h = headRef.current;
               setCut(!!h && h.scrollWidth > h.clientWidth);
               tip.handlers.onMouseEnter?.();

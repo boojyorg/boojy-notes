@@ -3,6 +3,7 @@ import { useTheme } from "../hooks/useTheme";
 import { TOUCH } from "../constants/layout";
 import { isPhone } from "../utils/platform";
 import { Tooltip, useTooltip } from "./Tooltip";
+import { fromTouch } from "../utils/touch";
 
 /**
  * A small action on a list row (Version History's Restore and Delete,
@@ -41,7 +42,8 @@ export default function RowAction({
           e.stopPropagation();
           onClick();
         }}
-        onMouseEnter={() => {
+        onMouseEnter={(e) => {
+          if (fromTouch(e)) return;
           setOver(true);
           tooltip.handlers.onMouseEnter?.();
         }}

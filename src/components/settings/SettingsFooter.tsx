@@ -1,5 +1,6 @@
 import { version as appVersion } from "../../../package.json";
 import { useTheme } from "../../hooks/useTheme";
+import { fromTouch } from "../../utils/touch";
 
 /** A quiet footer link: muted like the line, underlined on hover. */
 function FooterLink({ href, children }: { href: string; children: string }) {
@@ -10,7 +11,10 @@ function FooterLink({ href, children }: { href: string; children: string }) {
       target="_blank"
       rel="noopener noreferrer"
       style={{ color: theme.TEXT.muted, textDecoration: "none" }}
-      onMouseEnter={(event) => (event.currentTarget.style.textDecoration = "underline")}
+      onMouseEnter={(event) => {
+        if (fromTouch(event)) return;
+        event.currentTarget.style.textDecoration = "underline";
+      }}
       onMouseLeave={(event) => (event.currentTarget.style.textDecoration = "none")}
     >
       {children}

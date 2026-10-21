@@ -10,17 +10,17 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
 - Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`.
 - Neutral palettes; teal is the identity. `?tweak` (dev only) overrides live.
 - **Use surfaces by role**: `BG.editor` sheet, `BG.elevated` menus/modals, `BG.standard`
-  sidebar, `BG.surface` content hover, `BG.hover` row/menu hover *and* selected, `BG.divider`
+  sidebar, `BG.surface` content hover, `BG.hover` row, menu and icon-button hover *and* selected, `BG.divider`
   borders. Text is `primary` / `secondary` / `muted`.
 - **The accent is two tokens.** `ACCENT.primary` is the mark (fills, bars, markers);
   `ACCENT.text` is accent as readable ink. A label on the mark takes `ACCENT.onAccentText`;
-  `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
+  `onAccent` (white) is for shapes only.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`),
-  a note's selection (`bandFill`, below the ==highlight==), a search hit's words, briefly.
+  a note's selection (`bandFill`, below the ==highlight==), a search hit's words.
 - **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
-  alone. A choice is ticked. A surface it cannot be uses `menuSurface` and `MenuRule`. `Menu.test.tsx`.
+  alone. A choice is ticked; a surface it cannot be uses `menuSurface`. `Menu.test.tsx`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
   hover included; a label on a filled button takes its ground's `on…` token. `themeContrast.test.js`, `e2e/accessibility.spec.ts`.
 - **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);
@@ -113,7 +113,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   timer-removed), never by staying mounted (it would keep its focus trap and keys). Its root
   is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
 - **A press shades the button and dips an icon-only one's glyph, never scales the button**
-  (an edge press was lost). `.press` opts a control in.
+  (an edge press was lost). `.press` opts a control in. **On the phone a press is the row grey,
+  fading out; no tap flash.** `phone-press.spec.ts`.
 - Reduced motion plays no keyframe, makes no copy; the suites run with it, `motion.spec.ts`
   without.
 - The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the window edge;
@@ -190,12 +191,12 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 ## Search is a palette, not a panel
 
 - `SearchPalette.tsx` (Cmd+P, Search button, tag click): opens fresh; Escape closes at once.
-  One-line rows; an excerpt only when the title doesn't explain the hit. Empty: **Recent**
-  (`utils/recentNotes.ts`, per vault).
+  An excerpt only when the title doesn't explain the hit. Empty: **Recent**
+  (`utils/recentNotes.ts`).
 - **A result is a note, a folder (own name, two at most) or a file (never the attachment
   store)**, in one order: `orderResults` (a note or file named as well as a folder stays
   first). `#` lists tags, nested (`nestTags`). A tag (exact set) or folder (subfolders in) is a
-  chip; chips combine; Backspace returns the last as text. No filter buttons, dates or sort.
+  chip; chips combine; Backspace returns the last as text.
   Nothing matched: a Create row (none under a tag chip).
 - **Matching** (`utils/search.ts`): every word or `"phrase"` in title or body, folded for case,
   accents, whitespace; **no fuzzy matching**. Enter acts on the query as typed
@@ -207,7 +208,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 - **A PDF, a picture, or a card for any other file stands where the note would** (`FileView`,
   `useFileView`); no note, not even a draft, is open meanwhile. `file-view.spec.ts`.
-- PDF.js draws it, one scale for every page. ⌘± stays the UI scale; zoom and page are per file.
+- PDF.js draws it. ⌘± stays the UI scale; zoom and page are per file.
 - Its controls stand left of the ··· and the path ends before them (`chromePathRightInset`).
 - **Link Page in Note** (⌥⌘L): the page's link at the left note's cursor, written as the picker's.
 
@@ -215,7 +216,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 - **No touch layout, no overlay sidebar** at any desktop width.
 - **The phone is Home (the sidebar, full width) or the note, never both**; else the desktop's
-  rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits for a hover. The
+  rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits for or keeps a hover
+  (`@media (hover: hover)`, `fromTouch`). The
   keyboard bar sends menu-bar commands; **a list item brings the list row** (✕ till it
   leaves); in a field what can't act greys; **tap acts, hold explains** (no Markdown),
   a held slide following (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.

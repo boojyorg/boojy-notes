@@ -20,6 +20,7 @@ import { isPhone } from "../utils/platform";
 import { cssZoom } from "../utils/domHelpers";
 import { restingSize } from "../utils/menuPosition";
 import { CheckIcon, ChevronRightIcon } from "./Icons";
+import { fromTouch } from "../utils/touch";
 
 /** A viewport rect a menu hangs from: a button's, a row's, or a point's. */
 export interface MenuAnchor {
@@ -291,7 +292,8 @@ export default function Menu({
             // A press keeps focus where it is, on the menu or the editor.
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => choose(item, i, false)}
-            onMouseMove={() => {
+            onMouseMove={(e) => {
+              if (fromTouch(e)) return;
               if (!item.disabled && lit !== i) setLit(i);
               if (!inMain) return;
               if (item.submenu && subOf !== i) openSub(i, false);

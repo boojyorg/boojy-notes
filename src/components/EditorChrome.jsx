@@ -73,6 +73,7 @@ export {
   MAC_TRAFFIC_INSET,
   SIDEBAR_HANDLE_W,
 } from "../constants/layout";
+import { fromTouch } from "../utils/touch";
 /** Air between the path's band and the control groups either side of it. */
 export const PATH_AIR = 12;
 /**
@@ -172,13 +173,13 @@ export function ChromeButton({
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const tip = useTooltip();
-  const restBg = lit ? tagPillGround(theme) : active ? BG.surface : "none";
+  const restBg = lit ? tagPillGround(theme) : active ? BG.hover : "none";
   const restInk = lit || on ? ACCENT.text : active ? TEXT.primary : TEXT.muted;
   const ref = useRef(null);
   return (
     <button
       type="button"
-      className="press"
+      className="press chrome-button"
       {...rest}
       ref={ref}
       onClick={disabled ? undefined : onClick}
@@ -223,9 +224,10 @@ export function ChromeButton({
         ...style,
       }}
       onMouseEnter={(e) => {
+        if (fromTouch(e)) return;
         tip.handlers.onMouseEnter();
         if (disabled) return;
-        e.currentTarget.style.background = lit ? tagPillGround(theme, true) : BG.surface;
+        e.currentTarget.style.background = lit ? tagPillGround(theme, true) : BG.hover;
         e.currentTarget.style.color = lit || on ? ACCENT.text : TEXT.primary;
       }}
       onMouseLeave={(e) => {
@@ -252,6 +254,8 @@ export function ChromeButton({
 export default function EditorChrome({
   activeNote,
   onNoteActions,
+  // The ···'s menu (or Version History in its place) is open: the ··· stays lit.
+  noteActionsOpen = false,
   onNewNote,
   onOpenSearch,
   onToggleSourceView,
@@ -455,6 +459,7 @@ export default function EditorChrome({
             onNoteActions({ x: r.right, y: r.bottom + 4 });
           }}
           label={activeNote ? "Note actions" : fileView ? "File actions" : "App options"}
+          active={noteActionsOpen}
         >
           <MoreHorizontalIcon />
         </ChromeButton>

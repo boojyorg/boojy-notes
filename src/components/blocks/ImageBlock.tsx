@@ -7,6 +7,7 @@ import { ExpandIcon, MoreHorizontalIcon } from "../Icons";
 import { Tooltip, useTooltip } from "../Tooltip";
 import ImageMenu, { type MenuAnchor } from "./ImageMenu";
 import MissingAttachment, { findable } from "./MissingAttachment";
+import { fromTouch } from "../../utils/touch";
 
 interface ImageBlockProps {
   src: string;
@@ -73,7 +74,8 @@ function BarButton({
         type="button"
         aria-label={label}
         {...tip.handlers}
-        onMouseEnter={() => {
+        onMouseEnter={(e) => {
+          if (fromTouch(e)) return;
           setHot(true);
           tip.handlers.onMouseEnter();
         }}
@@ -249,7 +251,10 @@ function ImageBlock({
       <div
         ref={containerRef}
         data-selection-surface
-        onMouseEnter={() => setHovered(true)}
+        onMouseEnter={(e) => {
+          if (fromTouch(e)) return;
+          setHovered(true);
+        }}
         onMouseLeave={() => setHovered(false)}
         // Selected on the press, not the release: the Mac's own
         // grammar, and the press that deselects elsewhere is the same event.

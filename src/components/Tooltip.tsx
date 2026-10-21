@@ -13,6 +13,7 @@ import { useTheme } from "../hooks/useTheme";
 import { prefersReducedMotion } from "../tokens/motion";
 import { cssZoom } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
+import { fromTouch } from "../utils/touch";
 
 /**
  * The app's one tooltip: a chip naming a control, with its shortcut in a small
@@ -291,7 +292,7 @@ export function Tooltip({
 }
 
 export interface TooltipHandlers {
-  onMouseEnter: () => void;
+  onMouseEnter: (e?: { nativeEvent?: Event }) => void;
   onMouseLeave: () => void;
   onMouseDown: () => void;
   onMouseUp: () => void;
@@ -327,7 +328,9 @@ export function useTooltip(): { shown: boolean; handlers: TooltipHandlers } {
   // biome-ignore lint/correctness/useExhaustiveDependencies: unmount only clears the pending timer
   useEffect(() => cancel, []);
   const handlers: TooltipHandlers = {
-    onMouseEnter: () => {
+    onMouseEnter: (e) => {
+      // A tap is not a rest on the control: the phone explains on a hold.
+      if (e && fromTouch(e)) return;
       cancel();
       if (tooltipsWarm()) {
         setShown(true);

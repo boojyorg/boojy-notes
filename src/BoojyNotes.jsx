@@ -1525,6 +1525,11 @@ export default function BoojyNotes() {
           activeNote={activeNote}
           // Its own menu type: the active note's actions plus Settings, never
           // the sidebar's multi-selection, and open with no note at all.
+          noteActionsOpen={
+            ctxMenu?.type === "header" ||
+            ctxMenu?.type === "viewed-file" ||
+            versionHistory.state.listOpen
+          }
           onNoteActions={({ x, y }) => {
             // The ··· again closes Version History, which stands in its menu's place.
             if (versionHistory.state.listOpen) versionHistory.close();

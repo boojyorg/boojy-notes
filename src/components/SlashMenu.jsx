@@ -8,6 +8,7 @@ import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS, TOUCH } from "../constants/layo
 import { isPhone } from "../utils/platform";
 import { filterSlashCommands } from "../constants/data";
 import { cssZoom } from "../utils/domHelpers";
+import { fromTouch } from "../utils/touch";
 import { menuRoom } from "../phone/menuRoom";
 import { SlashCommandIcon } from "./Icons";
 
@@ -115,11 +116,12 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                   executeSlashCommand(slashMenu.noteId, slashMenu.blockIndex, cmd);
                   setSlashMenu(null);
                 }}
-                onMouseMove={() =>
+                onMouseMove={(e) => {
+                  if (fromTouch(e)) return;
                   setSlashMenu((prev) =>
                     prev && prev.selectedIndex !== i ? { ...prev, selectedIndex: i } : prev,
-                  )
-                }
+                  );
+                }}
                 style={{
                   // 8px inside the menu's 4px inset: the glyph keeps the 12px
                   // it had from the edge when the rows ran edge to edge.

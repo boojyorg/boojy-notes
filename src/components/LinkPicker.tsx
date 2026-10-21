@@ -16,6 +16,7 @@ import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { cssZoom } from "../utils/domHelpers";
 import { readAddress, shownAddress } from "../utils/linkDestination";
 import { LinkIcon, PlusIcon } from "./Icons";
+import { fromTouch } from "../utils/touch";
 
 /**
  * The link picker: one popover for a web address and a note alike, opened by
@@ -389,7 +390,8 @@ export default function LinkPicker({
             const common = {
               role: "option" as const,
               "aria-selected": active,
-              onMouseMove: () => {
+              onMouseMove: (e: React.MouseEvent) => {
+                if (fromTouch(e)) return;
                 if (!active) setSelected(i);
               },
               // The press keeps the field's focus; the click chooses, so no
