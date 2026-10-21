@@ -142,6 +142,31 @@ const timeOfStamp = (stamp: string) => {
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** One operation at a time, in the order asked. */
+/**
+ * The phone's file calls in flight at once. Each is a round trip to Android;
+ * overlapped they took a quarter of the time one after another did (17 notes:
+ * 209 ms, 58 ms), and a bound keeps a large vault from asking thousands at once.
+ */
+const IN_FLIGHT = 8;
+
+/** `fn` over `items`, at most `limit` running at a time; results in `items`' order. */
+export async function mapLimited<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  limit = IN_FLIGHT,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
 function createLock() {
   let tail: Promise<unknown> = Promise.resolve();
   return <T>(work: () => Promise<T>): Promise<T> => {
@@ -232,23 +257,38 @@ export function createPhoneVault(
       return () => set.delete(cb);
     };
 
+  /** The index as `ids.json` holds it, last read or written; null before it exists. */
+  let savedIndex: string | null = null;
   const loadIndex = async () => {
     if (index) return index;
     const bytes = await files.read(join(STATE, "ids.json"));
     index = bytes ? JSON.parse(new TextDecoder().decode(bytes)) : {};
+    if (bytes) savedIndex = JSON.stringify(index);
     return index as Record<string, string>;
   };
-  const saveIndex = () =>
-    files.write(join(STATE, "ids.json"), encoder.encode(JSON.stringify(index)));
+  const saveIndex = async () => {
+    const text = JSON.stringify(index);
+    await files.write(join(STATE, "ids.json"), encoder.encode(text));
+    savedIndex = text;
+  };
   const idAt = (rel: string) => {
     const key = rel.toLowerCase();
     for (const [id, p] of Object.entries(index ?? {})) if (p.toLowerCase() === key) return id;
     return null;
   };
 
+  /**
+   * What a caller already read of a file: its bytes, and the modified time the
+   * same walk listed. Only `readAllNotes` has both; every other caller reads afresh.
+   */
+  type Known = { bytes: Uint8Array | null; mtime: number };
+
   /** The file's text; null when it is gone, UNREADABLE when it is not UTF-8. */
-  const readText = async (rel: string): Promise<string | null | typeof UNREADABLE> => {
-    const bytes = await files.read(abs(rel));
+  const readText = async (
+    rel: string,
+    known?: Known,
+  ): Promise<string | null | typeof UNREADABLE> => {
+    const bytes = known ? known.bytes : await files.read(abs(rel));
     if (!bytes) return null;
     try {
       return strictUtf8.decode(bytes);
@@ -262,8 +302,9 @@ export function createPhoneVault(
    * editor cannot hold as text is listed as unreadable, as on the desktop:
    * no blocks, never written, only moved.
    */
-  const parse = async (rel: string): Promise<PhoneNote | null> => {
-    const raw = await readText(rel);
+  const parse = async (rel: string, known?: Known): Promise<PhoneNote | null> => {
+    const raw = await readText(rel, known);
+    const mtime = async () => (known ? known.mtime : ((await files.mtime(abs(rel))) ?? Date.now()));
     if (raw === null) return null;
     if (raw === UNREADABLE) {
       const idx = await loadIndex();
@@ -276,7 +317,7 @@ export function createPhoneVault(
         title,
         folder: parentOf(rel),
         content: { title, blocks: [] },
-        lastModified: (await files.mtime(abs(rel))) ?? Date.now(),
+        lastModified: await mtime(),
         unreadable: "encoding",
       };
     }
@@ -301,27 +342,42 @@ export function createPhoneVault(
       title,
       folder: parentOf(rel),
       content,
-      lastModified: (await files.mtime(abs(rel))) ?? Date.now(),
+      lastModified: await mtime(),
     };
   };
 
-  /** Every file and folder under the vault, vault-relative; dot entries skipped. */
+  /**
+   * Every file and folder under the vault, vault-relative and sorted; dot
+   * entries skipped. Each depth's folders are listed together, a few at a time.
+   */
   const walk = async () => {
-    const found = { files: [] as string[], folders: [] as string[] };
-    const visit = async (rel: string) => {
-      for (const entry of await files.list(abs(rel))) {
-        if (hidden(entry.name)) continue;
-        const path = join(rel, entry.name);
-        if (entry.kind === "dir") {
-          found.folders.push(path);
-          await visit(path);
-        } else {
-          found.files.push(path);
-          stamps.set(abs(path), `${entry.size}:${entry.mtime}`);
-        }
-      }
+    const found = {
+      files: [] as string[],
+      folders: [] as string[],
+      mtimes: new Map<string, number>(),
     };
-    await visit("");
+    let depth = [""];
+    while (depth.length) {
+      const listed = await mapLimited(depth, (rel) => files.list(abs(rel)));
+      const deeper: string[] = [];
+      depth.forEach((rel, i) => {
+        for (const entry of listed[i]) {
+          if (hidden(entry.name)) continue;
+          const path = join(rel, entry.name);
+          if (entry.kind === "dir") {
+            found.folders.push(path);
+            deeper.push(path);
+          } else {
+            found.files.push(path);
+            found.mtimes.set(path, entry.mtime);
+            stamps.set(abs(path), `${entry.size}:${entry.mtime}`);
+          }
+        }
+      });
+      depth = deeper;
+    }
+    found.files.sort();
+    found.folders.sort();
     return found;
   };
 
@@ -451,10 +507,14 @@ export function createPhoneVault(
       lock(async () => {
         const idx = await loadIndex();
         const notes: NoteData = {};
-        const { files: paths } = await walk();
-        for (const rel of paths) {
-          if (!rel.toLowerCase().endsWith(".md") || inAttachments(parentOf(rel) ?? "")) continue;
-          const note = await parse(rel);
+        const { files: paths, mtimes } = await walk();
+        const notePaths = paths.filter((rel) => isNote(rel) && !inAttachments(parentOf(rel) ?? ""));
+        // Every file is read before any is taken in: a failed read publishes
+        // nothing. Then ids are given in path order, one at a time, so files
+        // carrying the same legacy id settle the same way on every launch.
+        const read = await mapLimited(notePaths, (rel) => files.read(abs(rel)));
+        for (const [i, rel] of notePaths.entries()) {
+          const note = await parse(rel, { bytes: read[i], mtime: mtimes.get(rel) ?? 0 });
           if (note) notes[note.id] = note;
         }
         for (const [id, rel] of Object.entries(idx)) {
@@ -462,7 +522,9 @@ export function createPhoneVault(
             if (!(await files.exists(abs(rel)))) delete idx[id];
           }
         }
-        await saveIndex();
+        // Written only when the file holds something else: never twice the
+        // same (four round trips), and a write that failed is tried again.
+        if (JSON.stringify(idx) !== savedIndex) await saveIndex();
         return notes;
       }),
 

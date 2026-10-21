@@ -84,9 +84,17 @@ export function capacitorFiles(): FileOps {
     Filesystem.rename({ from, to, directory, toDirectory: directory });
 
   const ops: FileOps = {
+    // A list or a read asks once: the plugin's own "does not exist" is the
+    // missing answer, so no stat goes first (each call is a round trip to
+    // Android, and the vault's start made ~150 of them).
     async list(dir) {
-      if (dir && !(await stat(dir))) return [];
-      const { files } = await Filesystem.readdir({ path: dir, directory });
+      let files: Awaited<ReturnType<typeof Filesystem.readdir>>["files"];
+      try {
+        ({ files } = await Filesystem.readdir({ path: dir, directory }));
+      } catch (error) {
+        if (isMissing(error)) return [];
+        throw error;
+      }
       return files.map((f) => ({
         name: f.name,
         kind: f.type === "directory" ? "dir" : "file",
@@ -96,8 +104,13 @@ export function capacitorFiles(): FileOps {
     },
 
     async read(path) {
-      if (!(await stat(path))) return null;
-      const { data } = await Filesystem.readFile({ path, directory });
+      let data: Awaited<ReturnType<typeof Filesystem.readFile>>["data"];
+      try {
+        ({ data } = await Filesystem.readFile({ path, directory }));
+      } catch (error) {
+        if (isMissing(error)) return null;
+        throw error;
+      }
       return typeof data === "string"
         ? fromBase64(data)
         : new Uint8Array(await (data as Blob).arrayBuffer());

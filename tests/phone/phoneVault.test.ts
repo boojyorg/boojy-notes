@@ -415,3 +415,141 @@ describe("a sync pass reads only what changed", () => {
     expect(after.hashes["One.md"]).toBe(await contentHash(bytes("two")));
   });
 });
+
+describe("reading the vault at start", () => {
+  /**
+   * The folder's files, with each read and list held back so later ones
+   * finish first, counting how many run at once and every call made.
+   */
+  function scrambled() {
+    const base = folderFiles(root);
+    const calls: string[] = [];
+    const peak = { read: 0, list: 0 };
+    const now = { read: 0, list: 0 };
+    let order = 0;
+    const held =
+      <A extends unknown[], R>(kind: "read" | "list", fn: (...a: A) => Promise<R>) =>
+      async (...a: A) => {
+        now[kind]++;
+        peak[kind] = Math.max(peak[kind], now[kind]);
+        // The first asked waits longest.
+        await new Promise((r) => setTimeout(r, Math.max(0, 30 - order++)));
+        try {
+          return await fn(...a);
+        } finally {
+          now[kind]--;
+        }
+      };
+    const ops: FileOps = {
+      ...base,
+      read: held("read", base.read),
+      list: held("list", base.list),
+      write: async (p, b) => {
+        calls.push(`write ${p}`);
+        return base.write(p, b);
+      },
+      exists: async (p) => {
+        calls.push(`exists ${p}`);
+        return base.exists(p);
+      },
+      mtime: async (p) => {
+        calls.push(`mtime ${p}`);
+        return base.mtime(p);
+      },
+    };
+    return { ops, calls, peak };
+  }
+  const put = async (rel: string, text: string) => {
+    await fs.mkdir(path.dirname(path.join(root, "vault", rel)), { recursive: true });
+    await fs.writeFile(path.join(root, "vault", rel), text);
+  };
+  const idsByPath = (notes: Record<string, { title: string; folder: string | null }>) =>
+    Object.fromEntries(
+      Object.entries(notes).map(([id, n]) => [`${n.folder ? `${n.folder}/` : ""}${n.title}`, id]),
+    );
+
+  it("reads at most eight files and lists at most eight folders at once, ids stable however they finish", async () => {
+    for (let i = 0; i < 20; i++) await put(`Folder ${i}/Note ${i}.md`, `text ${i}`);
+    const first = scrambled();
+    const notes = await createPhoneVault(first.ops).api.readAllNotes();
+    expect(Object.keys(notes)).toHaveLength(20);
+    expect(first.peak.read).toBe(8);
+    expect(first.peak.list).toBe(8);
+
+    const again = await createPhoneVault(scrambled().ops).api.readAllNotes();
+    expect(idsByPath(again)).toEqual(idsByPath(notes));
+  });
+
+  it("gives a legacy id two files carry to the first by path, on every launch", async () => {
+    const legacy = "---\nid: note-1-abc\n---\n";
+    await put("B.md", `${legacy}b`);
+    await put("A.md", `${legacy}a`);
+    const notes = await createPhoneVault(scrambled().ops).api.readAllNotes();
+    expect(idsByPath(notes).A).toBe("note-1-abc");
+    expect(idsByPath(notes).B).not.toBe("note-1-abc");
+    const again = await createPhoneVault(scrambled().ops).api.readAllNotes();
+    expect(idsByPath(again)).toEqual(idsByPath(notes));
+  });
+
+  it("takes each note's time from the listing: no check per note, and no write when nothing changed", async () => {
+    await put("One.md", "one");
+    await put("Two.md", "two");
+    const first = scrambled();
+    const notes = await createPhoneVault(first.ops).api.readAllNotes();
+    expect(first.calls).toEqual(["write state/ids.json"]);
+    const listed = (await fs.stat(path.join(root, "vault", "One.md"))).mtimeMs;
+    expect(Object.values(notes).find((n) => n.title === "One")?.lastModified).toBe(listed);
+
+    const unchanged = scrambled();
+    await createPhoneVault(unchanged.ops).api.readAllNotes();
+    expect(unchanged.calls).toEqual([]);
+  });
+
+  it("writes the index when a note was added or deleted outside the app", async () => {
+    await put("One.md", "one");
+    await createPhoneVault(scrambled().ops).api.readAllNotes();
+    await put("Two.md", "two");
+    const added = scrambled();
+    await createPhoneVault(added.ops).api.readAllNotes();
+    expect(added.calls).toContain("write state/ids.json");
+
+    await fs.rm(path.join(root, "vault", "One.md"));
+    const deleted = scrambled();
+    const notes = await createPhoneVault(deleted.ops).api.readAllNotes();
+    expect(Object.values(notes).map((n) => n.title)).toEqual(["Two"]);
+    expect(deleted.calls).toContain("write state/ids.json");
+  });
+
+  it("tries the index again on the next read when its write failed", async () => {
+    await put("One.md", "one");
+    const flaky = scrambled();
+    const write = flaky.ops.write;
+    let fails = 1;
+    flaky.ops.write = async (p, b) => {
+      if (p === "state/ids.json" && fails-- > 0) throw new Error("disk full");
+      return write(p, b);
+    };
+    const running = createPhoneVault(flaky.ops);
+    await expect(running.api.readAllNotes()).rejects.toThrow("disk full");
+    const notes = await running.api.readAllNotes();
+    expect(flaky.calls.filter((c) => c === "write state/ids.json")).toHaveLength(1);
+
+    // After a restart the note keeps the id it was given.
+    const again = await createPhoneVault(scrambled().ops).api.readAllNotes();
+    expect(idsByPath(again)).toEqual(idsByPath(notes));
+  });
+
+  it("publishes nothing when a file cannot be read", async () => {
+    await put("One.md", "one");
+    await put("Two.md", "two");
+    const failing = scrambled();
+    const read = failing.ops.read;
+    failing.ops.read = async (p) => {
+      if (p.endsWith("Two.md")) throw new Error("I/O error");
+      return read(p);
+    };
+    const broken = createPhoneVault(failing.ops);
+    await expect(broken.api.readAllNotes()).rejects.toThrow("I/O error");
+    expect(failing.calls).toEqual([]);
+  });
+});

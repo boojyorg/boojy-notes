@@ -12,6 +12,7 @@
 
 ### Bug Fixes
 
+- **Notes appear sooner when the phone app opens** — Your folders and notes took over three seconds to show after the app opened; they now show in about one. The phone was reading your notes in about 150 small steps, one after another; it now reads several at a time and skips steps it didn't need. Syncing after the app opens is about twice as fast for the same reason.
 - **Bullet points are round** — At an interface size other than 100%, and on the phone, a bullet's dot could come out a pixel narrower than it was tall, so it looked slightly squashed; a nested item's ring too. Both are now drawn as true circles at every size.
 - **Pictures show on the phone** — Every picture in a note showed "Not found" on the phone, though it had synced: the phone didn't know where to load it from. Pictures now show as they do on the computer, at the width you set, and open full size. Home also stops listing the `attachments` folder, as the computer already did.
 - **Scrolling on the phone no longer stops working** — Very occasionally, after holding a finger on a block, the note stopped scrolling until the app was restarted: the app missed the finger lifting and went on treating every later touch as part of the hold. A new touch now ends a hold whose finger has already gone.

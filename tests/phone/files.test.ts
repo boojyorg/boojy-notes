@@ -93,14 +93,28 @@ describe("only a file confirmed absent is missing", () => {
     await expect(capacitorFiles().list("vault")).rejects.toThrow("I/O error");
   });
 
-  it("throws when a file cannot be checked, rather than calling it missing", async () => {
-    failNext.set("stat", new Error("permission denied"));
+  it("throws when a file cannot be read, rather than calling it missing", async () => {
+    disk.set("vault/Note.md", b64("text"));
+    failNext.set("readFile", new Error("permission denied"));
     await expect(capacitorFiles().read("vault/Note.md")).rejects.toThrow("permission denied");
   });
 
   it("reads a file that is not there as missing", async () => {
     expect(await capacitorFiles().read("vault/Gone.md")).toBeNull();
     expect(await capacitorFiles().list("vault/No folder")).toEqual([]);
+  });
+
+  it("asks Android once per read or list, with no check first", async () => {
+    disk.set("vault/Note.md", b64("text"));
+    const { Filesystem } = await import("@capacitor/filesystem");
+    const stat = vi.spyOn(Filesystem, "stat");
+    const read = await capacitorFiles().read("vault/Note.md");
+    expect(new TextDecoder().decode(read ?? undefined)).toBe("text");
+    await capacitorFiles().read("vault/Gone.md");
+    await capacitorFiles().list("vault");
+    await capacitorFiles().list("vault/No folder");
+    expect(stat).not.toHaveBeenCalled();
+    stat.mockRestore();
   });
 });
 
