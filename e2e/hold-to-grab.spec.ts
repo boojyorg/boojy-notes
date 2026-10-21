@@ -349,6 +349,35 @@ test("the window losing focus ends the touch: a waiting hold never fires, a drag
   await expect(page.locator(".block-drop-marker:visible")).toHaveCount(0);
 });
 
+test("a hold whose lift is lost never refuses the next finger's scroll", async ({ page }) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  const held = await centre(page, 0);
+  const next = await centre(page, 2);
+  await page.evaluate(() => {
+    const w = window as unknown as { refused: boolean[] };
+    w.refused = [];
+    window.addEventListener("touchmove", (e) => w.refused.push(e.defaultPrevented));
+    // The lift is heard nowhere, as when its target left the page.
+    window.addEventListener("touchend", (e) => e.stopImmediatePropagation(), {
+      capture: true,
+      once: true,
+    });
+  });
+
+  await f.down(held.x, held.y);
+  await page.waitForTimeout(HOLD);
+  await f.up();
+  await expect(menu(page)).toHaveCount(0);
+
+  await f.down(next.x, next.y);
+  for (let i = 1; i <= 4; i++) await f.move(next.x, next.y - 15 * i);
+  await f.up();
+  const refused = await page.evaluate(() => (window as unknown as { refused: boolean[] }).refused);
+  expect(refused.length).toBeGreaterThan(0);
+  expect(refused).not.toContain(true);
+});
+
 test("a hold on selected text is the text's; a hold elsewhere still grabs its block", async ({
   page,
 }) => {
