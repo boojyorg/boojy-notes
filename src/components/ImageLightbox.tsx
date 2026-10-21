@@ -5,6 +5,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
 import { atScale } from "../utils/uiScale";
 import { CloseIcon } from "./Icons";
+import { fromTouch } from "../utils/touch";
 
 interface ImageLightboxProps {
   src: string;
@@ -108,7 +109,10 @@ export default function ImageLightbox({ src, alt, name, onClose }: ImageLightbox
             e.stopPropagation();
             onClose();
           }}
-          onMouseEnter={() => setCloseHot(true)}
+          onMouseEnter={(e) => {
+            if (fromTouch(e)) return;
+            setCloseHot(true);
+          }}
           onMouseLeave={() => setCloseHot(false)}
           style={{
             position: "absolute",

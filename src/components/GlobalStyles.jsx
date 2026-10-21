@@ -302,36 +302,45 @@ export default function GlobalStyles() {
           color: ${theme.TEXT.muted};
           transition: background var(--motion-fast), color var(--motion-fast);
         }
-        .sidebar-vault-label:hover,
         .sidebar-vault-label:focus-visible,
         .sidebar-vault-label.is-open {
           background: ${theme.BG.hover};
           color: ${theme.TEXT.primary};
         }
-        .sidebar-section-header .sidebar-section-action:hover,
+        @media (hover: hover) {
+          .sidebar-vault-label:hover {
+            background: ${theme.BG.hover};
+            color: ${theme.TEXT.primary};
+          }
+        }
         .sidebar-section-header .sidebar-section-action:focus-visible,
-        .sidebar-section-header .sidebar-section-action.is-active {
+        .sidebar-section-header .sidebar-section-action.is-active,
+        .sidebar-section-header .sidebar-section-action:active {
           background: ${theme.BG.hover};
           color: ${theme.TEXT.primary};
           opacity: 1;
         }
-        /* The phone: no hover left behind by a tap (a touch leaves :hover on
-           what it last touched), and no system tap flash, whose square sat
-           over the rounded press. The press is this rounded surface alone,
-           held while the finger is down; .is-active (its menu open) stays. */
-        html.is-phone .sidebar-section-header .sidebar-section-action {
-          -webkit-tap-highlight-color: transparent;
+        @media (hover: hover) {
+          .sidebar-section-header .sidebar-section-action:hover {
+            background: ${theme.BG.hover};
+            color: ${theme.TEXT.primary};
+            opacity: 1;
+          }
         }
-        html.is-phone .sidebar-section-header .sidebar-section-action:hover:not(.is-active):not(:active) {
-          background: transparent;
-          color: ${theme.TEXT.secondary};
-          opacity: 0.55;
-        }
-        .sidebar-section-header .sidebar-section-action:active,
-        html.is-phone .sidebar-section-header .sidebar-section-action:active {
-          background: ${theme.BG.hover};
-          color: ${theme.TEXT.primary};
-          opacity: 1;
+        /* The phone's press, one look for everything a finger can tap: the
+           row grey, in the control's own shape, while the finger is down
+           (Chromium shows :active only once a touch is not a scroll). No
+           system tap flash over it, and no hover left behind (hover rules
+           sit under @media (hover: hover); JS hover returns on fromTouch).
+           !important: menu and list rows set their background inline. */
+        html.is-phone * { -webkit-tap-highlight-color: transparent; }
+        html.is-phone :is(
+          .chrome-button, .sidebar-row, .sidebar-action-row, .sidebar-vault-label,
+          .settings-location, .code-copy-btn, .callout-icon-btn,
+          [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"],
+          [role="option"], [role="treeitem"]
+        ):active:not(:disabled):not([aria-disabled="true"]) {
+          background-color: ${theme.BG.hover} !important;
         }
         /* A window drag region takes the press before the page sees it, so
            while the path's folder popup is open every drag region stands down
@@ -434,10 +443,12 @@ export default function GlobalStyles() {
           text-decoration-color: ${theme.link.underline};
           cursor: pointer;
         }
-        [data-block-id] a:hover {
-          text-decoration-color: ${theme.link.color};
-          background: ${theme.link.hoverBg};
-          border-radius: 2px;
+        @media (hover: hover) {
+          [data-block-id] a:hover {
+            text-decoration-color: ${theme.link.color};
+            background: ${theme.link.hoverBg};
+            border-radius: 2px;
+          }
         }
         [data-block-id] .external-link-icon {
           font-size: 0.65em;
@@ -447,8 +458,10 @@ export default function GlobalStyles() {
           pointer-events: none;
           margin-left: 1px;
         }
-        [data-block-id] a:hover .external-link-icon {
-          opacity: 0.8;
+        @media (hover: hover) {
+          [data-block-id] a:hover .external-link-icon {
+            opacity: 0.8;
+          }
         }
         /* The strike is drawn in the text's own colour, never the accent:
            struck words are no inline format with a colour of its own. */
@@ -476,8 +489,10 @@ ${tagPillCss(theme)}
           text-decoration-color: ${theme.wikilink.underline};
           cursor: pointer;
         }
-        [data-block-id] .wikilink:hover {
-          text-decoration-color: ${theme.wikilink.color};
+        @media (hover: hover) {
+          [data-block-id] .wikilink:hover {
+            text-decoration-color: ${theme.wikilink.color};
+          }
         }
         /* Selected text in the note wears the selection's one colour, the
            band a selected block wears (utils/selectionBand). */
@@ -524,9 +539,11 @@ ${tagPillCss(theme)}
           text-decoration-style: dashed;
           text-decoration-color: ${theme.wikilinkBroken.underline};
         }
-        [data-block-id] .wikilink-broken:hover {
-          color: ${theme.wikilinkBroken.hoverColor};
-          text-decoration-color: ${theme.wikilinkBroken.hoverUnderline};
+        @media (hover: hover) {
+          [data-block-id] .wikilink-broken:hover {
+            color: ${theme.wikilinkBroken.hoverColor};
+            text-decoration-color: ${theme.wikilinkBroken.hoverUnderline};
+          }
         }
         .code-block {
           position: relative;
@@ -749,9 +766,11 @@ ${tagPillCss(theme)}
           transition: background var(--motion-fast), color var(--motion-fast);
           padding: 0;
         }
-        .code-copy-btn:hover {
-          background: ${theme.codeCopy.hoverBg};
-          color: ${theme.codeCopy.hoverColor};
+        @media (hover: hover) {
+          .code-copy-btn:hover {
+            background: ${theme.codeCopy.hoverBg};
+            color: ${theme.codeCopy.hoverColor};
+          }
         }
         .code-lang-anchor {
           position: absolute;
@@ -773,8 +792,14 @@ ${tagPillCss(theme)}
           cursor: pointer;
           transition: color var(--motion-fast);
         }
-        .code-lang:hover, .code-lang:focus-visible, .code-lang-open {
+        .code-lang:focus-visible,
+        .code-lang-open {
           color: ${theme.codeLang.hoverColor};
+        }
+        @media (hover: hover) {
+          .code-lang:hover {
+            color: ${theme.codeLang.hoverColor};
+          }
         }
         /* The chevron is the label's only affordance: it takes its width at
            rest so the label never shifts, and only its ink fades in, as the
@@ -784,10 +809,14 @@ ${tagPillCss(theme)}
           opacity: 0;
           transition: opacity var(--motion-fast);
         }
-        .code-lang:hover .code-lang-chevron,
         .code-lang:focus-visible .code-lang-chevron,
         .code-lang-open .code-lang-chevron {
           opacity: 1;
+        }
+        @media (hover: hover) {
+          .code-lang:hover .code-lang-chevron {
+            opacity: 1;
+          }
         }
         /* Prism.js token colors */
         .token.comment, .token.prolog, .token.doctype, .token.cdata { color: ${theme.syntax.comment}; font-style: italic; }
@@ -804,8 +833,10 @@ ${tagPillCss(theme)}
         .callout-block {
           margin: ${rhythm.blockGap}px 0;
         }
-        .callout-icon-btn:hover {
-          background: ${theme.calloutIconHover} !important;
+        @media (hover: hover) {
+          .callout-icon-btn:hover {
+            background: ${theme.calloutIconHover} !important;
+          }
         }
         .callout-title[data-empty]::before {
           content: attr(data-placeholder);
@@ -878,9 +909,11 @@ ${tagPillCss(theme)}
           transition: opacity var(--motion-fast);
           color: ${theme.TEXT.muted};
         }
-        .table-add-bar:hover {
-          opacity: 1;
-          color: ${theme.TEXT.primary};
+        @media (hover: hover) {
+          .table-add-bar:hover {
+            opacity: 1;
+            color: ${theme.TEXT.primary};
+          }
         }
         /* Preview rows */
         .table-preview-row td {
@@ -905,7 +938,9 @@ ${tagPillCss(theme)}
           color: ${theme.TEXT.muted};
           transition: color var(--motion-fast);
         }
-        .frontmatter-header:hover { color: ${theme.TEXT.secondary}; }
+        @media (hover: hover) {
+          .frontmatter-header:hover { color: ${theme.TEXT.secondary}; }
+        }
         .frontmatter-body {
           padding: 8px 12px;
           border-top: 1px solid ${theme.BG.divider};

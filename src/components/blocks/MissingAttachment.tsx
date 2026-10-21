@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { MissingAttachmentIcon, MoreHorizontalIcon, RevealIcon, TrashIcon } from "../Icons";
 import ImageMenu, { type MenuAnchor } from "./ImageMenu";
+import { fromTouch } from "../../utils/touch";
 
 interface Props {
   /** What the note links to (`photo.png`, `Reading/report.pdf`), shown as its last segment. */
@@ -64,7 +65,10 @@ export default function MissingAttachment({
           const p = { top: e.clientY, bottom: e.clientY, left: e.clientX, right: e.clientX };
           setMenu({ anchor: p, fromBar: false });
         }}
-        onMouseEnter={() => setHovered(true)}
+        onMouseEnter={(e) => {
+          if (fromTouch(e)) return;
+          setHovered(true);
+        }}
         onMouseLeave={() => setHovered(false)}
         style={{
           display: "flex",

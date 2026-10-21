@@ -13,6 +13,7 @@ import "prismjs/components/prism-json";
 import "prismjs/components/prism-bash";
 import "prismjs/components/prism-sql";
 import "prismjs/components/prism-markup";
+import { fromTouch } from "../utils/touch";
 
 /**
  * The languages offered, Plain then alphabetical: one editorial exception,
@@ -352,7 +353,10 @@ export default memo(function CodeBlock({
   return (
     <div
       className="code-block"
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={(e) => {
+        if (fromTouch(e)) return;
+        setHovered(true);
+      }}
       onMouseLeave={() => setHovered(false)}
       onContextMenu={handleContextMenu}
       onInput={(e) => e.stopPropagation()}

@@ -5,6 +5,7 @@ import { isMac } from "../../utils/platform";
 import { CopyIcon, FolderIcon, OpenLinkIcon, TrashIcon } from "../Icons";
 import Menu from "../Menu";
 import MissingAttachment, { findable } from "./MissingAttachment";
+import { fromTouch } from "../../utils/touch";
 
 function formatFileSize(bytes) {
   if (bytes == null) return "";
@@ -92,7 +93,10 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
       <div
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        onMouseEnter={() => setHovered(true)}
+        onMouseEnter={(e) => {
+          if (fromTouch(e)) return;
+          setHovered(true);
+        }}
         onMouseLeave={() => setHovered(false)}
         style={{
           display: "flex",

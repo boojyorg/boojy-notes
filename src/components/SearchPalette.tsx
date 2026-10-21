@@ -28,6 +28,7 @@ import type { NoteData } from "../types/notes";
 import { otherFileKind, splitExtension, type OtherFile } from "../utils/otherFiles";
 import { CloseIcon, FolderIcon, OtherFileIcon, PlusIcon, SearchIcon } from "./Icons";
 import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
+import { fromTouch } from "../utils/touch";
 
 /**
  * The desktop search, as a palette (Cmd+P): a field over a dimmed window,
@@ -386,8 +387,12 @@ export default function SearchPalette({
     role: "option",
     "aria-selected": i === active,
     tabIndex: -1,
-    onMouseMove: () => setActive(i),
+    onMouseMove: (e: React.MouseEvent) => {
+      if (fromTouch(e)) return;
+      setActive(i);
+    },
     onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (fromTouch(e)) return;
       if (i !== active) e.currentTarget.style.background = BG.surface;
     },
     onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -492,6 +497,7 @@ export default function SearchPalette({
                   flexShrink: 0,
                 }}
                 onMouseEnter={(e) => {
+                  if (fromTouch(e)) return;
                   e.currentTarget.style.color = TEXT.primary;
                 }}
                 onMouseLeave={(e) => {
@@ -534,6 +540,7 @@ export default function SearchPalette({
                   padding: 0,
                 }}
                 onMouseEnter={(e) => {
+                  if (fromTouch(e)) return;
                   e.currentTarget.style.color = TEXT.primary;
                 }}
                 onMouseLeave={(e) => {

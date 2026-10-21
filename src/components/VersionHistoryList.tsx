@@ -10,6 +10,7 @@ import { versionMoment, versionTime } from "../utils/versionTime";
 import { HistoryIcon, PencilIcon, RestoreIcon, TrashIcon } from "./Icons";
 import { MenuRule } from "./Menu";
 import RowAction from "./RowAction";
+import { fromTouch } from "../utils/touch";
 
 interface Props {
   state: VersionHistoryState;
@@ -299,7 +300,10 @@ export default function VersionHistoryList({
               role="option"
               aria-selected={selected}
               title={v ? versionMoment(v.at, hour12) : undefined}
-              onMouseEnter={() => setHovered(id)}
+              onMouseEnter={(e) => {
+                if (fromTouch(e)) return;
+                setHovered(id);
+              }}
               onClick={() => choose(i)}
               onDoubleClick={() => v && startRename(v.id)}
               onContextMenu={(e) => {
@@ -485,6 +489,7 @@ export default function VersionHistoryList({
                   textAlign: "left",
                 }}
                 onMouseEnter={(e) => {
+                  if (fromTouch(e)) return;
                   e.currentTarget.style.background = BG.hover;
                 }}
                 onMouseLeave={(e) => {

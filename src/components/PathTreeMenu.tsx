@@ -40,6 +40,7 @@ import {
 import { cssZoom } from "../utils/domHelpers";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "./Icons";
 import Collapsible from "./Collapsible";
+import { fromTouch } from "../utils/touch";
 
 /**
  * The path's folder popup: the sidebar's tree drawn small under
@@ -355,7 +356,10 @@ export default function PathTreeMenu({
         tabIndex={-1}
         data-pick-folder={row.path ?? ""}
         onClick={() => choose(row)}
-        onMouseMove={() => highlightRow(row.key)}
+        onMouseMove={(e) => {
+          if (fromTouch(e)) return;
+          highlightRow(row.key);
+        }}
         style={{
           ...rowBase,
           paddingLeft: SPINE - ROW_INSET + row.depth * TREE_INDENT,
@@ -425,7 +429,10 @@ export default function PathTreeMenu({
         tabIndex={-1}
         data-note-id={id}
         onClick={() => open(id)}
-        onMouseMove={() => highlightRow(row.key)}
+        onMouseMove={(e) => {
+          if (fromTouch(e)) return;
+          highlightRow(row.key);
+        }}
         style={{
           ...rowBase,
           paddingLeft: TEXT_COL - ROW_INSET + (depth + shift) * TREE_INDENT,
@@ -463,7 +470,10 @@ export default function PathTreeMenu({
           tabIndex={-1}
           data-folder-path={folder._path}
           onClick={() => toggle(folder._path)}
-          onMouseMove={() => highlightRow(row.key)}
+          onMouseMove={(e) => {
+            if (fromTouch(e)) return;
+            highlightRow(row.key);
+          }}
           style={{
             ...rowBase,
             paddingLeft: SPINE - ROW_INSET + (depth + shift) * TREE_INDENT,

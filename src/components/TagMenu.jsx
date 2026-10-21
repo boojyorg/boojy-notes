@@ -6,6 +6,7 @@ import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { extractAllTags, tagKey, tagRows } from "../utils/tags";
 import { foldText } from "../utils/search";
 import { useExitGhost } from "../hooks/useExitGhost";
+import { fromTouch } from "../utils/touch";
 
 /**
  * Tag autocomplete under the `#…` being typed.
@@ -106,7 +107,10 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
             e.preventDefault();
             onSelect(t.tag);
           }}
-          onMouseEnter={() => setSelectedIndex(i)}
+          onMouseEnter={(e) => {
+            if (fromTouch(e)) return;
+            setSelectedIndex(i);
+          }}
           style={{
             padding: "7px 10px",
             borderRadius: MENU_ROW_RADIUS,

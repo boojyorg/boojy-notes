@@ -21,6 +21,7 @@ import {
   Bug,
   FileText,
 } from "lucide-react";
+import { fromTouch } from "../utils/touch";
 
 /* ─── Callout type configuration ─── */
 
@@ -171,7 +172,10 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
               aria-selected={isFocused}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onSelect(key)}
-              onMouseEnter={() => setFocusIdx(idx)}
+              onMouseEnter={(e) => {
+                if (fromTouch(e)) return;
+                setFocusIdx(idx);
+              }}
               className="callout-picker-item"
               style={{
                 display: "flex",

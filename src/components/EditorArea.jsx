@@ -71,6 +71,7 @@ import { LIST_TYPES } from "../utils/crossBlockEdit";
 import BlockMenu from "./BlockMenu";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { wholeBlocksCopy } from "../utils/clipboardCopy";
+import { fromTouch } from "../utils/touch";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -1129,6 +1130,7 @@ const EditorArea = memo(
           e.currentTarget.style.overflowX = "hidden";
         }}
         onMouseEnter={(e) => {
+          if (fromTouch(e)) return;
           if (document.activeElement === e.currentTarget) return;
           e.currentTarget.style.background = BG.surface;
         }}

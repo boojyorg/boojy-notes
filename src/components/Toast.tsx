@@ -3,6 +3,7 @@ import { useExitGhost } from "../hooks/useExitGhost";
 import { type ToastKind, toastPersists } from "../hooks/useToast";
 import { CloseIcon, ToastIcon } from "./Icons";
 import type { Theme } from "../hooks/useTheme";
+import { fromTouch } from "../utils/touch";
 
 interface ToastProps {
   message: string;
@@ -102,7 +103,10 @@ export default function Toast({
 
   return (
     <div
-      onMouseEnter={() => onHold?.(true)}
+      onMouseEnter={(e) => {
+        if (fromTouch(e)) return;
+        onHold?.(true);
+      }}
       onMouseLeave={() => {
         if (!editing) onHold?.(false);
       }}
@@ -183,7 +187,10 @@ export default function Toast({
           type="button"
           aria-label={`${message}. Name this save point`}
           onClick={onStartEditing}
-          onMouseEnter={() => setWordsHovered(true)}
+          onMouseEnter={(e) => {
+            if (fromTouch(e)) return;
+            setWordsHovered(true);
+          }}
           onMouseLeave={() => setWordsHovered(false)}
           style={{
             border: "none",
@@ -232,7 +239,10 @@ export default function Toast({
           className="press"
           aria-label="Dismiss"
           onClick={onDismiss}
-          onMouseEnter={() => setHovered(true)}
+          onMouseEnter={(e) => {
+            if (fromTouch(e)) return;
+            setHovered(true);
+          }}
           onMouseLeave={() => setHovered(false)}
           style={{
             display: "flex",

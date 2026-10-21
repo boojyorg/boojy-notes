@@ -73,6 +73,7 @@ export {
   MAC_TRAFFIC_INSET,
   SIDEBAR_HANDLE_W,
 } from "../constants/layout";
+import { fromTouch } from "../utils/touch";
 /** Air between the path's band and the control groups either side of it. */
 export const PATH_AIR = 12;
 /**
@@ -178,7 +179,7 @@ export function ChromeButton({
   return (
     <button
       type="button"
-      className="press"
+      className="press chrome-button"
       {...rest}
       ref={ref}
       onClick={disabled ? undefined : onClick}
@@ -223,6 +224,7 @@ export function ChromeButton({
         ...style,
       }}
       onMouseEnter={(e) => {
+        if (fromTouch(e)) return;
         tip.handlers.onMouseEnter();
         if (disabled) return;
         e.currentTarget.style.background = lit ? tagPillGround(theme, true) : BG.hover;

@@ -17,6 +17,7 @@ import {
 import PathTreeMenu from "./PathTreeMenu";
 import { SCROLLBAR_W } from "../constants/layout";
 import { FolderIcon } from "./Icons";
+import { fromTouch } from "../utils/touch";
 
 /*
  * The note's path, centred in the editor's chrome row.
@@ -321,7 +322,10 @@ export default function NotePath({
             ? onShowFolder(index < 0 ? null : parents.slice(0, index + 1).join("/"))
             : openMenu(index, e.currentTarget)
         }
-        onMouseEnter={lift}
+        onMouseEnter={(e) => {
+          if (fromTouch(e)) return;
+          lift(e);
+        }}
         onMouseLeave={rest(open)}
         style={crumbStyle(open)}
       >

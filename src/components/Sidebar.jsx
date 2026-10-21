@@ -79,6 +79,7 @@ import {
 } from "../constants/layout";
 import { parentFolder } from "../utils/pathTree";
 import { NAV_BAR_H } from "../utils/uiScale";
+import { fromTouch } from "../utils/touch";
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.
@@ -1226,6 +1227,7 @@ const Sidebar = memo(function Sidebar({
             WebkitAppRegion: "no-drag",
           }}
           onMouseEnter={(e) => {
+            if (fromTouch(e)) return;
             e.currentTarget.style.opacity = "0.75";
             wordmarkTip.handlers.onMouseEnter();
           }}

@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { fromTouch } from "../utils/touch";
 
 /**
  * A segmented stepper, `[ − | 100% | + ]`: one outlined pill whose segments
@@ -57,6 +58,7 @@ export function Segment({
       {...rest}
       onClick={disabled ? undefined : rest.onClick}
       onMouseEnter={(e) => {
+        if (fromTouch(e)) return;
         if (!disabled) e.currentTarget.style.background = theme.BG.surface;
       }}
       onMouseLeave={(e) => {
