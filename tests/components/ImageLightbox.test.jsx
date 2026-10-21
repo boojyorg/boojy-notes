@@ -23,13 +23,13 @@ describe("ImageLightbox", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("renders image with correct src and alt", () => {
+  it("renders the picture from its attachment address, with its alt", () => {
     const { getByAltText } = render(
-      <ImageLightbox src="https://example.com/img.png" alt="My Image" onClose={vi.fn()} />,
+      <ImageLightbox src="Beach day.png" alt="My Image" onClose={vi.fn()} />,
     );
     const img = getByAltText("My Image");
     expect(img).toBeInTheDocument();
-    expect(img.getAttribute("src")).toBe("https://example.com/img.png");
+    expect(img.getAttribute("src")).toBe("boojy-att://vault/Beach%20day.png");
   });
 
   it("calls onClose when clicking the backdrop", () => {

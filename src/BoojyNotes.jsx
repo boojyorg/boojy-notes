@@ -71,7 +71,7 @@ import { usePhoneScreens } from "./phone/usePhoneScreens";
 import { useDeletedReturn } from "./phone/useDeletedReturn";
 import PhoneKeyBar from "./components/PhoneKeyBar";
 import { SLASH_COMMANDS } from "./constants/data";
-import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
+import { attachmentName } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
 import { fileFromHistoryKey, fileHistoryKey, useNoteHistory } from "./hooks/useNoteHistory";
 import { useFileView } from "./hooks/useFileView";
@@ -1852,7 +1852,7 @@ export default function BoojyNotes() {
 
       {lightbox && (
         <ImageLightbox
-          src={resolveAttachmentUrl(lightbox.src)}
+          src={lightbox.src}
           alt={lightbox.alt}
           name={attachmentName(lightbox.src)}
           onClose={() => setLightbox(null)}

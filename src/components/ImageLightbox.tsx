@@ -6,8 +6,10 @@ import { Z } from "../constants/zIndex";
 import { atScale } from "../utils/uiScale";
 import { CloseIcon } from "./Icons";
 import { fromTouch } from "../utils/touch";
+import { useAttachmentSrc } from "../hooks/useAttachmentSrc";
 
 interface ImageLightboxProps {
+  /** As the note holds it; resolved here. */
   src: string;
   alt?: string;
   /** The file's name, shown above the picture; none for inline data. */
@@ -27,6 +29,7 @@ const HEADER = 56;
  */
 export default function ImageLightbox({ src, alt, name, onClose }: ImageLightboxProps) {
   const { theme } = useTheme();
+  const { url, next } = useAttachmentSrc(src);
   const { scrim, ink, hover } = theme.lightbox;
   const containerRef = useRef<HTMLDivElement>(null);
   const [closeHot, setCloseHot] = useState(false);
@@ -147,7 +150,8 @@ export default function ImageLightbox({ src, alt, name, onClose }: ImageLightbox
         }}
       >
         <img
-          src={src}
+          src={url}
+          onError={next}
           alt={alt || ""}
           onClick={(e) => e.stopPropagation()}
           style={{

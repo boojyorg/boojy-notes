@@ -1,6 +1,6 @@
 import { type ReactNode, useRef, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
-import { resolveAttachmentUrl } from "../../utils/attachmentUrl";
+import { useAttachmentSrc } from "../../hooks/useAttachmentSrc";
 import { cssZoom } from "../../utils/domHelpers";
 import { imageWashFill } from "../../utils/selectionBand";
 import { ExpandIcon, MoreHorizontalIcon } from "../Icons";
@@ -169,7 +169,7 @@ function ImageBlock({
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const resolvedSrc = src ? resolveAttachmentUrl(src) : "";
+  const { url: resolvedSrc, next: tryNextPlace } = useAttachmentSrc(src);
   // Found again (Find it…): a new load, remounted so no failed load is reused.
   const [attempt, setAttempt] = useState(0);
   const findMissing = async () => {
@@ -304,6 +304,7 @@ function ImageBlock({
           loading={resolvedSrc?.startsWith("data:") ? undefined : "lazy"}
           onLoad={() => setLoading(false)}
           onError={() => {
+            if (tryNextPlace()) return;
             setErrored(true);
             setLoading(false);
           }}
