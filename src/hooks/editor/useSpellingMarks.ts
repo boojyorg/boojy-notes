@@ -151,7 +151,15 @@ export function useSpellingMarks(
     redrawRef.current = draw;
 
     const observer = new MutationObserver(draw);
-    observer.observe(editor, { childList: true, subtree: true, characterData: true });
+    // Attributes too: an indent or a kind change restyles a block, moving its
+    // words without touching their text or the editor's size.
+    observer.observe(editor, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["style", "class"],
+    });
     const onInput = () => {
       const sel = window.getSelection();
       typedAt = sel ? { node: sel.anchorNode, offset: sel.anchorOffset } : null;
