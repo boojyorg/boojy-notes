@@ -1,6 +1,7 @@
 import { useTheme } from "../hooks/useTheme";
 import { tagPillCss } from "../styles/tagPill";
-import { LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
+import { CHROME_BTN, LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
+import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
 import { bandFill, withAlpha } from "../utils/selectionBand";
@@ -161,6 +162,9 @@ export default function GlobalStyles() {
            on the content side, 2px on the edge side, so the ink sits 2px off
            the line (the divider's grab area takes the nearer pixel). Same
            colours as the global bar. Pairs with ROW_INSET_RIGHT in Sidebar.jsx. */
+        /* The note's bar starts below the chrome row (NotePath's sticky band,
+           measured from the scroller's own top), never behind the ···. */
+        .editor-scroll::-webkit-scrollbar-track { margin-top: ${CHROME_TOP + CHROME_BTN}px; }
         .sidebar-scroll::-webkit-scrollbar-thumb {
           border-left-width: 3px;
           border-right-width: 2px;
