@@ -2,16 +2,16 @@ import { useRef, useCallback } from "react";
 import { SIDEBAR_MIN_W, SIDEBAR_MAX_W } from "../constants/layout";
 
 /**
- * Paint the divider's pieces. Held or hovered, the line is 2px: the second
- * pixel is a shadow over the editor, so nothing in the layout moves and the
- * sidebar's scrollbar keeps its gap. The colour is set, never cleared: React
+ * Paint the divider's pieces. Held or hovered, the line is 2px, centred: half
+ * a pixel of shadow each side (a device pixel on Retina), so nothing in the
+ * layout moves and the sidebar's scrollbar keeps most of its gap. The colour is set, never cleared: React
  * would not repaint a style prop it thinks unchanged, and the line would vanish.
  */
 export function paintHandles(handles, colour, wide) {
   for (const handle of handles) {
     if (!handle) continue;
     handle.style.background = colour;
-    handle.style.boxShadow = wide ? `1px 0 0 ${colour}` : "";
+    handle.style.boxShadow = wide ? `-0.5px 0 0 ${colour}, 0.5px 0 0 ${colour}` : "";
   }
 }
 
