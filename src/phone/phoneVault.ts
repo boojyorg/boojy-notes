@@ -36,7 +36,7 @@ import type { FileOps } from "./files";
  * waiting (its next pass sees both sides changed and keeps both).
  */
 
-const VAULT = "vault";
+export const VAULT = "vault";
 const UNREADABLE = Symbol("unreadable");
 const STATE = "state";
 const TRASH = "deleted";
@@ -126,6 +126,8 @@ const parentOf = (rel: string) => rel.split("/").slice(0, -1).join("/") || null;
 const baseName = (rel: string) => (rel.split("/").pop() ?? "").replace(/\.md$/, "");
 const hidden = (name: string) => name.startsWith(".");
 const isNote = (rel: string) => rel.toLowerCase().endsWith(".md");
+/** Under the attachment store, which the desktop lists neither as a folder nor for its notes. */
+const inAttachments = (rel: string) => rel.split("/").includes("attachments");
 /** The first segment of a bin path is when it went; the rest is where it was. */
 const splitBinPath = (path: string) => {
   const at = path.indexOf("/");
@@ -451,7 +453,7 @@ export function createPhoneVault(
         const notes: NoteData = {};
         const { files: paths } = await walk();
         for (const rel of paths) {
-          if (!rel.toLowerCase().endsWith(".md")) continue;
+          if (!rel.toLowerCase().endsWith(".md") || inAttachments(parentOf(rel) ?? "")) continue;
           const note = await parse(rel);
           if (note) notes[note.id] = note;
         }
@@ -537,7 +539,8 @@ export function createPhoneVault(
         return { trashed: true as const };
       }),
 
-    readFolders: () => lock(async () => (await walk()).folders.sort()),
+    readFolders: () =>
+      lock(async () => (await walk()).folders.filter((f) => !inAttachments(f)).sort()),
     readOtherFiles: async () => [],
 
     createFolder: (rel) =>

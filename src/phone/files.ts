@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 
 /**
@@ -199,4 +200,13 @@ export async function recoverWrites(files: FileOps, dir: string): Promise<void> 
       names.delete(entry.name);
     }
   }
+}
+
+/**
+ * The address the page loads a file in the app's storage from: Capacitor's
+ * own server, so a picture is read by the WebView, never through the bridge.
+ */
+export async function fileAddress(path: string) {
+  const { uri } = await Filesystem.getUri({ path, directory: Directory.Data });
+  return Capacitor.convertFileSrc(uri).replace(/\/+$/, "");
 }
