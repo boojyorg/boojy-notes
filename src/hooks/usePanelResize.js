@@ -13,6 +13,7 @@ export function usePanelResize({
   setSidebarWidth,
   maxWidth = SIDEBAR_MAX_W,
   handleActiveBg,
+  sidebarWidth,
 }) {
   const isDragging = useRef(false);
 
@@ -20,6 +21,9 @@ export function usePanelResize({
     (e) => {
       e.preventDefault();
       isDragging.current = true;
+      // The grab area is wider than the line, so keep where in it the press
+      // landed: else a press beside the line makes the divider jump to it.
+      const grab = sidebarWidth == null ? 0 : Math.round(e.clientX - sidebarWidth);
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
       document.documentElement.classList.add("sidebar-dragging");
@@ -32,7 +36,7 @@ export function usePanelResize({
       }
       const onMove = (ev) => {
         if (!isDragging.current) return;
-        setSidebarWidth(Math.min(maxWidth, Math.max(SIDEBAR_MIN_W, ev.clientX)));
+        setSidebarWidth(Math.min(maxWidth, Math.max(SIDEBAR_MIN_W, ev.clientX - grab)));
       };
       const onUp = () => {
         isDragging.current = false;
@@ -48,7 +52,7 @@ export function usePanelResize({
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [setSidebarWidth, sidebarHandles, maxWidth, handleActiveBg],
+    [setSidebarWidth, sidebarHandles, maxWidth, handleActiveBg, sidebarWidth],
   );
 
   return { isDragging, startDrag };

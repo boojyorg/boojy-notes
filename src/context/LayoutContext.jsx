@@ -68,6 +68,7 @@ export function LayoutProvider({ children }) {
     setSidebarWidth,
     maxWidth: sidebarMaxWidth,
     handleActiveBg: theme.sidebarHandle.active,
+    sidebarWidth,
   });
 
   const value = useMemo(

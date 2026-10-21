@@ -209,19 +209,23 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
     await setWidth(h, 1200);
     const row = h.page.locator("[data-note-id]").first();
     const sidebarWidth = async () => {
-      // The wrapper the width is set on is the row's nearest ancestor with an
-      // explicit pixel width; read it off the drag handle's left edge instead,
-      // which sits exactly at the sidebar's right edge. (On Windows and Linux
-      // its top piece in the window strip is a second match; take the main one.)
-      const handle = await h.page.locator("#main-content [style*='col-resize']").boundingBox();
+      // Read it off the divider's left edge, which sits exactly at the
+      // sidebar's right edge. (On Windows and Linux its top piece in the
+      // window strip is a second match; take the main one.)
+      const handle = await h.page
+        .locator("#main-content")
+        .getByTestId("sidebar-divider")
+        .boundingBox();
       expect(handle, "drag handle").not.toBeNull();
       return Math.round(handle!.x);
     };
     // Drag the divider out to 380px.
     const start = await sidebarWidth();
-    await h.page.mouse.move(start + SIDEBAR_HANDLE_W / 2, 400);
+    // Pressed 3px into the grab area, beside the line: the divider keeps
+    // that offset rather than jumping to the pointer.
+    await h.page.mouse.move(start + 3, 400);
     await h.page.mouse.down();
-    await h.page.mouse.move(380, 400, { steps: 8 });
+    await h.page.mouse.move(383, 400, { steps: 8 });
     await h.page.mouse.up();
     await expect.poll(sidebarWidth).toBe(380);
 

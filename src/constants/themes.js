@@ -54,11 +54,11 @@ export const NIGHT = {
   },
   // Sidebar resize handle. Neutral by rule — the accent is identity, not a
   // surface, and a full-height accent bar was the loudest violation in the app.
-  // Mirrors the scrollbar's rest/hover steps on purpose: both are draggable
-  // chrome, so they should speak one neutral language.
+  // At rest the divider is BG.divider; hover and drag are the next two steps
+  // up, spelled out here so a change to the scrollbar's greys leaves them be.
   sidebarHandle: {
-    hover: "#313131",
-    active: "#414141",
+    hover: "#414141",
+    active: "#525252",
   },
   codeBlockBg: "#121212",
   codeBlockBorder: "rgba(255,255,255,0.10)",
@@ -177,12 +177,10 @@ export const DAY = {
     thumbHover: "#C9C7C5",
     thumbActive: "#A8A5A2",
   },
-  // See NIGHT.sidebarHandle. Note DAY's BG.hover (#ECECEC) is *lighter* than
-  // BG.divider (#E9E9E9), so the two-step ramp is spelled out rather than
-  // borrowed from the BG roles.
+  // See NIGHT.sidebarHandle.
   sidebarHandle: {
-    hover: "#E9E9E9",
-    active: "#C9C7C5",
+    hover: "#C9C7C5",
+    active: "#A8A5A2",
   },
   codeBlockBg: "#F4F4F5",
   codeBlockBorder: "rgba(0,0,0,0.08)",
