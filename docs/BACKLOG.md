@@ -337,7 +337,8 @@ to delete when fixed, and a fixture to add then:
 - [ ] **The app once failed to quit on the Linux runner** (`app-menu.spec.ts:82`, master
   858f118, 2026-10-06): `app.quit()` after File → Duplicate and the find bar did not close the
   app within 30 s, though the quit handshake caps the flush at 2 s; the retry passed. Once in
-  about sixty runs. If it recurs, trace which quit step waits (`BOOJY_TRACE`).
+  about sixty runs; again on the macOS runner (`first-run.spec.ts:71`, 2026-10-21). If it
+  recurs, trace which quit step waits (`BOOJY_TRACE`).
 
 ### Data safety / reliability
 
@@ -409,8 +410,7 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   highlight colours are hardcoded amber in `main.jsx`; `CalloutBlock` imports eleven icons
   straight from `lucide-react` at 15 and 17px, stroke 1.8, off both tiers; no font token
   (`Inter` is named first and never shipped, so every geometry judgement in the rules was made
-  in SF Pro), four mono stacks, no `tabular-nums` where counts change width; `Toast` ids are
-  `Date.now()`, so two toasts in one millisecond share a key.
+  in SF Pro), four mono stacks, no `tabular-nums` where counts change width.
 - **Block IDs are minted on every re-parse** — `markdownToBlocks` uses a module-global counter,
   so a re-sync remounts every block and loses the caret. Fix is content-stable IDs; non-trivial.
 - **Updater behaviour is undecided** — today `autoDownload` is on and every launch checks,
