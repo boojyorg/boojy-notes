@@ -32,7 +32,7 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
   caret restored, a line-end space before it as U+00A0 (`showSpaceBeforeCaret`). A bump
   alone paints nothing; pair it with a commit that publishes at once. `repaint-spaces.spec.ts`.
 - **A text-only commit never repaints**, so a programmatic text edit edits the DOM and reads it
-  back (`domNodeToMarkdown` → `updateBlockText`): formatting, the link popover, Find → Replace.
+  back (`domNodeToMarkdown`): formatting, the link popover, Find → Replace.
   `repaint-ownership.spec.ts`.
 
 ## One edit, one block root
@@ -165,7 +165,7 @@ app's, made through state.**
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.
 - **The page is still mid-drag.** A reorder glides moved blocks from their old places
-  (`settleBlocks`, after the commit); a drag that moves nothing sends its copy home.
+  (`settleBlocks`); a drag that moves nothing sends its copy home.
   `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (no item changes
   parent); nested, among siblings only; one selected block too (`moveStep`). `list-move.spec.ts`.
@@ -179,7 +179,7 @@ app's, made through state.**
 - **The slash menu is tiered**: `advanced: true` rows stay off the opening screen, by one rule
   for menu and keys (`filterSlashCommands()`). Rows take selection on real mouse movement.
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
-- **Every menu's keys are one rule** (`useMenuKeys`, `utils/menuKeys.ts`): arrows wrap past
+- **Every menu's keys are one rule** (`useMenuKeys`): arrows wrap past
   disabled rows, Home/End, Enter and Space choose, Escape closes, a letter jumps; only where a
   menu listens differs. A suggestion under the caret (`suggestion: true`: tag, callout type,
   slash) leaves Space, letters, Home and End to typing and is a `listbox` of `option`s.
@@ -256,8 +256,9 @@ never holds a byte sequence the syntax cannot.**
 ## Code blocks
 
 Every `.code-line` takes at least `1lh` (or the layers drift); re-picking the same language
-writes nothing. `code-language.spec.ts`. **A `mermaid` fence is drawn** (`DiagramView`), its
-code joined below while its field has focus; `</>` is lit while open. `diagram.spec.ts`.
+writes nothing. **One hover toolbar per code block**: language, copy last. `code-language.spec.ts`.
+**A `mermaid` fence is drawn** (`DiagramView`), its code above, open until `</> Code` closes
+it; a new one starts open. `diagram.spec.ts`.
 
 ## Images
 

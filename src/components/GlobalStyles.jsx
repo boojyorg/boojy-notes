@@ -781,42 +781,63 @@ ${tagPillCss(theme)}
         .source-layer .md-mark { color: ${theme.TEXT.muted}; }
         .source-layer .md-meta { color: ${theme.TEXT.secondary}; }
         .source-layer .md-strong { font-weight: 600; }
-        .code-copy-wrapper {
+        /* One toolbar on every code block (CodeBlock), top right: shown on
+           the pointer or while the block has focus, held while its language
+           menu is open. Language, then copy, always last; a diagram's
+           \`</> Code\` comes first, set apart, lit while its code is open, as
+           the header's \`</>\` is for the Markdown view. */
+        .code-tools {
           position: absolute;
-          top: 8px;
-          right: 8px;
+          top: 6px;
+          right: 6px;
           z-index: 2;
-          opacity: 0;
-          transition: opacity var(--motion-fast);
-          pointer-events: auto;
-        }
-        .code-block:hover .code-copy-wrapper,
-        .code-block:focus-within .code-copy-wrapper {
-          opacity: 1;
-        }
-        .code-copy-btn {
           display: flex;
           align-items: center;
+          gap: 2px;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity var(--motion-fast);
+        }
+        .code-block:hover .code-tools,
+        .code-block:focus-within .code-tools,
+        .code-tools-held {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .code-tool {
+          display: inline-flex;
+          align-items: center;
           justify-content: center;
-          width: 28px;
-          height: 28px;
+          gap: 4px;
+          height: 26px;
+          min-width: 26px;
+          padding: 0 6px;
+          border: none;
           border-radius: 6px;
-          border: 1px solid ${theme.codeCopy.border};
-          background: ${theme.codeCopy.bg};
-          color: ${theme.codeCopy.color};
+          background: transparent;
+          color: ${theme.TEXT.muted};
+          font: 500 12px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           cursor: pointer;
-          transition: background var(--motion-fast), color var(--motion-fast);
-          padding: 0;
+          transition: background-color var(--motion-fast), color var(--motion-fast);
+        }
+        .code-tool svg { width: 15px; height: 15px; flex: none; }
+        @media (hover: hover) {
+          .code-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
+        }
+        .code-lang { font: 11.5px 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; user-select: none; }
+        .code-lang svg { width: 12px; height: 12px; }
+        .code-lang-open { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
+        .code-show { margin-right: 6px; }
+        .code-show[aria-pressed="true"] {
+          background: ${tagPillGround(theme)};
+          color: ${theme.ACCENT.text};
         }
         @media (hover: hover) {
-          .code-copy-btn:hover {
-            background: ${theme.codeCopy.hoverBg};
-            color: ${theme.codeCopy.hoverColor};
-          }
+          .code-show[aria-pressed="true"]:hover { background: ${tagPillGround(theme, true)}; }
         }
-        /* A \`\`\`mermaid block (CodeBlock): the drawing on the code block's
-           ground, a wide one scrolling as a table does; its code joined below,
-           growing open on the small clock while the field has focus. */
+        /* A \`\`\`mermaid block: its code above, growing open on the small
+           clock; the drawing below on the code block's ground, a wide one
+           scrolling as a table does. */
         .diagram-view { overflow-x: auto; cursor: text; }
         .diagram-view svg { display: block; margin: 0 auto; max-width: none; }
         .diagram-code {
@@ -827,88 +848,11 @@ ${tagPillCss(theme)}
         .diagram-code[data-open] { grid-template-rows: 1fr; }
         .diagram-code-inner { position: relative; min-height: 0; overflow: hidden; }
         .diagram-code[data-open] .diagram-code-inner {
-          border-top: 1px solid ${theme.codeBlockBorder};
-          margin: 14px -16px -14px;
-          padding: 12px 16px 14px;
-        }
-        /* </> names what the block is drawn from; lit while its code is open,
-           as the header's is for the Markdown view. */
-        .diagram-code-btn {
-          position: absolute;
-          top: 6px;
-          right: 6px;
-          z-index: 2;
-          width: 28px;
-          height: 28px;
-          display: grid;
-          place-items: center;
-          padding: 0;
-          border: none;
-          border-radius: 6px;
-          background: transparent;
-          color: ${theme.TEXT.muted};
-          cursor: pointer;
-          opacity: 0;
-          transition: opacity var(--motion-fast), background-color var(--motion-fast);
-        }
-        .diagram-block:hover .diagram-code-btn,
-        .diagram-block:focus-within .diagram-code-btn,
-        .diagram-code-btn[aria-pressed="true"] { opacity: 1; }
-        @media (hover: hover) {
-          .diagram-code-btn:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
-          .diagram-code-btn[aria-pressed="true"]:hover { background: ${tagPillGround(theme, true)}; }
-        }
-        .diagram-code-btn[aria-pressed="true"] {
-          background: ${tagPillGround(theme)};
-          color: ${theme.ACCENT.text};
+          border-bottom: 1px solid ${theme.codeBlockBorder};
+          margin: -14px -16px 14px;
+          padding: 14px 16px 12px;
         }
         @media (prefers-reduced-motion: reduce) { .diagram-code { transition: none; } }
-        .code-lang-anchor {
-          position: absolute;
-          bottom: 8px;
-          right: 10px;
-          z-index: 2;
-        }
-        .code-lang {
-          display: flex;
-          align-items: center;
-          gap: 2px;
-          border: none;
-          background: none;
-          padding: 0;
-          font-size: 11px;
-          color: ${theme.codeLang.color};
-          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-          user-select: none;
-          cursor: pointer;
-          transition: color var(--motion-fast);
-        }
-        .code-lang:focus-visible,
-        .code-lang-open {
-          color: ${theme.codeLang.hoverColor};
-        }
-        @media (hover: hover) {
-          .code-lang:hover {
-            color: ${theme.codeLang.hoverColor};
-          }
-        }
-        /* The chevron is the label's only affordance: it takes its width at
-           rest so the label never shifts, and only its ink fades in, as the
-           sidebar's row controls do. */
-        .code-lang-chevron {
-          display: flex;
-          opacity: 0;
-          transition: opacity var(--motion-fast);
-        }
-        .code-lang:focus-visible .code-lang-chevron,
-        .code-lang-open .code-lang-chevron {
-          opacity: 1;
-        }
-        @media (hover: hover) {
-          .code-lang:hover .code-lang-chevron {
-            opacity: 1;
-          }
-        }
         /* Prism.js token colors */
         .token.comment, .token.prolog, .token.doctype, .token.cdata { color: ${theme.syntax.comment}; font-style: italic; }
         .token.punctuation { color: ${theme.syntax.punctuation}; }

@@ -71,10 +71,10 @@ const GRIP_GESTURES = [
 ];
 
 function firstLineRect(el, zoom) {
-  // A diagram's first row is its drawing, at the block's top; its code (and
-  // that code's first line) sits below it, folded away at rest.
+  // A closed diagram's first row is its drawing: its code, folded away above
+  // it, has a first line with no height. Open, the code's first line leads.
   const drawing = el.querySelector(".diagram-view");
-  if (drawing) {
+  if (drawing && !el.querySelector(".diagram-code[data-open]")) {
     const r = drawing.getBoundingClientRect();
     return { top: r.top, height: Math.min(DIAGRAM_ROW * zoom, r.height || DIAGRAM_ROW * zoom) };
   }

@@ -112,15 +112,17 @@ export default memo(function CodeBlock({
   onDelete,
 }) {
   const [copied, setCopied] = useState(false);
-  // A ```mermaid block is a diagram: drawn at rest, its code joined below
-  // while it is being edited (open while the field has focus).
+  // A ```mermaid block is a diagram: drawn, its code joined above while open.
   const diagram = canonicalLang(block.lang) === "mermaid";
-  const [codeOpen, setCodeOpen] = useState(false);
+  // Open until `</> Code` (or Shift+Enter) closes it; a new, empty one starts open.
+  const [codeOpen, setCodeOpen] = useState(() => !(block.text || "").trim());
   // What the field holds while it is ahead of the note's ref: the drawing follows it.
   const [draft, setDraft] = useState(null);
   const blockRef = useRef(null);
   const codeTip = useTooltip();
   const codeBtnRef = useRef(null);
+  const copyTip = useTooltip();
+  const copyBtnRef = useRef(null);
   const [ctxMenu, setCtxMenu] = useState(null);
   // The language menu's anchor: the label's rect while it is open, null otherwise.
   const [langMenu, setLangMenu] = useState(null);
@@ -279,9 +281,11 @@ export default memo(function CodeBlock({
         return;
       }
 
-      // Shift+Enter finishes a diagram's code, as it finishes a formula.
+      // Shift+Enter finishes a diagram's code, as it finishes a formula: it
+      // closes and the caret moves on.
       if (diagram && e.key === "Enter" && e.shiftKey) {
         e.preventDefault();
+        setCodeOpen(false);
         if (onBlockNav) onBlockNav(blockIndex, "next");
         return;
       }
@@ -382,6 +386,8 @@ export default memo(function CodeBlock({
       // Choosing the language the block already has writes nothing: a file
       // that says ```js keeps saying `js` when JavaScript is picked again.
       if (sameLang(newLang, lang)) return;
+      // A code block that becomes a diagram opens, its code where it was.
+      if (canonicalLang(newLang) === "mermaid") setCodeOpen(true);
       onUpdateLang(noteId, blockIndex, newLang);
     },
     [noteId, blockIndex, onUpdateLang, lang],
@@ -404,57 +410,120 @@ export default memo(function CodeBlock({
   const canonical = canonicalLang(lang);
   const displayLabel = LANG_DISPLAY[canonical] || canonical;
 
-  const codeAndLabel = (
-    <>
-      <div className="code-body">
-        <textarea
-          ref={textareaRef}
-          className="code-textarea"
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
-          onFocus={() => diagram && setCodeOpen(true)}
-          onBlur={(e) => {
-            if (diagram && !blockRef.current?.contains(e.relatedTarget)) setCodeOpen(false);
-          }}
-          onScroll={syncScroll}
-          // A new diagram's example: a hint, never written to the file.
-          placeholder={diagram ? "flowchart LR\n  A[Start] --> B[Next step]" : undefined}
-          spellCheck={false}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-        />
-        <pre ref={overlayRef} className="code-overlay" aria-hidden="true">
-          <code ref={overlayCodeRef} />
-        </pre>
-      </div>
+  const codeField = (
+    <div className="code-body">
+      <textarea
+        ref={textareaRef}
+        className="code-textarea"
+        onChange={handleInput}
+        onKeyDown={handleKeyDown}
+        // Arrowing or tabbing into a diagram's code opens it, as a press does.
+        onFocus={() => diagram && setCodeOpen(true)}
+        onScroll={syncScroll}
+        // A new diagram's example: a hint, never written to the file.
+        placeholder={diagram ? "flowchart LR\n  A[Start] --> B[Next step]" : undefined}
+        spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+      />
+      <pre ref={overlayRef} className="code-overlay" aria-hidden="true">
+        <code ref={overlayCodeRef} />
+      </pre>
+    </div>
+  );
 
-      {/* Language label — bottom right, click to change. The chevron is the
-          only thing that says the label is a control, and it shows on hover or
-          while the menu is open: the block is quiet at rest, as the gutter grip
-          and the row controls are. */}
-      <div className="code-lang-anchor">
+  // One toolbar on every code block, top right, on hover or while the block
+  // has focus (the way a tap or the keyboard reaches it): the language, then
+  // copy, always last. A diagram adds `</> Code` first, set apart, lit while
+  // its code is open as the header's is for the Markdown view.
+  const tools = (
+    <div className={`code-tools${langMenu ? " code-tools-held" : ""}`}>
+      {diagram && (
         <button
+          ref={codeBtnRef}
           type="button"
-          ref={langLabelRef}
-          className={`code-lang${langMenu ? " code-lang-open" : ""}`}
-          aria-haspopup="menu"
-          aria-expanded={!!langMenu}
-          aria-label="Code language"
+          className="code-tool code-show"
+          aria-label={codeOpen ? "Hide code" : "Show code"}
+          aria-pressed={codeOpen}
+          {...codeTip.handlers}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            codeTip.handlers.onMouseDown();
+          }}
           onClick={(e) => {
             e.stopPropagation();
-            if (langMenu) closeLangMenu();
-            else openLangMenu();
+            if (codeOpen) closeCode();
+            else openCode();
           }}
-          onMouseDown={(e) => e.preventDefault()}
         >
-          {displayLabel || "Plain"}
-          <span className="code-lang-chevron" aria-hidden="true">
-            <ChevronDownIcon size={12} />
-          </span>
+          <SourceViewIcon />
+          <span>Code</span>
         </button>
-      </div>
-    </>
+      )}
+      {diagram && codeTip.shown && (
+        <Tooltip label={codeOpen ? "Hide code" : "Show code"} anchor={codeBtnRef.current} />
+      )}
+      <button
+        type="button"
+        ref={langLabelRef}
+        className={`code-tool code-lang${langMenu ? " code-lang-open" : ""}`}
+        aria-haspopup="menu"
+        aria-expanded={!!langMenu}
+        aria-label="Code language"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (langMenu) closeLangMenu();
+          else openLangMenu();
+        }}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        {displayLabel || "Plain"}
+        <ChevronDownIcon size={12} />
+      </button>
+      <button
+        type="button"
+        ref={copyBtnRef}
+        className="code-tool code-copy-btn"
+        aria-label="Copy code"
+        {...copyTip.handlers}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          copyTip.handlers.onMouseDown();
+        }}
+        onClick={handleCopy}
+      >
+        {copied ? (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M3 8.5L6.5 12L13 4"
+              stroke="#4ade80"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect
+              x="5.5"
+              y="5.5"
+              width="7"
+              height="8"
+              rx="1.5"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+            <path
+              d="M10.5 5.5V3.5C10.5 2.67 9.83 2 9 2H4C3.17 2 2.5 2.67 2.5 3.5V10C2.5 10.83 3.17 11.5 4 11.5H5.5"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+          </svg>
+        )}
+      </button>
+      {copyTip.shown && <Tooltip label="Copy" anchor={copyBtnRef.current} />}
+    </div>
   );
 
   return (
@@ -465,8 +534,14 @@ export default memo(function CodeBlock({
       onInput={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
     >
+      {tools}
       {diagram ? (
         <>
+          {/* The code, above the drawing: a code block that becomes a diagram
+              keeps its code where it was. Open until `</> Code` closes it. */}
+          <div className="diagram-code" data-open={codeOpen || undefined}>
+            <div className="diagram-code-inner">{codeField}</div>
+          </div>
           {/* The drawing; a press on it opens its code. */}
           <div
             className="diagram-view"
@@ -480,77 +555,9 @@ export default memo(function CodeBlock({
               emptyText={codeOpen ? "Your diagram appears here" : "Empty diagram"}
             />
           </div>
-          {/* </>: the code, as the header's lights for the Markdown view. */}
-          <button
-            ref={codeBtnRef}
-            type="button"
-            className="diagram-code-btn"
-            aria-label={codeOpen ? "Hide code" : "Edit code"}
-            aria-pressed={codeOpen}
-            {...codeTip.handlers}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              codeTip.handlers.onMouseDown();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (codeOpen) closeCode();
-              else openCode();
-            }}
-          >
-            <SourceViewIcon />
-          </button>
-          {codeTip.shown && (
-            <Tooltip label={codeOpen ? "Hide code" : "Edit code"} anchor={codeBtnRef.current} />
-          )}
-          {/* The code, joined below; it grows open while the field has focus. */}
-          <div className="diagram-code" data-open={codeOpen || undefined}>
-            <div className="diagram-code-inner">{codeAndLabel}</div>
-          </div>
         </>
       ) : (
-        <>
-          {codeAndLabel}
-          {/* Copy, top right: shown on the pointer, or while the block has focus,
-          which is how a tap (or the keyboard) reaches it (GlobalStyles). */}
-          <div className="code-copy-wrapper">
-            <button
-              className="code-copy-btn"
-              onClick={handleCopy}
-              onMouseDown={(e) => e.preventDefault()}
-              title="Copy"
-            >
-              {copied ? (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M3 8.5L6.5 12L13 4"
-                    stroke="#4ade80"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect
-                    x="5.5"
-                    y="5.5"
-                    width="7"
-                    height="8"
-                    rx="1.5"
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                  />
-                  <path
-                    d="M10.5 5.5V3.5C10.5 2.67 9.83 2 9 2H4C3.17 2 2.5 2.67 2.5 3.5V10C2.5 10.83 3.17 11.5 4 11.5H5.5"
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                  />
-                </svg>
-              )}
-            </button>
-          </div>
-        </>
+        codeField
       )}
 
       {/* Context menu: Copy code, Change language (CodeLangMenu's list, under the label), Delete block */}

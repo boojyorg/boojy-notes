@@ -1,6 +1,6 @@
 /**
  * A code block's language is chosen from the app's own menu, opened by the
- * label at the block's bottom-right corner or by the block's ··· (2026-09-19,
+ * language button in the block's hover toolbar or by the block's ··· (2026-09-19,
  * replacing a bespoke dropdown and a second copy of the list in a hover
  * submenu). It is the Sort menu's grammar: radio rows, a check on the chosen
  * one, arrows and Enter and Escape, and a letter jumps to a language.
@@ -32,6 +32,7 @@ const menu = (page: AppHandle["page"]) => page.getByRole("menu", { name: "Code l
 
 test("the label opens the menu, Plain first then alphabetical, with the block's own language checked", async () => {
   await expect(label(h.page)).toHaveText(/Plain/);
+  await h.page.locator(".code-block").first().hover();
   await label(h.page).click();
   await expect(menu(h.page)).toBeVisible();
   // Focus lands a frame after the menu shows; a key before that misses it.
@@ -56,6 +57,7 @@ test("the label opens the menu, Plain first then alphabetical, with the block's 
 
 test("a letter jumps to a language and Enter writes its fence word to disk", async () => {
   const blocksBefore = await h.page.locator("[data-block-type]").count();
+  await h.page.locator(".code-block").first().hover();
   await label(h.page).click();
   await expect(menu(h.page)).toBeVisible();
   // Focus lands a frame after the menu shows; a key before that misses it.
@@ -76,6 +78,7 @@ test("a letter jumps to a language and Enter writes its fence word to disk", asy
 });
 
 test("Escape closes it and changes nothing", async () => {
+  await h.page.locator(".code-block").first().hover();
   await label(h.page).click();
   await expect(menu(h.page)).toBeVisible();
   // Focus lands a frame after the menu shows; a key before that misses it.
@@ -108,6 +111,7 @@ test("the block's ··· menu opens the same menu, and carries no list of its ow
 // menu and goes no further, so the caret stays where it was.
 test("a press outside closes it", async () => {
   const para = await h.page.locator("[data-block-type='p']").first().boundingBox();
+  await h.page.locator(".code-block").first().hover();
   await label(h.page).click();
   await expect(menu(h.page)).toBeVisible();
   // Focus lands a frame after the menu shows; a key before that misses it.
@@ -158,6 +162,7 @@ test("an imported ```js block reads JavaScript, and re-picking it leaves the fil
   try {
     await g.openNote("Imported");
     await expect(label(g.page)).toHaveText(/JavaScript/);
+    await g.page.locator(".code-block").first().hover();
     await label(g.page).click();
     const checked = menu(g.page).locator('[role="menuitemradio"][aria-checked="true"]');
     await expect(checked).toHaveText("JavaScript");

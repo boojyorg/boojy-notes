@@ -1,8 +1,9 @@
 /**
- * A ```` ```mermaid ```` code block is a diagram: drawn at rest on the code
- * block's ground, its code joined below while the field has focus. `</>`
- * shows the code and is lit while it is open; Shift+Enter finishes. The file
- * holds the fence as written: a diagram is only a code block drawn.
+ * A ```` ```mermaid ```` code block is a diagram: drawn on the code block's
+ * ground, its code joined above it while open. `</> Code` in the shared
+ * toolbar opens and closes it (lit while open); a new one starts open; it
+ * stays open until closed, and Shift+Enter closes it. The file holds the
+ * fence as written: a diagram is only a code block drawn.
  */
 import { expect, test } from "@playwright/test";
 import { type AppHandle, END_OF_LINE, SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
@@ -53,17 +54,21 @@ test("``` mermaid and a space opens an empty diagram's code; typing draws it; Sh
   expect(h.pageErrors).toEqual([]);
 });
 
-test("</> opens the code lit, a second press closes it; a press on the drawing opens it too", async () => {
+test("</> Code opens the code lit and it stays open when the caret leaves; a second press closes it", async () => {
   h = await launchApp({ [NOTE]: `\`\`\`mermaid\n${FLOW}\n\`\`\`\n` });
   await h.openNote("Diagram");
   await expect(drawing(h.page)).toBeVisible();
-  const button = h.page.getByRole("button", { name: "Edit code" });
+  const button = h.page.getByRole("button", { name: "Show code" });
   await block(h.page).hover();
   await button.click();
   await expect(codeOpen(h.page)).toHaveCount(1);
   await expect(code(h.page)).toBeFocused();
   const lit = h.page.getByRole("button", { name: "Hide code" });
   await expect(lit).toHaveAttribute("aria-pressed", "true");
+  // Open until closed: the caret leaving does not fold it.
+  await h.page.keyboard.press("Escape");
+  await expect(codeOpen(h.page)).toHaveCount(1);
+  await block(h.page).hover();
   await lit.click();
   await expect(codeOpen(h.page)).toHaveCount(0);
   await drawing(h.page).click();
@@ -114,5 +119,29 @@ test("the grip sits at the diagram's top, not by its folded code", async () => {
   expect(g && b).toBeTruthy();
   // Within the block's top band, never down by its bottom edge.
   expect((g?.y ?? 0) - (b?.y ?? 0)).toBeLessThan(40);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("a code block switched to Mermaid keeps its code where it was and draws underneath", async () => {
+  h = await launchApp({ [NOTE]: "Intro.\n\n```\nflowchart LR\n  A --> B\n```\n" });
+  await h.openNote("Diagram");
+  const field = h.page.locator("textarea.code-textarea");
+  const before = await field.boundingBox();
+  await h.page.locator(".code-block").hover();
+  await h.page.getByRole("button", { name: "Code language" }).click();
+  await h.page.getByRole("menuitemradio", { name: "Mermaid" }).click();
+  await expect(drawing(h.page)).toBeVisible();
+  await expect(codeOpen(h.page)).toHaveCount(1);
+  const after = await field.boundingBox();
+  expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(2);
+  const below = await drawing(h.page).boundingBox();
+  expect(below?.y ?? 0).toBeGreaterThan(after?.y ?? 0);
+  // The toolbar: </> Code first, then the language, copy last.
+  const labels = await h.page
+    .locator(".diagram-block .code-tools button")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  expect(labels).toEqual(["Hide code", "Code language", "Copy code"]);
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe("Intro.\n\n```mermaid\nflowchart LR\n  A --> B\n```\n");
   expect(h.pageErrors).toEqual([]);
 });
