@@ -1,6 +1,6 @@
 /**
  * A ```` ```mermaid ```` code block is a diagram: drawn on the code block's
- * ground, its code joined above it while open. `</> Code` in the shared
+ * ground, its code joined above it while open. `</>` in the shared
  * toolbar opens and closes it (lit while open); a new one starts open; it
  * stays open until closed, and Shift+Enter closes it. The file holds the
  * fence as written: a diagram is only a code block drawn.
@@ -54,7 +54,7 @@ test("``` mermaid and a space opens an empty diagram's code; typing draws it; Sh
   expect(h.pageErrors).toEqual([]);
 });
 
-test("</> Code opens the code lit and it stays open when the caret leaves; a second press closes it", async () => {
+test("</> opens the code lit and it stays open when the caret leaves; a second press closes it", async () => {
   h = await launchApp({ [NOTE]: `\`\`\`mermaid\n${FLOW}\n\`\`\`\n` });
   await h.openNote("Diagram");
   await expect(drawing(h.page)).toBeVisible();
@@ -136,11 +136,11 @@ test("a code block switched to Mermaid keeps its code where it was and draws und
   expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(2);
   const below = await drawing(h.page).boundingBox();
   expect(below?.y ?? 0).toBeGreaterThan(after?.y ?? 0);
-  // The toolbar: </> Code first, then the language, copy last.
+  // The toolbar: the language, then </>, copy last.
   const labels = await h.page
     .locator(".diagram-block .code-tools button")
     .evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
-  expect(labels).toEqual(["Hide code", "Code language", "Copy code"]);
+  expect(labels).toEqual(["Code language", "Hide code", "Copy code"]);
   await sleep(SETTLE_MS);
   expect(h.vault.read(NOTE)).toBe("Intro.\n\n```mermaid\nflowchart LR\n  A --> B\n```\n");
   expect(h.pageErrors).toEqual([]);

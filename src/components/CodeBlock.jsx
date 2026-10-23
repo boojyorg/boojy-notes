@@ -444,11 +444,29 @@ export default memo(function CodeBlock({
   );
 
   // One toolbar on every code block, top right, on hover or while the block
-  // has focus (the way a tap or the keyboard reaches it): the language, then
-  // copy, always last. A diagram adds `</> Code` first, set apart, lit while
-  // its code is open as the header's is for the Markdown view.
+  // has focus (the way a tap or the keyboard reaches it): what it is (the
+  // language), then what it does (icons), copy always last. A diagram adds
+  // `</>` between them, lit while its code is open as the header's is for
+  // the Markdown view.
   const tools = (
     <div className={`code-tools${langMenu ? " code-tools-held" : ""}`}>
+      <button
+        type="button"
+        ref={langLabelRef}
+        className={`code-tool code-lang${langMenu ? " code-lang-open" : ""}`}
+        aria-haspopup="menu"
+        aria-expanded={!!langMenu}
+        aria-label="Code language"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (langMenu) closeLangMenu();
+          else openLangMenu();
+        }}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        {displayLabel || "Plain"}
+        <ChevronDownIcon size={12} />
+      </button>
       {diagram && (
         <button
           ref={codeBtnRef}
@@ -468,29 +486,11 @@ export default memo(function CodeBlock({
           }}
         >
           <SourceViewIcon />
-          <span>Code</span>
         </button>
       )}
       {diagram && codeTip.shown && (
         <Tooltip label={codeOpen ? "Hide code" : "Show code"} anchor={codeBtnRef.current} />
       )}
-      <button
-        type="button"
-        ref={langLabelRef}
-        className={`code-tool code-lang${langMenu ? " code-lang-open" : ""}`}
-        aria-haspopup="menu"
-        aria-expanded={!!langMenu}
-        aria-label="Code language"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (langMenu) closeLangMenu();
-          else openLangMenu();
-        }}
-        onMouseDown={(e) => e.preventDefault()}
-      >
-        {displayLabel || "Plain"}
-        <ChevronDownIcon size={12} />
-      </button>
       <button
         type="button"
         ref={copyBtnRef}

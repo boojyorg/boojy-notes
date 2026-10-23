@@ -783,9 +783,9 @@ ${tagPillCss(theme)}
         .source-layer .md-strong { font-weight: 600; }
         /* One toolbar on every code block (CodeBlock), top right: shown on
            the pointer or while the block has focus, held while its language
-           menu is open. Language, then copy, always last; a diagram's
-           \`</> Code\` comes first, set apart, lit while its code is open, as
-           the header's \`</>\` is for the Markdown view. */
+           menu is open. The language, then icons, copy always last; a diagram's
+           \`</>\` sits between them, lit while its code is open, as the
+           header's is for the Markdown view. */
         .code-tools {
           position: absolute;
           top: 6px;
@@ -824,14 +824,13 @@ ${tagPillCss(theme)}
         @media (hover: hover) {
           .code-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
         }
-        /* The toolbar's words, Code and the language, in one quiet face. */
-        .code-lang, .code-show {
+        /* The language, in the code's own quiet face. */
+        .code-lang {
           font: 11.5px 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
           user-select: none;
         }
         .code-lang svg { width: 12px; height: 12px; }
         .code-lang-open { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
-        .code-show { margin-right: 6px; }
         .code-copied { color: ${theme.ACCENT.text}; }
         .code-show[aria-pressed="true"] {
           background: ${tagPillGround(theme)};

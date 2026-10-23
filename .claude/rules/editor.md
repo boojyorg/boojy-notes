@@ -257,7 +257,7 @@ never holds a byte sequence the syntax cannot.**
 
 Every `.code-line` takes at least `1lh` (or the layers drift); re-picking the same language
 writes nothing. **One hover toolbar per code block**: language, copy last. `code-language.spec.ts`.
-**A `mermaid` fence is drawn** (`DiagramView`), its code above, open until `</> Code` closes
+**A `mermaid` fence is drawn** (`DiagramView`), its code above, open until its `</>` closes
 it; a new one starts open. `diagram.spec.ts`.
 
 ## Images
