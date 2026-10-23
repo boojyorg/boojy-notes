@@ -197,6 +197,9 @@ const LOSSLESS_CASES = [
     "code (body contains a 4-backtick fence)",
     [{ type: "code", lang: "", text: "````\ninner code\n````" }],
   ],
+  ["math (one line)", [{ type: "math", text: "E = mc^2" }]],
+  ["math (several lines)", [{ type: "math", text: "a &= b \\\\\nc &= d" }]],
+  ["math (empty)", [{ type: "math", text: "" }]],
   ["blockquote (single line)", [{ type: "blockquote", text: "a quote" }]],
   ["blockquote (multi line)", [{ type: "blockquote", text: "line one\nline two" }]],
   [
@@ -1344,5 +1347,60 @@ describe("whitespace before a picture or embed, as written (2026-10-05)", () => 
     ]) {
       expect(save(md)).toBe(md);
     }
+  });
+});
+
+describe("display maths ($$)", () => {
+  const save = (md) => blocksToMarkdown(markdownToBlocks(md));
+  const only = (md) => {
+    const blocks = markdownToBlocks(md);
+    expect(blocks).toHaveLength(1);
+    return blocks[0];
+  };
+
+  it("reads the app's spelling with no source kept", () => {
+    const block = only("$$\nx^2\n$$");
+    expect(block.type).toBe("math");
+    expect(block.text).toBe("x^2");
+    expect(block.mathSource).toBeUndefined();
+  });
+
+  it("reads one-line, inline-opened and inline-closed forms as the formula alone", () => {
+    expect(only("$$E = mc^2$$").text).toBe("E = mc^2");
+    expect(only("$$ a\nb $$").text).toBe(" a\nb ");
+    expect(only("$$$$").text).toBe("");
+    expect(only("$$\n$$").text).toBe("");
+  });
+
+  it("keeps a blank line inside the formula", () => {
+    expect(only("$$\n\nx\n\n$$").text).toBe("\nx\n");
+  });
+
+  it("leaves a line as text when nothing closes it or $$ sits mid-line", () => {
+    for (const md of ["$$\nnever closed", "$$5 or $$6 later", "costs $$ here"]) {
+      expect(markdownToBlocks(md).some((b) => b.type === "math")).toBe(false);
+      expect(save(md)).toBe(md);
+    }
+  });
+
+  it("writes an edited one-line formula on one line, and anything else as the app's spelling", () => {
+    const [one] = markdownToBlocks("  $$x$$  ");
+    one.text = "y";
+    expect(blocksToMarkdown([one])).toBe("  $$y$$");
+    const [inlineOpened] = markdownToBlocks("$$ a\nb $$");
+    inlineOpened.text = "c";
+    expect(blocksToMarkdown([inlineOpened])).toBe("$$\nc\n$$");
+  });
+
+  it("is a block of its own under a paragraph, and the tight spelling is kept", () => {
+    const md = "Formula:\n$$\nx\n$$\nAfter.";
+    expect(markdownToBlocks(md).map((b) => b.type)).toEqual(["p", "math", "p"]);
+    expect(save(md)).toBe(md);
+  });
+
+  it("escapes a soft-break line in a paragraph that would open a formula", () => {
+    const blocks = [{ id: "a", type: "p", text: "one\n$$\nx\n$$" }];
+    const md = blocksToMarkdown(blocks);
+    expect(markdownToBlocks(md).map((b) => b.type)).toEqual(["p"]);
   });
 });

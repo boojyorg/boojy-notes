@@ -34,6 +34,7 @@ export const tagKey = (tag: string) => tag.normalize("NFC").toLowerCase();
 export function tagSourceText(block: Block): string[] {
   switch (block.type) {
     case "code":
+    case "math":
     case "frontmatter":
     case "image":
     case "file":

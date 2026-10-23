@@ -14,6 +14,7 @@ export type BlockType =
   | "numbered"
   | "checkbox"
   | "code"
+  | "math"
   | "blockquote"
   | "callout"
   | "image"
@@ -66,6 +67,12 @@ interface CodeBlock extends BlockBase {
   lang?: string;
   /** Authored boundaries when they differ from the app's generated fence. */
   fenceSource?: { open: string; close: string | null; empty?: boolean };
+}
+
+interface MathBlock extends BlockBase {
+  type: "math";
+  /** The file's own lines and the formula they held, while they are not the app's `$$` spelling. */
+  mathSource?: { lines: string[]; read: string };
 }
 
 interface CalloutBlock extends BlockBase {
@@ -127,6 +134,7 @@ export type Block =
   | TextBlock
   | CheckboxBlock
   | CodeBlock
+  | MathBlock
   | CalloutBlock
   | ImageBlock
   | FileBlock

@@ -49,6 +49,7 @@ import {
   revealCaret,
   revealInNote,
 } from "../utils/domHelpers";
+import { openMathSource } from "../utils/mathOpen";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
@@ -733,7 +734,10 @@ const EditorArea = memo(
         if (e.key === "Enter") {
           e.preventDefault();
           setSelectedBlockId(null);
-          insertBlockAfter(activeNote, range.to, "p", "");
+          // A formula selected alone opens its source; anything else opens a line under it.
+          if (range.from === range.to && blocks[range.from].type === "math") {
+            openMathSource(blocks[range.from].id);
+          } else insertBlockAfter(activeNote, range.to, "p", "");
           return true;
         }
         if (e.key.length === 1 && !mod) setSelectedBlockId(null);

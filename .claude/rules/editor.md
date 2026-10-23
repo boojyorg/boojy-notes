@@ -91,7 +91,7 @@ app's, made through state.**
 ## Links: the caret stays outside
 
 - **A caret at a link's edge rests on a U+200B inside a `caret-anchor` span**, placed only by
-  `placeCaret`: Chromium put an edge caret inside the link, and typing rewrote the alias. Walkers drop U+200B only inside a `caret-anchor`; elsewhere it is
+  `placeCaret`: Chromium's edge caret typed into the alias. Walkers drop U+200B only inside a `caret-anchor`; elsewhere it is
   the file's byte. Never strip it by value.
 - **The browser's caret is fixed at the keystroke** (`beforeinput`: `caretOutOfLinkEnd`/`Start`),
   never on `selectionchange`, which would trap ArrowLeft.
@@ -116,7 +116,7 @@ app's, made through state.**
 
 - `**b**`, `*i*`, `` `c` ``, `~~s~~`, `==h==`, `***bi***` become elements when the closing
   marker is typed; the literal run *is* the Markdown, so it is a repaint and Cmd+Z is typing
-  undo. The one byte change: `_i_`/`__b__` typed are committed in star form.
+  undo.
 - **The trigger is the native `insertText` of one marker character**, outside composition,
   never the text alone (Backspace re-converted); strict matcher (`closingFormatAt`). **The paint
   is verified** (`paintTypedFormat`): paired differently, the old DOM and caret come back.
@@ -133,7 +133,7 @@ app's, made through state.**
 - Shows on mouse-up or after `TOOLBAR_REST_MS` at rest; hides at once on collapse.
 - **It shows only where it can act**: any text block; in a block with its own fields, only
   inside one `data-inline-field` field, with Link dropped.
-- Measured once when shown (re-measuring slid it under the pointer). Active = the glyph in the
+- Measured once when shown. Active = the glyph in the
   accent; it outranks the text-only render skip in `EditorArea`'s comparator.
 - **`FORMATS` in `FloatingToolbar.jsx` must match `useKeyboardHandlers`.** Inline code is shown
   as `⌘E` (the backtick is a dead key on European layouts). `formatting-toolbar.spec.ts`.
@@ -190,10 +190,16 @@ app's, made through state.**
   rest hand it to the paragraph below.
   `slash-focus.spec.ts`.
 
+## Maths
+
+**A `$$` formula never moves; its source opens underneath** (`MathBlock`), in a panel in the
+block's root: it scrolls with the note, and ⌘Z is the note's. Enter is a new line;
+Shift+Enter, Escape, Done or a click away finishes (no commit); ↑/↓ at its edges walk
+out. Selected, Enter opens it. `math-block.spec.ts`.
+
 ## Headings
 
-**Every editor spacing value lives in `DEFAULT_RHYTHM`**. New headings are ATX; imported
-spelling lives in `headingSource`. An empty heading shows `Heading N` from CSS.
+**Every editor spacing value lives in `DEFAULT_RHYTHM`**. New headings are ATX. An empty heading shows `Heading N` from CSS.
 `heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file, edited as typing
@@ -205,7 +211,7 @@ is app-wide in `LayoutContext`, never saved.
   `markdownToBlocks` and committed via `commitTextChange` (one undo burst).
 - **It repaints only when the blocks aren't the ones it committed** (by identity).
 - The caret crosses by block (`utils/sourceView.ts`). The entry place is read once in
-  `useState` (StrictMode runs effects twice). `source-view.spec.ts`.
+  `useState`. `source-view.spec.ts`.
 
 ## Lists
 
@@ -214,7 +220,7 @@ is app-wide in `LayoutContext`, never saved.
   `list-caret.spec.ts`.
 - **Tab moves an item with its nested items; over several, all of them** (`indentRun`): in is all or nothing, out each that can; one undo, selection kept. `multi-item-indent.spec.ts`.
 - `listLayout` owns numbers and prefixes; authored spellings stay; a text edit never renumbers
-  an imported list (`reconcileListEdit`: structural commits only).
+  an imported list (`reconcileListEdit`).
 
 ## The paragraph model
 
@@ -247,8 +253,7 @@ never holds a byte sequence the syntax cannot.**
 
 ## Code blocks
 
-Every `.code-line` takes at least `1lh` (or the layers drift). `fenceSource` keeps authored
-fences, an absent closer too; code is never normalised. **The info string is kept
+Every `.code-line` takes at least `1lh` (or the layers drift). **The info string is kept
 as typed** (`js` stays `js`) and resolved only for display (`canonicalLang`); re-picking the
 same language writes nothing.
 `code-language.spec.ts`.

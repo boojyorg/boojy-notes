@@ -155,6 +155,9 @@ function blockHtml(block: CopiedBlock): string {
       return `<p>${inlineHtml(block.text)}</p>`;
     case "blockquote":
       return `<blockquote><p>${inlineHtml(block.text)}</p></blockquote>`;
+    case "math":
+      // The source, as the file spells it: a formula is text to every other app.
+      return `<p>${escapeHtml(`$$${block.text || ""}$$`)}</p>`;
     case "code": {
       const lang = (block as { lang?: string }).lang;
       const cls = lang ? ` class="language-${escapeHtml(lang)}"` : "";

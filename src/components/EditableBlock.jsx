@@ -1,4 +1,4 @@
-import { memo, useRef, useLayoutEffect } from "react";
+import { lazy, memo, Suspense, useRef, useLayoutEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { headingStyle, isHeadingType, useRhythm } from "../tokens/rhythm";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
@@ -17,6 +17,22 @@ import ImageBlock from "./blocks/ImageBlock";
 import FileBlock from "./blocks/FileBlock";
 import EmbedBlock from "./blocks/EmbedBlock";
 import SpacerBlock from "./blocks/SpacerBlock";
+
+// KaTeX and its fonts stay out of the start: they load once the app is idle,
+// so the first formula, typed or opened, finds them already there.
+const loadMathBlock = () => import("./MathBlock");
+const MathBlock = lazy(loadMathBlock);
+if (typeof window !== "undefined") {
+  // The module brings KaTeX's stylesheet; its fonts load only when asked for.
+  const warm = () =>
+    loadMathBlock()
+      .then(() =>
+        Promise.all(["KaTeX_Main", "KaTeX_Math"].map((f) => document.fonts?.load(`16px ${f}`))),
+      )
+      .catch(() => {});
+  if ("requestIdleCallback" in window) window.requestIdleCallback(warm, { timeout: 5000 });
+  else setTimeout(warm, 2000);
+}
 
 /** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
 const CHECKBOX_LINE_HEIGHT = 1.6;
@@ -311,6 +327,28 @@ const EditableBlock = memo(
           onBlockNav={onBlockNav}
           onDelete={(idx) => onDeleteBlock(noteId, idx)}
         />,
+        null,
+        wholeRef,
+      );
+    }
+
+    if (block.type === "math") {
+      return wholeRoot(
+        <Suspense fallback={<div style={{ minHeight: 48 }} />}>
+          <MathBlock
+            block={block}
+            noteId={noteId}
+            blockIndex={blockIndex}
+            syncGen={syncGen}
+            noteDataRef={noteDataRef}
+            isSelected={isBlockSelected}
+            accentColor={accentColor}
+            onUpdateText={onUpdateText}
+            onBlockNav={onBlockNav}
+            onSelect={() => onBlockSelect(block.id)}
+            onDelete={(idx) => onDeleteBlock(noteId, idx)}
+          />
+        </Suspense>,
         null,
         wholeRef,
       );
@@ -640,7 +678,9 @@ const EditableBlock = memo(
       prev.isOnlyBlockSelected === next.isOnlyBlockSelected &&
       (prev.block.text === "") === (next.block.text === "") &&
       (prev.block.text === next.block.text ||
-        (prev.block.type !== "code" && prev.block.type !== "callout")) &&
+        (prev.block.type !== "code" &&
+          prev.block.type !== "callout" &&
+          prev.block.type !== "math")) &&
       prev.block.rows === next.block.rows &&
       prev.block.target === next.block.target &&
       prev.block.heading === next.block.heading &&

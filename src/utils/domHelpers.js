@@ -718,6 +718,7 @@ export function isEditableBlock(b) {
     b.type !== "file" &&
     b.type !== "embed" &&
     b.type !== "code" &&
+    b.type !== "math" &&
     b.type !== "table" &&
     b.type !== "callout" &&
     b.type !== "frontmatter"
@@ -730,12 +731,13 @@ export function isEditableBlock(b) {
  * and a Backspace or forward Delete arriving from a neighbour selects it
  * rather than stepping over it. Dividers and images (a click selects them,
  * the arrows stop on them) and tables (Escape from a cell selects; the arrows
- * walk through the cells instead of stopping, see `ownedField`). Code,
+ * walk through the cells instead of stopping, see `ownedField`), and a
+ * formula (Enter opens its source, `MathBlock`). Code,
  * callout, file and embed blocks own their focus or carry their own controls
  * and are skipped.
  */
 export function isSelectableBlock(b) {
-  return b.type === "spacer" || b.type === "image" || b.type === "table";
+  return b.type === "spacer" || b.type === "image" || b.type === "table" || b.type === "math";
 }
 
 /**

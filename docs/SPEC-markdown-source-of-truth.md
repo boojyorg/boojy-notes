@@ -104,7 +104,7 @@ that plainly rather than pretending otherwise.
 Allowed *because markdown can express them*:
 
 - All current block types: `p`, `h1`–`h6`, `bullet`, `numbered`, `checkbox`, `blockquote`,
-  `code`, `callout`, `table`, `image`, `file`, `embed`, `spacer`, `frontmatter`.
+  `code`, `math`, `callout`, `table`, `image`, `file`, `embed`, `spacer`, `frontmatter`.
 - **Block reorder** — dragging a block up/down = reordering lines in the `.md` file. Never
   across the frontmatter: it is the file's head, nothing is reordered above it and it is never
   moved into the body, because its `---` on line 1 is what makes it frontmatter to every reader.
@@ -135,6 +135,12 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   string is kept exactly as typed or imported** — ` ```js ` stays `js`, never normalised to
   `javascript` — and is resolved only for reading it back to the user (`canonicalLang`); a word
   the app does not know is kept and read as written.
+- **Display maths (`$$`) is the syntax Obsidian and GitHub read**, a block opened by a line
+  starting `$$` (up to three spaces in) and closed by the first line ending in `$$`, or on the
+  same line (`$$x$$`); with no closer the line is text, as it is with `$$` mid-line. A formula
+  is kept as its file's own lines (`mathSource`) until it changes; then one written on one line
+  stays on one line, and any other is written as the app spells it: `$$`, the formula, `$$`.
+  A soft-break line in a paragraph that would open one is escaped (`\$$`).
 - `[[Note#Heading]]`, `[[Note#^block]]` and `[[Folder/Note]]` name the note before the `#`, in
   the folder the path gives; the heading or block is not yet followed, and a click never creates
   a note for anything but a plain name.
@@ -192,6 +198,10 @@ test rather than letting it pass as if lossless:
   divider, the file's tight spelling is kept: the bytes stay the file's own and the meaning
   outside stays a heading. The same open decision. An empty item the app makes under a
   paragraph is written with a blank line, and means a list everywhere.
+
+- **A formula line ending in `$$`** — it closes the block to every reader, so typed inside a
+  formula it ends the formula early on the next read. No escape exists; KaTeX cannot draw a
+  `$$` inside display maths either.
 
 These are the *only* sanctioned losses. Anything else that fails the round-trip is a bug.
 

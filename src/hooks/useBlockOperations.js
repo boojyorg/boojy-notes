@@ -9,6 +9,7 @@ import { getAPI } from "../services/apiProvider";
 import { addsFiles } from "../utils/platform";
 import { editBlocks, patchBlock } from "../utils/editBlocks";
 import { settleTypedSpaces } from "../utils/inlineFormatting";
+import { openMathSource } from "../utils/mathOpen";
 
 /** The text blocks the Format menu can turn into one another. */
 const KIND_TYPES = new Set([
@@ -103,6 +104,26 @@ export function useBlockOperations({
     );
     focusBlockId.current = codeId;
     focusCursorPos.current = 0;
+  };
+
+  /**
+   * Turn the block at `blockIndex` into an empty formula with a fresh
+   * paragraph under it, its source open: what `$$ ` and Enter on a bare `$$`
+   * do, and the slash menu's Maths. The caller clears the typed text.
+   */
+  const openMathBlock = (noteId, blockIndex) => {
+    const paraBlock = { id: genBlockId(), type: "p", text: "" };
+    let mathId = null;
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        const math = { ...blocks[blockIndex], text: "", type: "math" };
+        delete math.checked;
+        delete math.indent;
+        mathId = math.id;
+        blocks.splice(blockIndex, 1, math, paraBlock);
+      }),
+    );
+    openMathSource(mathId);
   };
 
   /**
@@ -439,6 +460,7 @@ export function useBlockOperations({
     updateBlockText,
     insertBlockAfter,
     openCodeBlock,
+    openMathBlock,
     openDivider,
     deleteBlock,
     deleteBlockRange,

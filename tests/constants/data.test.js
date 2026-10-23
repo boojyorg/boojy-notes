@@ -36,6 +36,7 @@ describe("SLASH_COMMANDS", () => {
       "spacer",
       "image",
       "code",
+      "math",
       "callout",
       "blockquote",
       "table",
@@ -47,9 +48,13 @@ describe("SLASH_COMMANDS", () => {
     }
   });
 
-  it("keeps Text, deeper headings, callout, file and embed off the opening screen", () => {
+  it("keeps Text, deeper headings, maths, callout, file and embed off the opening screen", () => {
     const advanced = SLASH_COMMANDS.filter((c) => c.advanced).map((c) => c.id);
-    expect(advanced).toEqual(["text", "h4", "h5", "h6", "callout", "file", "embed"]);
+    expect(advanced).toEqual(["text", "h4", "h5", "h6", "math", "callout", "file", "embed"]);
+  });
+
+  it("finds Maths when it is typed", () => {
+    expect(filterSlashCommands("math").map((c) => c.id)).toEqual(["math"]);
   });
 
   it("finds Text when it is typed, to turn a heading or list item back into a paragraph", () => {
