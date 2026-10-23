@@ -4,7 +4,14 @@ import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import CodeLangMenu from "./CodeLangMenu";
 import { canonicalLang, sameLang } from "../utils/codeLanguage";
 import Menu from "./Menu";
-import { ChevronDownIcon, CopyIcon, SlashCommandIcon, SourceViewIcon, TrashIcon } from "./Icons";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  CopyIcon,
+  SlashCommandIcon,
+  SourceViewIcon,
+  TrashIcon,
+} from "./Icons";
 import DiagramView from "./DiagramView";
 import { Tooltip, useTooltip } from "./Tooltip";
 import "prismjs/components/prism-javascript";
@@ -374,10 +381,13 @@ export default memo(function CodeBlock({
   const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
 
   /** Open the language menu under the label, wherever it was asked for. */
+  // Under the language button, its right edge flush with the toolbar's end
+  // (the copy button): the toolbar is one group pinned to the block's edge.
   const openLangMenu = useCallback(() => {
     const rect = langLabelRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setLangMenu({ top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right });
+    const end = langLabelRef.current.parentElement?.getBoundingClientRect().right ?? rect.right;
+    setLangMenu({ top: rect.top, bottom: rect.bottom, left: rect.left, right: end });
   }, []);
   const closeLangMenu = useCallback(() => setLangMenu(null), []);
 
@@ -484,7 +494,7 @@ export default memo(function CodeBlock({
       <button
         type="button"
         ref={copyBtnRef}
-        className="code-tool code-copy-btn"
+        className={`code-tool code-copy-btn${copied ? " code-copied" : ""}`}
         aria-label="Copy code"
         {...copyTip.handlers}
         onMouseDown={(e) => {
@@ -493,34 +503,7 @@ export default memo(function CodeBlock({
         }}
         onClick={handleCopy}
       >
-        {copied ? (
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M3 8.5L6.5 12L13 4"
-              stroke="#4ade80"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        ) : (
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect
-              x="5.5"
-              y="5.5"
-              width="7"
-              height="8"
-              rx="1.5"
-              stroke="currentColor"
-              strokeWidth="1.3"
-            />
-            <path
-              d="M10.5 5.5V3.5C10.5 2.67 9.83 2 9 2H4C3.17 2 2.5 2.67 2.5 3.5V10C2.5 10.83 3.17 11.5 4 11.5H5.5"
-              stroke="currentColor"
-              strokeWidth="1.3"
-            />
-          </svg>
-        )}
+        {copied ? <CheckIcon /> : <CopyIcon />}
       </button>
       {copyTip.shown && <Tooltip label="Copy" anchor={copyBtnRef.current} />}
     </div>

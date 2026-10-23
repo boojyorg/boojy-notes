@@ -824,10 +824,15 @@ ${tagPillCss(theme)}
         @media (hover: hover) {
           .code-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
         }
-        .code-lang { font: 11.5px 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; user-select: none; }
+        /* The toolbar's words, Code and the language, in one quiet face. */
+        .code-lang, .code-show {
+          font: 11.5px 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+          user-select: none;
+        }
         .code-lang svg { width: 12px; height: 12px; }
         .code-lang-open { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
         .code-show { margin-right: 6px; }
+        .code-copied { color: ${theme.ACCENT.text}; }
         .code-show[aria-pressed="true"] {
           background: ${tagPillGround(theme)};
           color: ${theme.ACCENT.text};
