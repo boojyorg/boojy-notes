@@ -5,6 +5,12 @@ import { katexNow, loadKatex } from "../utils/inlineMath";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { fromTouch } from "../utils/touch";
+import { cssZoom } from "../utils/domHelpers";
+
+/** The menu's tallest, and the air kept between it and the window's edge. */
+const MAX_HEIGHT = 260;
+const EDGE = 8;
+const GAP = 4;
 
 const MONO = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace";
 
@@ -13,28 +19,35 @@ const MONO = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace";
  * a plain word muted. Inside the source's panel (so a press on a row is a
  * press in the panel, which keeps it open) and never focused: the field keeps
  * the caret and the phone's keyboard. Below the panel, or above it when the
- * window's foot is too close; its height is capped and it scrolls.
+ * window's foot is too close; never past the window: cut to the room it has, it scrolls.
  */
 export default function LatexMenu({ completion }: { completion: LatexCompletion }) {
   const { theme } = useTheme();
   const { offer, active, setActive, choose } = completion;
   const menuRef = useRef<HTMLDivElement>(null);
   const [katex, setKatex] = useState(katexNow);
-  const [above, setAbove] = useState(false);
+  // Below the panel, or above it; its height is what fits on that side.
+  const [place, setPlace] = useState({ above: false, maxHeight: MAX_HEIGHT });
 
   useEffect(() => {
     if (!katex) loadKatex().then(setKatex);
   }, [katex]);
 
+  // Below while it fits there, else above while it fits there, else on the
+  // roomier side cut to the room it has (it scrolls). Rects are in screen
+  // pixels; the height becomes a style, so it is divided by the UI scale.
   // biome-ignore lint/correctness/useExhaustiveDependencies: placed again when the rows change
   useLayoutEffect(() => {
     const menu = menuRef.current;
-    if (!menu) return;
-    const host = menu.parentElement?.getBoundingClientRect();
-    const room = window.visualViewport?.height ?? window.innerHeight;
-    setAbove(
-      !!host && host.bottom + menu.offsetHeight + 8 > room && host.top > menu.offsetHeight + 8,
-    );
+    const host = menu?.parentElement?.getBoundingClientRect();
+    if (!menu || !host) return;
+    const zoom = cssZoom(menu) || 1;
+    const viewport = window.visualViewport?.height ?? window.innerHeight;
+    const wanted = Math.min(MAX_HEIGHT, menu.scrollHeight) * zoom;
+    const below = viewport - host.bottom - GAP - EDGE;
+    const above = host.top - GAP - EDGE;
+    const up = wanted > below && (wanted <= above || above > below);
+    setPlace({ above: up, maxHeight: Math.max(0, Math.min(wanted, up ? above : below) / zoom) });
   }, [offer?.rows]);
 
   // The highlighted row stays in view as the arrows move.
@@ -53,10 +66,10 @@ export default function LatexMenu({ completion }: { completion: LatexCompletion 
       style={{
         position: "absolute",
         left: 0,
-        ...(above ? { bottom: "calc(100% + 4px)" } : { top: "calc(100% + 4px)" }),
+        ...(place.above ? { bottom: `calc(100% + ${GAP}px)` } : { top: `calc(100% + ${GAP}px)` }),
         zIndex: Z.WIKILINK_MENU,
         minWidth: 240,
-        maxHeight: 260,
+        maxHeight: place.maxHeight,
         overflowY: "auto",
         padding: MENU_PAD,
         background: theme.BG.elevated,

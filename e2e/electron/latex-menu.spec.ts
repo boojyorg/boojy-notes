@@ -97,3 +97,25 @@ test("Escape closes only the menu; \\\\ and a caret mid-word offer nothing", asy
   await expect(menu(h.page)).toHaveCount(0);
   expect(h.pageErrors).toEqual([]);
 });
+
+test("in a short window the menu stays on screen: it shrinks to the room it has and scrolls", async () => {
+  h = await launchApp({ [NOTE]: "$$\nx\n$$\n" });
+  await h.openNote("Latex");
+  await h.app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0].setSize(900, 400);
+  });
+  await expect.poll(() => h.page.evaluate(() => window.innerHeight)).toBeLessThan(420);
+  await h.page.getByRole("button", { name: "Edit formula" }).click();
+  await h.page.keyboard.type("\\");
+  await expect(menu(h.page)).toBeVisible();
+  const box = await menu(h.page).evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom, height: window.innerHeight };
+  });
+  expect(box.top).toBeGreaterThanOrEqual(0);
+  expect(box.bottom).toBeLessThanOrEqual(box.height);
+  // Every row is still reachable: the last one scrolls into view on the arrows.
+  for (let i = 0; i < 7; i++) await h.page.keyboard.press("ArrowDown");
+  await expect(menu(h.page).getByRole("option").last()).toBeInViewport();
+  expect(h.pageErrors).toEqual([]);
+});
