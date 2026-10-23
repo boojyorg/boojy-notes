@@ -176,7 +176,7 @@ export default memo(function MathBlock({
             }}
           >
             <SlashCommandIcon name="sigma" />
-            Add a formula
+            Add a LaTeX formula
           </div>
         ) : shown ? (
           <div
@@ -356,7 +356,7 @@ function SourcePanel({
       <textarea
         ref={fieldRef}
         aria-label="Formula source"
-        placeholder={"LaTeX, like x^2 or \\frac{a}{b}"}
+        placeholder={"x^2 or \\frac{a}{b}"}
         rows={1}
         spellCheck={false}
         autoComplete="off"
