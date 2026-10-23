@@ -96,3 +96,41 @@ test("ArrowDown from the source's last line walks to the paragraph under it", as
   expect(h.vault.read(NOTE)).toBe("$$\na\n$$\n\nXAfter.\n");
   expect(h.pageErrors).toEqual([]);
 });
+
+test("a formula at the foot of the pane scrolls its source panel into view", async () => {
+  const lines = Array.from({ length: 60 }, (_, i) => `Line ${i + 1}.`).join("\n\n");
+  h = await launchApp({ [NOTE]: `${lines}\n\n$$\nx\n$$\n` });
+  await h.openNote("Maths");
+  await formula(h.page).scrollIntoViewIfNeeded();
+  // Pushed to the pane's foot, so the panel would open below the window.
+  await h.page.evaluate(() => {
+    const scroller = document.querySelector(".editor-scroll") as HTMLElement;
+    const f = document.querySelector("[data-block-type='math']") as HTMLElement;
+    scroller.scrollTop +=
+      f.getBoundingClientRect().bottom - scroller.getBoundingClientRect().bottom + 4;
+  });
+  await formula(h.page).getByRole("button", { name: "Edit formula" }).click();
+  await expect(source(h.page)).toBeFocused();
+  const done = h.page.getByRole("button", { name: "Done", exact: true });
+  await expect(done).toBeInViewport({ ratio: 1 });
+  const inPane = await h.page.evaluate(() => {
+    const scroller = document.querySelector(".editor-scroll") as HTMLElement;
+    const panel = document.querySelector(".math-source") as HTMLElement;
+    return panel.getBoundingClientRect().bottom <= scroller.getBoundingClientRect().bottom;
+  });
+  expect(inPane).toBe(true);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("ArrowDown from one formula's source onto the next selects it, and Enter opens it", async () => {
+  h = await launchApp({ [NOTE]: "$$\na\n$$\n\n$$\nb\n$$\n" });
+  await h.openNote("Maths");
+  await formula(h.page).first().getByRole("button", { name: "Edit formula" }).click();
+  await expect(source(h.page)).toHaveValue("a");
+  await h.page.keyboard.press("ArrowDown");
+  await expect(formula(h.page).nth(1)).toHaveAttribute("data-selected", "true");
+  await h.page.keyboard.press("Enter");
+  await expect(source(h.page)).toBeFocused();
+  await expect(source(h.page)).toHaveValue("b");
+  expect(h.pageErrors).toEqual([]);
+});

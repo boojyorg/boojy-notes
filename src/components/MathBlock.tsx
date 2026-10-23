@@ -11,6 +11,7 @@ import { bandFill, BAND_REACH } from "../utils/selectionBand";
 import { MENU_RADIUS } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { isMac } from "../utils/platform";
+import { cssZoom, revealInNote } from "../utils/domHelpers";
 
 type Rendered = { html: string } | { error: string };
 
@@ -113,6 +114,10 @@ export default memo(function MathBlock({
 
   const leave = useCallback(
     (direction: "prev" | "next") => {
+      // The field is about to go, focus with it: the editor takes the keys
+      // first, so a neighbour that is only selected (another formula, a
+      // divider) still hears the next Enter; a text neighbour then places its caret.
+      rootRef.current?.closest<HTMLElement>("[data-editor]")?.focus({ preventScroll: true });
       setOpen(false);
       setDraft(null);
       onBlockNav(blockIndex, direction);
@@ -273,6 +278,17 @@ function SourcePanel({
   const tip = useTooltip();
   useExitGhost(panelRef);
 
+  /**
+   * The whole panel on screen, the note scrolled by the least it must. Its
+   * resting height, not the rect: it arrives growing in (`motion-pop`).
+   */
+  const reveal = useCallback(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const { top } = panel.getBoundingClientRect();
+    revealInNote({ top, bottom: top + panel.offsetHeight * (cssZoom(panel) || 1) });
+  }, []);
+
   const fitHeight = useCallback(() => {
     const ta = fieldRef.current;
     if (!ta) return;
@@ -301,7 +317,8 @@ function SourcePanel({
     ta.focus({ preventScroll: true });
     ta.selectionStart = ta.selectionEnd = ta.value.length;
     fitHeight();
-  }, [fitHeight]);
+    reveal();
+  }, [fitHeight, reveal]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget;
@@ -364,6 +381,7 @@ function SourcePanel({
         autoCapitalize="off"
         onChange={(e) => {
           fitHeight();
+          reveal();
           onChange(e.target.value);
         }}
         onKeyDown={onKeyDown}
