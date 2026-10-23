@@ -92,6 +92,28 @@ export function titleFieldText(el) {
  * state. Text typed on
  * the anchor lands inside the span, which the walkers read as prose.
  */
+/**
+ * An inline formula (`$x^2$`): one sealed element holding its source on
+ * `data-math`, whatever KaTeX draws inside it. The caret arithmetic counts it
+ * as one character and never looks inside.
+ */
+export const INLINE_MATH_CLASS = "inline-math";
+/** Whether `node` is an inline formula's element. */
+export const isMathAtom = (node) =>
+  node?.nodeType === Node.ELEMENT_NODE && node.classList.contains(INLINE_MATH_CLASS);
+/**
+ * A TreeWalker filter that leaves out what an inline formula draws: Find and
+ * the search tint read the text, and a formula's text is its source, not KaTeX's glyphs.
+ */
+export const outsideMath = {
+  acceptNode: (node) =>
+    node.parentElement?.closest(`.${INLINE_MATH_CLASS}`)
+      ? NodeFilter.FILTER_REJECT
+      : NodeFilter.FILTER_ACCEPT,
+};
+/** Whether `node` sits inside an inline formula, where nothing is a character of the text. */
+const inMath = (node) => !!node.parentElement?.closest(`.${INLINE_MATH_CLASS}`);
+
 export const CARET_ANCHOR = "\u200B";
 export const CARET_ANCHOR_CLASS = "caret-anchor";
 const ANCHOR_RE = /\u200B/g;
@@ -151,8 +173,8 @@ export function caretLength(el) {
   let node;
   while ((node = walker.nextNode())) {
     if (node.nodeType === Node.TEXT_NODE) {
-      if (!isIcon(node)) n += visibleText(node).length;
-    } else if (isBr(node) && !isTrailingBr(node, el)) {
+      if (!isIcon(node) && !inMath(node)) n += visibleText(node).length;
+    } else if ((isBr(node) && !isTrailingBr(node, el)) || isMathAtom(node)) {
       n++;
     }
   }
@@ -312,6 +334,11 @@ export function caretOffsetAt(el, node, offset) {
         }
       }
     }
+    // A formula before the caret is one character, whatever it draws.
+    for (const atom of el.querySelectorAll(`.${INLINE_MATH_CLASS}`)) {
+      if (range.comparePoint(atom, atom.childNodes.length) === 0)
+        pos += 1 - atom.textContent.length;
+    }
     // A soft-break <br> before the caret is one character of the text.
     for (const br of el.querySelectorAll("br")) {
       if (!isTrailingBr(br, el) && range.comparePoint(br, 0) <= 0) pos++;
@@ -443,6 +470,7 @@ export function caretRangeAt(el, pos = 0) {
     } else if (pos === 0) {
       const link = leadingLink(el);
       if (link) anchorBeforeLink(range, link);
+      else if (isMathAtom(el.firstChild)) range.setStartBefore(el.firstChild);
       else range.setStart(el.firstChild, 0);
     } else {
       let remaining = pos;
@@ -451,6 +479,17 @@ export function caretRangeAt(el, pos = 0) {
         placed = false;
       while ((textNode = walker.nextNode())) {
         if (textNode.nodeType === Node.ELEMENT_NODE) {
+          // A formula is one character: the caret goes before or after it, never in.
+          if (isMathAtom(textNode)) {
+            if (remaining <= 1) {
+              if (remaining === 0) range.setStartBefore(textNode);
+              else range.setStartAfter(textNode);
+              placed = true;
+              break;
+            }
+            remaining--;
+            continue;
+          }
           // A soft-break <br> is one character; landing on it puts the caret
           // just after it, at the start of the next line.
           if (isBr(textNode) && !isTrailingBr(textNode, el)) {
@@ -463,8 +502,8 @@ export function caretRangeAt(el, pos = 0) {
           }
           continue;
         }
-        // Skip decorative icon text nodes (↗ inside links)
-        if (isIcon(textNode)) continue;
+        // Skip decorative icon text nodes (↗ inside links) and what a formula draws
+        if (isIcon(textNode) || inMath(textNode)) continue;
         const visibleLength = visibleText(textNode).length;
         if (remaining <= visibleLength) {
           const link = enclosingLink(textNode, el);

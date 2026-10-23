@@ -399,11 +399,15 @@ function newNote(L, titleRef) {
   L.createNote(null);
 }
 
-/** A native text field outside the editor: its Undo is its own. */
+/**
+ * A native text field outside the editor: its Undo is its own. One that edits
+ * the note from outside it (`data-note-field`: an inline formula's source) is
+ * the editor's, so Undo stays the note's.
+ */
 function isTextField(el) {
   if (!el) return false;
   const tag = el.tagName;
-  return (tag === "INPUT" || tag === "TEXTAREA") && !el.closest("[data-editor]");
+  return (tag === "INPUT" || tag === "TEXTAREA") && !el.closest("[data-editor], [data-note-field]");
 }
 
 /** The alignment keys (with Shift and Cmd) and the menu's ids, by the value they set. */
@@ -672,6 +676,7 @@ export function focusOwner() {
   // keys while it holds focus; a modal one owns them from the moment it exists.
   if (el.closest('[role="menu"], [role="dialog"]')) return "modal";
   const tag = el.tagName;
-  if ((tag === "INPUT" || tag === "TEXTAREA") && !el.closest("[data-editor]")) return "field";
+  if ((tag === "INPUT" || tag === "TEXTAREA") && !el.closest("[data-editor], [data-note-field]"))
+    return "field";
   return null;
 }

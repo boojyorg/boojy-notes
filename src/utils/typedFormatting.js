@@ -76,6 +76,18 @@ const FORMS = [
     noNext: "=",
   },
   { kind: "code", marker: "`", canonical: "`", tag: "CODE", chars: "`", noPrev: "`", noNext: "`" },
+  // Inline maths, the renderer's Pandoc-style rule: no space inside either
+  // dollar, and no digit after the closing one, so `$5 and $` stays money.
+  {
+    kind: "math",
+    marker: "$",
+    canonical: "$",
+    tag: "SPAN",
+    cls: "inline-math",
+    chars: "$",
+    noPrev: "$",
+    noNext: "$\\d",
+  },
   { kind: "italic", marker: "*", canonical: "*", tag: "EM", chars: "*", noPrev: "*", noNext: "*" },
   {
     kind: "italic",
@@ -87,7 +99,7 @@ const FORMS = [
     noNext: "\\w",
   },
 ].map((form) => {
-  const m = form.marker.replace(/[*]/g, "\\*");
+  const m = form.marker.replace(/[*$]/g, "\\$&");
   const c = form.chars.replace(/[*]/g, "\\*");
   // Content: one non-space, non-marker character, or a run of non-marker
   // characters that neither starts nor ends with whitespace.
@@ -100,7 +112,7 @@ const FORMS = [
 });
 
 /** The characters a typed insertion must be for the trigger to look at all. */
-const MARKER_CHARS = new Set(["*", "_", "~", "=", "`"]);
+const MARKER_CHARS = new Set(["*", "_", "~", "=", "`", "$"]);
 
 /**
  * The formatting run that the text before the caret has just closed, or null.
@@ -119,6 +131,7 @@ export function closingFormatAt(before, after = "") {
       marker: form.marker,
       canonical: form.canonical,
       tag: form.tag,
+      cls: form.cls,
       runLength: m[0].length,
       content: m[1],
     };
@@ -201,7 +214,12 @@ export function paintTypedFormat(el, hit, text, noteTitles) {
   for (const child of el.childNodes) {
     acc += nodeToMarkdown(child, acc);
     if (acc.length < target.length) continue;
-    if (acc === target && child.nodeType === Node.ELEMENT_NODE && child.nodeName === hit.tag) {
+    if (
+      acc === target &&
+      child.nodeType === Node.ELEMENT_NODE &&
+      child.nodeName === hit.tag &&
+      (!hit.cls || child.classList.contains(hit.cls))
+    ) {
       const anchor = makeCaretAnchor();
       child.after(anchor);
       const range = document.createRange();

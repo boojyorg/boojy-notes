@@ -31,8 +31,10 @@ import { gutterBlockAt } from "../utils/gutterSelect";
 import FloatingToolbar from "./FloatingToolbar";
 import LinkTooltip from "./LinkTooltip";
 import EditorContextMenu from "./EditorContextMenu";
+import InlineMathPanel from "./InlineMathPanel";
 import { menuAnchorFor, pointInRange, spellableWord, wordRangeAt } from "../utils/contextSelection";
 import {
+  INLINE_MATH_CLASS,
   getBlockFromNode,
   placeCaret,
   caretLength,
@@ -50,6 +52,7 @@ import {
   revealInNote,
 } from "../utils/domHelpers";
 import { openMathSource } from "../utils/mathOpen";
+import { drawInlineMath } from "../utils/inlineMath";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
@@ -252,6 +255,7 @@ const EditorArea = memo(
       indentBlockRange,
       moveBlock,
       setBlockKind,
+      reReadBlockFromDom,
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
@@ -327,6 +331,35 @@ const EditorArea = memo(
       return () => el.removeEventListener("beforeinput", handleEditorBeforeInput);
       // `sourceView`: the editor element is a new one on the way back from the Markdown view.
     }, [activeNote, hasNote, editorRef, handleEditorBeforeInput, sourceView]);
+
+    // Inline formulas are drawn by KaTeX wherever the editor puts one
+    // (utils/inlineMath). A press on one opens its source under it, never a
+    // caret inside it (InlineMathPanel).
+    const [mathTarget, setMathTarget] = useState(null);
+    const closeMath = useCallback(() => setMathTarget(null), []);
+    useEffect(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      const stop = drawInlineMath(el);
+      const onPress = (e) => {
+        const atom = e.button === 0 ? e.target.closest?.(`.${INLINE_MATH_CLASS}`) : null;
+        const root = atom?.closest("[data-block-id]");
+        if (!atom || !root || !el.contains(atom)) return;
+        const blockId = root.getAttribute("data-block-id");
+        const text = blockRefs.current[blockId];
+        if (!text?.contains(atom)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const index = [...text.querySelectorAll(`.${INLINE_MATH_CLASS}`)].indexOf(atom);
+        setMathTarget({ blockId, index });
+      };
+      el.addEventListener("mousedown", onPress, true);
+      return () => {
+        stop();
+        el.removeEventListener("mousedown", onPress, true);
+        setMathTarget(null);
+      };
+    }, [activeNote, hasNote, editorRef, sourceView, blockRefs]);
 
     // The spelling underline is the app's (useSpellingMarks), so Chromium's
     // own is off in the editor wherever the app can check. On Windows it is
@@ -1555,6 +1588,17 @@ const EditorArea = memo(
                   }}
                 />
               </>
+            )}
+
+            {mathTarget && (
+              <InlineMathPanel
+                key={`${mathTarget.blockId}:${mathTarget.index}`}
+                target={mathTarget}
+                blockRefs={blockRefs}
+                syncGen={syncGeneration.current}
+                reRead={reReadBlockFromDom}
+                onClose={closeMath}
+              />
             )}
 
             {/* Right-click menu */}

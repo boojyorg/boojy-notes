@@ -51,7 +51,7 @@ export function tagSourceText(block: Block): string[] {
 }
 
 const NOT_PROSE_RE = new RegExp(
-  String.raw`\`[^\`]*\`|https?:\/\/\S+|www\.\S+|\]\(${LINK_DEST}\)|\[\[[^\]]*\]\]`,
+  String.raw`\`[^\`]*\`|https?:\/\/\S+|www\.\S+|\]\(${LINK_DEST}\)|\[\[[^\]]*\]\]|(?<![\\$])\$(?=\S)[^$\n]*?\S\$`,
   "g",
 );
 

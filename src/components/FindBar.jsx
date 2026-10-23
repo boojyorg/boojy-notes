@@ -2,7 +2,7 @@ import { getAPI } from "../services/apiProvider";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
-import { isEditableBlock } from "../utils/domHelpers";
+import { isEditableBlock, outsideMath } from "../utils/domHelpers";
 import { domNodeToMarkdown } from "../utils/inlineFormatting";
 
 /** Put `replacement` where `range` is, on screen. */
@@ -76,7 +76,13 @@ export default function FindBar({
 
       const ranges = [];
       const lowerTerm = term.toLowerCase();
-      const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+      // A formula's drawing is not its text: replacing in it changed the
+      // screen and never the source (`outsideMath`).
+      const walker = document.createTreeWalker(
+        editorRef.current,
+        NodeFilter.SHOW_TEXT,
+        outsideMath,
+      );
 
       while (walker.nextNode()) {
         const textNode = walker.currentNode;

@@ -141,6 +141,10 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   is kept as its file's own lines (`mathSource`) until it changes; then one written on one line
   stays on one line, and any other is written as the app spells it: `$$`, the formula, `$$`.
   A soft-break line in a paragraph that would open one is escaped (`\$$`).
+- **Inline maths (`$…$`) follows the Pandoc-style rule**: no space just inside either dollar, no
+  digit after the closing one, neither dollar escaped, one line; a code span or a bare URL keeps
+  its dollars, so `costs $5 and $10` stays text. On screen a formula is one element whose
+  read-back is its source, so drawing it changes no byte.
 - `[[Note#Heading]]`, `[[Note#^block]]` and `[[Folder/Note]]` name the note before the `#`, in
   the folder the path gives; the heading or block is not yet followed, and a click never creates
   a note for anything but a plain name.

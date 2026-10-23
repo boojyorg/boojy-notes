@@ -566,6 +566,18 @@ ${tagPillCss(theme)}
         @media (hover: hover) { .math-block:hover { background: ${theme.BG.surface}; } }
         .math-block-open { background: ${theme.BG.surface}; }
         .math-render .katex-display { margin: 4px 0; }
+        /* An inline formula: one character to the caret, drawn by KaTeX. Its
+           box grows with what it draws, so the hover covers a tall fraction. */
+        [data-block-id] .inline-math {
+          display: inline-block;
+          padding: 0 2px;
+          border-radius: 4px;
+          cursor: text;
+          transition: background-color var(--motion-fast);
+        }
+        @media (hover: hover) { [data-block-id] .inline-math:hover { background: ${theme.BG.surface}; } }
+        [data-block-id] .inline-math[data-editing] { background: ${theme.BG.surface}; }
+        .inline-math-error { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.88em; color: ${theme.TEXT.muted}; }
         .math-source textarea::placeholder { color: ${theme.TEXT.muted}; }
         @media (hover: hover) { .math-done:hover { background: ${theme.BG.surface} !important; } }
         .math-done:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--boojy-focus-ring); }
