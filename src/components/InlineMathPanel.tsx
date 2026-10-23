@@ -6,6 +6,8 @@ import { useExitGhost } from "../hooks/useExitGhost";
 import { Tooltip, useTooltip } from "./Tooltip";
 import { INLINE_MATH_CLASS, caretOffsetAt, cssZoom, placeCaret } from "../utils/domHelpers";
 import { drawAtom } from "../utils/inlineMath";
+import { useLatexCompletion } from "../hooks/useLatexCompletion";
+import LatexMenu from "./LatexMenu";
 import { MENU_RADIUS } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { isMac } from "../utils/platform";
@@ -169,12 +171,16 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
     setAnchor(rectOf(a));
   };
 
+  const latex = useLatexCompletion(fieldRef, onInput);
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget;
     const k = e.key.toLowerCase();
     // Undo and redo are the note's (useAppKeyboard); every other key is the field's.
     if ((e.metaKey || e.ctrlKey) && (k === "z" || k === "y")) return;
     e.stopPropagation();
+    // The `\` menu first, while it is offering.
+    if (latex.onKeyDown(e)) return;
     const collapsed = ta.selectionStart === ta.selectionEnd;
     if (e.key === "Escape" || (e.key === "Enter" && e.shiftKey)) {
       e.preventDefault();
@@ -225,7 +231,11 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
-        onInput={onInput}
+        onInput={() => {
+          onInput();
+          latex.refresh();
+        }}
+        onSelect={latex.refresh}
         onKeyDown={onKeyDown}
         style={{
           flex: "0 1 auto",
@@ -271,6 +281,7 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
         Done
       </button>
       {tip.shown && <Tooltip label="Done" shortcut={SHIFT_ENTER} anchor={doneRef.current} />}
+      <LatexMenu completion={latex} />
     </div>,
     document.body,
   );

@@ -316,6 +316,16 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     }, 300);
   };
 
+  // Ends the typing group now, so the next text commit opens an undo entry of
+  // its own. Not a seventh way to change a note: it changes nothing, only
+  // where the next entry begins (a completion inserted as one step: `\fr` →
+  // `\frac{}{}` is undone back to `\fr`, never with the typing before it).
+  const closeTypingGroup = useCallback(() => {
+    if (historyTimer.current) clearTimeout(historyTimer.current);
+    historyTimer.current = null;
+    historyGroupNote.current = null;
+  }, []);
+
   // Restore a snapshot as the note's current state, for undo and redo.
   //
   // History is the editor's: a snapshot restores what the editor shows, the
@@ -397,6 +407,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     remapNoteFolders,
     replaceNoteData,
     commitTextChange,
+    closeTypingGroup,
     noteDataRef,
     hasPendingFlush,
     textOnlyEdit,

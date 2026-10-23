@@ -192,15 +192,15 @@ app's, made through state.**
 
 ## Maths
 
-**A `$$` formula never moves; its source opens underneath** (`MathBlock`), in a panel in the
-block's root (⌘Z stays the note's). Enter is a new line;
-Shift+Enter, Escape, Done or a click away finishes (no commit); ↑/↓ at its edges walk
-out. Selected, Enter opens it. `math-block.spec.ts`.
+**A `$$` formula never moves; its source opens underneath** (`MathBlock`; ⌘Z stays the
+note's). Enter is a new line; Shift+Enter, Escape, Done or a click away finishes; ↑/↓ at its edges walk out. `math-block.spec.ts`.
 
-**`$x$` in a sentence is one sealed element** (`inline-math`, source on `data-math`): one
-caret character, read back as its source. The closing `$` converts it by the Pandoc-style
-rule; a press opens its source under it (`InlineMathPanel`; ⌘Z stays the
-note's). `inline-math.spec.ts`.
+**`$x$` in a sentence is one sealed element** (`data-math`): one caret character. The
+closing `$` converts it; a press opens its source (`InlineMathPanel`); in a
+cell or callout its field commits it. `inline-math.spec.ts`.
+
+**`\` completes the `\word` the caret ends** (not after `\\`); a choice is one undo entry
+(`closeTypingGroup`). `latex-menu.spec.ts`.
 
 ## Headings
 

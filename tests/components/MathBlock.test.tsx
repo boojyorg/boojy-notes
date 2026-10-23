@@ -2,6 +2,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 
+const closeTypingGroup = vi.fn();
+vi.mock("../../src/context/NoteDataContext", () => ({
+  useNoteDataActions: () => ({ closeTypingGroup }),
+}));
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
@@ -80,5 +84,66 @@ describe("MathBlock", () => {
     fireEvent.change(field(), { target: { value: "" } });
     fireEvent.keyDown(field(), { key: "Backspace" });
     expect(p.onDelete).toHaveBeenCalledWith(2);
+  });
+});
+
+describe("the \\ menu in a formula's source", () => {
+  /** Type into the source as the browser would: the value, the caret, the input. */
+  const typeInto = (text: string) => {
+    const ta = field();
+    const value = ta.value.slice(0, ta.selectionStart) + text + ta.value.slice(ta.selectionEnd);
+    const caret = ta.selectionStart + text.length;
+    fireEvent.change(ta, { target: { value } });
+    ta.setSelectionRange(caret, caret);
+    fireEvent.select(ta);
+  };
+  const menu = () => screen.queryByRole("listbox", { name: "LaTeX commands" });
+
+  it("offers commands for \\fr and inserts \\frac{}{} as its own undo step, caret in the numerator", () => {
+    const p = mount("x = ");
+    fireEvent.click(screen.getByRole("button", { name: "Edit formula" }));
+    closeTypingGroup.mockClear();
+    typeInto("\\fr");
+    expect(screen.getAllByRole("option")[0].textContent).toContain("\\frac");
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(field().value).toBe("x = \\frac{}{}");
+    expect(field().selectionStart).toBe("x = \\frac{".length);
+    expect(p.onUpdateText).toHaveBeenLastCalledWith("n1", 2, "x = \\frac{}{}");
+    expect(closeTypingGroup).toHaveBeenCalledTimes(2);
+    expect(menu()).toBeNull();
+  });
+
+  it("finds a command by a plain word, and Tab chooses too", () => {
+    mount("");
+    fireEvent.click(screen.getByRole("button", { name: "Edit formula" }));
+    typeInto("\\less");
+    fireEvent.keyDown(field(), { key: "Tab" });
+    expect(field().value).toBe("\\le");
+    expect(menu()).toBeNull();
+  });
+
+  it("Escape closes the menu, not the source; Shift+Enter still finishes", () => {
+    const p = mount("");
+    fireEvent.click(screen.getByRole("button", { name: "Edit formula" }));
+    typeInto("\\al");
+    expect(menu()).not.toBeNull();
+    fireEvent.keyDown(field(), { key: "Escape" });
+    expect(menu()).toBeNull();
+    expect(field().value).toBe("\\al");
+    typeInto("p");
+    expect(menu()).toBeNull();
+    fireEvent.keyDown(field(), { key: "Enter", shiftKey: true });
+    expect(p.onSelect).toHaveBeenCalled();
+  });
+
+  it("offers nothing after \\\\ or with the caret mid-word", () => {
+    mount("");
+    fireEvent.click(screen.getByRole("button", { name: "Edit formula" }));
+    typeInto("a \\\\");
+    expect(menu()).toBeNull();
+    typeInto("\\frac");
+    field().setSelectionRange(4, 4);
+    fireEvent.select(field());
+    expect(menu()).toBeNull();
   });
 });
