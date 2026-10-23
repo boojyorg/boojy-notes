@@ -560,6 +560,15 @@ ${tagPillCss(theme)}
             text-decoration-color: ${theme.wikilinkBroken.hoverUnderline};
           }
         }
+        /* A $$ block (MathBlock): the content hover while the pointer is on
+           it or its source is open; a selection's band, drawn inline, wins. */
+        .math-block { transition: background-color var(--motion-fast); }
+        @media (hover: hover) { .math-block:hover { background: ${theme.BG.surface}; } }
+        .math-block-open { background: ${theme.BG.surface}; }
+        .math-render .katex-display { margin: 4px 0; }
+        .math-source textarea::placeholder { color: ${theme.TEXT.muted}; }
+        @media (hover: hover) { .math-done:hover { background: ${theme.BG.surface} !important; } }
+        .math-done:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--boojy-focus-ring); }
         .code-block {
           position: relative;
           background: ${theme.codeBlockBg};

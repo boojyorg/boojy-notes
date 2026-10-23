@@ -4,7 +4,7 @@
  * What a typed marker opens, and what its argument says.
  *
  * **Every marker waits for a space**: `# `, `- `, `> `, `[] `,
- * ` ``` `, `--- `, `||| `. One rule with no exceptions, and the reason it
+ * ` ``` `, `--- `, `||| `, `$$ `. One rule with no exceptions, and the reason it
  * matters rather than just reads well: three of these carry an argument, and a
  * marker that fires on its last character can never be given one, nor be
  * typed literally. **Enter does what the space does**, for the
@@ -34,6 +34,14 @@ export const BARE_DIVIDER_RE = /^-{3,}$/;
 export const TYPED_TABLE_RE = new RegExp(`^(\\|{3,})${SP}$`);
 /** `|||` on its own, for Enter. */
 export const BARE_TABLE_RE = /^(\|{3,})$/;
+
+/** `$$ `: a display formula, its source opened. */
+export const TYPED_MATH_RE = new RegExp(`^\\$\\$${SP}$`);
+
+/** Whether a bare `$$` is under the caret, for the Enter that opens a formula. */
+export function isBareMath(text: string): boolean {
+  return text === "$$";
+}
 
 /** The widest table a typed run of pipes may ask for; the column is too narrow past it. */
 export const MAX_TYPED_COLUMNS = 8;

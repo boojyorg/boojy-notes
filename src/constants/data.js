@@ -50,6 +50,7 @@ export const SLASH_COMMANDS = [
   { id: "table", label: "Table", hint: "|||", icon: "table", type: "table" },
   { id: "image", label: "Image", hint: "![]", icon: "image", type: "image" },
   // ── Tier 2: found by typing, never shown on the opening screen ──────────
+  { id: "math", label: "Maths", hint: "$$", icon: "sigma", type: "math", advanced: true },
   {
     id: "callout",
     label: "Callout",

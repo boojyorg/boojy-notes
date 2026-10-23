@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { getAPI } from "../../services/apiProvider";
 import { genBlockId } from "../../utils/storage";
 import { hasOwnField } from "../../utils/domHelpers";
+import { openMathSource } from "../../utils/mathOpen";
 import { insertedImageWidth } from "../../utils/imageSize";
 import { editBlocks } from "../../utils/editBlocks";
 import { saveFileAsBlock } from "../../utils/savedFile";
@@ -116,6 +117,24 @@ export function useSlashCommands({
 
     if (command.type === "code") {
       replaceWithSpecialBlock({ ...block, text: "", type: "code", lang: "" });
+      return;
+    }
+
+    if (command.type === "math") {
+      // Its source opens in its panel (`openMathSource`), so no caret is placed.
+      const math =
+        at === null
+          ? { ...block, text: "", type: "math" }
+          : { id: block.id, type: "math", text: "" };
+      delete math.checked;
+      delete math.indent;
+      const paraBlock = { id: genBlockId(), type: "p", text: "" };
+      updateBlocks((blks) =>
+        at === null
+          ? blks.splice(blockIndex, 1, math, paraBlock)
+          : blks.splice(at, 0, math, paraBlock),
+      );
+      openMathSource(math.id);
       return;
     }
 

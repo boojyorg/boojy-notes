@@ -261,7 +261,7 @@ const afterMarker = (block, text = block.text || "") =>
 // is written as a space, as a callout title's is.
 
 /** A line that could open a block: the cheap test before the parser is asked. */
-const MARKER_START = /^[ \t]*[-*+#>`~|!\d]/;
+const MARKER_START = /^[ \t]*[-*+#>`~|!$\d]/;
 /** The first ASCII punctuation character of a line, where the escape goes. */
 const FIRST_PUNCTUATION = /[!-/:-@[-`{-~]/;
 
@@ -430,6 +430,22 @@ export function blocksToMarkdown(blocks) {
         }
         break;
       }
+      case "math": {
+        const text = block.text || "";
+        const source = block.mathSource;
+        if (source && source.read === text) {
+          // Unchanged since it was read: the file's own lines, byte for byte.
+          lines.push(...source.lines);
+        } else if (source?.lines.length === 1 && !text.includes("\n")) {
+          // Written on one line (`$$x$$`), it stays on one line.
+          lines.push(`${source.lines[0].match(/^ */)[0]}$$${text}$$`);
+        } else {
+          lines.push("$$");
+          if (text) lines.push(text);
+          lines.push("$$");
+        }
+        break;
+      }
       case "blockquote": {
         const bqLines = (block.text || "").split("\n");
         const bqIndent = block.indentStr || "";
@@ -588,6 +604,44 @@ function frontmatterCloser(lines) {
   return -1;
 }
 
+/** A line's text without the whitespace after it. */
+const trimEnd = (line) => line.replace(/[ \t]+$/, "");
+
+/**
+ * The display-maths block opening at `lines[i]`, and the index after it, or
+ * null when no `$$` opens there or nothing closes it.
+ * @param {string[]} lines
+ * @param {number} i
+ */
+function readMathBlock(lines, i) {
+  const open = lines[i].match(/^ {0,3}\$\$(.*)$/);
+  if (!open) return null;
+  const rest = trimEnd(open[1]);
+  let end = i;
+  /** @type {string[]} */
+  let body;
+  if (rest.length >= 2 && rest.endsWith("$$")) {
+    // `$$x$$`: opened and closed on one line.
+    const inner = rest.slice(0, -2);
+    if (inner.includes("$$")) return null;
+    body = [inner];
+  } else {
+    if (rest.includes("$$")) return null;
+    end = i + 1;
+    while (end < lines.length && !trimEnd(lines[end]).endsWith("$$")) end++;
+    if (end >= lines.length) return null;
+    const last = trimEnd(lines[end]).slice(0, -2);
+    body = [...(rest.trim() ? [open[1]] : []), ...lines.slice(i + 1, end)];
+    if (last.trim()) body.push(last);
+  }
+  const text = body.join("\n");
+  const own = lines.slice(i, end + 1);
+  const canonical = text ? ["$$", ...text.split("\n"), "$$"] : ["$$", "$$"];
+  const block = { type: "math", text };
+  if (own.join("\n") !== canonical.join("\n")) block.mathSource = { lines: own, read: text };
+  return { block, next: end + 1 };
+}
+
 export function markdownToBlocks(md) {
   // Blocks are always LF-internal; the file's EOL style is handled at the
   // read/write boundary (detectEol/applyEol). Normalising up front also keeps
@@ -652,6 +706,18 @@ export function markdownToBlocks(md) {
           ? { fenceSource: { open: raw, close, ...(!codeLines.length ? { empty: true } : {}) } }
           : {}),
       });
+      continue;
+    }
+
+    // 2b. Display maths: a line opening with `$$` (up to three spaces in),
+    // closed by the first line that ends in `$$`, or on the same line
+    // (`$$x$$`). With no closer the line is text. Lines that are not the app's
+    // own spelling (`$$` alone above and below) are kept (`mathSource`) and
+    // written back as they were until the formula changes.
+    const math = readMathBlock(lines, i);
+    if (math) {
+      blocks.push({ id: `md-${++_parseBlockId}`, ...math.block });
+      i = math.next;
       continue;
     }
 

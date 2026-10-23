@@ -30,7 +30,12 @@ import {
   markdownBefore,
 } from "../../utils/crossBlockEdit";
 import { SLASH_COMMANDS, filterSlashCommands } from "../../constants/data";
-import { bareFenceLang, bareTableColumns, isBareDivider } from "../../utils/blockTriggers";
+import {
+  bareFenceLang,
+  bareTableColumns,
+  isBareDivider,
+  isBareMath,
+} from "../../utils/blockTriggers";
 import { measureBlockPlaces, settleBlocks } from "../../utils/blockSettle";
 import { stepIndex } from "../../utils/menuKeys";
 import { editBlocks } from "../../utils/editBlocks";
@@ -81,6 +86,7 @@ export function useKeyboardHandlers({
   updateBlockText,
   insertBlockAfter,
   openCodeBlock,
+  openMathBlock,
   openDivider,
   deleteBlock,
   applyFormat,
@@ -203,6 +209,11 @@ export function useKeyboardHandlers({
         if (fenceLang !== null) {
           el.innerHTML = "<br>";
           openCodeBlock(noteId, blockIndex, fenceLang);
+          return;
+        }
+        if (isBareMath(text)) {
+          el.innerHTML = "<br>";
+          openMathBlock(noteId, blockIndex);
           return;
         }
         if (isBareDivider(text)) {

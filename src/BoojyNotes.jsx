@@ -812,6 +812,7 @@ export default function BoojyNotes() {
     updateBlockText,
     insertBlockAfter,
     openCodeBlock: blockOps.openCodeBlock,
+    openMathBlock: blockOps.openMathBlock,
     openDivider: blockOps.openDivider,
     deleteBlock,
     saveAndInsertFiles: blockOps.saveAndInsertFiles,

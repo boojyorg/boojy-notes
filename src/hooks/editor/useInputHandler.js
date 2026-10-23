@@ -9,6 +9,7 @@ import { SLASH_COMMANDS } from "../../constants/data";
 import {
   TYPED_DIVIDER_RE,
   TYPED_FENCE_RE,
+  TYPED_MATH_RE,
   TYPED_TABLE_RE,
   typedFenceLang,
   typedTableColumns,
@@ -35,6 +36,7 @@ const MD_PATTERNS = [
   // could never be typed as text.
   { regex: TYPED_DIVIDER_RE, type: "spacer" },
   { regex: TYPED_FENCE_RE, type: "code" },
+  { regex: TYPED_MATH_RE, type: "math" },
 ];
 
 /**
@@ -100,6 +102,7 @@ export function useInputHandler({
   syncGeneration,
   updateBlockText,
   openCodeBlock,
+  openMathBlock,
   openDivider,
   getBlock,
   executeSlashCommand,
@@ -152,6 +155,11 @@ export function useInputHandler({
         }
 
         el.innerHTML = "<br>";
+        // A formula's source opens in its panel, the caret in it.
+        if (pat.type === "math") {
+          openMathBlock(noteId, blockIndex);
+          return;
+        }
         // A divider holds no text and takes no caret, so it ends in a fresh
         // paragraph; `openDivider` is that operation, shared with the Enter
         // that opens one.

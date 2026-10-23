@@ -28,6 +28,7 @@ export function useEditorHandlers({
   updateBlockText,
   insertBlockAfter,
   openCodeBlock,
+  openMathBlock,
   openDivider,
   deleteBlock,
   saveAndInsertFiles,
@@ -81,6 +82,7 @@ export function useEditorHandlers({
     setTagMenu,
     updateBlockText,
     openCodeBlock,
+    openMathBlock,
     openDivider,
     executeSlashCommand,
   });
@@ -94,6 +96,7 @@ export function useEditorHandlers({
     updateBlockText,
     insertBlockAfter,
     openCodeBlock,
+    openMathBlock,
     openDivider,
     deleteBlock,
     applyFormat,

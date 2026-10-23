@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_TYPED_COLUMNS,
+  TYPED_MATH_RE,
+  isBareMath,
   bareFenceLang,
   bareTableColumns,
   isBareDivider,
@@ -82,5 +84,16 @@ describe("bareTableColumns", () => {
     expect(bareTableColumns("|||||")).toBe(4);
     expect(bareTableColumns("||| ")).toBeNull();
     expect(bareTableColumns("||")).toBeNull();
+  });
+});
+
+describe("the $$ trigger", () => {
+  it("fires on the space after $$, a typed U+00A0 too, and Enter on a bare $$", () => {
+    expect(TYPED_MATH_RE.test("$$ ")).toBe(true);
+    expect(TYPED_MATH_RE.test("$$ ")).toBe(true);
+    expect(TYPED_MATH_RE.test("$$")).toBe(false);
+    expect(TYPED_MATH_RE.test("$$x ")).toBe(false);
+    expect(isBareMath("$$")).toBe(true);
+    expect(isBareMath("$$ ")).toBe(false);
   });
 });
