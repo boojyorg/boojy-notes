@@ -22,14 +22,17 @@ const PROSE_OR_ELEMENT_RE =
   /<a\b[^>]*>[\s\S]*?<\/a>|<code>[\s\S]*?<\/code>|<span class="wikilink[^"]*"[^>]*>[\s\S]*?<\/span>|<[^>]*>|[^<]+/g;
 
 /**
- * A code span or a bare URL, left whole for their own passes, or inline maths by the Pandoc-style
+ * A code span, a bare URL or a link's destination (`](…)`), left whole for
+ * their own passes, or inline maths by the Pandoc-style
  * rule: `$` with no space or `$` after it, a formula that does not end in a
  * space, and a closing `$` not followed by a digit or another `$`. Neither
  * dollar may be escaped. So `$x^2$` is maths and `costs $5 and $10` is not.
  * One line only; a soft break ends the chance.
  */
-const CODE_OR_MATH_RE =
-  /(`[^`]+`|https?:\/\/[^\s<]+)|(?<![\\$])\$(?=[^\s$])((?:[^$\n\\]|\\[^\n])+?)(?<=\S)\$(?![$\d])/g;
+const CODE_OR_MATH_RE = new RegExp(
+  String.raw`(\`[^\`]+\`|https?:\/\/[^\s<]+|\]\(${LINK_DEST}\))|(?<![\\$])\$(?=[^\s$])((?:[^$\n\\]|\\[^\n])+?)(?<=\S)\$(?![$\d])`,
+  "g",
+);
 
 /** The inline formula's element: its source on `data-math`, drawn by KaTeX later (`utils/inlineMath`). */
 function mathAtomHtml(escapedSource) {

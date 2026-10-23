@@ -120,3 +120,14 @@ it("a formula holding an unclosed wikilink keeps its text as written", () => {
   const el = paint("$[[a|$a");
   expect(domNodeToMarkdown(el)).toBe("$[[a|$a");
 });
+
+describe("inline maths: a link's destination keeps its dollars", () => {
+  it("draws no formula in `](…)`, and reads the paragraph back unchanged", () => {
+    for (const text of ["[doc](folder/$x$.md)", "see [doc](a/$x$/b.md) and $y$", "[$x$](a.md)"]) {
+      const el = paint(text);
+      expect(el.querySelector("a")?.getAttribute("href") ?? "").not.toContain("inline-math");
+      expect(domNodeToMarkdown(el), text).toBe(text);
+    }
+    expect(formulas("see [doc](a/$x$/b.md) and $y$")).toEqual(["y"]);
+  });
+});

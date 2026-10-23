@@ -12,6 +12,7 @@ import {
   SETTLE_MS,
   START_OF_LINE,
   launchApp,
+  menuClick,
   sleep,
   waitForFile,
 } from "./harness";
@@ -107,5 +108,46 @@ test("Escape closes the source unchanged, and Cmd+Z in it undoes the note's typi
   await expect(source(h.page)).toHaveCount(0);
   await sleep(SETTLE_MS);
   expect(h.vault.read(NOTE)).toBe("See $y$.\n");
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("a formula in a table cell commits through the cell", async () => {
+  h = await launchApp({ [NOTE]: "| a | b |\n| --- | --- |\n| $x$ | c |\n" });
+  await h.openNote("Inline");
+  await h.page.locator(".inline-math").click();
+  await expect(source(h.page)).toBeFocused();
+  await h.page.keyboard.type("^2");
+  await h.page.keyboard.press("Escape");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("x^2"));
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe("| a | b |\n| --- | --- |\n| $x^2$ | c |\n");
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("a formula in a callout's body commits through the body, the title untouched", async () => {
+  h = await launchApp({ [NOTE]: "> [!note] Title\n> body $x$ end\n" });
+  await h.openNote("Inline");
+  await h.page.locator(".inline-math").click();
+  await h.page.keyboard.type("+1");
+  await h.page.keyboard.press("Escape");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("x+1"));
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe("> [!note] Title\n> body $x+1$ end\n");
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("Find and Replace leave a formula's drawing alone; its source is the formula's", async () => {
+  h = await launchApp({ [NOTE]: "Solve $x$ for x.\n" });
+  await h.openNote("Inline");
+  await expect(atoms(h.page).locator(".katex")).toBeVisible();
+  await para(h.page, "for").click();
+  await menuClick(h, "replace");
+  await h.page.getByPlaceholder("Find in note...").fill("x");
+  await expect(h.page.getByText("1 of 1")).toBeVisible();
+  await h.page.getByPlaceholder("Replace with...").fill("y");
+  await h.page.getByRole("button", { name: "Replace", exact: true }).click();
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe("Solve $x$ for y.\n");
+  await expect(atoms(h.page).locator(".katex annotation")).toHaveText("x");
   expect(h.pageErrors).toEqual([]);
 });

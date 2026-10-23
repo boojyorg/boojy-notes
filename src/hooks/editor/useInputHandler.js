@@ -324,6 +324,13 @@ export function useInputHandler({
 
   // --- Editor wrapper input handler ---
   const handleEditorInput = useCallback((e) => {
+    // A field that is its own editing host (a table cell, a callout's title or
+    // body) commits its input itself; one it is sent while the caret is
+    // elsewhere (an inline formula's source, edited from its panel) must not
+    // set off the caret rescue below.
+    const target = e?.target;
+    if (target !== editorRef.current && target?.getAttribute?.("contenteditable") === "true")
+      return;
     const currentNote = activeNoteRef.current;
     const sel = window.getSelection();
     if (!sel.rangeCount) return;

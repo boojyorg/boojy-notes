@@ -31,6 +31,17 @@ interface Props {
 const atomsIn = (el: HTMLElement | null | undefined) =>
   el ? [...el.querySelectorAll<HTMLElement>(`.${INLINE_MATH_CLASS}`)] : [];
 
+/**
+ * The field that owns a formula's text when it is not the editor's own
+ * paragraph: a table cell, a callout's title or body. Such a field commits
+ * itself on `input` (the inline formats' route, `formatInlineField`); read
+ * back as the whole block it would write the cell's or title's text wrong.
+ */
+const ownField = (atom: HTMLElement): HTMLElement | null => {
+  const field = atom.parentElement?.closest<HTMLElement>('[contenteditable="true"]');
+  return field && !field.hasAttribute("data-editor") ? field : null;
+};
+
 const rectOf = (el: HTMLElement) => {
   const { top, bottom, left, right } = el.getBoundingClientRect();
   return { top, bottom, left, right };
@@ -122,16 +133,25 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
     return () => document.removeEventListener("pointerdown", onDown, true);
   }, [onClose]);
 
+  /** The formula's text, committed by whoever owns it: its field, or the block read back. */
+  const commit = (anchor: Node, field: HTMLElement | null) => {
+    if (field) field.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    else reRead({ rangeCount: 1, anchorNode: anchor });
+  };
+
   /** Close with the caret before or after the formula; an emptied one goes. */
   const finish = (side: "before" | "after") => {
-    const el = block();
     const a = atom();
     onClose();
-    if (!el || !a?.parentNode) return;
+    if (!a?.parentNode) return;
+    const field = ownField(a);
+    // The caret's own root: the field, or the block's text.
+    const el = field ?? block();
+    if (!el) return;
     const at = caretOffsetAt(el, a.parentNode, [...a.parentNode.childNodes].indexOf(a));
     if (!(a.getAttribute("data-math") ?? "").trim()) {
       a.remove();
-      reRead({ rangeCount: 1, anchorNode: el });
+      commit(el, field);
       placeCaret(el, at);
       return;
     }
@@ -145,7 +165,7 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
     fit();
     a.setAttribute("data-math", ta.value);
     drawAtom(a);
-    reRead({ rangeCount: 1, anchorNode: a });
+    commit(a, ownField(a));
     setAnchor(rectOf(a));
   };
 

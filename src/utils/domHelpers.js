@@ -101,6 +101,16 @@ export const INLINE_MATH_CLASS = "inline-math";
 /** Whether `node` is an inline formula's element. */
 export const isMathAtom = (node) =>
   node?.nodeType === Node.ELEMENT_NODE && node.classList.contains(INLINE_MATH_CLASS);
+/**
+ * A TreeWalker filter that leaves out what an inline formula draws: Find and
+ * the search tint read the text, and a formula's text is its source, not KaTeX's glyphs.
+ */
+export const outsideMath = {
+  acceptNode: (node) =>
+    node.parentElement?.closest(`.${INLINE_MATH_CLASS}`)
+      ? NodeFilter.FILTER_REJECT
+      : NodeFilter.FILTER_ACCEPT,
+};
 /** Whether `node` sits inside an inline formula, where nothing is a character of the text. */
 const inMath = (node) => !!node.parentElement?.closest(`.${INLINE_MATH_CLASS}`);
 

@@ -132,3 +132,22 @@ describe("InlineMathPanel", () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe("InlineMathPanel in a field of its own", () => {
+  it("commits through the field's input, never by reading the block back", () => {
+    block.innerHTML = "";
+    const cell = document.createElement("div");
+    cell.setAttribute("contenteditable", "true");
+    cell.setAttribute("data-inline-field", "cell");
+    cell.innerHTML = inlineMarkdownToHtml("$x$");
+    block.appendChild(cell);
+    const inputs = vi.fn();
+    cell.addEventListener("input", inputs);
+    const { field, reRead } = open();
+    field.value = "x^2";
+    fireEvent.input(field);
+    expect(inputs).toHaveBeenCalledTimes(1);
+    expect(reRead).not.toHaveBeenCalled();
+    expect(domNodeToMarkdown(cell)).toBe("$x^2$");
+  });
+});
