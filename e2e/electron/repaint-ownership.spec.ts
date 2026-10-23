@@ -107,7 +107,12 @@ test("typing straight after a Markdown link keeps every character", async () => 
           els.map((e) => [e.getAttribute("data-url"), e.firstChild?.textContent]),
         ),
     ).toEqual([["https://a.b", "x"]]);
-    expect((await noteText(h.page)).replace("↗", "")).toBe("Intro. Link test x after");
+    // A slow runner can repaint the link while its space still ends the line,
+    // which puts the space back as U+00A0 (`showSpaceBeforeCaret`), and
+    // Chromium keeps one after a link. The file above holds the plain space.
+    expect((await noteText(h.page)).replace("↗", "").replace(/ /g, " ")).toBe(
+      "Intro. Link test x after",
+    );
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

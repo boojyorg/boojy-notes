@@ -108,6 +108,20 @@ describe("useToast", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("two toasts shown in one millisecond are two toasts", () => {
+    // Fractions this close vanish when added to a timestamp, so an id made
+    // from the clock and a random number came out the same (1 in ~4,096).
+    vi.spyOn(Math, "random").mockReturnValueOnce(0.5).mockReturnValueOnce(0.50001);
+    const { result } = renderHook(() => useToast());
+    act(() => {
+      result.current.showToast("A", "done");
+      result.current.showToast("B", "done");
+    });
+    act(() => result.current.dismissToast(result.current.toasts[0].id));
+    expect(result.current.toasts.map((t) => t.message)).toEqual(["B"]);
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
   it("unmounting clears every pending timer", () => {
     const { result, unmount } = renderHook(() => useToast());
     act(() => {

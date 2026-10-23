@@ -101,6 +101,9 @@ test("with a menu open, the pointer moving onto another name opens that menu", a
       "-Command",
       `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Cursor]::Position = [System.Drawing.Point]::new(${Math.round(x)}, ${Math.round(y)})`,
     ]);
+  // PowerShell's first start on a fresh runner takes seconds; spent with the
+  // menu open, its first attempt failed and the warm retry passed. Warmed here.
+  moveTo(0, 0);
   try {
     await first.click();
     await expect(first).toHaveAttribute("aria-expanded", "true");

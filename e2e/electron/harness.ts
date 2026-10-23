@@ -53,6 +53,17 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
 export const isMac = process.platform === "darwin";
 
+/**
+ * Linux spells with Hunspell, and Chromium downloads its dictionary into a
+ * fresh userData on first use: from Google, once per test. The suite fetches
+ * it once (global-setup.ts) and every launch finds it in place, so a slow
+ * download no longer fails every spelling test in a shard.
+ */
+export const DICTIONARY = {
+  url: "https://redirector.gvt1.com/edgedl/chrome/dict/en-us-10-1.bdic",
+  cached: path.join(os.tmpdir(), "boojy-e2e-dictionaries", "en-US-10-1.bdic"),
+};
+
 /** The platform's primary modifier, for shortcuts the app handles itself. */
 export const MOD = isMac ? "Meta" : "Control";
 /** Moves the caret to the end of the current line. */
@@ -243,6 +254,13 @@ export async function launchApp(
   } else if (createVault) fs.mkdirSync(vaultDir, { recursive: true });
   else if (Object.keys(files).length > 0) throw new Error("createVault: false takes no files");
   fs.mkdirSync(userData, { recursive: true });
+  if (fs.existsSync(DICTIONARY.cached)) {
+    fs.mkdirSync(path.join(userData, "Dictionaries"));
+    fs.copyFileSync(
+      DICTIONARY.cached,
+      path.join(userData, "Dictionaries", path.basename(DICTIONARY.cached)),
+    );
+  }
   const vault = makeVault(vaultDir);
   for (const [rel, content] of Object.entries(files)) vault.write(rel, content);
   prepare?.(vault);
