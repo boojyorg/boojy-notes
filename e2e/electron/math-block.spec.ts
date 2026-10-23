@@ -38,6 +38,14 @@ test("$$ and a space opens a formula whose source draws live and saves as the ap
   await h.page.keyboard.type("x^2");
   // Drawn while the panel is open, from the field, before any commit settles.
   await expect(formula(h.page).locator(".katex annotation")).toHaveText("x^2");
+  // Drawn in KaTeX's own font, the woff2 the build keeps (vite.config.js).
+  await expect
+    .poll(() =>
+      h.page.evaluate(() =>
+        [...document.fonts].some((f) => f.family.includes("KaTeX_Math") && f.status === "loaded"),
+      ),
+    )
+    .toBe(true);
   await h.page.keyboard.press("Shift+Enter");
   await expect(source(h.page)).toHaveCount(0);
   await expect(formula(h.page)).toHaveAttribute("data-selected", "true");
