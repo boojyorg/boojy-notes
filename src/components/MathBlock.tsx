@@ -5,6 +5,7 @@ import { useTheme } from "../hooks/useTheme";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { Tooltip, useTooltip } from "./Tooltip";
+import { SlashCommandIcon } from "./Icons";
 import { registerMathOpener } from "../utils/mathOpen";
 import { bandFill, BAND_REACH } from "../utils/selectionBand";
 import { MENU_RADIUS } from "../constants/layout";
@@ -162,8 +163,20 @@ export default memo(function MathBlock({
         style={{ cursor: "text", overflowX: "auto", overflowY: "hidden", color: TEXT.primary }}
       >
         {empty ? (
-          <div style={{ textAlign: "center", color: TEXT.muted, fontSize: 14, padding: "6px 0" }}>
-            Empty formula
+          // An invitation, not a state: the slash menu's Σ and what a click does.
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              color: TEXT.muted,
+              fontSize: 14,
+              padding: "6px 0",
+            }}
+          >
+            <SlashCommandIcon name="sigma" />
+            Add a formula
           </div>
         ) : shown ? (
           <div
@@ -343,7 +356,7 @@ function SourcePanel({
       <textarea
         ref={fieldRef}
         aria-label="Formula source"
-        placeholder="LaTeX, e.g. x^2 + y^2 = z^2"
+        placeholder={"LaTeX, like x^2 or \\frac{a}{b}"}
         rows={1}
         spellCheck={false}
         autoComplete="off"
