@@ -1,8 +1,8 @@
 /**
  * Mermaid, drawing a ```` ```mermaid ```` code block. Loaded with the first
  * diagram a note shows, never with the app's start (its chunks are large),
- * and only its default layout (Dagre): the ELK engine is a separate package
- * the app does not install.
+ * and drawn with its default layout (Dagre); its ELK layout is a further
+ * chunk, fetched only by a diagram that asks for it.
  *
  * Nothing in a diagram runs: `securityLevel: "strict"` sanitises it and drops
  * click handlers, and labels are plain SVG text, never HTML.

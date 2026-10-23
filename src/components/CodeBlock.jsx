@@ -210,6 +210,11 @@ export default memo(function CodeBlock({
   // An undo, a redo or an outside change: the note's text is the drawing's again.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the generation is the signal
   useEffect(() => setDraft(null), [syncGen]);
+  // A block that stops being a diagram stops keeping one: edited as code, the
+  // note's text is what it draws when it is a diagram again.
+  useEffect(() => {
+    if (!diagram) setDraft(null);
+  }, [diagram]);
 
   /** The diagram's code, opened with the caret at its end. */
   const openCode = useCallback(() => {

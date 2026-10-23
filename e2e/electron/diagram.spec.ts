@@ -205,3 +205,26 @@ test("Shift+Enter onto a formula hands the keys to the note: Enter opens the for
   expect(h.vault.read(NOTE)).toBe(`\`\`\`mermaid\n${FLOW}\n\`\`\`\n\n$$\nx\n$$\n`);
   expect(h.pageErrors).toEqual([]);
 });
+
+test("a diagram switched away, rewritten and switched back draws its new code", async () => {
+  h = await launchApp({ [NOTE]: `\`\`\`mermaid\n${FLOW}\n\`\`\`\n` });
+  await h.openNote("Diagram");
+  await drawing(h.page).click();
+  await h.page.keyboard.type("\nC --> D[Archive]");
+  await expect(drawing(h.page)).toContainText("Archive");
+  const field = h.page.locator("textarea.code-textarea");
+  const pick = async (to: string) => {
+    await h.page.locator(".code-block").hover();
+    await h.page.getByRole("button", { name: "Code language" }).click();
+    await h.page.getByRole("menuitemradio", { name: to }).click();
+  };
+  await pick("Plain");
+  await field.focus();
+  await h.page.keyboard.press(`${MOD}+a`);
+  await h.page.keyboard.type("flowchart LR\n  X[Fresh] --> Y[Start]");
+  await sleep(SETTLE_MS);
+  await pick("Mermaid");
+  await expect(drawing(h.page)).toContainText("Fresh");
+  await expect(drawing(h.page)).not.toContainText("Archive");
+  expect(h.pageErrors).toEqual([]);
+});
