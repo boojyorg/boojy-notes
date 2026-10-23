@@ -102,3 +102,17 @@ test("/diagram makes an empty diagram with its code open", async () => {
   expect(h.vault.read(NOTE)).toContain('```mermaid\npie\n  "a" : 1\n```');
   expect(h.pageErrors).toEqual([]);
 });
+
+test("the grip sits at the diagram's top, not by its folded code", async () => {
+  h = await launchApp({ [NOTE]: `Intro.\n\n\`\`\`mermaid\n${FLOW}\n\`\`\`\n` });
+  await h.openNote("Diagram");
+  await expect(drawing(h.page)).toBeVisible();
+  await drawing(h.page).hover();
+  const grip = h.page.locator(".block-drag-handle");
+  await expect(grip).toBeVisible();
+  const [g, b] = await Promise.all([grip.boundingBox(), block(h.page).boundingBox()]);
+  expect(g && b).toBeTruthy();
+  // Within the block's top band, never down by its bottom edge.
+  expect((g?.y ?? 0) - (b?.y ?? 0)).toBeLessThan(40);
+  expect(h.pageErrors).toEqual([]);
+});
