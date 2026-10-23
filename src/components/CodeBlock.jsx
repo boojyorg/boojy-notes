@@ -193,23 +193,19 @@ export default memo(function CodeBlock({
   }, [paintOverlay]);
 
   // What the field holds now goes to state, the overlay and the box.
+  // Every commit (a keystroke, Enter's indent, Tab) reaches a diagram's drawing too.
   const commit = useCallback(
     (value) => {
       onUpdateCode(noteId, blockIndex, value);
       paintOverlay(value);
       autoResize();
       syncScroll();
+      if (diagram) setDraft(value);
     },
-    [noteId, blockIndex, onUpdateCode, paintOverlay, autoResize, syncScroll],
+    [noteId, blockIndex, onUpdateCode, paintOverlay, autoResize, syncScroll, diagram],
   );
 
-  const handleInput = useCallback(
-    (e) => {
-      commit(e.target.value);
-      if (diagram) setDraft(e.target.value);
-    },
-    [commit, diagram],
-  );
+  const handleInput = useCallback((e) => commit(e.target.value), [commit]);
 
   // An undo, a redo or an outside change: the note's text is the drawing's again.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the generation is the signal
@@ -292,6 +288,8 @@ export default memo(function CodeBlock({
       // closes and the caret moves on.
       if (diagram && e.key === "Enter" && e.shiftKey) {
         e.preventDefault();
+        // The field is about to be folded away: the editor takes the keys first.
+        blockRef.current?.closest("[data-editor]")?.focus({ preventScroll: true });
         setCodeOpen(false);
         if (onBlockNav) onBlockNav(blockIndex, "next");
         return;
@@ -518,13 +516,18 @@ export default memo(function CodeBlock({
       onMouseUp={(e) => e.stopPropagation()}
     >
       {tools}
-      {diagram ? (
+      {/* The code, in one place whatever the language: a change of language
+          must never remount the field (a fresh one is empty, and the next
+          keystroke would save over the code). For a diagram it sits above
+          the drawing, open until its \`</>\` closes it. */}
+      <div
+        className={diagram ? "diagram-code" : undefined}
+        data-open={(diagram && codeOpen) || undefined}
+      >
+        <div className={diagram ? "diagram-code-inner" : undefined}>{codeField}</div>
+      </div>
+      {diagram && (
         <>
-          {/* The code, above the drawing: a code block that becomes a diagram
-              keeps its code where it was. Open until `</> Code` closes it. */}
-          <div className="diagram-code" data-open={codeOpen || undefined}>
-            <div className="diagram-code-inner">{codeField}</div>
-          </div>
           {/* The drawing; a press on it opens its code. */}
           <div
             className="diagram-view"
@@ -539,8 +542,6 @@ export default memo(function CodeBlock({
             />
           </div>
         </>
-      ) : (
-        codeField
       )}
 
       {/* Context menu: Copy code, Change language (CodeLangMenu's list, under the label), Delete block */}

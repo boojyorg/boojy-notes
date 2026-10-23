@@ -6,7 +6,15 @@
  * fence as written: a diagram is only a code block drawn.
  */
 import { expect, test } from "@playwright/test";
-import { type AppHandle, END_OF_LINE, SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
+import {
+  type AppHandle,
+  END_OF_LINE,
+  MOD,
+  SETTLE_MS,
+  launchApp,
+  sleep,
+  waitForFile,
+} from "./harness";
 
 const NOTE = "Diagram.md";
 const FLOW = "flowchart TD\n  A[Draft] --> B[Review]\n  B --> C[Publish]";
@@ -143,5 +151,57 @@ test("a code block switched to Mermaid keeps its code where it was and draws und
   expect(labels).toEqual(["Code language", "Hide code", "Copy code"]);
   await sleep(SETTLE_MS);
   expect(h.vault.read(NOTE)).toBe("Intro.\n\n```mermaid\nflowchart LR\n  A --> B\n```\n");
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("changing a block's language keeps its code: the next keystroke adds to it", async () => {
+  h = await launchApp({ [NOTE]: "Intro.\n\n```\nflowchart LR\n  A --> B\n```\n" });
+  await h.openNote("Diagram");
+  const field = h.page.locator("textarea.code-textarea");
+  for (const [to, fence] of [
+    ["Mermaid", "```mermaid"],
+    ["Plain", "```"],
+  ]) {
+    await h.page.locator(".code-block").hover();
+    await h.page.getByRole("button", { name: "Code language" }).click();
+    await h.page.getByRole("menuitemradio", { name: to }).click();
+    await expect(field).toHaveValue(/A --> B/);
+    // The caret at the code's end, as a click there would put it.
+    await field.evaluate((t: HTMLTextAreaElement) => {
+      t.focus();
+      t.setSelectionRange(t.value.length, t.value.length);
+    });
+    await h.page.keyboard.type("X");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read(NOTE)).toContain(`${fence}\nflowchart LR\n  A --> BX`);
+    await h.page.keyboard.press("Backspace");
+    await sleep(SETTLE_MS);
+  }
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("Enter over the whole source redraws: the old drawing never outlives its code", async () => {
+  h = await launchApp({ [NOTE]: `\`\`\`mermaid\n${FLOW}\n\`\`\`\n` });
+  await h.openNote("Diagram");
+  await drawing(h.page).click();
+  await h.page.keyboard.press(`${MOD}+a`);
+  await h.page.keyboard.press("Enter");
+  await expect(drawing(h.page)).toHaveCount(0);
+  await expect(block(h.page).getByText("Your diagram appears here")).toBeVisible();
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("Shift+Enter onto a formula hands the keys to the note: Enter opens the formula", async () => {
+  h = await launchApp({ [NOTE]: `\`\`\`mermaid\n${FLOW}\n\`\`\`\n\n$$\nx\n$$\n` });
+  await h.openNote("Diagram");
+  await drawing(h.page).click();
+  await expect(code(h.page)).toBeFocused();
+  await h.page.keyboard.press("Shift+Enter");
+  await expect(h.page.locator("[data-block-type='math']")).toHaveAttribute("data-selected", "true");
+  await expect(code(h.page)).not.toBeFocused();
+  await h.page.keyboard.press("Enter");
+  await expect(h.page.getByRole("textbox", { name: "Formula source" })).toBeFocused();
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe(`\`\`\`mermaid\n${FLOW}\n\`\`\`\n\n$$\nx\n$$\n`);
   expect(h.pageErrors).toEqual([]);
 });
