@@ -1,7 +1,7 @@
 // Inline markdown ↔ HTML conversion utilities.
 // Stores formatting as markdown tokens in block.text, renders as HTML via innerHTML.
 
-import { CARET_ANCHOR_CLASS } from "./domHelpers";
+import { CARET_ANCHOR_CLASS, INLINE_MATH_CLASS } from "./domHelpers";
 import { parseWikilinkTarget, wikilinkKey } from "./wikilinkTarget";
 import { LINK_DEST } from "./linkDestination";
 import { TAG_RE } from "./tags";
@@ -20,6 +20,22 @@ const unescapeHtml = (html) =>
  */
 const PROSE_OR_ELEMENT_RE =
   /<a\b[^>]*>[\s\S]*?<\/a>|<code>[\s\S]*?<\/code>|<span class="wikilink[^"]*"[^>]*>[\s\S]*?<\/span>|<[^>]*>|[^<]+/g;
+
+/**
+ * A code span or a bare URL, left whole for their own passes, or inline maths by the Pandoc-style
+ * rule: `$` with no space or `$` after it, a formula that does not end in a
+ * space, and a closing `$` not followed by a digit or another `$`. Neither
+ * dollar may be escaped. So `$x^2$` is maths and `costs $5 and $10` is not.
+ * One line only; a soft break ends the chance.
+ */
+const CODE_OR_MATH_RE =
+  /(`[^`]+`|https?:\/\/[^\s<]+)|(?<![\\$])\$(?=[^\s$])((?:[^$\n\\]|\\[^\n])+?)(?<=\S)\$(?![$\d])/g;
+
+/** The inline formula's element: its source on `data-math`, drawn by KaTeX later (`utils/inlineMath`). */
+function mathAtomHtml(escapedSource) {
+  const attr = escapedSource.replace(/"/g, "&quot;");
+  return `<span class="${INLINE_MATH_CLASS}" contenteditable="false" data-math="${attr}">$${escapedSource}$</span>`;
+}
 
 /** `[text](destination)`, the destination as `LINK_DEST` reads it. */
 const MD_LINK_RE = new RegExp(String.raw`\[([^\]]+)\]\((${LINK_DEST})\)`, "g");
@@ -115,6 +131,18 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     return `\x00RUN${runs.length - 1}\x00`;
   });
 
+  // 1e. Inline maths, before every formatting pass: `_` and `*` in a formula
+  // are TeX, never emphasis. A code span and a bare URL are matched first and
+  // left whole, so `` `$x$` `` stays code and a `$` in an address stays in it. The formula is restored as its element at the end,
+  // its source as written (escapes put back).
+  const maths = [];
+  s = s.replace(CODE_OR_MATH_RE, (m, code, src) => {
+    if (code !== undefined) return m;
+    // Its source as written: escapes and any shielded wikilink target put back.
+    maths.push(realTarget(src).replace(/\x00ESC(\d+)\x00/g, (_, i) => `\\${escapes[Number(i)]}`));
+    return `\x00MATH${maths.length - 1}\x00`;
+  });
+
   // 2. Inline code (must be first so formatting inside backticks is preserved literally)
   s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
 
@@ -192,7 +220,8 @@ export function inlineMarkdownToHtml(md, noteTitles) {
         ),
   );
 
-  // Restore the runs of stars, then backslash-escaped characters, backslash included
+  // Restore the formulas, then the runs of stars, then backslash-escaped characters, backslash included
+  s = s.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathAtomHtml(maths[Number(i)]));
   s = s.replace(/\x00RUN(\d+)\x00/g, (_, i) => runs[parseInt(i, 10)]);
   s = s.replace(/\x00ESC(\d+)\x00/g, (_, i) => `\\${escapes[parseInt(i, 10)]}`);
 
@@ -291,6 +320,9 @@ export function nodeToMarkdown(child, before = "") {
     return `[${inner}](${href})`;
   }
   if (tag === "SPAN") {
+    // A formula is its source, whatever KaTeX drew inside it.
+    if (child.classList.contains(INLINE_MATH_CLASS))
+      return `$${child.getAttribute("data-math") ?? ""}$`;
     // External link icon — decorative, skip
     if (child.classList.contains("external-link-icon")) return "";
     if (child.classList.contains(CARET_ANCHOR_CLASS)) {
@@ -382,6 +414,15 @@ function sanitizeInto(target, sourceNode, inAnchor) {
         target.appendChild(document.createElement("br"));
       } else if (tag === "SPAN" && child.classList.contains(CARET_ANCHOR_CLASS)) {
         sanitizeInto(target, child, true);
+      } else if (tag === "SPAN" && child.classList.contains(INLINE_MATH_CLASS)) {
+        // A formula keeps its source and nothing KaTeX drew; it is drawn again where it lands.
+        const source = child.getAttribute("data-math") ?? "";
+        const el = document.createElement("span");
+        el.className = INLINE_MATH_CLASS;
+        el.setAttribute("contenteditable", "false");
+        el.setAttribute("data-math", source);
+        el.textContent = `$${source}$`;
+        target.appendChild(el);
       } else if (ALLOWED_TAGS.has(tag)) {
         // Normalize <b> → <strong>, <i> → <em>, <s> → <del>
         let newTag = tag;

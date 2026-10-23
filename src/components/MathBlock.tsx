@@ -1,40 +1,16 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import katex from "katex";
-import "katex/dist/katex.min.css";
 import { useTheme } from "../hooks/useTheme";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { Tooltip, useTooltip } from "./Tooltip";
 import { SlashCommandIcon } from "./Icons";
 import { registerMathOpener } from "../utils/mathOpen";
+import { renderFormula } from "../utils/katexRender";
 import { bandFill, BAND_REACH } from "../utils/selectionBand";
 import { MENU_RADIUS } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { isMac } from "../utils/platform";
 import { cssZoom, revealInNote } from "../utils/domHelpers";
-
-type Rendered = { html: string } | { error: string };
-
-/**
- * A formula drawn by KaTeX, or why it can't be. Nothing the file holds is
- * trusted to run: KaTeX's `trust` stays off, so `\href` and `\htmlClass` draw
- * as text.
- */
-export function renderFormula(source: string): Rendered {
-  if (!source.trim()) return { error: "" };
-  try {
-    return {
-      html: katex.renderToString(source, {
-        displayMode: true,
-        throwOnError: true,
-        strict: "ignore",
-      }),
-    };
-  } catch (e) {
-    const err = e as { rawMessage?: string; message?: string };
-    return { error: String(err.rawMessage || err.message || "This formula can't be read") };
-  }
-}
 
 const SHIFT_ENTER = isMac ? "⇧↵" : "Shift+Enter";
 const MONO = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace";

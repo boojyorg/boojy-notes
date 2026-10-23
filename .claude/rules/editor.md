@@ -193,9 +193,14 @@ app's, made through state.**
 ## Maths
 
 **A `$$` formula never moves; its source opens underneath** (`MathBlock`), in a panel in the
-block's root: it scrolls with the note, and ⌘Z is the note's. Enter is a new line;
+block's root (⌘Z stays the note's). Enter is a new line;
 Shift+Enter, Escape, Done or a click away finishes (no commit); ↑/↓ at its edges walk
 out. Selected, Enter opens it. `math-block.spec.ts`.
+
+**`$x$` in a sentence is one sealed element** (`inline-math`, source on `data-math`): one
+caret character, read back as its source. The closing `$` converts it by the Pandoc-style
+rule; a press opens its source under it (`InlineMathPanel`; ⌘Z stays the
+note's). `inline-math.spec.ts`.
 
 ## Headings
 
@@ -230,9 +235,7 @@ Blocks are Markdown structure, not lines (`structureParagraphs`).
   Shift+Enter a soft break (in a heading, Enter). **Enter in a quote is a soft break**; on an
   empty last line it leaves the quote (adjacent quote blocks are one quote on disk).
 - **One blank line between any two blocks is structure; each further blank is an empty row.**
-  Spacing comes from the block's kind (`tokens/rhythm.ts`), never from blank lines. The app
-  writes one blank between blocks, none between list items; a file's other spelling is kept as
-  `tightAbove` / `looseAbove`, and `mustSeparate` pairs are always written apart.
+  Spacing comes from the block's kind (`tokens/rhythm.ts`), never from blank lines.
 - **On screen a newline is a `<br>`** (plus a trailing one both walkers ignore). Never clamp a
   caret to `textContent.length`.
 - **A soft-break line that would open a block is written escaped** (`readsBackAsText`), asking
@@ -253,9 +256,8 @@ never holds a byte sequence the syntax cannot.**
 
 ## Code blocks
 
-Every `.code-line` takes at least `1lh` (or the layers drift). **The info string is kept
-as typed** (`js` stays `js`) and resolved only for display (`canonicalLang`); re-picking the
-same language writes nothing.
+Every `.code-line` takes at least `1lh` (or the layers drift). The info string is the spec's;
+re-picking the same language writes nothing.
 `code-language.spec.ts`.
 
 ## Images

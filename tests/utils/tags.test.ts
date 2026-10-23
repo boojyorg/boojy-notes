@@ -127,3 +127,9 @@ describe("nestTags: a tag counts towards its parents", () => {
     expect([...odd.keys()].sort()).toEqual(["a", "a//b", "a//b/"]);
   });
 });
+
+describe("a formula is not prose", () => {
+  it("reads no tag inside $…$", () => {
+    expect(tagsInText("see $a \\#b$ and #real")).toEqual(["real"]);
+  });
+});

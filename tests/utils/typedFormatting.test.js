@@ -285,3 +285,15 @@ describe("paintTypedFormat", () => {
     expect(sel.anchorOffset).toBe(8);
   });
 });
+
+describe("typed inline maths", () => {
+  it("closes on the second dollar by the Pandoc-style rule", () => {
+    expect(closingFormatAt("the mean $\\bar{x}$")?.kind).toBe("math");
+    expect(closingFormatAt("$x$")?.content).toBe("x");
+    expect(closingFormatAt("costs $5 and $")).toBeNull();
+    expect(closingFormatAt("$ x$")).toBeNull();
+    expect(closingFormatAt("$x $")).toBeNull();
+    expect(closingFormatAt("$x$", "5")).toBeNull();
+    expect(closingFormatAt("$$x$")).toBeNull();
+  });
+});
