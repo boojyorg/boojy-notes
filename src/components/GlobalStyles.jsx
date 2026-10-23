@@ -587,7 +587,8 @@ ${tagPillCss(theme)}
           border: 1px solid ${theme.codeBlockBorder};
           border-radius: 8px;
           margin: ${rhythm.blockGap}px 0;
-          padding: 14px 16px;
+          /* The top keeps the toolbar's row, so the first line never sits under it. */
+          padding: 36px 16px 14px;
           transition: border-color var(--motion-fast);
         }
         .code-block:focus-within {
@@ -853,8 +854,8 @@ ${tagPillCss(theme)}
         .diagram-code-inner { position: relative; min-height: 0; overflow: hidden; }
         .diagram-code[data-open] .diagram-code-inner {
           border-bottom: 1px solid ${theme.codeBlockBorder};
-          margin: -14px -16px 14px;
-          padding: 14px 16px 12px;
+          margin: -36px -16px 14px;
+          padding: 36px 16px 12px;
         }
         @media (prefers-reduced-motion: reduce) { .diagram-code { transition: none; } }
         /* Prism.js token colors */

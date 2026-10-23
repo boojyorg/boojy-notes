@@ -106,6 +106,8 @@ describe("SLASH_COMMANDS", () => {
       divider: "---",
       table: "|||",
       image: "![]",
+      math: "$$",
+      diagram: "```mermaid",
     });
     // No typed trigger, so no hint.
     for (const id of ["callout", "file", "embed"]) expect(hints[id]).toBe("");

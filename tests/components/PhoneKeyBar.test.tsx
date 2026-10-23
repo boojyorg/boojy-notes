@@ -49,7 +49,17 @@ const lit = (name: string) => screen.getByRole("button", { name }).getAttribute(
 const bar = () => screen.queryByRole("toolbar");
 const row = () => screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"));
 const MAIN = ["Undo", "Redo", "Headings", "Lists", "Text style", "More blocks"];
-const MORE = ["Undo", "Redo", "Table", "Quote", "Code block", "Divider", "Close"];
+const MORE = [
+  "Undo",
+  "Redo",
+  "Table",
+  "Quote",
+  "Code block",
+  "Maths",
+  "Diagram",
+  "Divider",
+  "Close",
+];
 const LIST = [
   "Undo",
   "Redo",
@@ -212,7 +222,17 @@ describe("the bar above the keyboard", () => {
     press("Table");
     press("More blocks");
     press("Divider");
-    expect(props.onInsert.mock.calls.map(([c]) => c)).toEqual(["code", "table", "divider"]);
+    press("More blocks");
+    press("Maths");
+    press("More blocks");
+    press("Diagram");
+    expect(props.onInsert.mock.calls.map(([c]) => c)).toEqual([
+      "code",
+      "table",
+      "divider",
+      "math",
+      "diagram",
+    ]);
   });
 
   it("turns the line into a quote, a quote's own button making it text again", () => {

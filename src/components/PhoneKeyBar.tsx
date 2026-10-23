@@ -83,7 +83,7 @@ export default function PhoneKeyBar({
   always = false,
 }: {
   editorRef: RefObject<HTMLElement | null>;
-  onInsert: (command: "table" | "code" | "divider") => void;
+  onInsert: (command: InsertCommand) => void;
   canIndent: (delta: 1 | -1) => boolean;
   always?: boolean;
 }) {
@@ -313,12 +313,7 @@ export default function PhoneKeyBar({
     onPress();
     setMode("blocks");
   };
-  const insert = (
-    command: "table" | "code" | "divider",
-    label: string,
-    glyph: string,
-    look?: CSSProperties,
-  ) =>
+  const insert = (command: InsertCommand, label: string, glyph: string, look?: CSSProperties) =>
     button(
       command,
       label,
@@ -359,6 +354,8 @@ export default function PhoneKeyBar({
           },
         ),
         insert("code", "Code block", "code", { fontFamily: mono }),
+        insert("math", "Maths", "sigma"),
+        insert("diagram", "Diagram", "workflow"),
         insert("divider", "Divider", "minus"),
       ],
       [close],
@@ -449,6 +446,9 @@ export default function PhoneKeyBar({
 
 /** The longest row's buttons: each button's share of the bar, in every row. */
 const SLOTS = 9;
+
+/** A slash command's id that the more row inserts. */
+type InsertCommand = "table" | "code" | "math" | "diagram" | "divider";
 
 const FORMAT_LABELS = {
   bold: "Bold",

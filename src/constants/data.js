@@ -26,7 +26,8 @@ export const SCALE_OPTIONS = [50, 67, 80, 90, 100, 110, 120, 133, 150, 170, 200]
  * a picture); they run the same command as the row. A hint is NEVER the Markdown
  * the block saves as (`| | |`, `![]()`, `> [!]`, `![[]]`): none of those is what
  * you type to make the block, and as a column they read as noise. Search-only
- * headings have typed triggers too; other tier-2 blocks have empty hints.
+ * headings, Maths and Diagram (its fence's language) have typed triggers too;
+ * other tier-2 blocks have empty hints.
  *
  * `icon` names a Lucide glyph (mapped in Icons.jsx).
  */
@@ -54,7 +55,7 @@ export const SLASH_COMMANDS = [
   {
     id: "diagram",
     label: "Diagram",
-    hint: "",
+    hint: "```mermaid",
     icon: "workflow",
     type: "code",
     lang: "mermaid",

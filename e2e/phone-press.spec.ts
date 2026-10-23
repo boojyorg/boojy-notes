@@ -66,14 +66,14 @@ test("a key bar key held down wears the row grey", async ({ page }) => {
   await page.mouse.up();
 });
 
-test("a tap on a code block still brings up its Copy button", async ({ page }) => {
+test("a tap on a code block still brings up its toolbar", async ({ page }) => {
   await page.goto("/");
   await page.locator("[data-title]").first().click();
   await page.keyboard.type("Code");
   await page.locator('[data-editor] [data-block-type="p"]').first().click();
   await page.keyboard.type("``` ");
   await page.keyboard.type("let a = 1;");
-  const copy = page.locator(".code-copy-wrapper");
+  const copy = page.locator(".code-tools");
   await page.locator("[data-title]").first().click();
   await page.mouse.move(5, 5);
   await expect(copy).toHaveCSS("opacity", "0");
@@ -83,7 +83,7 @@ test("a tap on a code block still brings up its Copy button", async ({ page }) =
   await expect(copy).toHaveCSS("opacity", "1");
   await page.mouse.move(5, 5);
   await expect(copy).toHaveCSS("opacity", "0");
-  // A tap puts the caret in the code; Copy shows while it is there, not on
+  // A tap puts the caret in the code; the toolbar shows while it is there, not on
   // a hover a finger never makes (Playwright's mouse leaves after the tap).
   await page.touchscreen.tap(block.x + 40, block.y + block.height / 2);
   await expect(copy).toHaveCSS("opacity", "1");
