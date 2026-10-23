@@ -43,6 +43,7 @@ test("the label opens the menu, Plain first then alphabetical, with the block's 
     "HTML",
     "JavaScript",
     "JSON",
+    "Mermaid",
     "Python",
     "SQL",
     "TypeScript",
@@ -61,7 +62,7 @@ test("a letter jumps to a language and Enter writes its fence word to disk", asy
   await expect(menu(h.page)).toBeFocused();
   // The menu holds focus, so the letter never reaches the code field under it.
   await h.page.keyboard.press("t");
-  await expect(menu(h.page)).toHaveAttribute("aria-activedescendant", "code-lang-item-8");
+  await expect(menu(h.page)).toHaveAttribute("aria-activedescendant", "code-lang-item-9");
   await h.page.keyboard.press("Enter");
   await expect(menu(h.page)).toHaveCount(0);
   await expect(label(h.page)).toHaveText(/TypeScript/);

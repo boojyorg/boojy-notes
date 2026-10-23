@@ -1,5 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
-import { tagPillCss } from "../styles/tagPill";
+import { tagPillCss, tagPillGround } from "../styles/tagPill";
 import { CHROME_BTN, LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
@@ -620,6 +620,11 @@ ${tagPillCss(theme)}
           position: relative;
           z-index: 1;
         }
+        .code-textarea::placeholder {
+          color: ${theme.TEXT.muted};
+          -webkit-text-fill-color: ${theme.TEXT.muted};
+          opacity: 0.75;
+        }
         .code-textarea::selection {
           background: ${theme.codeSelection};
           -webkit-text-fill-color: transparent;
@@ -809,6 +814,55 @@ ${tagPillCss(theme)}
             color: ${theme.codeCopy.hoverColor};
           }
         }
+        /* A \`\`\`mermaid block (CodeBlock): the drawing on the code block's
+           ground, a wide one scrolling as a table does; its code joined below,
+           growing open on the small clock while the field has focus. */
+        .diagram-view { overflow-x: auto; cursor: text; }
+        .diagram-view svg { display: block; margin: 0 auto; max-width: none; }
+        .diagram-code {
+          display: grid;
+          grid-template-rows: 0fr;
+          transition: grid-template-rows var(--motion-enter) var(--ease-enter);
+        }
+        .diagram-code[data-open] { grid-template-rows: 1fr; }
+        .diagram-code-inner { position: relative; min-height: 0; overflow: hidden; }
+        .diagram-code[data-open] .diagram-code-inner {
+          border-top: 1px solid ${theme.codeBlockBorder};
+          margin: 14px -16px -14px;
+          padding: 12px 16px 14px;
+        }
+        /* </> names what the block is drawn from; lit while its code is open,
+           as the header's is for the Markdown view. */
+        .diagram-code-btn {
+          position: absolute;
+          top: 6px;
+          right: 6px;
+          z-index: 2;
+          width: 28px;
+          height: 28px;
+          display: grid;
+          place-items: center;
+          padding: 0;
+          border: none;
+          border-radius: 6px;
+          background: transparent;
+          color: ${theme.TEXT.muted};
+          cursor: pointer;
+          opacity: 0;
+          transition: opacity var(--motion-fast), background-color var(--motion-fast);
+        }
+        .diagram-block:hover .diagram-code-btn,
+        .diagram-block:focus-within .diagram-code-btn,
+        .diagram-code-btn[aria-pressed="true"] { opacity: 1; }
+        @media (hover: hover) {
+          .diagram-code-btn:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
+          .diagram-code-btn[aria-pressed="true"]:hover { background: ${tagPillGround(theme, true)}; }
+        }
+        .diagram-code-btn[aria-pressed="true"] {
+          background: ${tagPillGround(theme)};
+          color: ${theme.ACCENT.text};
+        }
+        @media (prefers-reduced-motion: reduce) { .diagram-code { transition: none; } }
         .code-lang-anchor {
           position: absolute;
           bottom: 8px;

@@ -52,6 +52,15 @@ export const SLASH_COMMANDS = [
   // ── Tier 2: found by typing, never shown on the opening screen ──────────
   { id: "math", label: "Maths", hint: "$$", icon: "sigma", type: "math", advanced: true },
   {
+    id: "diagram",
+    label: "Diagram",
+    hint: "",
+    icon: "workflow",
+    type: "code",
+    lang: "mermaid",
+    advanced: true,
+  },
+  {
     id: "callout",
     label: "Callout",
     hint: "",

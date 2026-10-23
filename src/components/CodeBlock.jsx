@@ -1,10 +1,12 @@
-import { useState, useRef, useLayoutEffect, useCallback, memo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
 import Prism from "prismjs";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import CodeLangMenu from "./CodeLangMenu";
 import { canonicalLang, sameLang } from "../utils/codeLanguage";
 import Menu from "./Menu";
-import { ChevronDownIcon, CopyIcon, SlashCommandIcon, TrashIcon } from "./Icons";
+import { ChevronDownIcon, CopyIcon, SlashCommandIcon, SourceViewIcon, TrashIcon } from "./Icons";
+import DiagramView from "./DiagramView";
+import { Tooltip, useTooltip } from "./Tooltip";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-python";
@@ -27,6 +29,7 @@ const LANGUAGES = [
   { value: "html", label: "HTML" },
   { value: "javascript", label: "JavaScript" },
   { value: "json", label: "JSON" },
+  { value: "mermaid", label: "Mermaid" },
   { value: "python", label: "Python" },
   { value: "sql", label: "SQL" },
   { value: "typescript", label: "TypeScript" },
@@ -54,8 +57,22 @@ const LANG_DISPLAY = {
   html: "HTML",
   css: "CSS",
   json: "JSON",
+  mermaid: "Mermaid",
   bash: "Bash",
   sql: "SQL",
+};
+
+/**
+ * Mermaid's source in the editor's syntax colours: a few token kinds, enough
+ * to read a flowchart by (Prism has no grammar of its own for it).
+ */
+Prism.languages.mermaid = {
+  comment: /%%.*/,
+  keyword:
+    /\b(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|pie|mindmap|journey|gitGraph|timeline|subgraph|end|participant|actor|title|section|note|loop|alt|else)\b/,
+  constant: /\b(?:TD|TB|LR|RL|BT)\b/,
+  string: /\[[^\]\n]*\]|\([^)\n]*\)|\{[^}\n]*\}|\|[^|\n]*\|/,
+  operator: /-\.->|==>|-->>|->>|-->|---|--|->/,
 };
 
 function resolveGrammar(lang) {
@@ -95,6 +112,15 @@ export default memo(function CodeBlock({
   onDelete,
 }) {
   const [copied, setCopied] = useState(false);
+  // A ```mermaid block is a diagram: drawn at rest, its code joined below
+  // while it is being edited (open while the field has focus).
+  const diagram = canonicalLang(block.lang) === "mermaid";
+  const [codeOpen, setCodeOpen] = useState(false);
+  // What the field holds while it is ahead of the note's ref: the drawing follows it.
+  const [draft, setDraft] = useState(null);
+  const blockRef = useRef(null);
+  const codeTip = useTooltip();
+  const codeBtnRef = useRef(null);
   const [ctxMenu, setCtxMenu] = useState(null);
   // The language menu's anchor: the label's rect while it is open, null otherwise.
   const [langMenu, setLangMenu] = useState(null);
@@ -168,7 +194,30 @@ export default memo(function CodeBlock({
     [noteId, blockIndex, onUpdateCode, paintOverlay, autoResize, syncScroll],
   );
 
-  const handleInput = useCallback((e) => commit(e.target.value), [commit]);
+  const handleInput = useCallback(
+    (e) => {
+      commit(e.target.value);
+      if (diagram) setDraft(e.target.value);
+    },
+    [commit, diagram],
+  );
+
+  // An undo, a redo or an outside change: the note's text is the drawing's again.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the generation is the signal
+  useEffect(() => setDraft(null), [syncGen]);
+
+  /** The diagram's code, opened with the caret at its end. */
+  const openCode = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.focus({ preventScroll: true });
+    ta.selectionStart = ta.selectionEnd = ta.value.length;
+  }, []);
+  /** The code closed, the editor keeping the keys. */
+  const closeCode = useCallback(() => {
+    blockRef.current?.closest("[data-editor]")?.focus({ preventScroll: true });
+    setCodeOpen(false);
+  }, []);
 
   // Keyboard handling
   const handleKeyDown = useCallback(
@@ -230,6 +279,13 @@ export default memo(function CodeBlock({
         return;
       }
 
+      // Shift+Enter finishes a diagram's code, as it finishes a formula.
+      if (diagram && e.key === "Enter" && e.shiftKey) {
+        e.preventDefault();
+        if (onBlockNav) onBlockNav(blockIndex, "next");
+        return;
+      }
+
       // Enter — new line with auto-indent
       if (e.key === "Enter") {
         e.preventDefault();
@@ -286,7 +342,7 @@ export default memo(function CodeBlock({
         return;
       }
     },
-    [blockIndex, commit, onBlockNav, onDelete],
+    [blockIndex, commit, onBlockNav, onDelete, diagram],
   );
 
   // Copy to clipboard
@@ -348,20 +404,21 @@ export default memo(function CodeBlock({
   const canonical = canonicalLang(lang);
   const displayLabel = LANG_DISPLAY[canonical] || canonical;
 
-  return (
-    <div
-      className="code-block"
-      onContextMenu={handleContextMenu}
-      onInput={(e) => e.stopPropagation()}
-      onMouseUp={(e) => e.stopPropagation()}
-    >
+  const codeAndLabel = (
+    <>
       <div className="code-body">
         <textarea
           ref={textareaRef}
           className="code-textarea"
           onChange={handleInput}
           onKeyDown={handleKeyDown}
+          onFocus={() => diagram && setCodeOpen(true)}
+          onBlur={(e) => {
+            if (diagram && !blockRef.current?.contains(e.relatedTarget)) setCodeOpen(false);
+          }}
           onScroll={syncScroll}
+          // A new diagram's example: a hint, never written to the file.
+          placeholder={diagram ? "flowchart LR\n  A[Start] --> B[Next step]" : undefined}
           spellCheck={false}
           autoComplete="off"
           autoCorrect="off"
@@ -370,46 +427,6 @@ export default memo(function CodeBlock({
         <pre ref={overlayRef} className="code-overlay" aria-hidden="true">
           <code ref={overlayCodeRef} />
         </pre>
-      </div>
-
-      {/* Copy, top right: shown on the pointer, or while the block has focus,
-          which is how a tap (or the keyboard) reaches it (GlobalStyles). */}
-      <div className="code-copy-wrapper">
-        <button
-          className="code-copy-btn"
-          onClick={handleCopy}
-          onMouseDown={(e) => e.preventDefault()}
-          title="Copy"
-        >
-          {copied ? (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M3 8.5L6.5 12L13 4"
-                stroke="#4ade80"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <rect
-                x="5.5"
-                y="5.5"
-                width="7"
-                height="8"
-                rx="1.5"
-                stroke="currentColor"
-                strokeWidth="1.3"
-              />
-              <path
-                d="M10.5 5.5V3.5C10.5 2.67 9.83 2 9 2H4C3.17 2 2.5 2.67 2.5 3.5V10C2.5 10.83 3.17 11.5 4 11.5H5.5"
-                stroke="currentColor"
-                strokeWidth="1.3"
-              />
-            </svg>
-          )}
-        </button>
       </div>
 
       {/* Language label — bottom right, click to change. The chevron is the
@@ -437,6 +454,104 @@ export default memo(function CodeBlock({
           </span>
         </button>
       </div>
+    </>
+  );
+
+  return (
+    <div
+      ref={blockRef}
+      className={`code-block${diagram ? " diagram-block" : ""}`}
+      onContextMenu={handleContextMenu}
+      onInput={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
+    >
+      {diagram ? (
+        <>
+          {/* The drawing; a press on it opens its code. */}
+          <div
+            className="diagram-view"
+            onMouseDown={(e) => {
+              if (e.button === 0) e.preventDefault();
+            }}
+            onClick={openCode}
+          >
+            <DiagramView
+              source={draft ?? latestBlock(noteDataRef, noteId, block)?.text ?? code}
+              emptyText={codeOpen ? "Your diagram appears here" : "Empty diagram"}
+            />
+          </div>
+          {/* </>: the code, as the header's lights for the Markdown view. */}
+          <button
+            ref={codeBtnRef}
+            type="button"
+            className="diagram-code-btn"
+            aria-label={codeOpen ? "Hide code" : "Edit code"}
+            aria-pressed={codeOpen}
+            {...codeTip.handlers}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              codeTip.handlers.onMouseDown();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (codeOpen) closeCode();
+              else openCode();
+            }}
+          >
+            <SourceViewIcon />
+          </button>
+          {codeTip.shown && (
+            <Tooltip label={codeOpen ? "Hide code" : "Edit code"} anchor={codeBtnRef.current} />
+          )}
+          {/* The code, joined below; it grows open while the field has focus. */}
+          <div className="diagram-code" data-open={codeOpen || undefined}>
+            <div className="diagram-code-inner">{codeAndLabel}</div>
+          </div>
+        </>
+      ) : (
+        <>
+          {codeAndLabel}
+          {/* Copy, top right: shown on the pointer, or while the block has focus,
+          which is how a tap (or the keyboard) reaches it (GlobalStyles). */}
+          <div className="code-copy-wrapper">
+            <button
+              className="code-copy-btn"
+              onClick={handleCopy}
+              onMouseDown={(e) => e.preventDefault()}
+              title="Copy"
+            >
+              {copied ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path
+                    d="M3 8.5L6.5 12L13 4"
+                    stroke="#4ade80"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <rect
+                    x="5.5"
+                    y="5.5"
+                    width="7"
+                    height="8"
+                    rx="1.5"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                  />
+                  <path
+                    d="M10.5 5.5V3.5C10.5 2.67 9.83 2 9 2H4C3.17 2 2.5 2.67 2.5 3.5V10C2.5 10.83 3.17 11.5 4 11.5H5.5"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                  />
+                </svg>
+              )}
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Context menu: Copy code, Change language (CodeLangMenu's list, under the label), Delete block */}
       {ctxMenu && (
