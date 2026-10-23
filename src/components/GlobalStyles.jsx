@@ -588,7 +588,7 @@ ${tagPillCss(theme)}
           border-radius: 8px;
           margin: ${rhythm.blockGap}px 0;
           /* The top keeps the toolbar's row, so the first line never sits under it. */
-          padding: 36px 16px 14px;
+          padding: 28px 16px 14px;
           transition: border-color var(--motion-fast);
         }
         .code-block:focus-within {
@@ -789,8 +789,8 @@ ${tagPillCss(theme)}
            header's is for the Markdown view. */
         .code-tools {
           position: absolute;
-          top: 6px;
-          right: 6px;
+          top: 4px;
+          right: 4px;
           z-index: 2;
           display: flex;
           align-items: center;
@@ -854,8 +854,8 @@ ${tagPillCss(theme)}
         .diagram-code-inner { position: relative; min-height: 0; overflow: hidden; }
         .diagram-code[data-open] .diagram-code-inner {
           border-bottom: 1px solid ${theme.codeBlockBorder};
-          margin: -36px -16px 14px;
-          padding: 36px 16px 12px;
+          margin: -28px -16px 14px;
+          padding: 28px 16px 12px;
         }
         @media (prefers-reduced-motion: reduce) { .diagram-code { transition: none; } }
         /* Prism.js token colors */
