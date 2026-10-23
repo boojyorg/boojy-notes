@@ -11,6 +11,8 @@ import { MENU_RADIUS } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { isMac } from "../utils/platform";
 import { cssZoom, revealInNote } from "../utils/domHelpers";
+import { useLatexCompletion } from "../hooks/useLatexCompletion";
+import LatexMenu from "./LatexMenu";
 
 const SHIFT_ENTER = isMac ? "⇧↵" : "Shift+Enter";
 const MONO = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace";
@@ -296,12 +298,24 @@ function SourcePanel({
     reveal();
   }, [fitHeight, reveal]);
 
+  /** What the field holds now, committed and shown. */
+  const commitField = () => {
+    const ta = fieldRef.current;
+    if (!ta) return;
+    fitHeight();
+    reveal();
+    onChange(ta.value);
+  };
+  const latex = useLatexCompletion(fieldRef, commitField);
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget;
     // Undo and redo are the note's, at the grain the field commits at.
     const k = e.key.toLowerCase();
     if ((e.metaKey || e.ctrlKey) && (k === "z" || k === "y")) return;
     e.stopPropagation();
+    // The `\` menu first, while it is offering.
+    if (latex.onKeyDown(e)) return;
     const collapsed = ta.selectionStart === ta.selectionEnd;
     if (e.key === "Escape" || (e.key === "Enter" && e.shiftKey)) {
       e.preventDefault();
@@ -355,11 +369,11 @@ function SourcePanel({
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
-        onChange={(e) => {
-          fitHeight();
-          reveal();
-          onChange(e.target.value);
+        onChange={() => {
+          commitField();
+          latex.refresh();
         }}
+        onSelect={latex.refresh}
         onKeyDown={onKeyDown}
         style={{
           flex: "1 1 auto",
@@ -406,6 +420,7 @@ function SourcePanel({
         Done
       </button>
       {tip.shown && <Tooltip label="Done" shortcut={SHIFT_ENTER} anchor={doneRef.current} />}
+      <LatexMenu completion={latex} />
     </div>
   );
 }

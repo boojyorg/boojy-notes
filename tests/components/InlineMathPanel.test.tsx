@@ -2,6 +2,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 
+const closeTypingGroup = vi.fn();
+vi.mock("../../src/context/NoteDataContext", () => ({
+  useNoteDataActions: () => ({ closeTypingGroup }),
+}));
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
@@ -16,7 +20,11 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 // Drawing is KaTeX's; here only that it is asked for.
-vi.mock("../../src/utils/inlineMath", () => ({ drawAtom: vi.fn() }));
+vi.mock("../../src/utils/inlineMath", () => ({
+  drawAtom: vi.fn(),
+  katexNow: () => null,
+  loadKatex: () => new Promise(() => {}),
+}));
 
 import InlineMathPanel from "../../src/components/InlineMathPanel";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../../src/utils/inlineFormatting";
@@ -149,5 +157,20 @@ describe("InlineMathPanel in a field of its own", () => {
     expect(inputs).toHaveBeenCalledTimes(1);
     expect(reRead).not.toHaveBeenCalled();
     expect(domNodeToMarkdown(cell)).toBe("$x^2$");
+  });
+});
+
+describe("the \\ menu in an inline formula's source", () => {
+  it("inserts a command through the formula and closes the menu", () => {
+    const { field, reRead } = open();
+    field.value = "x\\alp";
+    field.setSelectionRange(5, 5);
+    fireEvent.input(field);
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(field.value).toBe("x\\alpha");
+    expect(block.querySelector(".inline-math")?.getAttribute("data-math")).toBe("x\\alpha");
+    expect(reRead).toHaveBeenCalled();
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
   });
 });

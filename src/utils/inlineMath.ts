@@ -11,7 +11,10 @@ type KatexModule = typeof import("./katexRender");
 
 let katexModule: KatexModule | null = null;
 let loading: Promise<KatexModule> | null = null;
-function loadKatex(): Promise<KatexModule> {
+/** KaTeX once loaded, for a caller that draws now or waits (the `\` menu's rows). */
+export const katexNow = (): KatexModule | null => katexModule;
+
+export function loadKatex(): Promise<KatexModule> {
   loading ??= import("./katexRender").then((m) => {
     katexModule = m;
     return m;
