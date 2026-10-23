@@ -12,6 +12,20 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      // KaTeX's stylesheet offers every font as woff2, woff and ttf. Chromium
+      // (Electron and the Android WebView) only ever takes the woff2, so the
+      // other two are dropped before Vite copies them into the build.
+      {
+        name: "katex-woff2-only",
+        enforce: "pre",
+        transform(code, id) {
+          if (!/[\\/]katex[\\/]dist[\\/]katex(\.min)?\.css$/.test(id.split("?")[0])) return null;
+          return code.replace(
+            /,url\([^)]+\.woff\) format\("woff"\),url\([^)]+\.ttf\) format\("truetype"\)/g,
+            "",
+          );
+        },
+      },
       ...(mode === "web" || mode === "phone" || process.env.ELECTRON_DISABLE
         ? []
         : [
