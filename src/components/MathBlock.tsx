@@ -356,7 +356,7 @@ function SourcePanel({
       <textarea
         ref={fieldRef}
         aria-label="Formula source"
-        placeholder={"x^2 or \\frac{a}{b}"}
+        placeholder={"Try x^2 or \\frac{a}{b}"}
         rows={1}
         spellCheck={false}
         autoComplete="off"

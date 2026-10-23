@@ -18,8 +18,21 @@ import FileBlock from "./blocks/FileBlock";
 import EmbedBlock from "./blocks/EmbedBlock";
 import SpacerBlock from "./blocks/SpacerBlock";
 
-// KaTeX and its fonts load with the first formula a note shows, never at start.
-const MathBlock = lazy(() => import("./MathBlock"));
+// KaTeX and its fonts stay out of the start: they load once the app is idle,
+// so the first formula, typed or opened, finds them already there.
+const loadMathBlock = () => import("./MathBlock");
+const MathBlock = lazy(loadMathBlock);
+if (typeof window !== "undefined") {
+  // The module brings KaTeX's stylesheet; its fonts load only when asked for.
+  const warm = () =>
+    loadMathBlock()
+      .then(() =>
+        Promise.all(["KaTeX_Main", "KaTeX_Math"].map((f) => document.fonts?.load(`16px ${f}`))),
+      )
+      .catch(() => {});
+  if ("requestIdleCallback" in window) window.requestIdleCallback(warm, { timeout: 5000 });
+  else setTimeout(warm, 2000);
+}
 
 /** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
 const CHECKBOX_LINE_HEIGHT = 1.6;
