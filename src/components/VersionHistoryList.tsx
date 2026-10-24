@@ -442,6 +442,7 @@ export default function VersionHistoryList({
               hint: "⌫",
               icon: <TrashIcon />,
               rule: true,
+              danger: true,
               action: () => {
                 setRowMenu(null);
                 remove(rowMenu.id);

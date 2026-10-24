@@ -259,7 +259,7 @@ const ContextMenu = memo(function ContextMenu({
           },
         ]
       : []),
-    { label: "Delete", icon: <TrashIcon />, rule: true, action: run(v.trash) },
+    { label: "Delete", icon: <TrashIcon />, rule: true, action: run(v.trash), danger: true },
   ];
 
   // The phone's note screen has no New note of its own (Home has it), so the
