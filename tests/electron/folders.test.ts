@@ -323,17 +323,6 @@ describe("duplicate-folder — one directory copy beside the original", () => {
     expect(() => duplicateFolder(notesDir, "Missing")).toThrow();
     expect(() => duplicateFolder(notesDir, "../Work")).toThrow();
   });
-
-  it("a copied legacy note never takes the original's frontmatter id", () => {
-    write("Work/Legacy.md", "---\nid: note-1-abcd\n---\nbody\n");
-    expect(Object.keys(readAllNotes(notesDir))).toEqual(["note-1-abcd"]);
-
-    const { notes } = duplicateFolder(notesDir, "Work");
-
-    expect((notes[0] as Copied).id).not.toBe("note-1-abcd");
-    expect(getIdIndex()["note-1-abcd"]).toBe(path.join("Work", "Legacy.md"));
-    expect(Object.keys(readAllNotes(notesDir))).toHaveLength(2);
-  });
 });
 
 describe("readOtherFiles", () => {

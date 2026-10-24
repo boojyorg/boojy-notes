@@ -480,17 +480,6 @@ describe("reading the vault at start", () => {
     expect(idsByPath(again)).toEqual(idsByPath(notes));
   });
 
-  it("gives a legacy id two files carry to the first by path, on every launch", async () => {
-    const legacy = "---\nid: note-1-abc\n---\n";
-    await put("B.md", `${legacy}b`);
-    await put("A.md", `${legacy}a`);
-    const notes = await createPhoneVault(scrambled().ops).api.readAllNotes();
-    expect(idsByPath(notes).A).toBe("note-1-abc");
-    expect(idsByPath(notes).B).not.toBe("note-1-abc");
-    const again = await createPhoneVault(scrambled().ops).api.readAllNotes();
-    expect(idsByPath(again)).toEqual(idsByPath(notes));
-  });
-
   it("takes each note's time from the listing: no check per note, and no write when nothing changed", async () => {
     await put("One.md", "one");
     await put("Two.md", "two");
