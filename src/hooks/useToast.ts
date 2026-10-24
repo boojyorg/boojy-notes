@@ -41,6 +41,9 @@ export const DONE_MS = 3200;
 /** Whether a kind sits there until it is dismissed. */
 export const toastPersists = (kind: ToastKind) => kind !== "done";
 
+// A count, not the clock: two toasts can share a millisecond.
+let lastToastId = 0;
+
 export function useToast() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
@@ -58,7 +61,7 @@ export function useToast() {
       kind: ToastKind = "error",
       { icon, key, nameable, action }: ToastOptions = {},
     ) => {
-      const id = Date.now() + Math.random();
+      const id = ++lastToastId;
       const toast: ToastItem = { id, message, kind, icon, key, nameable, action };
       setToasts((prev) => (key ? prev.filter((t) => t.key !== key) : prev).concat(toast));
       if (!toastPersists(kind)) {
