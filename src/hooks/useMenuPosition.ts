@@ -1,11 +1,15 @@
 import { type RefObject, useLayoutEffect, useState } from "react";
+import { cssZoom } from "../utils/domHelpers";
 import { positionMenu, restingSize } from "../utils/menuPosition";
 
 /**
  * Measures a fixed-position menu after render and returns a viewport-clamped
- * `{ left, top }` via positionMenu(). Render the menu at the anchor first —
- * the layout effect corrects the position before paint, so there is no
- * visible jump.
+ * `{ left, top }` via positionMenu(), ready to use as its style: under the
+ * anchor until measured, the layout effect correcting it before paint, so
+ * there is no visible jump. Divided by the UI scale here, for every menu: the
+ * anchor and the menu are measured under the CSS zoom on <html>, and a
+ * `top`/`left` written inside it is scaled again on paint (the slash menu,
+ * dividing for itself, once didn't). Null without an anchor.
  *
  * `opts.align` — which edge meets the anchor's (`positionMenu`).
  * `opts.reflowKey` — pass anything that changes the menu's size (item count,
@@ -55,5 +59,10 @@ export function useMenuPosition(
     reflowKey,
   ]);
 
-  return pos;
+  if (!anchor) return null;
+  const zoom = cssZoom(document.documentElement) || 1;
+  return {
+    top: (pos?.top ?? anchor.bottom + (gapY ?? 0)) / zoom,
+    left: (pos?.left ?? anchor.left) / zoom,
+  };
 }

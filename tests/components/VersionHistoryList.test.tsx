@@ -115,6 +115,17 @@ describe("VersionHistoryList", () => {
     fireEvent.change(field, { target: { value: "Before tutor" } });
     fireEvent.keyDown(field, { key: "Enter" });
     expect(props.rename).toHaveBeenCalledWith("v2", "Before tutor");
+    // Once: the blur that follows Enter renames nothing more.
+    expect(props.rename).toHaveBeenCalledTimes(1);
+  });
+
+  it("Escape in the name field keeps the old name", () => {
+    const { key, props } = setup({ selected: "v2" });
+    key("F2");
+    const field = screen.getByRole("textbox", { name: "Version name" });
+    fireEvent.change(field, { target: { value: "Typed, then cancelled" } });
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(props.rename).not.toHaveBeenCalled();
   });
 
   it("offers restore and delete on one row only: the pointer's, else the one on screen", () => {

@@ -3,6 +3,7 @@ import { isElectron, isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 import { blocksToMarkdown } from "../utils/markdown";
 import { genNoteId } from "../utils/storage";
+import { localDay } from "../utils/localDay";
 import { trace } from "../utils/trace";
 import { remapFolderPath, withinFolder } from "../utils/pathTree";
 
@@ -30,8 +31,7 @@ export function persistedEquals(a, b) {
 
 /** The name a note's unsaved version is kept under when the file changed outside the app. */
 export function conflictCopyTitle(title, date = new Date()) {
-  const day = date.toISOString().slice(0, 10);
-  return `${title || "Untitled"} (conflicted copy ${day})`;
+  return `${title || "Untitled"} (conflicted copy ${localDay(date)})`;
 }
 
 /**

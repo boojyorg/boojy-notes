@@ -37,7 +37,6 @@ import {
   type TreeRow,
   visibleRows,
 } from "../utils/pathTree";
-import { cssZoom } from "../utils/domHelpers";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "./Icons";
 import Collapsible from "./Collapsible";
 import { fromTouch } from "../utils/touch";
@@ -182,12 +181,12 @@ export default function PathTreeMenu({
   // Three states on one pill: the open note keeps the sidebar's
   // own active row, the grey pill in primary ink, for as long as the popup is
   // open; the pointer's row takes the same pill, as every hover does; and once
-  // a key has moved the highlight it also carries the accent ring, what
-  // :focus-visible means everywhere else, so Enter's target is never in doubt
+  // a key has moved the highlight it also carries the focus ring, what
+  // :focus-visible means everywhere else (never the mark, 2:1 on Light), so Enter's target is never in doubt
   // when the highlight has left the open note. The ring goes the moment the
   // pointer takes over again. A pointer-opened popup paints no ring.
   const [keyed, setKeyed] = useState(false);
-  const ring = `inset 0 0 0 2px ${ACCENT.primary}`;
+  const ring = "inset 0 0 0 2px var(--boojy-focus-ring)";
 
   const menuRef = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -196,11 +195,6 @@ export default function PathTreeMenu({
   useFocusTrap(treeRef as RefObject<HTMLElement>, true, "container");
   useExitGhost(menuRef);
   const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4, reflowKey: rows.length });
-  // The anchor and the menu's own size are measured under the UI scale (CSS
-  // zoom on <html>), and a `top`/`left` written inside it is scaled again on
-  // paint, so the placement is divided by the zoom before it becomes a style
-  // (domHelpers; the grip and the drop marker do the same).
-  const zoom = cssZoom(document.documentElement);
 
   // Bring the highlighted row into view by the least the list must move
   // (`nearest`), so opening keeps the clicked folder and its neighbours above
@@ -548,8 +542,8 @@ export default function PathTreeMenu({
         data-testid={pick ? "move-picker" : "path-tree"}
         style={{
           position: "fixed",
-          top: (pos?.top ?? anchor.bottom + 4) / zoom,
-          left: (pos?.left ?? anchor.left) / zoom,
+          top: pos?.top,
+          left: pos?.left,
           zIndex: Z.CONTEXT_MENU,
           width: POPUP_W,
           boxSizing: "border-box",

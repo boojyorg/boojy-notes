@@ -14,7 +14,7 @@
 import fs from "node:fs";
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
-import { launchApp } from "./harness";
+import { END_OF_LINE, MOD, launchApp } from "./harness";
 
 // A 1x1 PNG, so the image block has a real picture to right-click.
 const PNG = Buffer.from(
@@ -102,6 +102,44 @@ test("link, code block and image context menus open at the pointer in a scrolled
     );
     expect(image, "image menu offset from the pointer").toEqual({ dx: 0, dy: 0 });
     await h.page.keyboard.press("Escape");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// Measured under the UI scale, a menu's place is divided by it before it is a
+// style (useMenuPosition does this for every menu). The slash menu skipped the
+// division and opened (scale − 1) × its distance from the window's top below
+// its line.
+test("at a UI scale above 100% the slash menu opens just under its line", async () => {
+  // Short, so the menu has room under its line and is not clamped over it.
+  const h = await launchApp({ "Note.md": "Intro.\n" });
+  try {
+    await h.openNote("Note");
+    await h.page.keyboard.press(`${MOD}+=`);
+    await h.page.keyboard.press(`${MOD}+=`);
+    const zoom = await h.page.evaluate(
+      () => (document.documentElement as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom,
+    );
+    expect(zoom).toBeGreaterThan(1);
+    await h.page.locator("[data-block-type='p']", { hasText: "Intro." }).click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.type("/");
+    const menu = h.page.getByRole("listbox", { name: "Slash commands" });
+    await expect(menu).toBeVisible();
+    const line = await h.page
+      .locator("[data-block-type='p']")
+      .filter({ hasText: /^\/$/ })
+      .boundingBox();
+    const box = await menu.boundingBox();
+    if (!line || !box) throw new Error("no box");
+    const gap = box.y - (line.y + line.height);
+    expect(gap).toBeGreaterThanOrEqual(-1);
+    expect(gap).toBeLessThan(12 * zoom!);
+    await h.page.keyboard.press("Escape");
+    await h.page.keyboard.press(`${MOD}+Shift+0`);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

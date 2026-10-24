@@ -71,7 +71,6 @@ export default function ImageMenu({
       label: "Delete",
       icon: <TrashIcon />,
       action: act(onDelete ?? noop),
-      danger: true,
       rule: true,
     });
 

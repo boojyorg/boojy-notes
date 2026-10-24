@@ -168,7 +168,8 @@ const ContextMenu = memo(function ContextMenu({
     ? {
         label: "Version History",
         icon: <HistoryIcon />,
-        hint: "⌥⌘S",
+        // The Mac's key only: Ctrl+Alt+S elsewhere is Go to Sidebar (useAppKeyboard).
+        hint: isMac ? "⌥⌘S" : undefined,
         rule: true,
         action: () => {
           setCtxMenu(null);
@@ -231,7 +232,6 @@ const ContextMenu = memo(function ContextMenu({
         setCtxMenu(null);
         trashFile?.(path);
       },
-      danger: true,
     },
   ];
 
@@ -302,7 +302,6 @@ const ContextMenu = memo(function ContextMenu({
               bulkDeleteNotes([...selectedNotes]);
               setCtxMenu(null);
             },
-            danger: true,
           },
         ]
       : ctxMenu.type === "note"
@@ -362,7 +361,6 @@ const ContextMenu = memo(function ContextMenu({
                     deleteFolder(ctxMenu.id);
                     setCtxMenu(null);
                   },
-                  danger: true,
                 },
               ];
 

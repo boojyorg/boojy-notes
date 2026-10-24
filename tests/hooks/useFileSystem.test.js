@@ -664,6 +664,11 @@ describe("persistedEquals: two versions are the same when they write the same fi
     expect(conflictCopyTitle("", new Date("2026-09-06T15:00:00Z"))).toBe(
       "Untitled (conflicted copy 2026-09-06)",
     );
+    // The local day, as the phone's sync names its copy: just after midnight
+    // in summer time, UTC is still yesterday.
+    expect(conflictCopyTitle("Alpha", new Date(2026, 9, 24, 0, 30))).toBe(
+      "Alpha (conflicted copy 2026-10-24)",
+    );
   });
 });
 

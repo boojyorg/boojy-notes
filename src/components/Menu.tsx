@@ -35,6 +35,9 @@ export interface MenuItem {
   icon?: ReactNode;
   /** Muted text on the right: the item's key, or why it is disabled. */
   hint?: string;
+  /** The danger ink, for what can't be taken back (Delete permanently); a
+   *  delete that goes to the Trash or Recently Deleted, or that ⌘Z undoes, is
+   *  ordinary ink. */
   danger?: boolean;
   disabled?: boolean;
   /** A rule above this item: the start of a group. */
@@ -412,8 +415,8 @@ export default function Menu({
         style={{
           ...menuSurface(theme),
           ...(overSettings && { zIndex: Z.SETTINGS_MENU }),
-          top: (pos?.top ?? anchor.bottom + (gapY ?? 0)) / zoom,
-          left: (pos?.left ?? anchor.left) / zoom,
+          top: pos?.top,
+          left: pos?.left,
           minWidth,
           maxWidth,
           maxHeight,

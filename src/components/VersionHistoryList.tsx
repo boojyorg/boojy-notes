@@ -9,6 +9,7 @@ import { cssZoom } from "../utils/domHelpers";
 import { versionMoment, versionTime } from "../utils/versionTime";
 import { HistoryIcon, PencilIcon, RestoreIcon, TrashIcon } from "./Icons";
 import { MenuRule } from "./Menu";
+import RenameField from "./RenameField";
 import RowAction from "./RowAction";
 import { fromTouch } from "../utils/touch";
 
@@ -65,7 +66,6 @@ export default function VersionHistoryList({
   const [hovered, setHovered] = useState<string | null>(null);
   const [nowChosen, setNowChosen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
   const [rowMenu, setRowMenu] = useState<{ id: string; top: number } | null>(null);
   const now = Date.now();
 
@@ -136,16 +136,8 @@ export default function VersionHistoryList({
   );
 
   const startRename = (id: string) => {
-    const v = state.versions.find((x) => x.id === id);
     setRowMenu(null);
     setRenaming(id);
-    setDraft(v?.name ?? "");
-  };
-
-  const endRename = (commit: boolean) => {
-    if (renaming && commit) rename(renaming, draft.trim());
-    setRenaming(null);
-    listRef.current?.focus({ preventScroll: true });
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -326,19 +318,13 @@ export default function VersionHistoryList({
             >
               {dot(v, selected)}
               {renaming === id ? (
-                <input
-                  // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to name the row
-                  autoFocus
-                  value={draft}
+                <RenameField
+                  name={v?.name ?? ""}
                   placeholder={label}
-                  aria-label="Version name"
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Enter") endRename(true);
-                    else if (e.key === "Escape") endRename(false);
-                  }}
-                  onBlur={() => endRename(true)}
+                  label="Version name"
+                  onRename={(value: string) => rename(id, value.trim())}
+                  onClose={() => setRenaming(null)}
+                  onKeyClose={() => listRef.current?.focus({ preventScroll: true })}
                   style={{
                     flex: 1,
                     minWidth: 0,

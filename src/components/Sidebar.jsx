@@ -51,6 +51,7 @@ import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import SyncStatusButton from "./SyncStatusButton";
+import RenameField from "./RenameField";
 import Collapsible from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
 import { SYNC_FOLDER } from "../phone/syncFolder";
@@ -201,44 +202,6 @@ const renameFieldStyle = ({ TEXT }, fontSize) => ({
   minWidth: 0,
   cursor: "text",
 });
-
-/**
- * A row's inline rename field: a note's (double-click, F2) or a folder's (its
- * menu, F2). Finder-style, it arrives with the whole name selected. Enter or
- * a blur renames, once: Enter unmounts the field, and the blur that can
- * follow must not rename again. Escape renames nothing. Enter and Escape are
- * the field's own (prevented), and a press stays in it, since rows open,
- * toggle and drag. `onKeyClose` hands focus back after a key closed it.
- */
-function RenameField({ name, label, style, onRename, onClose, onKeyClose }) {
-  const done = useRef(false);
-  const close = (field, value, byKey) => {
-    if (done.current) return;
-    done.current = true;
-    if (value !== null) onRename(value);
-    onClose();
-    if (byKey) onKeyClose(field, value);
-  };
-  return (
-    <input
-      autoFocus
-      defaultValue={name}
-      aria-label={label}
-      data-testid="rename-field"
-      onFocus={(e) => e.currentTarget.select()}
-      onClick={(e) => e.stopPropagation()}
-      onDoubleClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-      onBlur={(e) => close(e.currentTarget, e.currentTarget.value, false)}
-      onKeyDown={(e) => {
-        if (e.key !== "Enter" && e.key !== "Escape") return;
-        e.preventDefault();
-        close(e.currentTarget, e.key === "Enter" ? e.currentTarget.value : null, true);
-      }}
-      style={style}
-    />
-  );
-}
 
 // ── Section headers (desktop) ───────────────────────────────────────────────
 // Header labels sit on the SPINE with the icons, one step quieter in colour
