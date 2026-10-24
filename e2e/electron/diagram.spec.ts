@@ -330,3 +330,25 @@ test("a wide diagram cleared and brought back by undo is fitted again", async ()
   expect(await fitted()).toBeCloseTo(0.65, 1);
   expect(h.pageErrors).toEqual([]);
 });
+
+test("the full-size view keeps its events: ⌘D and a right-click reach nothing behind it", async () => {
+  const file = `Intro.\n\n\`\`\`mermaid\n${FLOW}\n\`\`\`\n`;
+  h = await launchApp({ [NOTE]: file });
+  await h.openNote("Diagram");
+  await expect(drawing(h.page)).toBeVisible();
+  await h.page.locator("[data-block-type='p']", { hasText: "Intro." }).click();
+  await block(h.page).hover();
+  await block(h.page).getByRole("button", { name: "View full size" }).click();
+  const view = h.page.getByRole("dialog", { name: "Diagram" });
+  await expect(view).toBeVisible();
+  await h.page.keyboard.press(`${MOD}+d`);
+  await view.locator(".diagram-lightbox-panel").click({ button: "right" });
+  await expect(h.page.getByRole("menu", { name: "Code block options" })).toHaveCount(0);
+  await expect(view).toBeVisible();
+  await h.page.keyboard.press("Escape");
+  await expect(view).toHaveCount(0);
+  await expect(h.page.locator("[data-block-type='p']", { hasText: "Intro." })).toHaveCount(1);
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toBe(file);
+  expect(h.pageErrors).toEqual([]);
+});

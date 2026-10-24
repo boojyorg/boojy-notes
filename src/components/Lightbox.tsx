@@ -1,4 +1,4 @@
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, type SyntheticEvent, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -10,6 +10,38 @@ import { fromTouch } from "../utils/touch";
 export const LIGHTBOX_HEADER = 56;
 /** The room either side of the content. */
 export const LIGHTBOX_SIDE = 40;
+
+/** Keys that close the view; it holds focus (its trap), so it hears them itself. */
+const CLOSE_KEYS = new Set(["Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
+
+const stop = (e: SyntheticEvent) => e.stopPropagation();
+/**
+ * The view's events end at its edge. A portal still bubbles through the React
+ * tree it was opened from, so a view opened inside the editor would hand ⌘D
+ * to the note behind it, or a right-click to its block's menu.
+ */
+const BOUNDARY = {
+  onKeyUp: stop,
+  onBeforeInput: stop,
+  onInput: stop,
+  onPointerDown: stop,
+  onPointerUp: stop,
+  onMouseDown: stop,
+  onMouseUp: stop,
+  onDoubleClick: stop,
+  onTouchStart: stop,
+  onTouchEnd: stop,
+  onFocus: stop,
+  onBlur: stop,
+  onCopy: stop,
+  onCut: stop,
+  onPaste: stop,
+  onDragStart: stop,
+  onContextMenu: (e: SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  },
+};
 
 interface LightboxProps {
   /** The dialog's accessible name. */
@@ -26,7 +58,8 @@ interface LightboxProps {
  * theme, a name centred at the top, a close button at the right, the content
  * centred in what is left. Escape, the close button or a click anywhere but
  * the content closes it. The arrow keys close it too, as they always have, so
- * a key meant for the note never lands behind it.
+ * a key meant for the note never lands behind it; no other event reaches what
+ * opened it (`BOUNDARY`).
  */
 export default function Lightbox({ label, name, onClose, children }: LightboxProps) {
   const { theme } = useTheme();
@@ -38,23 +71,6 @@ export default function Lightbox({ label, name, onClose, children }: LightboxPro
   useFocusTrap(containerRef as RefObject<HTMLElement>, true, "container");
   useExitGhost(containerRef, true);
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (
-        e.key === "Escape" ||
-        e.key === "ArrowLeft" ||
-        e.key === "ArrowRight" ||
-        e.key === "ArrowUp" ||
-        e.key === "ArrowDown"
-      ) {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
   return (
     <div
       ref={containerRef}
@@ -63,7 +79,18 @@ export default function Lightbox({ label, name, onClose, children }: LightboxPro
       aria-modal="true"
       aria-label={label}
       tabIndex={-1}
-      onClick={onClose}
+      {...BOUNDARY}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (CLOSE_KEYS.has(e.key)) {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
       style={{
         outline: "none",
         position: "fixed",
