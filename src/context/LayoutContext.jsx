@@ -26,7 +26,6 @@ export function LayoutProvider({ children }) {
   const chromeBg = theme.BG.dark;
   const editorBg = theme.BG.editor;
   const accentColor = theme.ACCENT.primary; // marks and fills
-  const accentText = theme.ACCENT.text; // accent as ink (search hits)
 
   /**
    * macOS full screen: the traffic lights are gone, so the chrome that clears
@@ -88,7 +87,6 @@ export function LayoutProvider({ children }) {
       chromeBg,
       editorBg,
       accentColor,
-      accentText,
       sidebarHandles,
       isDragging,
       startDrag,
@@ -105,7 +103,6 @@ export function LayoutProvider({ children }) {
       chromeBg,
       editorBg,
       accentColor,
-      accentText,
       isDragging,
       startDrag,
     ],

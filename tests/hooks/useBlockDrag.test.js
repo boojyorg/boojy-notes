@@ -108,11 +108,9 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     const { result } = renderHook(() => useBlockDrag(deps));
     const bd = result.current.blockDrag.current;
     expect(bd.active).toBe(false);
-    expect(bd.blockId).toBe(null);
     expect(bd.blockIds).toEqual([]);
     expect(bd.cloneEl).toBe(null);
     expect(bd.markerEl).toBe(null);
-    expect(bd.startIndex).toBe(-1);
     expect(bd.targetIndex).toBe(-1);
   });
 

@@ -69,7 +69,7 @@ export function useSidebarDrag({
     // Prevent browser scroll during touch drag
     const treeEl = el.closest("[role='tree']");
     if (treeEl) treeEl.style.touchAction = "none";
-    sd._scrollEl = treeEl;
+    sd.treeEl = treeEl;
 
     // Determine dragged IDs for multi-drag
     const sel = selectedNotesRef?.current;
@@ -371,9 +371,9 @@ export function useSidebarDrag({
       sd.scrollRAF = null;
     }
     clearDropHighlights();
-    if (sd._scrollEl) {
-      sd._scrollEl.style.touchAction = "";
-      sd._scrollEl = null;
+    if (sd.treeEl) {
+      sd.treeEl.style.touchAction = "";
+      sd.treeEl = null;
     }
     document.body.classList.remove("block-dragging");
     if (sd.keyHandler) document.removeEventListener("keydown", sd.keyHandler, true);
@@ -414,7 +414,7 @@ export function useSidebarDrag({
     // long-press menu's Move to….
     if (isPhone) return;
     if (e.button !== 0) return;
-    if (e.target.closest(".delete-btn, input")) return;
+    if (e.target.closest("input")) return;
 
     // Notes and folders both drag, and both mean location: a note's file moves
     // into the target folder, a folder's directory moves into it (or out to the

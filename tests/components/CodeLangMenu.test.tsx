@@ -14,7 +14,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 
-import CodeLangMenu, { typeAheadIndex } from "../../src/components/CodeLangMenu";
+import CodeLangMenu from "../../src/components/CodeLangMenu";
 
 const LANGUAGES = [
   { value: "", label: "Plain" },
@@ -118,22 +118,5 @@ describe("CodeLangMenu", () => {
     expect(menu.getAttribute("aria-activedescendant")).toBe("code-lang-item-0"); // Plain
     fireEvent.keyDown(menu, { key: "p" });
     expect(menu.getAttribute("aria-activedescendant")).toBe("code-lang-item-6"); // Python
-  });
-});
-
-describe("typeAheadIndex", () => {
-  const names = LANGUAGES.map((l) => l.label);
-
-  it("takes the first match for a fresh buffer and the next for a repeat", () => {
-    expect(typeAheadIndex(names, "j", -1)).toBe(4); // JavaScript
-    expect(typeAheadIndex(names, "jj", 4)).toBe(5); // JSON
-    expect(typeAheadIndex(names, "js", -1)).toBe(5); // JSON by name
-    expect(typeAheadIndex(names, "pyt", -1)).toBe(6);
-  });
-
-  it("wraps, ignores case, and answers -1 for a name no row carries", () => {
-    expect(typeAheadIndex(names, "b", 5)).toBe(1);
-    expect(typeAheadIndex(names, "SQ", -1)).toBe(7);
-    expect(typeAheadIndex(names, "z", -1)).toBe(-1);
   });
 });

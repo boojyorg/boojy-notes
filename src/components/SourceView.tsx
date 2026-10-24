@@ -2,10 +2,7 @@ import { type MutableRefObject, useLayoutEffect, useRef, useState } from "react"
 import { blocksToMarkdown, markdownToBlocks } from "../utils/markdown";
 import { paintMarkdown } from "../utils/sourceView";
 import { focusTitleEnd } from "../utils/domHelpers";
-
-type Block = { id: string; type: string; text?: string };
-type Note = { content: { blocks: Block[] } };
-type NoteData = Record<string, Note>;
+import type { Block, NoteData } from "../types/notes";
 
 /**
  * Where the caret is in the view, how far down the scroller its line sits, and

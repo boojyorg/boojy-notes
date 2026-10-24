@@ -10,6 +10,7 @@ import { createRequire } from "node:module";
 import { expect, type Page, test } from "@playwright/test";
 import { expandAllFolders, launchApp, MOD, setWidth } from "./harness";
 import { makePdf } from "./pdfFixture";
+import { PNG } from "../fixtures";
 
 const BACK = process.platform === "darwin" ? "Meta+BracketLeft" : "Alt+ArrowLeft";
 const FORWARD = process.platform === "darwin" ? "Meta+BracketRight" : "Alt+ArrowRight";
@@ -21,11 +22,6 @@ const SLIDES = makePdf([
   ["The Jacobian", "Joint speeds to tip speed"],
   ["Summary", "Next week: trajectories"],
 ]);
-// A 1x1 PNG.
-const PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-  "base64",
-);
 
 const seed = {
   "Uni/COMP329.md": "Overview.\n",

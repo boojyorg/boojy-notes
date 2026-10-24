@@ -72,7 +72,7 @@ export function useEditorHandlers({
     selectBlock,
   });
   const { executeSlashCommand } = useSlashCommands({ ...shared, onError });
-  const { handleBlockInput, handleEditorInput } = useInputHandler({
+  const { handleEditorInput } = useInputHandler({
     ...shared,
     slashMenuRef,
     setSlashMenu,
@@ -92,7 +92,6 @@ export function useEditorHandlers({
     setSlashMenu,
     tagMenuRef,
     setTagMenu,
-    wikilinkMenuRef,
     updateBlockText,
     insertBlockAfter,
     openCodeBlock,
@@ -107,7 +106,6 @@ export function useEditorHandlers({
     selectBlock,
     selectBlockRun,
     executeSlashCommand,
-    handleBlockInput,
   });
   const { handleEditorPaste, handleEditorCopy, handleEditorCut } = usePasteHandler({
     ...shared,

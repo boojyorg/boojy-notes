@@ -1,13 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { MOD } from "./fixtures";
 
 // axe over the surfaces a keyboard or screen-reader user meets first, in both
 // themes, contrast included. Serious and critical fail; moderate and minor are
 // advice. The palette's contrast is also proved token by token in
 // tests/constants/themeContrast.test.js; this catches what a component does
 // with the tokens (an alpha, an inherited colour).
-
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 async function open(page: Page, themeMode: "day" | "night") {
   await page.addInitScript((mode) => {

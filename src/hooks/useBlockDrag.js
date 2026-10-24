@@ -53,7 +53,6 @@ export function useBlockDrag({
     // The note the drag started in. The drop writes to this note, never to
     // whichever note is active when the pointer is released.
     noteId: null,
-    blockId: null,
     blockIds: [],
     cloneEl: null,
     markerEl: null,
@@ -62,7 +61,6 @@ export function useBlockDrag({
     offsetY: 0,
     // CSS zoom (the UI scale) at drag start; viewport pixels ÷ this = CSS pixels.
     zoom: 1,
-    startIndex: -1,
     targetIndex: -1,
     // The boundary the marker last stood at: a new one glides, the same one
     // follows auto-scroll at once.
@@ -134,9 +132,7 @@ export function useBlockDrag({
     setToolbarState(null);
 
     bd.noteId = noteId;
-    bd.blockId = blockId;
     bd.blockIds = draggedIds;
-    bd.startIndex = blockIndex;
     bd.targetIndex = blockIndex;
     bd.markerIndex = -1;
     bd.outside = false;
@@ -322,11 +318,9 @@ export function useBlockDrag({
     }
     bd.active = false;
     bd.noteId = null;
-    bd.blockId = null;
     bd.blockIds = [];
     bd.cloneEl = null;
     bd.markerEl = null;
-    bd.startIndex = -1;
     bd.targetIndex = -1;
     bd.markerIndex = -1;
     bd.outside = false;

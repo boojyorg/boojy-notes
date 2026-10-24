@@ -14,9 +14,8 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { dropFiles, launchApp, sleep, waitForFile } from "./harness";
+import { PNG_B64 } from "../fixtures";
 
-const PNG_B64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 const png = (name: string) => ({ name, bytes: Buffer.from(PNG_B64, "base64") });
 
 const lines = (t: string) => t.split("\n").filter((l) => l.trim() !== "");
