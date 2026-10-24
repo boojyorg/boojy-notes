@@ -11,6 +11,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
     theme: {
       TEXT: { primary: "#14110F", secondary: "#47403A", muted: "#6F6861" },
       BG: { elevated: "#FFFFFF", divider: "#E9E9E9", hover: "#ECECEC", editor: "#FFFFFF" },
+      SEMANTIC: { error: "#B3261E" },
     },
   }),
 }));
@@ -46,5 +47,18 @@ describe("RowAction", () => {
     expect(screen.getByTestId("row-action-tooltip")).toHaveTextContent("↵");
     fireEvent.click(b);
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  // A delete goes red under the pointer, as a lit Delete row does in a menu.
+  it("a delete is muted at rest and red under the pointer", () => {
+    render(
+      <RowAction label="Delete “Plan”" tip="Delete" icon={<span />} onClick={vi.fn()} danger />,
+    );
+    const b = screen.getByRole("button", { name: "Delete “Plan”" });
+    expect(b.style.color).toBe("rgb(111, 104, 97)");
+    fireEvent.mouseEnter(b);
+    expect(b.style.color).toBe("rgb(179, 38, 30)");
+    fireEvent.mouseLeave(b);
+    expect(b.style.color).toBe("rgb(111, 104, 97)");
   });
 });

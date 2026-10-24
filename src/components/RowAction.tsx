@@ -9,7 +9,7 @@ import { fromTouch } from "../utils/touch";
  * A small action on a list row (Version History's Restore and Delete,
  * Recently Deleted's Restore and Delete permanently): its glyph muted at
  * rest and in full ink under the pointer, never a box, as the sidebar's ···
- * does. Named by the app's chip with its key, never a native `title`. Not a
+ * does; a delete's goes red there instead, as a lit Delete row does (Menu). Named by the app's chip with its key, never a native `title`. Not a
  * Tab stop: the list's own keys reach the action.
  */
 export default function RowAction({
@@ -18,6 +18,7 @@ export default function RowAction({
   shortcut,
   icon,
   onClick,
+  danger = false,
 }: {
   /** The accessible name, which may name the row ("Restore “Lecture 4”"). */
   label: string;
@@ -26,6 +27,8 @@ export default function RowAction({
   shortcut?: string;
   icon: ReactNode;
   onClick: () => void;
+  /** A delete: red under the pointer. */
+  danger?: boolean;
 }) {
   const { theme } = useTheme();
   const tooltip = useTooltip();
@@ -59,7 +62,7 @@ export default function RowAction({
           border: "none",
           borderRadius: 6,
           background: "transparent",
-          color: over ? theme.TEXT.primary : theme.TEXT.muted,
+          color: !over ? theme.TEXT.muted : danger ? theme.SEMANTIC.error : theme.TEXT.primary,
           transition: "color var(--motion-fast)",
           display: "flex",
           alignItems: "center",

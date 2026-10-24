@@ -368,6 +368,7 @@ export default function VersionHistoryList({
                     shortcut="⌫"
                     icon={<TrashIcon />}
                     onClick={() => remove(id)}
+                    danger
                   />
                 </span>
               ) : (

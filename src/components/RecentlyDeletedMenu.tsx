@@ -252,6 +252,7 @@ export default function RecentlyDeletedMenu({
                     shortcut="⌫"
                     icon={<TrashIcon />}
                     onClick={() => purge(item)}
+                    danger
                   />
                 </span>
               }
