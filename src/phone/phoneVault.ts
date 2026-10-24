@@ -1,13 +1,7 @@
 import { contentHash } from "../sync/contentHash";
 import type { LocalStore } from "../sync/types";
 import type { Note, NoteData } from "../types/notes";
-import {
-  applyEol,
-  blocksToMarkdown,
-  detectEol,
-  markdownToBlocks,
-  parseFrontmatter,
-} from "../utils/markdown";
+import { applyEol, blocksToMarkdown, detectEol, markdownToBlocks } from "../utils/markdown";
 import { genNoteId } from "../utils/storage";
 import type { FileOps } from "./files";
 
@@ -321,21 +315,12 @@ export function createPhoneVault(
         unreadable: "encoding",
       };
     }
-    let body = raw;
-    let legacyId: string | null = null;
-    const fm = parseFrontmatter(raw);
-    if (fm?.id && /^note-\d+-/.test(fm.id)) {
-      legacyId = fm.id;
-      body = fm.body;
-    }
     const idx = await loadIndex();
-    let id = idAt(rel);
-    if (!id && legacyId && !(legacyId in idx)) id = legacyId;
-    if (!id) id = genNoteId();
+    const id = idAt(rel) ?? genNoteId();
     idx[id] = rel;
     seen.set(id, raw);
     const title = baseName(rel);
-    const content: Note["content"] = { title, blocks: markdownToBlocks(body) };
+    const content: Note["content"] = { title, blocks: markdownToBlocks(raw) };
     if (detectEol(raw) === "\r\n") content.eol = "\r\n";
     return {
       id,
@@ -510,8 +495,7 @@ export function createPhoneVault(
         const { files: paths, mtimes } = await walk();
         const notePaths = paths.filter((rel) => isNote(rel) && !inAttachments(parentOf(rel) ?? ""));
         // Every file is read before any is taken in: a failed read publishes
-        // nothing. Then ids are given in path order, one at a time, so files
-        // carrying the same legacy id settle the same way on every launch.
+        // nothing.
         const read = await mapLimited(notePaths, (rel) => files.read(abs(rel)));
         for (const [i, rel] of notePaths.entries()) {
           const note = await parse(rel, { bytes: read[i], mtime: mtimes.get(rel) ?? 0 });

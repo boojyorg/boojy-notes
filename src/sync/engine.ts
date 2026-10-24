@@ -156,7 +156,7 @@ class Pass {
    * only once the record is saved, so a crash between hands them over again.
    */
   private async adoptRestored() {
-    const paths = (await this.local.restored?.()) ?? [];
+    const paths = await this.local.restored();
     if (!paths.length) return;
     let changed = false;
     for (const path of paths) {
@@ -167,7 +167,7 @@ class Pass {
       }
     }
     if (changed) await this.save();
-    await this.local.forgetRestored?.(paths);
+    await this.local.forgetRestored(paths);
   }
 
   /**

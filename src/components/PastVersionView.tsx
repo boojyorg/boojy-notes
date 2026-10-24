@@ -99,6 +99,7 @@ export default function PastVersionView({
           onImageCopyImage={noop}
           onUpdateBlockProperty={noop}
           onFileOpen={noop}
+          onFileOpenDefault={noop}
           onFileShowInFolder={noop}
           noteDataRef={noteDataRef}
           onNavigateToNote={noop}

@@ -90,6 +90,7 @@ describe("FileBlock", () => {
     const rows = [...document.body.querySelectorAll(".file-context-menu [role=menuitem]")];
     expect(rows.map((r) => r.textContent)).toEqual([
       "Open file",
+      "Open in Default App",
       expect.stringMatching(/^Show in (Finder|folder)$/),
       "Copy file path",
       "Delete",

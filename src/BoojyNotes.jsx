@@ -1062,22 +1062,23 @@ export default function BoojyNotes() {
 
   // Wikilink wiring (title set, click/select)
   const openLinkFixerRef = useRef(null);
-  const { noteTitleSet, handleWikilinkClick, handleWikilinkSelect } = useWikilinkHandlers({
-    noteData,
-    noteDataRef,
-    textOnlyEdit,
-    openNote,
-    wikilinkMenuRef,
-    setWikilinkMenu,
-    syncGeneration,
-    commitNoteData,
-    focusBlockId,
-    focusCursorPos,
-    showToast,
-    openLinkFixerRef,
-    otherFiles,
-    showFile,
-  });
+  const { noteTitleSet, handleWikilinkClick, handleWikilinkSelect, openFileInPlace } =
+    useWikilinkHandlers({
+      noteData,
+      noteDataRef,
+      textOnlyEdit,
+      openNote,
+      wikilinkMenuRef,
+      setWikilinkMenu,
+      syncGeneration,
+      commitNoteData,
+      focusBlockId,
+      focusCursorPos,
+      showToast,
+      openLinkFixerRef,
+      otherFiles,
+      showFile,
+    });
   noteTitleSetRef.current = noteTitleSet;
 
   // The link picker: one popover for an address and a note alike.
@@ -1679,6 +1680,7 @@ export default function BoojyNotes() {
               activeNote={activeNote}
               editorFadeIn={editorFadeIn}
               onWikilinkClick={handleWikilinkClick}
+              onFileOpenInPlace={openFileInPlace}
               onTagClick={handleTagClick}
               toolbarState={toolbarState}
               noteTitleSet={noteTitleSet}

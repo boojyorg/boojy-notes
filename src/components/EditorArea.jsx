@@ -165,6 +165,7 @@ const EditorArea = memo(
     activeNote,
     editorFadeIn,
     onWikilinkClick,
+    onFileOpenInPlace,
     onTagClick,
     toolbarState,
     noteTitleSet,
@@ -441,16 +442,8 @@ const EditorArea = memo(
       }
     }, [sourceView]);
 
-    const onNavigateToNote = useCallback(
-      (target, create) => {
-        if (create && onWikilinkClick) {
-          onWikilinkClick(target);
-        } else if (openNoteProp) {
-          openNoteProp(target);
-        }
-      },
-      [onWikilinkClick, openNoteProp],
-    );
+    // An embed's click opens the note it shows.
+    const onNavigateToNote = useCallback((id) => openNoteProp?.(id), [openNoteProp]);
 
     const activeFormats = useMemo(
       () => (toolbarState ? detectActiveFormats() : EMPTY_FORMATS),
@@ -877,12 +870,21 @@ const EditorArea = memo(
       }
     }, []);
 
-    const handleFileOpen = useCallback(async (src) => {
+    const handleFileOpenDefault = useCallback(async (src) => {
       const api = getAPI();
       if (!api?.resolveAttachment) return;
       const absPath = await api.resolveAttachment(src);
       if (absPath && api.openPath) api.openPath(absPath);
     }, []);
+
+    // A file block opens its file in the note's place, as a [[link]] to it
+    // does; the default app only for a file the vault's list doesn't hold.
+    const handleFileOpen = useCallback(
+      (src) => {
+        if (!onFileOpenInPlace?.(src)) handleFileOpenDefault(src);
+      },
+      [onFileOpenInPlace, handleFileOpenDefault],
+    );
 
     const handleFileShowInFolder = useCallback(async (src) => {
       const api = getAPI();
@@ -1488,6 +1490,7 @@ const EditorArea = memo(
                               onImageCopyImage={handleImageCopyImage}
                               onUpdateBlockProperty={updateBlockProperty}
                               onFileOpen={handleFileOpen}
+                              onFileOpenDefault={handleFileOpenDefault}
                               onFileShowInFolder={handleFileShowInFolder}
                               noteDataRef={noteDataRef}
                               onNavigateToNote={onNavigateToNote}
