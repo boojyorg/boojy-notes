@@ -161,6 +161,27 @@ describe("Menu", () => {
     expect(disabled).toHaveAttribute("aria-disabled", "true");
   });
 
+  // A delete is ordinary ink at rest and red only while lit, by the pointer
+  // or the keys alike: the warning comes as you're about to choose it.
+  it("draws a danger row in the danger ink only while it is lit", () => {
+    const { menu } = setup([
+      { label: "Open", action: vi.fn() },
+      { label: "Delete", action: vi.fn(), danger: true },
+    ]);
+    const [open, del] = screen.getAllByRole("menuitem");
+    const red = "rgb(179, 38, 30)";
+    expect(del.style.color).not.toBe(red);
+    fireEvent.mouseMove(del);
+    expect(del.style.color).toBe(red);
+    fireEvent.mouseLeave(del);
+    expect(del.style.color).not.toBe(red);
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(menu).toHaveAttribute("aria-activedescendant", "t-1");
+    expect(del.style.color).toBe(red);
+    expect(open.style.color).not.toBe(red);
+  });
+
   it("ticks a checked radio, draws a rule above a group, never above the first row", () => {
     setup([
       { label: "A", role: "menuitemradio", checked: true, rule: true, action: vi.fn() },

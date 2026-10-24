@@ -35,9 +35,10 @@ export interface MenuItem {
   icon?: ReactNode;
   /** Muted text on the right: the item's key, or why it is disabled. */
   hint?: string;
-  /** The danger ink, for what can't be taken back (Delete permanently); a
-   *  delete that goes to the Trash or Recently Deleted, or that ⌘Z undoes, is
-   *  ordinary ink. */
+  /** A row that deletes: ordinary ink at rest, the danger ink while lit (by
+   *  the pointer or the keys), its glyph with it. Every Delete and Remove
+   *  carries it, undoable or not; a delete that can't be taken back also asks
+   *  first, in the danger colour (ConfirmDialog). */
   danger?: boolean;
   disabled?: boolean;
   /** A rule above this item: the start of a group. */
@@ -314,13 +315,17 @@ export default function Menu({
               minHeight: isPhone ? TOUCH : undefined,
               padding: isPhone ? "0 14px" : "7px 10px",
               cursor: item.disabled ? "default" : "pointer",
-              // The glyph takes the row's ink, so Delete's goes red with it.
-              color: item.disabled ? TEXT.muted : item.danger ? SEMANTIC.error : TEXT.primary,
+              // The glyph takes the row's ink, so a lit Delete's goes red with it.
+              color: item.disabled
+                ? TEXT.muted
+                : item.danger && i === lit
+                  ? SEMANTIC.error
+                  : TEXT.primary,
               fontSize: isPhone ? 15 : 12.5,
               fontWeight: item.choice ? 500 : undefined,
               fontFamily: "inherit",
               textAlign: "left",
-              transition: "background var(--motion-fast)",
+              transition: "background var(--motion-fast), color var(--motion-fast)",
               display: "flex",
               alignItems: "center",
               gap: isPhone ? 12 : 8,

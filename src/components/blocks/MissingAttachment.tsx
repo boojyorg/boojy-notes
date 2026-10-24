@@ -29,7 +29,7 @@ const rectOf = (el: Element): MenuAnchor => {
  * the place and shape a file card has, and only its words change. The link
  * in the file is untouched. A click finds the file (Find it…), the ··· or a
  * right-click offers Find it… and Remove. Remove takes the block out, as
- * Delete does elsewhere, and is undoable, so it is not in the danger ink.
+ * Delete does elsewhere.
  */
 export default function MissingAttachment({
   src,
@@ -47,7 +47,7 @@ export default function MissingAttachment({
 
   const entries = [
     ...(onFind ? [{ label: "Find it…", icon: <RevealIcon />, action: onFind }] : []),
-    { label: "Remove", icon: <TrashIcon />, action: onRemove, rule: !!onFind },
+    { label: "Remove", icon: <TrashIcon />, action: onRemove, rule: !!onFind, danger: true },
   ];
 
   return (

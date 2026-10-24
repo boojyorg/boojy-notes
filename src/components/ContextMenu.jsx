@@ -159,8 +159,7 @@ const ContextMenu = memo(function ContextMenu({
       deleteNote(id);
       setCtxMenu(null);
     },
-    // Ordinary ink: a note goes to the Trash, so this can be taken back.
-    // Red is kept for what cannot.
+    danger: true,
   });
 
   // Version History opens the header's second group, how the note is seen.
@@ -232,6 +231,7 @@ const ContextMenu = memo(function ContextMenu({
         setCtxMenu(null);
         trashFile?.(path);
       },
+      danger: true,
     },
   ];
 
@@ -302,6 +302,7 @@ const ContextMenu = memo(function ContextMenu({
               bulkDeleteNotes([...selectedNotes]);
               setCtxMenu(null);
             },
+            danger: true,
           },
         ]
       : ctxMenu.type === "note"
@@ -361,6 +362,7 @@ const ContextMenu = memo(function ContextMenu({
                     deleteFolder(ctxMenu.id);
                     setCtxMenu(null);
                   },
+                  danger: true,
                 },
               ];
 

@@ -610,6 +610,7 @@ export default memo(function CodeBlock({
               label: "Delete block",
               icon: <TrashIcon />,
               action: handleDeleteBlock,
+              danger: true,
               rule: true,
             },
           ]}

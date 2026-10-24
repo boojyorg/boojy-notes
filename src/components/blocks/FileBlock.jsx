@@ -169,6 +169,7 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
               label: "Delete",
               icon: <TrashIcon />,
               action: act(onDelete),
+              danger: true,
               rule: true,
             },
           ]}
