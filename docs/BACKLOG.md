@@ -102,19 +102,7 @@ Product calls for Tyr.
 
 Problems Beta users can hit today. Each is small and comes before anything else.
 
-- [ ] **Typing in a block rewrites two kinds of link in the file.** A keystroke's read-back
-  (`useInputHandler.js:128` → `domNodeToMarkdown`) turns `[text]([[Note]])` into
-  `[text](<span class="wikilink" …>Note</span>)`, and `[x](https://a.com/*b*)` into
-  `[x](https://a.com/<em>b</em>)`: the emphasis and wikilink passes in `inlineFormatting.js`
-  run over a link's destination. Reproduced by rendering and reading back the block in jsdom;
-  the read-back is deterministic, so the first keystroke in such a block writes it. The
-  regression test that comes with the fix proves it in Electron. Found in a real note of
-  `~/Documents/Vault`. The real-vault corpus test reads and writes only, never the typing
-  path: it gains that pass with the fix.
-- [ ] **A fence inside a callout or quote may lose the newline before its closing fence**
-  (`x\n` + a fence reads back as `x` + the fence on one line). Reproduced only with the plain
-  renderer in jsdom, not with the callout's own field; confirm in the app first.
-  `domRoundTrip.test.js` skips callouts (`isEditableBlock`).
+None open.
 
 ## Public Beta: requirements
 
