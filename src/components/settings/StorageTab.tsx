@@ -16,7 +16,7 @@ import {
   SwitchIcon,
   VaultIcon,
 } from "../Icons";
-import Menu, { type MenuAnchor, type MenuItem } from "../Menu";
+import Menu, { type MenuAnchor, type MenuItem, pointAnchor } from "../Menu";
 import { Tooltip, useTooltip } from "../Tooltip";
 import { locationPath, type StorageLocation as VaultEntry } from "../../utils/storageLocations";
 import { SHOW_IN_FOLDER_LABEL, SmallButton } from "./SettingsPrimitives";
@@ -111,7 +111,7 @@ function LocationRow({ v, editing, menuOpen, onMenu, onSwitch, onRename, moreRef
       onContextMenu={(e) => {
         if (editing) return;
         e.preventDefault();
-        onMenu(v, { top: e.clientY, bottom: e.clientY, left: e.clientX, right: e.clientX }, false);
+        onMenu(v, pointAnchor(e), false);
       }}
     >
       <span className="settings-location-glyph" style={{ color: TEXT.muted, display: "flex" }}>

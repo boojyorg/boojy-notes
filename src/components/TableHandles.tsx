@@ -5,18 +5,12 @@ import { useTheme } from "../hooks/useTheme";
 import { cssZoom } from "../utils/domHelpers";
 import { dropIndex } from "../utils/tableShape";
 import { GripHorizontalIcon, GripVerticalIcon } from "./Icons";
+import type { MenuAnchor } from "./Menu";
 
 export type HandleKind = "row" | "col";
 export interface HandleTarget {
   kind: HandleKind;
   index: number;
-}
-/** Where a grip's menu hangs: viewport pixels, as `useMenuPosition` takes them. */
-export interface MenuAnchor {
-  top: number;
-  bottom: number;
-  left: number;
-  right: number;
 }
 
 /** A grip's long and short sides: a row's stands upright, a column's lies flat. */

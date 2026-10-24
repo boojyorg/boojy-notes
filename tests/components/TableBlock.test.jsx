@@ -34,29 +34,42 @@ const mockInsertColumn = vi.fn();
 const mockDeleteColumnAt = vi.fn();
 const mockCloseContextMenu = vi.fn();
 
-vi.mock("../../src/hooks/useTableInteractions", () => ({
-  useTableInteractions: () => ({
-    handleBottomZonePointerDown: vi.fn(),
-    handleBottomZoneClick: vi.fn(),
-    handleRightZonePointerDown: vi.fn(),
-    handleRightZoneClick: vi.fn(),
-    previewRows: 0,
-    createBadge: null,
-    addRows: mockAddRows,
-    insertRow: mockInsertRow,
-    deleteRowAt: mockDeleteRowAt,
-    insertColumn: mockInsertColumn,
-    deleteColumnAt: mockDeleteColumnAt,
-    moveRow: vi.fn(),
-    moveColumn: vi.fn(),
-    duplicateRow: vi.fn(),
-    duplicateColumn: vi.fn(),
-    setAlignment: vi.fn(),
-    openGripMenu: vi.fn(),
-    contextMenu: null,
-    closeContextMenu: mockCloseContextMenu,
-  }),
-}));
+vi.mock("../../src/hooks/useTableInteractions", async () => {
+  const { tableColumnCount } = await vi.importActual("../../src/utils/tableShape");
+  return {
+    // The block's shape as the real hook reads it; the actions are spies.
+    useTableInteractions: ({ block }) => {
+      const rows = block.rows || [
+        ["", ""],
+        ["", ""],
+      ];
+      return {
+        rows,
+        colCount: tableColumnCount(rows) || 2,
+        alignments: block.alignments || [],
+        handleBottomZonePointerDown: vi.fn(),
+        handleBottomZoneClick: vi.fn(),
+        handleRightZonePointerDown: vi.fn(),
+        handleRightZoneClick: vi.fn(),
+        previewRows: 0,
+        createBadge: null,
+        addRows: mockAddRows,
+        insertRow: mockInsertRow,
+        deleteRowAt: mockDeleteRowAt,
+        insertColumn: mockInsertColumn,
+        deleteColumnAt: mockDeleteColumnAt,
+        moveRow: vi.fn(),
+        moveColumn: vi.fn(),
+        duplicateRow: vi.fn(),
+        duplicateColumn: vi.fn(),
+        setAlignment: vi.fn(),
+        openGripMenu: vi.fn(),
+        contextMenu: null,
+        closeContextMenu: mockCloseContextMenu,
+      };
+    },
+  };
+});
 
 // ── Mock inlineFormatting utils ─────────────────────────────────────────────
 vi.mock("../../src/utils/inlineFormatting", () => ({

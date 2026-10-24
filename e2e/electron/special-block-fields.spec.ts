@@ -303,3 +303,24 @@ test("a triple-click in a callout's body selects the body's text, not the callou
     await h.close();
   }
 });
+
+// A caret on an empty line has no box of its own (the range's rect is all
+// zeros), so measured raw it read as the body's top: ArrowUp from an empty
+// second line went to the title. caretRect measures the line instead.
+test("ArrowUp from an empty second line of a callout's body goes to its first line", async () => {
+  const h = await launchApp({ [NOTE]: "Intro.\n\n> [!note] Title\n> first\n\nAfter.\n" });
+  try {
+    await h.openNote("Note");
+    const body = h.page.locator(".callout-body");
+    await body.click();
+    await h.page.keyboard.press("End");
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.press("ArrowUp");
+    await expect(body).toBeFocused();
+    await h.page.keyboard.press("ArrowUp");
+    await expect(h.page.locator(".callout-title")).toBeFocused();
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
