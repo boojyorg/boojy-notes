@@ -311,3 +311,22 @@ test("View full size opens the drawing larger in the dark room; Escape or a pres
   await expect(block(h.page).first().locator(".diagram-code[data-open]")).toHaveCount(0);
   expect(h.pageErrors).toEqual([]);
 });
+
+test("a wide diagram cleared and brought back by undo is fitted again", async () => {
+  const steps = Array.from({ length: 12 }, (_, i) => `S${i}[Step number ${i}]`).join(" --> ");
+  h = await launchApp({ [NOTE]: `\`\`\`mermaid\nflowchart LR\n  ${steps}\n\`\`\`\n` });
+  await h.openNote("Diagram");
+  await expect(drawing(h.page)).toBeVisible();
+  const fitted = () =>
+    drawing(h.page).evaluate((svg: SVGSVGElement) => svg.clientWidth / svg.viewBox.baseVal.width);
+  expect(await fitted()).toBeCloseTo(0.65, 1);
+  await drawing(h.page).click();
+  await expect(code(h.page)).toBeFocused();
+  await h.page.keyboard.press(`${MOD}+a`);
+  await h.page.keyboard.press("Backspace");
+  await expect(block(h.page).getByText("Your diagram appears here")).toBeVisible();
+  await h.page.keyboard.press(`${MOD}+z`);
+  await expect(drawing(h.page)).toBeVisible();
+  expect(await fitted()).toBeCloseTo(0.65, 1);
+  expect(h.pageErrors).toEqual([]);
+});
