@@ -145,10 +145,10 @@ the test its rule names when it is built.
   emphasis and the other divider forms draw as they mean**, each keeping its spelling (Markdown
   compatibility, below).
 - **The Obsidian extensions, explicitly.** Drawn and edited: wikilinks and aliases,
-  `[[Note#Heading]]`, embeds with size and `#page=`, callouts, `==highlight==`, `#tags`,
-  frontmatter (collapsed), maths, Mermaid. **Preserved only**, byte for byte and shown as text:
-  footnotes, `%%comments%%`, task states beyond `[ ]`/`[x]`, `^block-id`, HTML,
-  reference-style links, plugin syntax. The spec takes this list when the work lands.
+  `[[Note#Heading]]`, embeds with a size (`#page=`: a file card that opens that page), callouts,
+  `==highlight==`, `#tags`, frontmatter (collapsed), maths, Mermaid. **Preserved only**, byte for
+  byte and shown as text: footnotes, `%%comments%%`, task states beyond `[ ]`/`[x]`, `^block-id`,
+  HTML, reference-style links, plugin syntax. The spec takes this list when the work lands.
 
 **Connected notes** (one link index)
 
@@ -192,8 +192,8 @@ the test its rule names when it is built.
 - **Windows signed** through the SignPath Foundation (free for open source; names SignPath as
   publisher; a policy page; each release approved by hand). SmartScreen still warns until
   reputation builds, but Smart App Control blocks unsigned apps that have none. Try the first
-  signed update over an unsigned install in the VM. A Microsoft Store listing (free, re-signed
-  by Microsoft, no warning) is planned and does not block; boojy.org leads with one route.
+  signed update over an unsigned install in the VM. Planned, not blocking: a Microsoft Store MSIX
+  (a second build target; Microsoft re-signs MSIX, not our EXE; the Store updates it).
 - **Export and print to PDF** from the main window with a print layout (no chrome, page breaks
   that never split a table row or a picture, maths and diagrams drawn); no second window.
 
