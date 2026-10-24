@@ -32,9 +32,12 @@ export type Drawn = { svg: string } | { error: string } | { empty: true };
 
 const FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
-/** Boojy's look: rounded boxes, hairline borders, finer lines. */
-const THEME_CSS =
-  ".node rect { rx: 6px; ry: 6px; stroke-width: 1px; } .node polygon, .node circle { stroke-width: 1px; } .flowchart-link { stroke-width: 1.5px; } .edgeLabel { font-size: 13px; }";
+/**
+ * Boojy's look: rounded flat boxes (no shadow), hairline borders, finer
+ * lines; a state diagram's end drawn in the line's ink, as its start is.
+ */
+const themeCss = (line: string) =>
+  `.node rect { rx: 6px; ry: 6px; stroke-width: 1px; } .node polygon, .node circle { stroke-width: 1px; } * { filter: none !important; } .flowchart-link { stroke-width: 1.5px; } .edgeLabel { font-size: 13px; } .node[id*="_end"] .outer-path path { stroke: ${line} !important; } .node[id*="_end"] .outer-path g path:first-child { fill: ${line} !important; }`;
 
 let queue: Promise<unknown> = Promise.resolve();
 let renders = 0;
@@ -50,15 +53,27 @@ export function shortError(e: unknown): string {
   return msg.length > 170 ? `${msg.slice(0, 167)}…` : msg || "This diagram can't be read";
 }
 
-/** Smaller arrowheads than Mermaid's own. */
-const shrinkMarkers = (svg: string) =>
-  svg.replace(
-    /marker(Width|Height)="([\d.]+)"/g,
-    (_, d, v) => `marker${d}="${(Number(v) * 0.7).toFixed(1)}"`,
-  );
+/**
+ * Smaller arrowheads than Mermaid's own. A marker without a viewBox (the
+ * state diagram's) is given its own size as one first, so it scales rather
+ * than being cut off.
+ */
+export const shrinkMarkers = (svg: string) =>
+  svg.replace(/<marker\b[^>]*>/g, (tag) => {
+    const size = (d: string) => Number(tag.match(new RegExp(`marker${d}="([\\d.]+)"`))?.[1]);
+    const w = size("Width");
+    const h = size("Height");
+    if (!w || !h) return tag;
+    const scaled = tag
+      .replace(/markerWidth="[\d.]+"/, `markerWidth="${(w * 0.7).toFixed(1)}"`)
+      .replace(/markerHeight="[\d.]+"/, `markerHeight="${(h * 0.7).toFixed(1)}"`);
+    return /viewBox=/.test(tag)
+      ? scaled
+      : scaled.replace("<marker", `<marker viewBox="0 0 ${w} ${h}"`);
+  });
 
 /** The narrowest a wide diagram is drawn to fit the column, before it scrolls. */
-export const MIN_FIT = 0.75;
+export const MIN_FIT = 0.65;
 
 /** Fit a drawing to the column: never enlarged, shrunk to `MIN_FIT` at most, then scrolling. */
 export function fitToColumn(svg: SVGSVGElement): void {
@@ -101,7 +116,7 @@ export function drawDiagram(source: string, colours: DiagramColours): Promise<Dr
       theme: "base",
       fontFamily: FONT,
       flowchart: { useMaxWidth: false, htmlLabels: false, curve: "basis" },
-      themeCSS: THEME_CSS,
+      themeCSS: themeCss(colours.line),
       themeVariables: {
         darkMode: colours.dark,
         fontFamily: FONT,

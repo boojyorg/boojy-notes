@@ -229,7 +229,7 @@ test("a diagram switched away, rewritten and switched back draws its new code", 
   expect(h.pageErrors).toEqual([]);
 });
 
-test("a wide diagram shrinks to fit, no further than three quarters, then scrolls to the block's edges", async () => {
+test("a wide diagram shrinks to fit, no further than 65%, then scrolls to the block's edges", async () => {
   const steps = Array.from({ length: 12 }, (_, i) => `S${i}[Step number ${i}]`).join(" --> ");
   h = await launchApp({ [NOTE]: `\`\`\`mermaid\nflowchart LR\n  ${steps}\n\`\`\`\n` });
   await h.openNote("Diagram");
@@ -252,7 +252,7 @@ test("a wide diagram shrinks to fit, no further than three quarters, then scroll
       roomAfter: v.right - (v.width - view.clientWidth) - s.right,
     };
   });
-  expect(m.drawn).toBeCloseTo(m.natural * 0.75, -1);
+  expect(m.drawn).toBeCloseTo(m.natural * 0.65, -1);
   expect(m.scrolls).toBe(true);
   // The scroller reaches the border on three sides…
   expect(m.leftGap).toBeLessThan(2);
