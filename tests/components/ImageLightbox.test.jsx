@@ -45,8 +45,11 @@ describe("ImageLightbox", () => {
 
   it("calls onClose when Escape key is pressed", () => {
     const onClose = vi.fn();
-    render(<ImageLightbox src="https://example.com/img.png" alt="Photo" onClose={onClose} />);
-    fireEvent.keyDown(document, { key: "Escape" });
+    const { getByRole } = render(
+      <ImageLightbox src="https://example.com/img.png" alt="Photo" onClose={onClose} />,
+    );
+    // The view holds focus (its trap), so the key lands on it.
+    fireEvent.keyDown(getByRole("dialog"), { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
   });
 
