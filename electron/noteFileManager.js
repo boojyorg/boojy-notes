@@ -637,14 +637,6 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
 
   ipcMain.handle("read-all-notes", () => readAllNotes(getNotesDir()));
 
-  // Writes the note and answers with the path and basename the file actually
-  // got. A requested title may not survive the filesystem — a namesake
-  // forces a `-2` suffix, characters a filename cannot hold become `_`, edges
-  // are trimmed, a blank name becomes `Untitled` — and the renderer adopts the
-  // returned `title` so what the user sees is what a restart will read. A
-  // name the disk already holds is never rewritten (`noteToFilePath`). This
-  // handler is the one place that knows the final name; nothing in the UI
-  // second-guesses it.
   // An offloaded note, downloaded: its text off the main thread, then parsed
   // as any note is. Null when its file is gone or the download failed.
   ipcMain.handle("download-note", async (_event, id) => {
@@ -661,6 +653,15 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     return parseNoteFile(filePath, notesDir);
   });
 
+  // Writes the note and answers with the path and basename the file actually
+  // got. A requested title may not survive the filesystem — a namesake
+  // forces a `-2` suffix, characters a filename cannot hold become `_`, edges
+  // are trimmed, a blank name becomes `Untitled` — and the renderer adopts the
+  // returned `title` so what the user sees is what a restart will read. A
+  // name the disk already holds is never rewritten (`noteToFilePath`). This
+  // handler is the one place that knows the final name; nothing in the UI
+  // second-guesses it.
+  //
   // An offloaded note holds no text here, so only its name or folder can
   // have changed: its file is downloaded first (off the main thread) and its
   // own text is what it writes. Every other save is synchronous, so from the
@@ -733,7 +734,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // saved straight after the rename; a crash before even that still keeps
     // the id, since the file holds the text its history last kept (a note
     // renamed while the app was closed). A case-only rename goes the same way,
-    // so the volume records the new casing. chokidar reports the move as an
+    // so the volume records the new casing. The watcher reports the move as an
     // unlink of the old name (claimed here) and an add of the new (the
     // write's own echo). The directory it leaves stays, however empty.
     const renaming = existingPath && existingPath !== finalPath && fs.existsSync(existingPath);

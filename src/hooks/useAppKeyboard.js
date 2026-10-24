@@ -200,10 +200,6 @@ export function useAppKeyboard({
         else L.goForward?.();
         return;
       }
-      // Cmd+S is a save point: notes save as they are typed, so
-      // the platform's Save key keeps the note as it is now in its history.
-      // Ctrl+Cmd+S, Go to Sidebar, is claimed above.
-      // Option+Cmd+S opens the note's Version History (Option makes `ß`, so the
       // ⌥⌘L (Ctrl+Alt+L elsewhere): a PDF's page linked into the note it was
       // opened from. The physical key, as ⌥ changes the character on a Mac.
       if (mod && e.altKey && !e.shiftKey && e.code === "KeyL") {
@@ -212,6 +208,10 @@ export function useAppKeyboard({
         L.linkPageInNote?.();
         return;
       }
+      // Cmd+S is a save point: notes save as they are typed, so
+      // the platform's Save key keeps the note as it is now in its history.
+      // Ctrl+Cmd+S, Go to Sidebar, is claimed above.
+      // Option+Cmd+S opens the note's Version History (Option makes `ß`, so the
       // physical key is matched). Mac only: Ctrl+Alt+S elsewhere is Go to Sidebar.
       if (e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && e.code === "KeyS") {
         if (!L.activeNote) return;
@@ -379,7 +379,6 @@ function historyKey(e) {
   return e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
 }
 
-/** Cmd+N and File → New Note: an empty draft is reused, focused at its name. */
 /** Shows the sidebar if it is hidden, then focuses it once it can take focus. */
 function goToSidebar(L) {
   if (!L.sidebarVisible) L.revealSidebar?.();

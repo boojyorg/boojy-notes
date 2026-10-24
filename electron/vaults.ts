@@ -39,7 +39,7 @@ const CLOUD_MARKERS = [
 export const isCloudPath = (dir: string) =>
   CLOUD_MARKERS.some((marker) => `${path.resolve(dir)}${path.sep}`.includes(marker));
 
-const same = (a: string, b: string) => path.resolve(a) === path.resolve(b);
+export const same = (a: string, b: string) => path.resolve(a) === path.resolve(b);
 
 /** Labels by vault path, keyed as `same` compares: a vault's name in the app alone. */
 export type VaultLabels = Record<string, string>;

@@ -646,7 +646,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     [takeOutsideVersion],
   );
 
-  // ─── Listen for external file changes (chokidar → IPC; the phone's sync) ───
+  // ─── Listen for external file changes (the tree watcher → IPC; the phone's sync) ───
   useEffect(() => {
     if (!isNative) return;
     const api = getAPI();

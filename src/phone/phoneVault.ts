@@ -141,7 +141,6 @@ const timeOfStamp = (stamp: string) => {
 };
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-/** One operation at a time, in the order asked. */
 /**
  * The phone's file calls in flight at once. Each is a round trip to Android;
  * overlapped they took a quarter of the time one after another did (17 notes:
@@ -150,7 +149,7 @@ const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const IN_FLIGHT = 8;
 
 /** `fn` over `items`, at most `limit` running at a time; results in `items`' order. */
-export async function mapLimited<T, R>(
+async function mapLimited<T, R>(
   items: T[],
   fn: (item: T) => Promise<R>,
   limit = IN_FLIGHT,
@@ -167,6 +166,7 @@ export async function mapLimited<T, R>(
   return out;
 }
 
+/** One operation at a time, in the order asked. */
 function createLock() {
   let tail: Promise<unknown> = Promise.resolve();
   return <T>(work: () => Promise<T>): Promise<T> => {

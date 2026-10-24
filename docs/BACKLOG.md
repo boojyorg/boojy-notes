@@ -413,8 +413,8 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
 
 ### Technical debt
 
-- **Untested seams worth a case each**: `remapNoteFolders` (undo across a folder rename), the
-  `boojy-att://` traversal guard, and a pending title at quit. No layer covers them today.
+- **Untested seams worth a case each**: `remapNoteFolders` (undo across a folder rename) and a
+  pending title at quit. No layer covers them today.
 - **No Content-Security-Policy on the renderer** (review §6). The escaping is sound (every
   path-taking IPC handler goes through the vault guard, `will-navigate` and the window-open
   handler deny everything, `open-external` is `http(s)`-only), but it is a hand-rolled regex
@@ -452,9 +452,9 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   prop threaded through 18 files when it is always `theme.ACCENT.primary` (worth it only if a
   second accent ever appears).
 - **Small residue, tidy when touching the file**: `z-index: 999`/`9999` literals in
-  `GlobalStyles.jsx` beside the `Z` scale; the `index.html` viewport meta is PWA residue; a bad `%` in a
-  `boojy-att://` URL throws in `decodeURIComponent`; the UI rule's known colour leaks (plain
-  black alphas, per-theme callout and syntax colours), Dark's first-paint flash, and the
+  `GlobalStyles.jsx` beside the `Z` scale; the `index.html` viewport meta is PWA residue; the
+  UI rule's known colour leaks (plain black alphas, per-theme callout and syntax colours),
+  Dark's first-paint flash, and the
   consume-once `textOnlyEdit` flags in `useHistory`, which have no margin against a second
   reader (a spurious recompute costs a repaint, never a keystroke).
 

@@ -9,6 +9,14 @@ import { SEARCH_HIT_ALPHA, SEARCH_HIT_STEPS } from "../utils/searchHighlight";
 import { settingsStyles } from "./settings/SettingsPrimitives";
 import { isPhone } from "../utils/platform";
 
+/** What the phone shades on a press (`:active`), and fades back out after. */
+const PHONE_PRESSABLE = `html.is-phone :is(
+  .press, .chrome-button, .sidebar-row, .sidebar-action-row, .sidebar-vault-label,
+  .settings-location, .code-copy-btn, .callout-icon-btn,
+  [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"],
+  [role="option"], [role="treeitem"]
+)`;
+
 export default function GlobalStyles() {
   const { theme } = useTheme();
   const rhythm = useRhythm();
@@ -157,14 +165,14 @@ export default function GlobalStyles() {
         }
         ::-webkit-scrollbar-thumb:hover { background-color: ${theme.scrollbar.thumbHover}; }
         ::-webkit-scrollbar-thumb:active { background-color: ${theme.scrollbar.thumbActive}; }
+        /* The note's bar starts below the chrome row (NotePath's sticky band,
+           measured from the scroller's own top), never behind the ···. */
+        .editor-scroll::-webkit-scrollbar-track { margin-top: ${CHROME_TOP + CHROME_BTN}px; }
         /* Sidebar-only scrollbar geometry. Same 7px
            visible pill as the global bar, but beside the divider: 3px border
            on the content side, 2px on the edge side, so the ink sits 2px off
            the line (the divider's grab area takes the nearer pixel). Same
            colours as the global bar. Pairs with ROW_INSET_RIGHT in Sidebar.jsx. */
-        /* The note's bar starts below the chrome row (NotePath's sticky band,
-           measured from the scroller's own top), never behind the ···. */
-        .editor-scroll::-webkit-scrollbar-track { margin-top: ${CHROME_TOP + CHROME_BTN}px; }
         .sidebar-scroll::-webkit-scrollbar-thumb {
           border-left-width: 3px;
           border-right-width: 2px;
@@ -336,24 +344,14 @@ export default function GlobalStyles() {
            data-pressed instead, since no :active follows.
            !important: menu and list rows set their background inline. */
         html.is-phone * { -webkit-tap-highlight-color: transparent; }
-        html.is-phone :is(
-          .press, .chrome-button, .sidebar-row, .sidebar-action-row, .sidebar-vault-label,
-          .settings-location, .code-copy-btn, .callout-icon-btn,
-          [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"],
-          [role="option"], [role="treeitem"]
-        ):active:not(:disabled):not([aria-disabled="true"]),
+        ${PHONE_PRESSABLE}:active:not(:disabled):not([aria-disabled="true"]),
         html.is-phone .press[data-pressed]:not(:disabled):not([aria-disabled="true"]) {
           background-color: ${theme.BG.hover} !important;
           transition: none !important;
         }
         /* The press comes at once and leaves slowly: a quick tap holds :active
            for a few frames, too short to see, so the grey fades out after it. */
-        html.is-phone :is(
-          .press, .chrome-button, .sidebar-row, .sidebar-action-row, .sidebar-vault-label,
-          .settings-location, .code-copy-btn, .callout-icon-btn,
-          [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"],
-          [role="option"], [role="treeitem"]
-        ) {
+        ${PHONE_PRESSABLE} {
           transition: background-color var(--motion-enter), color var(--motion-fast),
             opacity var(--motion-fast) !important;
         }
