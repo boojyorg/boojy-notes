@@ -371,8 +371,8 @@ references and attachments are found only in two places (Public Beta).
   recurs, trace which quit step waits (`BOOJY_TRACE`).
 - [ ] **Typing through an outside rename lost text once on the Windows runner**
   (`repaint-spaces.spec.ts:16`, #411's run 40135637194, 2026-10-24), on both attempts: first
-  the test's own rename found its file gone (the app had moved it, probably writing back
-  under an older name), then the final file stopped mid-word. A comment-only change; the
+  the test's own rename found its source path missing (an app rename is one hypothesis),
+  then the final file stopped mid-word. A comment-only change; the
   rerun, master and the other systems pass. A sync client renames a note mid-typing, so this
   is data safety if real: reproduce on the Windows VM with `BOOJY_TRACE` before Public Beta.
 
