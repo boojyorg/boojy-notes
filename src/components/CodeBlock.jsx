@@ -8,11 +8,13 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CopyIcon,
+  ExpandIcon,
   SlashCommandIcon,
   SourceViewIcon,
   TrashIcon,
 } from "./Icons";
 import DiagramView from "./DiagramView";
+import DiagramLightbox from "./DiagramLightbox";
 import { Tooltip, useTooltip } from "./Tooltip";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
@@ -128,6 +130,11 @@ export default memo(function CodeBlock({
   const blockRef = useRef(null);
   const codeTip = useTooltip();
   const codeBtnRef = useRef(null);
+  // A diagram's drawing as shown, and whether it is open full size.
+  const [drawing, setDrawing] = useState("");
+  const [viewing, setViewing] = useState(false);
+  const viewTip = useTooltip();
+  const viewBtnRef = useRef(null);
   const copyTip = useTooltip();
   const copyBtnRef = useRef(null);
   const [ctxMenu, setCtxMenu] = useState(null);
@@ -450,7 +457,8 @@ export default memo(function CodeBlock({
   // has focus (the way a tap or the keyboard reaches it): what it is (the
   // language), then what it does (icons), copy always last. A diagram adds
   // `</>` between them, lit while its code is open as the header's is for
-  // the Markdown view.
+  // the Markdown view, and, while it has a drawing, View full size (an
+  // image's view; a press on the drawing still opens its code).
   const tools = (
     <div className={`code-tools${langMenu ? " code-tools-held" : ""}`}>
       <button
@@ -493,6 +501,28 @@ export default memo(function CodeBlock({
       )}
       {diagram && codeTip.shown && (
         <Tooltip label={codeOpen ? "Hide code" : "Show code"} anchor={codeBtnRef.current} />
+      )}
+      {diagram && drawing && (
+        <button
+          ref={viewBtnRef}
+          type="button"
+          className="code-tool code-view"
+          aria-label="View full size"
+          {...viewTip.handlers}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            viewTip.handlers.onMouseDown();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setViewing(true);
+          }}
+        >
+          <ExpandIcon />
+        </button>
+      )}
+      {diagram && drawing && viewTip.shown && (
+        <Tooltip label="View full size" anchor={viewBtnRef.current} />
       )}
       <button
         type="button"
@@ -544,8 +574,12 @@ export default memo(function CodeBlock({
             <DiagramView
               source={draft ?? latestBlock(noteDataRef, noteId, block)?.text ?? code}
               emptyText={codeOpen ? "Your diagram appears here" : "Empty diagram"}
+              onDrawing={setDrawing}
             />
           </div>
+          {viewing && drawing && (
+            <DiagramLightbox svg={drawing} onClose={() => setViewing(false)} />
+          )}
         </>
       )}
 

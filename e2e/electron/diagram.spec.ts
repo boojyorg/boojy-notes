@@ -144,11 +144,11 @@ test("a code block switched to Mermaid keeps its code where it was and draws und
   expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(2);
   const below = await drawing(h.page).boundingBox();
   expect(below?.y ?? 0).toBeGreaterThan(after?.y ?? 0);
-  // The toolbar: the language, then </>, copy last.
+  // The toolbar: the language, then </> and View full size, copy last.
   const labels = await h.page
     .locator(".diagram-block .code-tools button")
     .evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
-  expect(labels).toEqual(["Code language", "Hide code", "Copy code"]);
+  expect(labels).toEqual(["Code language", "Hide code", "View full size", "Copy code"]);
   await sleep(SETTLE_MS);
   expect(h.vault.read(NOTE)).toBe("Intro.\n\n```mermaid\nflowchart LR\n  A --> B\n```\n");
   expect(h.pageErrors).toEqual([]);
@@ -275,4 +275,39 @@ test("a diagram narrower than the column is drawn at its own size, never enlarge
   }));
   expect(m.drawn).toBeCloseTo(m.natural, 0);
   expect(m.height).toBeCloseTo(m.naturalHeight, 0);
+});
+
+test("View full size opens the drawing larger in the dark room; Escape or a press outside closes it", async () => {
+  h = await launchApp({ [NOTE]: `\`\`\`mermaid\n${FLOW}\n\`\`\`\n\n\`\`\`mermaid\n\`\`\`\n` });
+  await h.openNote("Diagram");
+  await expect(drawing(h.page)).toBeVisible();
+  // An empty diagram has nothing to view.
+  await block(h.page).nth(1).hover();
+  await expect(block(h.page).nth(1).getByRole("button", { name: "View full size" })).toHaveCount(0);
+
+  await block(h.page).first().hover();
+  await block(h.page).first().getByRole("button", { name: "View full size" }).click();
+  const view = h.page.getByRole("dialog", { name: "Diagram" });
+  await expect(view).toBeVisible();
+  await expect(view.locator(".diagram-lightbox-panel > svg")).toContainText("Review");
+  const inline = await drawing(h.page).evaluate((s) => s.getBoundingClientRect().height);
+  const large = await view
+    .locator(".diagram-lightbox-panel > svg")
+    .evaluate((s) => s.getBoundingClientRect().height);
+  expect(large).toBeGreaterThan(inline * 1.2);
+  // Its code stays closed: viewing isn't editing.
+  await expect(block(h.page).first().locator(".diagram-code[data-open]")).toHaveCount(0);
+
+  await view.locator(".diagram-lightbox-panel").click();
+  await expect(view).toBeVisible();
+  await h.page.keyboard.press("Escape");
+  await expect(view).toHaveCount(0);
+
+  await block(h.page).first().hover();
+  await block(h.page).first().getByRole("button", { name: "View full size" }).click();
+  await expect(view).toBeVisible();
+  await h.page.mouse.click(8, 300);
+  await expect(view).toHaveCount(0);
+  await expect(block(h.page).first().locator(".diagram-code[data-open]")).toHaveCount(0);
+  expect(h.pageErrors).toEqual([]);
 });

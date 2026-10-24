@@ -12,7 +12,16 @@ const REDRAW_MS = 250;
  * stays, faded, with the reason under it. A drawing already made shows at
  * once, so a note opened again doesn't wait for Mermaid or jump.
  */
-export default function DiagramView({ source, emptyText }: { source: string; emptyText: string }) {
+export default function DiagramView({
+  source,
+  emptyText,
+  onDrawing,
+}: {
+  source: string;
+  emptyText: string;
+  /** Told the drawing shown, or "" while there is none. */
+  onDrawing?: (svg: string) => void;
+}) {
   const { theme: t, isDark } = useTheme();
   const colours = {
     dark: isDark,
@@ -36,6 +45,10 @@ export default function DiagramView({ source, emptyText }: { source: string; emp
     const drawing = renderRef.current?.querySelector("svg");
     if (drawing) fitToColumn(drawing);
   }, [svg]);
+
+  const shown = empty ? "" : svg;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: told when the drawing changes, not the callback
+  useEffect(() => onDrawing?.(shown), [shown]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the colours are keyed by `key`
   useEffect(() => {
