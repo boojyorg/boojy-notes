@@ -16,6 +16,10 @@ vi.mock("../../../src/utils/inlineFormatting", () => ({
   inlineMarkdownToHtml: (md) => md || "",
 }));
 
+// The vault's live note data, which the embed reads (EmbedBlock's context).
+const live = { noteData: {} };
+vi.mock("../../../src/context/NoteDataContext", () => ({ useNoteData: () => live }));
+
 import EmbedBlock from "../../../src/components/blocks/EmbedBlock";
 
 describe("EmbedBlock", () => {
@@ -34,7 +38,6 @@ describe("EmbedBlock", () => {
 
   const defaultProps = {
     block: { id: "e1", type: "embed", target: "My Target Note" },
-    noteData,
     accentColor: "#A4CACE",
     onNavigate: vi.fn(),
     depth: 0,
@@ -42,6 +45,7 @@ describe("EmbedBlock", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    live.noteData = noteData;
   });
 
   afterEach(cleanup);
@@ -55,26 +59,51 @@ describe("EmbedBlock", () => {
     expect(container.textContent).toContain('"Nonexistent Note" not found');
   });
 
-  it('shows "Create note" button when target not found', () => {
-    const props = {
-      ...defaultProps,
-      block: { id: "e2", type: "embed", target: "Nonexistent" },
-    };
+  // The button said Create note and only showed a refusal: the app makes no
+  // note from a link (wikilinkTarget).
+  it("offers no Create note button for a missing note", () => {
+    const props = { ...defaultProps, block: { id: "e2", type: "embed", target: "Nonexistent" } };
     const { container } = render(<EmbedBlock {...props} />);
-    const btn = container.querySelector("button");
-    expect(btn).toBeInTheDocument();
-    expect(btn.textContent).toBe("Create note");
+    expect(container.querySelector("button")).toBeNull();
   });
 
-  it("calls onNavigate with target and true when Create note is clicked", () => {
-    const props = {
-      ...defaultProps,
-      block: { id: "e2", type: "embed", target: "New Note" },
+  // Resolved as a click on [[target]] is: a folder path is the path, and a
+  // shared name is said, never guessed (it took whichever note came first).
+  it("finds a note by its folder path, and never guesses between namesakes", () => {
+    live.noteData = {
+      a: {
+        id: "a",
+        title: "Goals",
+        folder: "Work",
+        content: { blocks: [{ id: "x", type: "p", text: "work goals" }] },
+      },
+      b: {
+        id: "b",
+        title: "Goals",
+        folder: "Home",
+        content: { blocks: [{ id: "y", type: "p", text: "home goals" }] },
+      },
     };
-    const { container } = render(<EmbedBlock {...props} />);
-    const btn = container.querySelector("button");
-    fireEvent.click(btn);
-    expect(props.onNavigate).toHaveBeenCalledWith("New Note", true);
+    const atPath = render(
+      <EmbedBlock {...defaultProps} block={{ id: "e5", type: "embed", target: "Work/Goals" }} />,
+    );
+    expect(atPath.container.textContent).toContain("work goals");
+    cleanup();
+    const shared = render(
+      <EmbedBlock {...defaultProps} block={{ id: "e6", type: "embed", target: "Goals" }} />,
+    );
+    expect(shared.container.textContent).toContain('"Goals" names 2 notes');
+    expect(shared.container.textContent).not.toContain("goals");
+  });
+
+  it("follows edits to its note", () => {
+    const { container, rerender } = render(<EmbedBlock {...defaultProps} />);
+    expect(container.textContent).toContain("First paragraph");
+    const edited = structuredClone(noteData);
+    edited["note-2"].content.blocks[0].text = "Edited paragraph";
+    live.noteData = edited;
+    rerender(<EmbedBlock {...defaultProps} />);
+    expect(container.textContent).toContain("Edited paragraph");
   });
 
   it("renders the embedded note content when target exists", () => {

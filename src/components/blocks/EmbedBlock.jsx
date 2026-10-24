@@ -1,7 +1,19 @@
+import { useNoteData } from "../../context/NoteDataContext";
 import { useTheme } from "../../hooks/useTheme";
 import { inlineMarkdownToHtml } from "../../utils/inlineFormatting";
+import { wikilinkStatus } from "../../utils/wikilinkTarget";
 
-function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
+/**
+ * `![[Note]]`: the note's first blocks, read from the vault's live note data,
+ * so the embed follows edits to its note (a snapshot handed down at render
+ * kept the old text until the editor repainted).
+ */
+function EmbedBlock(props) {
+  const { noteData } = useNoteData();
+  return <EmbedView {...props} noteData={noteData} />;
+}
+
+function EmbedView({ block, noteData, accentColor, onNavigate, depth = 0 }) {
   const { theme } = useTheme();
   const { TEXT } = theme;
   if (depth >= 3) {
@@ -20,9 +32,11 @@ function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
     );
   }
 
-  const targetNote = noteData
-    ? Object.values(noteData).find((n) => n.title?.toLowerCase() === block.target?.toLowerCase())
-    : null;
+  // The note the target names, as a click on `[[target]]` resolves it
+  // (utils/wikilinkTarget): a folder path is the path, and a name two notes
+  // share is shown as such, never guessed.
+  const status = wikilinkStatus(block.target ?? "", noteData);
+  const targetNote = status.kind === "note" ? noteData[status.id] : null;
 
   if (!targetNote) {
     return (
@@ -33,27 +47,11 @@ function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
           border: `1px dashed ${TEXT.muted}`,
           color: TEXT.muted,
           fontSize: 13,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
         }}
       >
-        <span>&quot;{block.target}&quot; not found</span>
-        <button
-          onClick={() => onNavigate?.(block.target, true)}
-          style={{
-            background: "none",
-            border: `1px solid ${TEXT.muted}`,
-            borderRadius: 4,
-            color: TEXT.muted,
-            fontSize: 11,
-            padding: "2px 8px",
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-        >
-          Create note
-        </button>
+        {status.kind === "ambiguous"
+          ? `"${block.target}" names ${status.ids.length} notes`
+          : `"${block.target}" not found`}
       </div>
     );
   }
@@ -118,7 +116,7 @@ function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
                   margin: "4px 0",
                 }}
               >
-                <EmbedBlock
+                <EmbedView
                   block={b}
                   noteData={noteData}
                   accentColor={accentColor}
@@ -142,4 +140,5 @@ function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
   );
 }
 
+export { EmbedView };
 export default EmbedBlock;
