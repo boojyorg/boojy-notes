@@ -12,9 +12,7 @@ vi.mock("electron", () => ({
   nativeImage: {},
 }));
 
-const { migrateLegacyTrash, trashManagedNote, trashOtherFile } = await import(
-  "../../electron/osTrash"
-);
+const { trashManagedNote, trashOtherFile } = await import("../../electron/osTrash");
 const { getIdIndex, setIndexDir } = await import("../../electron/noteFileManager.js");
 
 let notesDir: string;
@@ -22,16 +20,6 @@ let indexDir: string;
 
 function makeGuard() {
   return { suppressUnlink: vi.fn(), releaseUnlink: vi.fn(), unlinkDone: vi.fn() };
-}
-
-function writeLegacyMetadata(metadata: Record<string, unknown>) {
-  const trashDir = path.join(notesDir, ".trash");
-  fs.mkdirSync(trashDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(trashDir, ".boojy-trash-meta.json"),
-    JSON.stringify(metadata),
-    "utf-8",
-  );
 }
 
 beforeEach(() => {
@@ -45,125 +33,6 @@ beforeEach(() => {
 afterEach(() => {
   fs.rmSync(notesDir, { recursive: true, force: true });
   fs.rmSync(indexDir, { recursive: true, force: true });
-});
-
-describe("migrateLegacyTrash", () => {
-  it("copies recognized notes to readable collision-safe names before removing legacy sources", async () => {
-    const trashDir = path.join(notesDir, ".trash");
-    writeLegacyMetadata({
-      "note-one": { originalTitle: "Meeting Notes", originalFolder: null, deletedAt: 1 },
-      "note-two": { originalTitle: "Meeting Notes", originalFolder: "Work", deletedAt: 2 },
-    });
-    fs.writeFileSync(path.join(trashDir, "note-one.md"), "First", "utf-8");
-    fs.writeFileSync(path.join(trashDir, "note-two.md"), "Second", "utf-8");
-
-    const trashedCopies: Array<{ name: string; content: string }> = [];
-    const trashItem = vi.fn(async (filePath: string) => {
-      trashedCopies.push({
-        name: path.basename(filePath),
-        content: fs.readFileSync(filePath, "utf-8"),
-      });
-      fs.unlinkSync(filePath);
-    });
-
-    const report = await migrateLegacyTrash(notesDir, trashItem);
-
-    expect(trashedCopies).toEqual([
-      { name: "Meeting Notes.md", content: "First" },
-      { name: "Meeting Notes-2.md", content: "Second" },
-    ]);
-    expect(report.migrated).toHaveLength(2);
-    expect(report.untouched).toEqual([]);
-    expect(fs.existsSync(trashDir)).toBe(false);
-  });
-
-  it("leaves the source and metadata untouched when the OS Trash operation fails", async () => {
-    const trashDir = path.join(notesDir, ".trash");
-    writeLegacyMetadata({
-      "note-safe": { originalTitle: "Safe Note", originalFolder: null, deletedAt: 1 },
-    });
-    const sourcePath = path.join(trashDir, "note-safe.md");
-    fs.writeFileSync(sourcePath, "Only copy", "utf-8");
-    const metadataBefore = fs.readFileSync(path.join(trashDir, ".boojy-trash-meta.json"), "utf-8");
-
-    const report = await migrateLegacyTrash(notesDir, async () => {
-      throw new Error("Recycle Bin unavailable");
-    });
-
-    expect(fs.readFileSync(sourcePath, "utf-8")).toBe("Only copy");
-    expect(fs.readFileSync(path.join(trashDir, ".boojy-trash-meta.json"), "utf-8")).toBe(
-      metadataBefore,
-    );
-    expect(report.migrated).toEqual([]);
-    expect(report.untouched).toEqual([
-      expect.objectContaining({ path: sourcePath, reason: expect.stringContaining("unavailable") }),
-    ]);
-  });
-
-  it("does not guess when metadata is missing and reports every untouched item", async () => {
-    const trashDir = path.join(notesDir, ".trash");
-    fs.mkdirSync(path.join(trashDir, "attachments"), { recursive: true });
-    const sourcePath = path.join(trashDir, "unknown.md");
-    fs.writeFileSync(sourcePath, "Unknown", "utf-8");
-
-    const trashItem = vi.fn();
-    const report = await migrateLegacyTrash(notesDir, trashItem);
-
-    expect(trashItem).not.toHaveBeenCalled();
-    expect(fs.readFileSync(sourcePath, "utf-8")).toBe("Unknown");
-    expect(report.untouched.map((item) => path.basename(item.path)).sort()).toEqual([
-      "attachments",
-      "unknown.md",
-    ]);
-  });
-
-  it("ignores exact-name OS cruft: not reported, deleted at finalize so .trash can go", async () => {
-    const trashDir = path.join(notesDir, ".trash");
-    writeLegacyMetadata({
-      "note-one": { originalTitle: "Meeting Notes", originalFolder: null, deletedAt: 1 },
-    });
-    fs.writeFileSync(path.join(trashDir, "note-one.md"), "First", "utf-8");
-    fs.writeFileSync(path.join(trashDir, ".DS_Store"), "cruft", "utf-8");
-
-    const trashItem = vi.fn(async (filePath: string) => fs.unlinkSync(filePath));
-    const report = await migrateLegacyTrash(notesDir, trashItem);
-
-    expect(report.migrated).toHaveLength(1);
-    expect(report.untouched).toEqual([]);
-    expect(fs.existsSync(trashDir)).toBe(false);
-  });
-
-  it("never deletes AppleDouble-named files: ignored silently but left in place", async () => {
-    // `._foo.md` is almost certainly Finder metadata, but "almost" is not a
-    // licence to destroy a file the migration cannot identify. It is neither
-    // reported (no perpetual warning) nor deleted; the folder just stays.
-    const trashDir = path.join(notesDir, ".trash");
-    writeLegacyMetadata({
-      "note-one": { originalTitle: "Meeting Notes", originalFolder: null, deletedAt: 1 },
-    });
-    fs.writeFileSync(path.join(trashDir, "note-one.md"), "First", "utf-8");
-    fs.writeFileSync(path.join(trashDir, "._mystery.md"), "Maybe user content", "utf-8");
-
-    const trashItem = vi.fn(async (filePath: string) => fs.unlinkSync(filePath));
-    const report = await migrateLegacyTrash(notesDir, trashItem);
-
-    expect(report.migrated).toHaveLength(1);
-    expect(report.untouched).toEqual([]);
-    expect(fs.readFileSync(path.join(trashDir, "._mystery.md"), "utf-8")).toBe(
-      "Maybe user content",
-    );
-  });
-
-  it("does not report OS cruft even when the metadata is missing", async () => {
-    const trashDir = path.join(notesDir, ".trash");
-    fs.mkdirSync(trashDir, { recursive: true });
-    fs.writeFileSync(path.join(trashDir, ".DS_Store"), "cruft", "utf-8");
-    fs.writeFileSync(path.join(trashDir, "unknown.md"), "Unknown", "utf-8");
-
-    const report = await migrateLegacyTrash(notesDir, vi.fn());
-
-    expect(report.untouched.map((item) => path.basename(item.path))).toEqual(["unknown.md"]);
-  });
 });
 
 describe("trashManagedNote", () => {

@@ -104,20 +104,6 @@ describe("readAllNotes — reading never modifies files on disk", () => {
     expect(note.content.blocks[0].type).toBe("frontmatter");
   });
 
-  it("recovers the ID from legacy Boojy frontmatter without rewriting the file", () => {
-    const md = "---\nid: note-1700000000000-ab12\ntitle: Legacy\n---\n# Legacy\nOld note.";
-    const filePath = path.join(notesDir, "Legacy.md");
-    fs.writeFileSync(filePath, md, "utf-8");
-
-    const notes = readAllNotes(notesDir);
-    const note = notes["note-1700000000000-ab12"];
-
-    expect(note).toBeDefined();
-    expect(note.content.blocks[0].type).not.toBe("frontmatter");
-    // Migration happens on the user's next edit via the write path — never on read
-    expect(fs.readFileSync(filePath, "utf-8")).toBe(md);
-  });
-
   it("creates nothing inside the vault — the ID index lives in userData", () => {
     fs.writeFileSync(path.join(notesDir, "a.md"), "---\ntags: [t]\n---\nA", "utf-8");
     fs.writeFileSync(path.join(notesDir, "b.md"), "Plain note", "utf-8");
@@ -140,23 +126,6 @@ describe("readAllNotes — reading never modifies files on disk", () => {
     // An atomic rewrite would replace the inode; an untouched file keeps it
     expect(after.ino).toBe(before.ino);
     expect(after.mtimeMs).toBe(before.mtimeMs);
-  });
-
-  it("migrates a pre-v0.5.0 in-vault index to userData and removes it from the vault", () => {
-    fs.writeFileSync(path.join(notesDir, "Keep.md"), "Body", "utf-8");
-    fs.writeFileSync(
-      path.join(notesDir, ".boojy-index.json"),
-      JSON.stringify({ "note-1700000000000-keep": "Keep.md" }),
-      "utf-8",
-    );
-
-    const notes = readAllNotes(notesDir);
-
-    expect(notes["note-1700000000000-keep"]).toBeDefined();
-    expect(fs.existsSync(path.join(notesDir, ".boojy-index.json"))).toBe(false);
-    expect(JSON.parse(fs.readFileSync(indexPath(notesDir), "utf-8"))).toEqual({
-      "note-1700000000000-keep": "Keep.md",
-    });
   });
 });
 
@@ -753,15 +722,6 @@ describe("saveIndex", () => {
     setIndexDir(indexDir);
     expect(saveIndex(notesDir)).toBe(true);
     expect(JSON.parse(fs.readFileSync(indexPath(notesDir), "utf-8"))).toEqual({ "note-1": "A.md" });
-  });
-
-  it("keeps a pre-0.5 index in the vault until it has been saved elsewhere", () => {
-    const legacy = path.join(notesDir, ".boojy-index.json");
-    fs.writeFileSync(legacy, JSON.stringify({ "note-1": "A.md" }));
-    setIndexDir(blockedDir());
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(loadIndex(notesDir)).toEqual({ "note-1": "A.md" });
-    expect(fs.existsSync(legacy)).toBe(true);
   });
 });
 
