@@ -1,10 +1,19 @@
-import { useState, useRef, useLayoutEffect, useCallback, memo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
 import Prism from "prismjs";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import CodeLangMenu from "./CodeLangMenu";
 import { canonicalLang, sameLang } from "../utils/codeLanguage";
 import Menu from "./Menu";
-import { ChevronDownIcon, CopyIcon, SlashCommandIcon, TrashIcon } from "./Icons";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  CopyIcon,
+  SlashCommandIcon,
+  SourceViewIcon,
+  TrashIcon,
+} from "./Icons";
+import DiagramView from "./DiagramView";
+import { Tooltip, useTooltip } from "./Tooltip";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-python";
@@ -27,6 +36,7 @@ const LANGUAGES = [
   { value: "html", label: "HTML" },
   { value: "javascript", label: "JavaScript" },
   { value: "json", label: "JSON" },
+  { value: "mermaid", label: "Mermaid" },
   { value: "python", label: "Python" },
   { value: "sql", label: "SQL" },
   { value: "typescript", label: "TypeScript" },
@@ -54,8 +64,22 @@ const LANG_DISPLAY = {
   html: "HTML",
   css: "CSS",
   json: "JSON",
+  mermaid: "Mermaid",
   bash: "Bash",
   sql: "SQL",
+};
+
+/**
+ * Mermaid's source in the editor's syntax colours: a few token kinds, enough
+ * to read a flowchart by (Prism has no grammar of its own for it).
+ */
+Prism.languages.mermaid = {
+  comment: /%%.*/,
+  keyword:
+    /\b(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|pie|mindmap|journey|gitGraph|timeline|subgraph|end|participant|actor|title|section|note|loop|alt|else)\b/,
+  constant: /\b(?:TD|TB|LR|RL|BT)\b/,
+  string: /\[[^\]\n]*\]|\([^)\n]*\)|\{[^}\n]*\}|\|[^|\n]*\|/,
+  operator: /-\.->|==>|-->>|->>|-->|---|--|->/,
 };
 
 function resolveGrammar(lang) {
@@ -95,6 +119,17 @@ export default memo(function CodeBlock({
   onDelete,
 }) {
   const [copied, setCopied] = useState(false);
+  // A ```mermaid block is a diagram: drawn, its code joined above while open.
+  const diagram = canonicalLang(block.lang) === "mermaid";
+  // Open until `</> Code` (or Shift+Enter) closes it; a new, empty one starts open.
+  const [codeOpen, setCodeOpen] = useState(() => !(block.text || "").trim());
+  // What the field holds while it is ahead of the note's ref: the drawing follows it.
+  const [draft, setDraft] = useState(null);
+  const blockRef = useRef(null);
+  const codeTip = useTooltip();
+  const codeBtnRef = useRef(null);
+  const copyTip = useTooltip();
+  const copyBtnRef = useRef(null);
   const [ctxMenu, setCtxMenu] = useState(null);
   // The language menu's anchor: the label's rect while it is open, null otherwise.
   const [langMenu, setLangMenu] = useState(null);
@@ -158,17 +193,41 @@ export default memo(function CodeBlock({
   }, [paintOverlay]);
 
   // What the field holds now goes to state, the overlay and the box.
+  // Every commit (a keystroke, Enter's indent, Tab) reaches a diagram's drawing too.
   const commit = useCallback(
     (value) => {
       onUpdateCode(noteId, blockIndex, value);
       paintOverlay(value);
       autoResize();
       syncScroll();
+      if (diagram) setDraft(value);
     },
-    [noteId, blockIndex, onUpdateCode, paintOverlay, autoResize, syncScroll],
+    [noteId, blockIndex, onUpdateCode, paintOverlay, autoResize, syncScroll, diagram],
   );
 
   const handleInput = useCallback((e) => commit(e.target.value), [commit]);
+
+  // An undo, a redo or an outside change: the note's text is the drawing's again.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the generation is the signal
+  useEffect(() => setDraft(null), [syncGen]);
+  // A block that stops being a diagram stops keeping one: edited as code, the
+  // note's text is what it draws when it is a diagram again.
+  useEffect(() => {
+    if (!diagram) setDraft(null);
+  }, [diagram]);
+
+  /** The diagram's code, opened with the caret at its end. */
+  const openCode = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.focus({ preventScroll: true });
+    ta.selectionStart = ta.selectionEnd = ta.value.length;
+  }, []);
+  /** The code closed, the editor keeping the keys. */
+  const closeCode = useCallback(() => {
+    blockRef.current?.closest("[data-editor]")?.focus({ preventScroll: true });
+    setCodeOpen(false);
+  }, []);
 
   // Keyboard handling
   const handleKeyDown = useCallback(
@@ -230,6 +289,17 @@ export default memo(function CodeBlock({
         return;
       }
 
+      // Shift+Enter finishes a diagram's code, as it finishes a formula: it
+      // closes and the caret moves on.
+      if (diagram && e.key === "Enter" && e.shiftKey) {
+        e.preventDefault();
+        // The field is about to be folded away: the editor takes the keys first.
+        blockRef.current?.closest("[data-editor]")?.focus({ preventScroll: true });
+        setCodeOpen(false);
+        if (onBlockNav) onBlockNav(blockIndex, "next");
+        return;
+      }
+
       // Enter — new line with auto-indent
       if (e.key === "Enter") {
         e.preventDefault();
@@ -286,7 +356,7 @@ export default memo(function CodeBlock({
         return;
       }
     },
-    [blockIndex, commit, onBlockNav, onDelete],
+    [blockIndex, commit, onBlockNav, onDelete, diagram],
   );
 
   // Copy to clipboard
@@ -314,10 +384,13 @@ export default memo(function CodeBlock({
   const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
 
   /** Open the language menu under the label, wherever it was asked for. */
+  // Under the language button, its right edge flush with the toolbar's end
+  // (the copy button): the toolbar is one group pinned to the block's edge.
   const openLangMenu = useCallback(() => {
     const rect = langLabelRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setLangMenu({ top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right });
+    const end = langLabelRef.current.parentElement?.getBoundingClientRect().right ?? rect.right;
+    setLangMenu({ top: rect.top, bottom: rect.bottom, left: rect.left, right: end });
   }, []);
   const closeLangMenu = useCallback(() => setLangMenu(null), []);
 
@@ -326,6 +399,8 @@ export default memo(function CodeBlock({
       // Choosing the language the block already has writes nothing: a file
       // that says ```js keeps saying `js` when JavaScript is picked again.
       if (sameLang(newLang, lang)) return;
+      // A code block that becomes a diagram opens, its code where it was.
+      if (canonicalLang(newLang) === "mermaid") setCodeOpen(true);
       onUpdateLang(noteId, blockIndex, newLang);
     },
     [noteId, blockIndex, onUpdateLang, lang],
@@ -348,95 +423,131 @@ export default memo(function CodeBlock({
   const canonical = canonicalLang(lang);
   const displayLabel = LANG_DISPLAY[canonical] || canonical;
 
+  const codeField = (
+    <div className="code-body">
+      <textarea
+        ref={textareaRef}
+        className="code-textarea"
+        onChange={handleInput}
+        onKeyDown={handleKeyDown}
+        // Arrowing or tabbing into a diagram's code opens it, as a press does.
+        onFocus={() => diagram && setCodeOpen(true)}
+        onScroll={syncScroll}
+        // A new diagram's example: a hint, never written to the file.
+        placeholder={diagram ? "flowchart LR\n  A[Start] --> B[Next step]" : undefined}
+        spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+      />
+      <pre ref={overlayRef} className="code-overlay" aria-hidden="true">
+        <code ref={overlayCodeRef} />
+      </pre>
+    </div>
+  );
+
+  // One toolbar on every code block, top right, on hover or while the block
+  // has focus (the way a tap or the keyboard reaches it): what it is (the
+  // language), then what it does (icons), copy always last. A diagram adds
+  // `</>` between them, lit while its code is open as the header's is for
+  // the Markdown view.
+  const tools = (
+    <div className={`code-tools${langMenu ? " code-tools-held" : ""}`}>
+      <button
+        type="button"
+        ref={langLabelRef}
+        className={`code-tool code-lang${langMenu ? " code-lang-open" : ""}`}
+        aria-haspopup="menu"
+        aria-expanded={!!langMenu}
+        aria-label="Code language"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (langMenu) closeLangMenu();
+          else openLangMenu();
+        }}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        {displayLabel || "Plain"}
+        <ChevronDownIcon size={12} />
+      </button>
+      {diagram && (
+        <button
+          ref={codeBtnRef}
+          type="button"
+          className="code-tool code-show"
+          aria-label={codeOpen ? "Hide code" : "Show code"}
+          aria-pressed={codeOpen}
+          {...codeTip.handlers}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            codeTip.handlers.onMouseDown();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (codeOpen) closeCode();
+            else openCode();
+          }}
+        >
+          <SourceViewIcon />
+        </button>
+      )}
+      {diagram && codeTip.shown && (
+        <Tooltip label={codeOpen ? "Hide code" : "Show code"} anchor={codeBtnRef.current} />
+      )}
+      <button
+        type="button"
+        ref={copyBtnRef}
+        className={`code-tool code-copy-btn${copied ? " code-copied" : ""}`}
+        aria-label="Copy code"
+        {...copyTip.handlers}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          copyTip.handlers.onMouseDown();
+        }}
+        onClick={handleCopy}
+      >
+        {copied ? <CheckIcon /> : <CopyIcon />}
+      </button>
+      {copyTip.shown && <Tooltip label="Copy" anchor={copyBtnRef.current} />}
+    </div>
+  );
+
   return (
     <div
-      className="code-block"
+      ref={blockRef}
+      className={`code-block${diagram ? " diagram-block" : ""}`}
       onContextMenu={handleContextMenu}
       onInput={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
     >
-      <div className="code-body">
-        <textarea
-          ref={textareaRef}
-          className="code-textarea"
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
-          onScroll={syncScroll}
-          spellCheck={false}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-        />
-        <pre ref={overlayRef} className="code-overlay" aria-hidden="true">
-          <code ref={overlayCodeRef} />
-        </pre>
+      {tools}
+      {/* The code, in one place whatever the language: a change of language
+          must never remount the field (a fresh one is empty, and the next
+          keystroke would save over the code). For a diagram it sits above
+          the drawing, open until its \`</>\` closes it. */}
+      <div
+        className={diagram ? "diagram-code" : undefined}
+        data-open={(diagram && codeOpen) || undefined}
+      >
+        <div className={diagram ? "diagram-code-inner" : undefined}>{codeField}</div>
       </div>
-
-      {/* Copy, top right: shown on the pointer, or while the block has focus,
-          which is how a tap (or the keyboard) reaches it (GlobalStyles). */}
-      <div className="code-copy-wrapper">
-        <button
-          className="code-copy-btn"
-          onClick={handleCopy}
-          onMouseDown={(e) => e.preventDefault()}
-          title="Copy"
-        >
-          {copied ? (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M3 8.5L6.5 12L13 4"
-                stroke="#4ade80"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <rect
-                x="5.5"
-                y="5.5"
-                width="7"
-                height="8"
-                rx="1.5"
-                stroke="currentColor"
-                strokeWidth="1.3"
-              />
-              <path
-                d="M10.5 5.5V3.5C10.5 2.67 9.83 2 9 2H4C3.17 2 2.5 2.67 2.5 3.5V10C2.5 10.83 3.17 11.5 4 11.5H5.5"
-                stroke="currentColor"
-                strokeWidth="1.3"
-              />
-            </svg>
-          )}
-        </button>
-      </div>
-
-      {/* Language label — bottom right, click to change. The chevron is the
-          only thing that says the label is a control, and it shows on hover or
-          while the menu is open: the block is quiet at rest, as the gutter grip
-          and the row controls are. */}
-      <div className="code-lang-anchor">
-        <button
-          type="button"
-          ref={langLabelRef}
-          className={`code-lang${langMenu ? " code-lang-open" : ""}`}
-          aria-haspopup="menu"
-          aria-expanded={!!langMenu}
-          aria-label="Code language"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (langMenu) closeLangMenu();
-            else openLangMenu();
-          }}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          {displayLabel || "Plain"}
-          <span className="code-lang-chevron" aria-hidden="true">
-            <ChevronDownIcon size={12} />
-          </span>
-        </button>
-      </div>
+      {diagram && (
+        <>
+          {/* The drawing; a press on it opens its code. */}
+          <div
+            className="diagram-view"
+            onMouseDown={(e) => {
+              if (e.button === 0) e.preventDefault();
+            }}
+            onClick={openCode}
+          >
+            <DiagramView
+              source={draft ?? latestBlock(noteDataRef, noteId, block)?.text ?? code}
+              emptyText={codeOpen ? "Your diagram appears here" : "Empty diagram"}
+            />
+          </div>
+        </>
+      )}
 
       {/* Context menu: Copy code, Change language (CodeLangMenu's list, under the label), Delete block */}
       {ctxMenu && (

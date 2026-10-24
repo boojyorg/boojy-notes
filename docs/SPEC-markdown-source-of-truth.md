@@ -135,6 +135,9 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   string is kept exactly as typed or imported** — ` ```js ` stays `js`, never normalised to
   `javascript` — and is resolved only for reading it back to the user (`canonicalLang`); a word
   the app does not know is kept and read as written.
+- **A ```` ```mermaid ```` fence is drawn as a diagram and stays a code block**: its fence and
+  text are written as any code block's, the drawing is never saved, and nothing in it runs
+  (Mermaid's strict security level; labels are text, never HTML).
 - **Display maths (`$$`) is the syntax Obsidian and GitHub read**, a block opened by a line
   starting `$$` (up to three spaces in) and closed by the first line ending in `$$`, or on the
   same line (`$$x$$`); with no closer the line is text, as it is with `$$` mid-line. A formula

@@ -1,8 +1,8 @@
 import Menu, { type MenuAnchor } from "./Menu";
 
 /**
- * A code block's language menu, opened from the label at its bottom-right
- * corner.
+ * A code block's language menu, opened from the language button in the
+ * block's toolbar, its right edge under the button's, as wide as its names.
  *
  * It is the Sort menu's grammar: `menuitemradio` rows in the shared menu, the
  * chosen one ticked. Two things are its own. The
@@ -41,7 +41,7 @@ export default function CodeLangMenu({
   onSelect,
   onClose,
 }: CodeLangMenuProps) {
-  // The label sits at the block's right edge, so the menu's right edge meets it.
+  // The button sits near the block's right edge, so the menu's right edge meets it.
   return (
     <Menu
       label="Code language"
@@ -51,7 +51,7 @@ export default function CodeLangMenu({
       anchor={anchor}
       gapY={4}
       align="end"
-      minWidth={200}
+      minWidth={140}
       onClose={onClose}
       items={languages.map((item) => ({
         label: item.label,

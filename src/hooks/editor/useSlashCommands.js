@@ -116,7 +116,8 @@ export function useSlashCommands({
     }
 
     if (command.type === "code") {
-      replaceWithSpecialBlock({ ...block, text: "", type: "code", lang: "" });
+      // Diagram is a code block in `mermaid`: its code opens, under a placeholder drawing.
+      replaceWithSpecialBlock({ ...block, text: "", type: "code", lang: command.lang ?? "" });
       return;
     }
 

@@ -59,6 +59,8 @@ export const TABLE_GRIP_CLEARANCE = 14;
  * line is a row even when it is blank. A divider's rule is the same question: the one row it has.
  */
 const OWN_FIRST_ROW = ".code-line, hr";
+/** The row a diagram's grip is centred on, at the top of its drawing (a code line's height). */
+const DIAGRAM_ROW = 21;
 
 const MODIFIER_KEYS = new Set(["Shift", "Meta", "Control", "Alt"]);
 
@@ -69,6 +71,13 @@ const GRIP_GESTURES = [
 ];
 
 function firstLineRect(el, zoom) {
+  // A closed diagram's first row is its drawing: its code, folded away above
+  // it, has a first line with no height. Open, the code's first line leads.
+  const drawing = el.querySelector(".diagram-view");
+  if (drawing && !el.querySelector(".diagram-code[data-open]")) {
+    const r = drawing.getBoundingClientRect();
+    return { top: r.top, height: Math.min(DIAGRAM_ROW * zoom, r.height || DIAGRAM_ROW * zoom) };
+  }
   const ownRow = el.querySelector(OWN_FIRST_ROW);
   if (ownRow) return ownRow.getBoundingClientRect();
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {

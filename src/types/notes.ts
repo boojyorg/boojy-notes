@@ -182,6 +182,8 @@ export interface SlashCommand {
   icon: string;
   type: string;
   calloutType?: string;
+  /** A code block's language: `mermaid` makes it a diagram. */
+  lang?: string;
   /** Kept off the menu's opening screen; still found by typing. */
   advanced?: boolean;
 }

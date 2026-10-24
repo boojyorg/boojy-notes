@@ -490,6 +490,9 @@ const EditorArea = memo(
           return;
         }
         if (isSelectableBlock(target)) {
+          // Selected, it takes no caret: the editor takes the keys, so a field
+          // left behind (a code block's) never hears the next Enter.
+          editorRef.current?.focus({ preventScroll: true });
           setSelectedBlockId(target.id);
           return;
         }

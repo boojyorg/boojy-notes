@@ -1,5 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
-import { tagPillCss } from "../styles/tagPill";
+import { tagPillCss, tagPillGround } from "../styles/tagPill";
 import { CHROME_BTN, LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
@@ -587,7 +587,8 @@ ${tagPillCss(theme)}
           border: 1px solid ${theme.codeBlockBorder};
           border-radius: 8px;
           margin: ${rhythm.blockGap}px 0;
-          padding: 14px 16px;
+          /* The top keeps the toolbar's row, so the first line never sits under it. */
+          padding: 28px 16px 14px;
           transition: border-color var(--motion-fast);
         }
         .code-block:focus-within {
@@ -619,6 +620,11 @@ ${tagPillCss(theme)}
           word-wrap: break-word;
           position: relative;
           z-index: 1;
+        }
+        .code-textarea::placeholder {
+          color: ${theme.TEXT.muted};
+          -webkit-text-fill-color: ${theme.TEXT.muted};
+          opacity: 0.75;
         }
         .code-textarea::selection {
           background: ${theme.codeSelection};
@@ -776,85 +782,93 @@ ${tagPillCss(theme)}
         .source-layer .md-mark { color: ${theme.TEXT.muted}; }
         .source-layer .md-meta { color: ${theme.TEXT.secondary}; }
         .source-layer .md-strong { font-weight: 600; }
-        .code-copy-wrapper {
+        /* One toolbar on every code block (CodeBlock), top right: shown on
+           the pointer or while the block has focus, held while its language
+           menu is open. The language, then icons, copy always last; a diagram's
+           \`</>\` sits between them, lit while its code is open, as the
+           header's is for the Markdown view. */
+        .code-tools {
           position: absolute;
-          top: 8px;
-          right: 8px;
+          top: 4px;
+          right: 4px;
           z-index: 2;
-          opacity: 0;
-          transition: opacity var(--motion-fast);
-          pointer-events: auto;
-        }
-        .code-block:hover .code-copy-wrapper,
-        .code-block:focus-within .code-copy-wrapper {
-          opacity: 1;
-        }
-        .code-copy-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          border-radius: 6px;
-          border: 1px solid ${theme.codeCopy.border};
-          background: ${theme.codeCopy.bg};
-          color: ${theme.codeCopy.color};
-          cursor: pointer;
-          transition: background var(--motion-fast), color var(--motion-fast);
-          padding: 0;
-        }
-        @media (hover: hover) {
-          .code-copy-btn:hover {
-            background: ${theme.codeCopy.hoverBg};
-            color: ${theme.codeCopy.hoverColor};
-          }
-        }
-        .code-lang-anchor {
-          position: absolute;
-          bottom: 8px;
-          right: 10px;
-          z-index: 2;
-        }
-        .code-lang {
           display: flex;
           align-items: center;
           gap: 2px;
-          border: none;
-          background: none;
-          padding: 0;
-          font-size: 11px;
-          color: ${theme.codeLang.color};
-          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-          user-select: none;
-          cursor: pointer;
-          transition: color var(--motion-fast);
-        }
-        .code-lang:focus-visible,
-        .code-lang-open {
-          color: ${theme.codeLang.hoverColor};
-        }
-        @media (hover: hover) {
-          .code-lang:hover {
-            color: ${theme.codeLang.hoverColor};
-          }
-        }
-        /* The chevron is the label's only affordance: it takes its width at
-           rest so the label never shifts, and only its ink fades in, as the
-           sidebar's row controls do. */
-        .code-lang-chevron {
-          display: flex;
           opacity: 0;
+          pointer-events: none;
           transition: opacity var(--motion-fast);
         }
-        .code-lang:focus-visible .code-lang-chevron,
-        .code-lang-open .code-lang-chevron {
+        .code-block:hover .code-tools,
+        .code-block:focus-within .code-tools,
+        .code-tools-held {
           opacity: 1;
+          pointer-events: auto;
+        }
+        .code-tool {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          height: 26px;
+          min-width: 26px;
+          padding: 0 6px;
+          border: none;
+          border-radius: 6px;
+          background: transparent;
+          color: ${theme.TEXT.muted};
+          font: 500 12px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          cursor: pointer;
+          transition: background-color var(--motion-fast), color var(--motion-fast);
+        }
+        .code-tool svg { width: 15px; height: 15px; flex: none; }
+        @media (hover: hover) {
+          .code-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
+        }
+        /* The language, in the code's own quiet face. */
+        .code-lang {
+          font: 11.5px 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+          user-select: none;
+        }
+        .code-lang svg { width: 12px; height: 12px; }
+        .code-lang-open { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
+        .code-copied { color: ${theme.ACCENT.text}; }
+        .code-show[aria-pressed="true"] {
+          background: ${tagPillGround(theme)};
+          color: ${theme.ACCENT.text};
         }
         @media (hover: hover) {
-          .code-lang:hover .code-lang-chevron {
-            opacity: 1;
-          }
+          .code-show[aria-pressed="true"]:hover { background: ${tagPillGround(theme, true)}; }
         }
+        /* A \`\`\`mermaid block: its code above, growing open on the small
+           clock; the drawing below on the code block's ground, a wide one
+           shrunk to fit (\`fitToColumn\`), then scrolling. The scroller
+           reaches the block's sides and bottom, so a drawing scrolls to the
+           edge and the scrollbar sits on the border; the side padding is two
+           spacers, which a scroller's own end padding wouldn't be. */
+        .diagram-view {
+          overflow-x: auto;
+          cursor: text;
+          margin: 0 -16px -14px;
+          padding-bottom: 14px;
+          border-radius: 0 0 7px 7px;
+        }
+        .diagram-render { display: flex; }
+        .diagram-render::before, .diagram-render::after { content: ""; flex: none; width: 16px; }
+        .diagram-render svg { display: block; flex: none; margin: 0 auto; width: calc(100% - 32px); }
+        .diagram-code {
+          display: grid;
+          grid-template-rows: 0fr;
+          transition: grid-template-rows var(--motion-enter) var(--ease-enter);
+        }
+        .diagram-code[data-open] { grid-template-rows: 1fr; }
+        .diagram-code-inner { position: relative; min-height: 0; overflow: hidden; }
+        .diagram-code[data-open] .diagram-code-inner {
+          border-bottom: 1px solid ${theme.codeBlockBorder};
+          margin: -28px -16px 14px;
+          padding: 28px 16px 12px;
+        }
+        @media (prefers-reduced-motion: reduce) { .diagram-code { transition: none; } }
         /* Prism.js token colors */
         .token.comment, .token.prolog, .token.doctype, .token.cdata { color: ${theme.syntax.comment}; font-style: italic; }
         .token.punctuation { color: ${theme.syntax.punctuation}; }

@@ -136,11 +136,19 @@ describe("CodeBlock", () => {
     expect(document.body.querySelector(".code-ctx-menu")).toBeNull();
   });
 
-  it("leaves the copy button's showing to the stylesheet (hover, or focus within)", () => {
+  it("leaves the toolbar's showing to the stylesheet (hover, or focus within)", () => {
     const { container } = render(<CodeBlock {...defaultProps} />);
-    const copyWrapper = container.querySelector(".code-copy-wrapper");
+    const tools = container.querySelector(".code-tools");
     // No inline opacity: one would outrank the :hover and :focus-within rules.
-    expect(copyWrapper.style.opacity).toBe("");
+    expect(tools.style.opacity).toBe("");
+  });
+
+  it("orders the toolbar language then copy, copy last", () => {
+    const { container } = render(<CodeBlock {...defaultProps} />);
+    const labels = [...container.querySelectorAll(".code-tools button")].map((b) =>
+      b.getAttribute("aria-label"),
+    );
+    expect(labels).toEqual(["Code language", "Copy code"]);
   });
 
   it("handles Tab key to insert spaces", () => {

@@ -48,9 +48,27 @@ describe("SLASH_COMMANDS", () => {
     }
   });
 
-  it("keeps Text, deeper headings, maths, callout, file and embed off the opening screen", () => {
+  it("keeps Text, deeper headings, maths, diagram, callout, file and embed off the opening screen", () => {
     const advanced = SLASH_COMMANDS.filter((c) => c.advanced).map((c) => c.id);
-    expect(advanced).toEqual(["text", "h4", "h5", "h6", "math", "callout", "file", "embed"]);
+    expect(advanced).toEqual([
+      "text",
+      "h4",
+      "h5",
+      "h6",
+      "math",
+      "diagram",
+      "callout",
+      "file",
+      "embed",
+    ]);
+  });
+
+  it("finds Diagram when it is typed, a code block in mermaid", () => {
+    expect(filterSlashCommands("diag").map((c) => c.id)).toEqual(["diagram"]);
+    expect(SLASH_COMMANDS.find((c) => c.id === "diagram")).toMatchObject({
+      type: "code",
+      lang: "mermaid",
+    });
   });
 
   it("finds Maths when it is typed", () => {
@@ -88,6 +106,8 @@ describe("SLASH_COMMANDS", () => {
       divider: "---",
       table: "|||",
       image: "![]",
+      math: "$$",
+      diagram: "```mermaid",
     });
     // No typed trigger, so no hint.
     for (const id of ["callout", "file", "embed"]) expect(hints[id]).toBe("");

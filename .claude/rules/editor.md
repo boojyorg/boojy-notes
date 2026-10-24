@@ -32,7 +32,7 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
   caret restored, a line-end space before it as U+00A0 (`showSpaceBeforeCaret`). A bump
   alone paints nothing; pair it with a commit that publishes at once. `repaint-spaces.spec.ts`.
 - **A text-only commit never repaints**, so a programmatic text edit edits the DOM and reads it
-  back (`domNodeToMarkdown` → `updateBlockText`): formatting, the link popover, Find → Replace.
+  back (`domNodeToMarkdown`): formatting, the link popover, Find → Replace.
   `repaint-ownership.spec.ts`.
 
 ## One edit, one block root
@@ -96,7 +96,7 @@ app's, made through state.**
 - **The browser's caret is fixed at the keystroke** (`beforeinput`: `caretOutOfLinkEnd`/`Start`),
   never on `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
-  (`utils/wikilinkTarget.ts`, shared by click, picker and the broken mark). An explicit path is
+  (`utils/wikilinkTarget.ts`). An explicit path is
   the path. A name two notes share, or none, draws dashed and opens the link picker in fix mode.
   A vault file's name opens it in the note's place, at `#page=N` (`fileForTarget`).
   `link-resolution.spec.ts`.
@@ -133,8 +133,7 @@ app's, made through state.**
 - Shows on mouse-up or after `TOOLBAR_REST_MS` at rest; hides at once on collapse.
 - **It shows only where it can act**: any text block; in a block with its own fields, only
   inside one `data-inline-field` field, with Link dropped.
-- Measured once when shown. Active = the glyph in the
-  accent; it outranks the text-only render skip in `EditorArea`'s comparator.
+- Measured once when shown. Its active glyph outranks `EditorArea`'s text-only render skip.
 - **`FORMATS` in `FloatingToolbar.jsx` must match `useKeyboardHandlers`.** Inline code is shown
   as `⌘E` (the backtick is a dead key on European layouts). `formatting-toolbar.spec.ts`.
 
@@ -166,7 +165,7 @@ app's, made through state.**
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.
 - **The page is still mid-drag.** A reorder glides moved blocks from their old places
-  (`settleBlocks`, after the commit); a drag that moves nothing sends its copy home.
+  (`settleBlocks`); a drag that moves nothing sends its copy home.
   `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (no item changes
   parent); nested, among siblings only; one selected block too (`moveStep`). `list-move.spec.ts`.
@@ -180,7 +179,7 @@ app's, made through state.**
 - **The slash menu is tiered**: `advanced: true` rows stay off the opening screen, by one rule
   for menu and keys (`filterSlashCommands()`). Rows take selection on real mouse movement.
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
-- **Every menu's keys are one rule** (`useMenuKeys`, `utils/menuKeys.ts`): arrows wrap past
+- **Every menu's keys are one rule** (`useMenuKeys`): arrows wrap past
   disabled rows, Home/End, Enter and Space choose, Escape closes, a letter jumps; only where a
   menu listens differs. A suggestion under the caret (`suggestion: true`: tag, callout type,
   slash) leaves Space, letters, Home and End to typing and is a `listbox` of `option`s.
@@ -256,9 +255,10 @@ never holds a byte sequence the syntax cannot.**
 
 ## Code blocks
 
-Every `.code-line` takes at least `1lh` (or the layers drift). The info string is the spec's;
-re-picking the same language writes nothing.
-`code-language.spec.ts`.
+Every `.code-line` takes at least `1lh` (or the layers drift); re-picking the same language
+writes nothing. **One hover toolbar per code block**: language, copy last. `code-language.spec.ts`.
+**A `mermaid` fence is drawn** (`DiagramView`), its code above, open until its `</>` closes
+it; a new one starts open. `diagram.spec.ts`.
 
 ## Images
 
@@ -284,7 +284,7 @@ re-picking the same language writes nothing.
 
 ## Whole-block selection
 
-- **Any block can be selected whole** (`utils/blockRun.ts`: anchor and head, the run between):
+- **Any block can be selected whole** (`utils/blockRun.ts`):
   the grip, the gutter strip (`gutterSelect`), Escape, a press on a divider, image or table;
   Shift-click extends. **A list item brings its nested items** (`subtreeEnd`), selected or
   dragged. Text blocks wear the band; the caret rests, hidden.
