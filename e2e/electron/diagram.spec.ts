@@ -228,3 +228,51 @@ test("a diagram switched away, rewritten and switched back draws its new code", 
   await expect(drawing(h.page)).not.toContainText("Archive");
   expect(h.pageErrors).toEqual([]);
 });
+
+test("a wide diagram shrinks to fit, no further than three quarters, then scrolls to the block's edges", async () => {
+  const steps = Array.from({ length: 12 }, (_, i) => `S${i}[Step number ${i}]`).join(" --> ");
+  h = await launchApp({ [NOTE]: `\`\`\`mermaid\nflowchart LR\n  ${steps}\n\`\`\`\n` });
+  await h.openNote("Diagram");
+  await expect(drawing(h.page)).toBeVisible();
+  const m = await h.page.evaluate(() => {
+    const block = document.querySelector(".diagram-block") as HTMLElement;
+    const view = block.querySelector(".diagram-view") as HTMLElement;
+    const svg = view.querySelector("svg") as SVGSVGElement;
+    const b = block.getBoundingClientRect();
+    const v = view.getBoundingClientRect();
+    view.scrollLeft = view.scrollWidth;
+    const s = svg.getBoundingClientRect();
+    return {
+      natural: svg.viewBox.baseVal.width,
+      drawn: svg.clientWidth,
+      scrolls: view.scrollWidth > view.clientWidth,
+      leftGap: v.left - b.left,
+      rightGap: b.right - v.right,
+      bottomGap: b.bottom - v.bottom,
+      roomAfter: v.right - (v.width - view.clientWidth) - s.right,
+    };
+  });
+  expect(m.drawn).toBeCloseTo(m.natural * 0.75, -1);
+  expect(m.scrolls).toBe(true);
+  // The scroller reaches the border on three sides…
+  expect(m.leftGap).toBeLessThan(2);
+  expect(m.rightGap).toBeLessThan(2);
+  expect(m.bottomGap).toBeLessThan(2);
+  // …and, scrolled to the end, the drawing keeps the block's padding after it.
+  expect(m.roomAfter).toBeGreaterThan(12);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("a diagram narrower than the column is drawn at its own size, never enlarged", async () => {
+  h = await launchApp({ [NOTE]: `\`\`\`mermaid\n${FLOW}\n\`\`\`\n` });
+  await h.openNote("Diagram");
+  await expect(drawing(h.page)).toBeVisible();
+  const m = await drawing(h.page).evaluate((svg: SVGSVGElement) => ({
+    natural: svg.viewBox.baseVal.width,
+    drawn: svg.clientWidth,
+    height: svg.clientHeight,
+    naturalHeight: svg.viewBox.baseVal.height,
+  }));
+  expect(m.drawn).toBeCloseTo(m.natural, 0);
+  expect(m.height).toBeCloseTo(m.naturalHeight, 0);
+});

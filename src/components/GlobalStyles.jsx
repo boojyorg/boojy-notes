@@ -842,9 +842,20 @@ ${tagPillCss(theme)}
         }
         /* A \`\`\`mermaid block: its code above, growing open on the small
            clock; the drawing below on the code block's ground, a wide one
-           scrolling as a table does. */
-        .diagram-view { overflow-x: auto; cursor: text; }
-        .diagram-view svg { display: block; margin: 0 auto; max-width: none; }
+           shrunk to fit (\`fitToColumn\`), then scrolling. The scroller
+           reaches the block's sides and bottom, so a drawing scrolls to the
+           edge and the scrollbar sits on the border; the side padding is two
+           spacers, which a scroller's own end padding wouldn't be. */
+        .diagram-view {
+          overflow-x: auto;
+          cursor: text;
+          margin: 0 -16px -14px;
+          padding-bottom: 14px;
+          border-radius: 0 0 7px 7px;
+        }
+        .diagram-render { display: flex; }
+        .diagram-render::before, .diagram-render::after { content: ""; flex: none; width: 16px; }
+        .diagram-render svg { display: block; flex: none; margin: 0 auto; width: calc(100% - 32px); }
         .diagram-code {
           display: grid;
           grid-template-rows: 0fr;

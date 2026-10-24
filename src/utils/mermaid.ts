@@ -57,9 +57,37 @@ const shrinkMarkers = (svg: string) =>
     (_, d, v) => `marker${d}="${(Number(v) * 0.7).toFixed(1)}"`,
   );
 
+/** The narrowest a wide diagram is drawn to fit the column, before it scrolls. */
+export const MIN_FIT = 0.75;
+
+/** Fit a drawing to the column: never enlarged, shrunk to `MIN_FIT` at most, then scrolling. */
+export function fitToColumn(svg: SVGSVGElement): void {
+  const width = svg.viewBox.baseVal?.width;
+  if (!width) return;
+  svg.removeAttribute("width");
+  svg.removeAttribute("height");
+  svg.style.removeProperty("width");
+  svg.style.height = "auto";
+  svg.style.maxWidth = `${width}px`;
+  svg.style.minWidth = `${Math.round(width * MIN_FIT)}px`;
+}
+
+/** Drawings already made, by theme and source, so a note opened again shows them at once. */
+const drawings = new Map<string, string>();
+const DRAWINGS_KEPT = 50;
+const drawingKey = (source: string, colours: DiagramColours) =>
+  `${JSON.stringify(colours)}\n${source}`;
+
+/** The drawing already made of `source` in this theme, if any. */
+export const drawnBefore = (source: string, colours: DiagramColours): string | undefined =>
+  drawings.get(drawingKey(source, colours));
+
 /** Draw `source`, or say why it can't be drawn. */
 export function drawDiagram(source: string, colours: DiagramColours): Promise<Drawn> {
   if (!source.trim()) return Promise.resolve({ empty: true });
+  const key = drawingKey(source, colours);
+  const kept = drawings.get(key);
+  if (kept) return Promise.resolve({ svg: kept });
   const run = queue.then(async (): Promise<Drawn> => {
     let mermaid: Mermaid;
     try {
@@ -99,7 +127,10 @@ export function drawDiagram(source: string, colours: DiagramColours): Promise<Dr
     try {
       await mermaid.parse(source);
       const { svg } = await mermaid.render(id, source);
-      return { svg: shrinkMarkers(svg) };
+      const drawn = shrinkMarkers(svg);
+      if (drawings.size >= DRAWINGS_KEPT) drawings.delete(drawings.keys().next().value as string);
+      drawings.set(key, drawn);
+      return { svg: drawn };
     } catch (e) {
       return { error: shortError(e) };
     } finally {

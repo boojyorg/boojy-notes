@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { drawDiagram } from "../utils/mermaid";
+import { drawDiagram, drawnBefore, fitToColumn } from "../utils/mermaid";
 
 /** How long typing must pause before the diagram is drawn again. */
 const REDRAW_MS = 250;
@@ -9,16 +9,11 @@ const REDRAW_MS = 250;
  * A Mermaid diagram drawn from `source`. It redraws a moment after typing
  * pauses, and a drawing that comes back after a newer one was asked for is
  * dropped. While the source can't be drawn, the last drawing that worked
- * stays, faded, with the reason under it.
+ * stays, faded, with the reason under it. A drawing already made shows at
+ * once, so a note opened again doesn't wait for Mermaid or jump.
  */
 export default function DiagramView({ source, emptyText }: { source: string; emptyText: string }) {
   const { theme: t, isDark } = useTheme();
-  const [svg, setSvg] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [empty, setEmpty] = useState(!source.trim());
-  const latest = useRef(0);
-  const drawnOnce = useRef(false);
-
   const colours = {
     dark: isDark,
     ground: t.codeBlockBg,
@@ -28,6 +23,19 @@ export default function DiagramView({ source, emptyText }: { source: string; emp
     ink: t.TEXT.primary,
   };
   const key = JSON.stringify(colours);
+
+  const [svg, setSvg] = useState(() => drawnBefore(source, colours) ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [empty, setEmpty] = useState(!source.trim());
+  const latest = useRef(0);
+  const drawnOnce = useRef(false);
+  const renderRef = useRef<HTMLDivElement>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: each new drawing is fitted once
+  useLayoutEffect(() => {
+    const drawing = renderRef.current?.querySelector("svg");
+    if (drawing) fitToColumn(drawing);
+  }, [svg]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the colours are keyed by `key`
   useEffect(() => {
@@ -60,7 +68,7 @@ export default function DiagramView({ source, emptyText }: { source: string; emp
     return (
       <div
         className="diagram-empty"
-        style={{ textAlign: "center", color: t.TEXT.muted, fontSize: 13.5, padding: "10px 0" }}
+        style={{ textAlign: "center", color: t.TEXT.muted, fontSize: 13.5, padding: "10px 16px" }}
       >
         {emptyText}
       </div>
@@ -70,6 +78,7 @@ export default function DiagramView({ source, emptyText }: { source: string; emp
     <div>
       {svg ? (
         <div
+          ref={renderRef}
           className="diagram-render"
           style={{ opacity: error ? 0.45 : 1 }}
           // biome-ignore lint/security/noDangerouslySetInnerHtml: Mermaid's own SVG, sanitised (securityLevel strict)
@@ -88,7 +97,7 @@ export default function DiagramView({ source, emptyText }: { source: string; emp
             justifyContent: "center",
             fontSize: 12.5,
             color: t.TEXT.muted,
-            padding: "4px 0 0",
+            padding: "4px 16px 0",
           }}
         >
           <span

@@ -22,6 +22,8 @@ vi.mock("../../src/utils/mermaid", () => ({
     source.trim()
       ? new Promise((resolve) => pending.push({ source, resolve }))
       : Promise.resolve({ empty: true }),
+  drawnBefore: (source: string) => (source === "kept" ? "<svg data-test='kept'></svg>" : undefined),
+  fitToColumn: () => {},
 }));
 
 import DiagramView from "../../src/components/DiagramView";
@@ -64,6 +66,11 @@ describe("DiagramView", () => {
     await answer(0, { svg: "<svg data-test='old'></svg>" });
     expect(document.querySelector("[data-test='new']")).not.toBeNull();
     expect(document.querySelector("[data-test='old']")).toBeNull();
+  });
+
+  it("shows a drawing already made at once, before Mermaid answers", () => {
+    render(<DiagramView source="kept" emptyText="Empty diagram" />);
+    expect(document.querySelector("[data-test='kept']")).not.toBeNull();
   });
 
   it("says what it will show when there is nothing to draw", async () => {
