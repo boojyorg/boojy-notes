@@ -11,6 +11,7 @@ import LatexMenu from "./LatexMenu";
 import { MENU_RADIUS } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { isMac } from "../utils/platform";
+import { rectAnchor } from "./Menu";
 
 const SHIFT_ENTER = isMac ? "⇧↵" : "Shift+Enter";
 const MONO = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace";
@@ -44,11 +45,6 @@ const ownField = (atom: HTMLElement): HTMLElement | null => {
   return field && !field.hasAttribute("data-editor") ? field : null;
 };
 
-const rectOf = (el: HTMLElement) => {
-  const { top, bottom, left, right } = el.getBoundingClientRect();
-  return { top, bottom, left, right };
-};
-
 /**
  * An inline formula's source, under it. The formula stays in the sentence and
  * redraws as the source changes: each input writes the element's `data-math`
@@ -72,7 +68,7 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
 
   const [anchor, setAnchor] = useState(() => {
     const a = atom();
-    return a ? rectOf(a) : null;
+    return a ? rectAnchor(a) : null;
   });
   const pos = useMenuPosition(panelRef, true, anchor, { gapY: 6 });
   const zoom = cssZoom(document.documentElement) || 1;
@@ -101,7 +97,7 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
       ta.value = a.getAttribute("data-math") ?? "";
       fit();
     }
-    setAnchor(rectOf(a));
+    setAnchor(rectAnchor(a));
     return () => a.removeAttribute("data-editing");
   }, [syncGen]);
 
@@ -120,7 +116,7 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
     const scroller = document.querySelector(".editor-scroll");
     const follow = () => {
       const a = atom();
-      if (a) setAnchor(rectOf(a));
+      if (a) setAnchor(rectAnchor(a));
     };
     scroller?.addEventListener("scroll", follow, { passive: true });
     return () => scroller?.removeEventListener("scroll", follow);
@@ -168,7 +164,7 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
     a.setAttribute("data-math", ta.value);
     drawAtom(a);
     commit(a, ownField(a));
-    setAnchor(rectOf(a));
+    setAnchor(rectAnchor(a));
   };
 
   const latex = useLatexCompletion(fieldRef, onInput);

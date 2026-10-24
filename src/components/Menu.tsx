@@ -30,6 +30,20 @@ export interface MenuAnchor {
   right: number;
 }
 
+/** The point a press or a right-click landed on, as an anchor. */
+export const pointAnchor = (e: { clientX: number; clientY: number }): MenuAnchor => ({
+  top: e.clientY,
+  bottom: e.clientY,
+  left: e.clientX,
+  right: e.clientX,
+});
+
+/** An element's own rect, as an anchor. */
+export const rectAnchor = (el: Element): MenuAnchor => {
+  const { top, bottom, left, right } = el.getBoundingClientRect();
+  return { top, bottom, left, right };
+};
+
 export interface MenuItem {
   label: string;
   icon?: ReactNode;

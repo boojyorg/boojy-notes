@@ -13,6 +13,7 @@ import { isMac } from "../utils/platform";
 import { cssZoom, revealInNote } from "../utils/domHelpers";
 import { useLatexCompletion } from "../hooks/useLatexCompletion";
 import LatexMenu from "./LatexMenu";
+import RenderFailure from "./RenderFailure";
 
 const SHIFT_ENTER = isMac ? "⇧↵" : "Shift+Enter";
 const MONO = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace";
@@ -57,7 +58,7 @@ export default memo(function MathBlock({
   onDelete,
 }: MathBlockProps) {
   const { theme } = useTheme();
-  const { BG, TEXT, SEMANTIC } = theme;
+  const { BG, TEXT } = theme;
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   // What the field holds while it is ahead of the note's ref: the drawing follows it.
@@ -168,33 +169,7 @@ export default memo(function MathBlock({
             dangerouslySetInnerHTML={{ __html: shown }}
           />
         ) : null}
-        {error && (
-          <div
-            role="status"
-            style={{
-              display: "flex",
-              gap: 7,
-              alignItems: "baseline",
-              justifyContent: "center",
-              fontSize: 12.5,
-              color: TEXT.muted,
-              padding: "2px 0",
-            }}
-          >
-            <span
-              aria-hidden="true"
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: SEMANTIC.error,
-                flex: "none",
-                transform: "translateY(-1px)",
-              }}
-            />
-            {shown ? `Showing the last version that worked. ${error}` : error}
-          </div>
-        )}
+        {error && <RenderFailure error={error} kept={!!shown} padding="2px 0" />}
       </div>
       {open && (
         <SourcePanel

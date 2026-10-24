@@ -3,7 +3,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { getAPI } from "../../services/apiProvider";
 import { isMac } from "../../utils/platform";
 import { CopyIcon, FolderIcon, OpenLinkIcon, TrashIcon } from "../Icons";
-import Menu from "../Menu";
+import Menu, { pointAnchor } from "../Menu";
 import MissingAttachment, { findable } from "./MissingAttachment";
 import { fromTouch } from "../../utils/touch";
 
@@ -75,7 +75,7 @@ function FileBlock({
   const handleContextMenu = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setCtxMenu({ top: e.clientY, bottom: e.clientY, left: e.clientX, right: e.clientX });
+    setCtxMenu(pointAnchor(e));
   };
   // Each row closes the menu, then acts.
   const act = (fn) => () => {

@@ -8,6 +8,7 @@ import { Tooltip, useTooltip } from "../Tooltip";
 import ImageMenu, { type MenuAnchor } from "./ImageMenu";
 import MissingAttachment, { findable } from "./MissingAttachment";
 import { fromTouch } from "../../utils/touch";
+import { pointAnchor } from "../Menu";
 
 interface ImageBlockProps {
   src: string;
@@ -187,7 +188,7 @@ function ImageBlock({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    openMenu({ top: e.clientY, bottom: e.clientY, left: e.clientX, right: e.clientX }, false);
+    openMenu(pointAnchor(e), false);
   };
 
   // A resize is the picture's width in CSS pixels, what the file's `|px`
