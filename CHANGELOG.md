@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## v0.18.0 — 2026-10-24
+
+### Features
+
+- **Maths blocks** — A `$$` block draws its formula where it sits, the way Obsidian and GitHub write it. Click it, or press Enter when it's selected, and its LaTeX opens in a panel underneath; the formula redraws as you type. Enter adds a line, and Shift+Enter, Esc, Done or a click away finishes. Make one with `$$` then Space or Enter, or `/maths`. If the LaTeX has a mistake, the last formula that worked stays, faded, with the reason underneath. A file's own spelling of a formula, such as `$$x$$` on one line, is kept until you change it.
+- **Maths in a sentence** — `$x^2$` in a line of text draws as a formula as soon as you type the closing `$`, like `**bold**`. Prices stay text: `costs $5 and $10` is never a formula. The formula acts as one character: the arrows step over it, Backspace deletes it whole and ⌘Z brings it back. Click it to edit its LaTeX in a panel underneath. The file keeps `$x^2$` exactly as you wrote it.
+- **A menu for LaTeX commands** — Typing `\` in a formula opens a short list of about 60 common commands, each with the symbol it draws and a plain word. It narrows as you type, by the command (`\fr` finds `\frac`) or by the word (`\fraction`, `\root`). Enter or Tab puts the command in with the cursor inside its first `{}`, and one ⌘Z takes it back out. Any other command still works when typed in full.
+- **Mermaid diagrams** — A ```` ```mermaid ```` code block is drawn as a diagram, in Boojy's quiet style: flat rounded boxes, thin lines, small arrowheads. Click the drawing, or the `</>` button that appears when you point at it, and its code opens above the drawing, which redraws a moment after you stop typing; Shift+Enter or Esc finishes. A wide diagram shrinks to fit the page, down to about two thirds of its size, then scrolls sideways. Make one with ```` ```mermaid ```` then Space, or `/diagram`, or pick Mermaid in any code block's language menu. The file holds the code block exactly as written; the drawing is never saved, so other apps see the same diagram.
+- **Diagrams full size** — Pointing at a diagram shows View full size (⤢), which opens it as large as the window allows, the way a picture's View full size does. Esc, ✕ or a click outside closes it.
+
+### Improvements
+
+- **One toolbar on every code block** — Pointing at a code block shows one small toolbar at its top right: the language, then copy. The code's first line now starts below it, so the toolbar never covers your code.
+
+### Bug Fixes
+
+- **A security update** — Electron, which Boojy Notes is built on, moves to 44.9.3 for a security fix about a compromised certificate authority.
+
+### Android (in testing)
+
+- **Maths and diagrams on the phone** — The More row above the keyboard now has Maths and Diagram, beside Table, Quote, Code block and Divider.
+
 ## v0.17.0 — 2026-10-21
 
 ### Improvements
