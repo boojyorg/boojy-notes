@@ -87,8 +87,8 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                 ...(phone.side === "below" ? { top: phone.top } : { bottom: phone.bottom }),
               }
             : {
-                top: pos?.top ?? (slashMenu.rect.bottom ?? slashMenu.rect.top) + 4,
-                left: pos?.left ?? slashMenu.rect.left,
+                top: pos?.top,
+                left: pos?.left,
               }),
           zIndex: Z.DROPDOWN,
           background: BG.elevated,

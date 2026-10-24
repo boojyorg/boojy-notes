@@ -211,8 +211,8 @@ export default function InlineMathPanel({ target, blockRefs, syncGen, reRead, on
       style={{
         position: "fixed",
         zIndex: Z.CONTEXT_MENU,
-        top: (pos?.top ?? (anchor?.bottom ?? 0) + 6) / zoom,
-        left: (pos?.left ?? anchor?.left ?? 0) / zoom,
+        top: pos?.top ?? 0,
+        left: pos?.left ?? 0,
         maxWidth: columnWidth,
         display: "flex",
         alignItems: "flex-start",

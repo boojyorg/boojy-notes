@@ -183,6 +183,11 @@ describe("pick-file IPC — oversized files", () => {
     await expect(handler()).resolves.toBeNull();
     expect(dialog.showMessageBoxSync).toHaveBeenCalledTimes(1);
     expect(dialog.showMessageBoxSync.mock.calls[0][1].message).toBe("File too large");
+
+    // The image picker is the same picker, limit included: it had none.
+    const image = ipcMain.handle.mock.calls.find(([channel]) => channel === "pick-image-file")[1];
+    await expect(image()).resolves.toBeNull();
+    expect(dialog.showMessageBoxSync).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -527,6 +532,32 @@ describe("IPC handlers — folders, a missing vault, and path containment", () =
     } finally {
       fs.rmSync(outside, { force: true });
     }
+  });
+
+  // Every handler finds an attachment as the note draws it (the boojy-att
+  // protocol): the name as written, then attachments/. Copy image looked only
+  // in attachments/, and Show in Finder tried it first, so a picture stored
+  // elsewhere drew but could not be copied, and a namesake in attachments/
+  // was revealed in its place.
+  it("finds an attachment as the note draws it: the name as written, then attachments/", () => {
+    fs.mkdirSync(path.join(notesDir, "Images"));
+    fs.writeFileSync(path.join(notesDir, "Images", "photo.png"), "xx");
+    fs.mkdirSync(path.join(notesDir, "attachments"));
+    fs.writeFileSync(path.join(notesDir, "shot.png"), "root");
+    fs.writeFileSync(path.join(notesDir, "attachments", "shot.png"), "x");
+    fs.writeFileSync(path.join(notesDir, "attachments", "only.png"), "x");
+
+    expect(handlers["resolve-attachment"](null, "Images/photo.png")).toBe(
+      path.join(notesDir, "Images", "photo.png"),
+    );
+    expect(handlers["get-file-size"](null, "Images/photo.png")).toBe(2);
+    expect(handlers["resolve-attachment"](null, "shot.png")).toBe(path.join(notesDir, "shot.png"));
+    expect(handlers["get-file-size"](null, "shot.png")).toBe(4);
+    expect(handlers["resolve-attachment"](null, "only.png")).toBe(
+      path.join(notesDir, "attachments", "only.png"),
+    );
+    // A folder is no attachment.
+    expect(handlers["resolve-attachment"](null, "Images")).toBeNull();
   });
 
   it("opens and reveals only paths inside the vault, the vault root included", async () => {

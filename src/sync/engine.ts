@@ -1,3 +1,4 @@
+import { localDay } from "../utils/localDay";
 import { contentHash } from "./contentHash";
 import { discover, loadRecord, type Synced, type SyncRecord, saveRecord } from "./syncRecord";
 import {
@@ -56,10 +57,6 @@ interface LocalFile {
 
 /** Dot files and folders (`.DS_Store`, a save's `.~Note.md.tmp`) are never synced. */
 export const isIgnored = (path: string) => path.split("/").some((part) => part.startsWith("."));
-
-/** `2026-10-15`, in local time. */
-const dayOf = (now: Date) =>
-  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
 /** `Note (conflicted copy 2026-10-15).md`, then `…-2.md` and on, until `taken` says no. */
 export function clashCopyPath(path: string, day: string, taken: (key: string) => boolean): string {
@@ -332,7 +329,7 @@ class Pass {
         // failure throws with the plan kept, so the next pass tries again.
         const taken = (k: string) =>
           this.files.has(k) || k in this.record.remote || k in this.record.synced;
-        file = await moveTo(file, clashCopyPath(plan.to, dayOf(this.now()), taken));
+        file = await moveTo(file, clashCopyPath(plan.to, localDay(this.now()), taken));
         this.result.again = true;
         this.note(`kept both: ${plan.to} and ${file.path}`);
         return end();
@@ -530,7 +527,7 @@ class Pass {
   private async clash(key: string, here: LocalFile) {
     const taken = (k: string) =>
       this.files.has(k) || k in this.record.remote || k in this.record.synced;
-    const copyPath = clashCopyPath(here.path, dayOf(this.now()), taken);
+    const copyPath = clashCopyPath(here.path, localDay(this.now()), taken);
     this.record.plan = { path: here.path, copyPath, step: 0 };
     await this.save();
     await this.finishClash();
