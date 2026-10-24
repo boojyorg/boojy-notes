@@ -123,6 +123,14 @@ describe("inline bytes that only the DOM road could corrupt", () => {
     // A target is a name, never formatted: its markup reached the file as HTML
     // (found by the generated text, 2026-10-05).
     "see [[My *great* note]] and [[a`b`]] and [[Notes #todo]] and [[x|*alias*]]",
+    // A link's destination and title are its address, never formatted: run
+    // through the passes, `*b*` in a URL reached the file as `<em>b</em>` and
+    // `[[Note]]` as a wikilink span's HTML, on the first edit (2026-10-24).
+    "[x](https://a.com/*b*) and [x](https://a.com/==h==) and [x](https://a.com/~~s~~)",
+    "[text]([[Note]]) and [a](Note.md#*h*) and [x](#*h*)",
+    '[x](https://a.com "*t*") and ![a](im*a*ge.png) and [*a*](b*c*)',
+    "`[a](*b*)` and [x](https://x.y/a\\*b) and [*real*](u) *real*",
+    "$x [a](*b*) y$ and [a](b) $x$ [c](d*e*)",
     // A `#` inside a link is the link's own text, never a tag inside its href.
     "https://example.com/page(#tag and https://en.wikipedia.org/wiki/Mercury_(planet)#Orbit #real",
     // A run of four stars or more is text.

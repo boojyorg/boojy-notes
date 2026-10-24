@@ -92,7 +92,8 @@ function autolinkProse(escaped) {
 
 /**
  * Convert inline markdown tokens to HTML for rendering.
- * Process order: escape HTML → code → bold+italic → bold → italic →
+ * Process order: escape HTML → shield escapes, link destinations, wikilink
+ *                targets, star runs and maths → code → bold+italic → bold → italic →
  *                strikethrough → highlight → wikilinks → markdown links →
  *                bare URLs (in prose only, on the text as written) → tags
  */
@@ -114,7 +115,19 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     return `\x00ESC${escapes.length - 1}\x00`;
   });
 
-  // 1c. A wikilink's target is a note's name, never formatted: `[[My *great*
+  // 1c. A link's destination, its title included, is an address, never
+  // formatted: `[x](https://a.com/*b*)` and `[x]([[Note]])` name what they
+  // name. Shielded before the wikilink targets and every pass below until the
+  // link pass restores it. Run through the passes, its markup reached the file
+  // as HTML on the first edit (`[x](https://a.com/<em>b</em>)`).
+  const dests = [];
+  s = s.replace(MD_LINK_RE, (_, text, dest) => {
+    dests.push(dest);
+    return `[${text}](\x00DEST${dests.length - 1}\x00)`;
+  });
+  const realDest = (d) => d.replace(/\x00DEST(\d+)\x00/g, (_, n) => dests[Number(n)]);
+
+  // 1d. A wikilink's target is a note's name, never formatted: `[[My *great*
   // note]]` names "My *great* note". Shielded from every pass below until the
   // wikilink pass restores it; an alias after `|` is formatted as prose. Run
   // through the passes, the target's markup reached the file as HTML on the
@@ -126,7 +139,7 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   });
   const realTarget = (t) => t.replace(/\x00WL(\d+)\x00/g, (_, n) => targets[Number(n)]);
 
-  // 1d. A run of four stars or more is text, as CommonMark reads it: paired as
+  // 1e. A run of four stars or more is text, as CommonMark reads it: paired as
   // delimiters, `******` drew an empty bold italic and the first edit lost it.
   const runs = [];
   s = s.replace(/\*{4,}/g, (run) => {
@@ -134,15 +147,17 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     return `\x00RUN${runs.length - 1}\x00`;
   });
 
-  // 1e. Inline maths, before every formatting pass: `_` and `*` in a formula
+  // 1f. Inline maths, before every formatting pass: `_` and `*` in a formula
   // are TeX, never emphasis. A code span and a bare URL are matched first and
   // left whole, so `` `$x$` `` stays code and a `$` in an address stays in it. The formula is restored as its element at the end,
   // its source as written (escapes put back).
   const maths = [];
   s = s.replace(CODE_OR_MATH_RE, (m, code, src) => {
     if (code !== undefined) return m;
-    // Its source as written: escapes and any shielded wikilink target put back.
-    maths.push(realTarget(src).replace(/\x00ESC(\d+)\x00/g, (_, i) => `\\${escapes[Number(i)]}`));
+    // Its source as written: escapes and any shielded target or destination put back.
+    maths.push(
+      realDest(realTarget(src)).replace(/\x00ESC(\d+)\x00/g, (_, i) => `\\${escapes[Number(i)]}`),
+    );
     return `\x00MATH${maths.length - 1}\x00`;
   });
 
@@ -194,7 +209,7 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // 9. Markdown links [text](url) \u2014 escape the URL so a stray " can't break out
   // of the href/data-url attribute (attribute-injection guard; escAttr defined above).
   s = s.replace(MD_LINK_RE, (_, text, url) => {
-    const safe = escAttr(url);
+    const safe = escAttr(realDest(url));
     return `<a href="${safe}" class="external-link" data-url="${safe}">${text}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
   });
 
@@ -222,6 +237,9 @@ export function inlineMarkdownToHtml(md, noteTitles) {
             : `${pre}<span class="inline-tag" data-tag="${tag}">#${tag}</span>`,
         ),
   );
+
+  // A destination whose link the passes above took apart is the text it was.
+  s = realDest(s);
 
   // Restore the formulas, then the runs of stars, then backslash-escaped characters, backslash included
   s = s.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathAtomHtml(maths[Number(i)]));
