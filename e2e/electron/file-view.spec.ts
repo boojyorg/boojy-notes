@@ -135,6 +135,30 @@ test("a [[file.pdf#page=4]] link opens the PDF at page 4, and is not drawn broke
   }
 });
 
+// A file block opens its file where the note is, as a [[link]] to it does;
+// it went to the system's app while the link stayed in Boojy Notes.
+test("a file block in a note opens its PDF in the note's place", async () => {
+  const h = await launchApp(
+    { ...seed, "Embed.md": "Intro.\n\n![[Slides.pdf]]\n" },
+    {
+      prepare: (vault) => {
+        prepare(vault);
+        fs.mkdirSync(vault.file("attachments"), { recursive: true });
+        fs.writeFileSync(vault.file("attachments/Slides.pdf"), SLIDES);
+      },
+    },
+  );
+  try {
+    await h.openNote("Embed");
+    await h.page.locator("[data-block-type='file']").getByText("Slides", { exact: true }).click();
+    await expect(h.page.getByTestId("pdf-pages")).toBeVisible();
+    await expect.poll(() => drawn(h.page, 1)).toBe(true);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("Copy Link to This Page puts the page's link on the clipboard", async () => {
   const h = await launchApp(seed, { prepare });
   try {
