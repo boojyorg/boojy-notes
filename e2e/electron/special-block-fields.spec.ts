@@ -324,3 +324,33 @@ test("ArrowUp from an empty second line of a callout's body goes to its first li
     await h.close();
   }
 });
+
+// A blank line between two in the body is consecutive <br>s, whose caret has
+// no box either: measured as the whole body, its bottom read as the last line
+// and ArrowDown left the callout from the middle (review of #413).
+test("ArrowDown walks a callout body's blank middle line and leaves only from the last", async () => {
+  const h = await launchApp({
+    [NOTE]: "Intro.\n\n> [!note] Title\n> first\n>\n> third\n\nAfter.\n",
+  });
+  try {
+    await h.openNote("Note");
+    const body = h.page.locator(".callout-body");
+    await expect(body).toContainText("third");
+    await body.click({ position: { x: 4, y: 6 } });
+    await h.page.keyboard.press("ArrowDown");
+    await expect(body).toBeFocused();
+    await h.page.keyboard.press("ArrowDown");
+    await expect(body).toBeFocused();
+    // Two lines down from `first` is `third`: the typed character lands there.
+    await h.page.keyboard.type("!");
+    const lines = (await body.innerText()).split("\n");
+    expect(lines[0]).toBe("first");
+    expect(lines.at(-1)).toContain("!");
+    // And from the last line, ArrowDown leaves for the paragraph after.
+    await h.page.keyboard.press("ArrowDown");
+    await expect(body).not.toBeFocused();
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

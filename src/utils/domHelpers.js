@@ -438,9 +438,11 @@ export function selectionIntoTextRoots(editorEl, blocks, blockRefs) {
  * The rect of a collapsed caret. Chromium reports all zeros for one sitting in
  * an empty text node — an empty paragraph, or one of the editor's own caret
  * anchors — and the arrow keys ask "is the caret on this block's first or last
- * line?" against it, so a zero rect would answer *no* for ever. Falls back to
- * the node the caret sits in, then to the block, which has exactly one line
- * when it is empty.
+ * line?" against it, so a zero rect would answer *no* for ever. A caret
+ * between two `<br>`s (a blank line in a field) is measured by the `<br>` it
+ * stands before, its own line; the block's box would answer "first and last
+ * line" at once. Falls back to the node the caret sits in, then to the block,
+ * which has exactly one line when it is empty.
  */
 export function caretRect(range, el) {
   const rect = range.getBoundingClientRect();
@@ -448,6 +450,11 @@ export function caretRect(range, el) {
   const [first] = range.getClientRects();
   if (first && (first.width || first.height)) return first;
   const node = range.startContainer;
+  const before = node?.nodeType === Node.ELEMENT_NODE ? node.childNodes[range.startOffset] : null;
+  if (before?.nodeName === "BR") {
+    const line = before.getBoundingClientRect();
+    if (line.height) return line;
+  }
   const host = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
   const box = host?.getBoundingClientRect?.();
   return box && (box.width || box.height) ? box : (el?.getBoundingClientRect?.() ?? rect);
