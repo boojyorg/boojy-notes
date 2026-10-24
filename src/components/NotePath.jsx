@@ -176,7 +176,7 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
  * @param {string | null} [props.activeNote] the open note's id, marked in the popup
  * @param {(id: string) => void} [props.onOpenNote] opens a note chosen in the popup
  * @param {(e: import("react").PointerEvent<HTMLElement>) => void} [props.onRowPointerDown]
- *   the sidebar's press-and-hold drag, so the popup's rows can be dragged onto its folders
+ *   the sidebar's drag, so the popup's rows can be dragged onto its folders
  * @param {number} [props.rightControlsW] a viewed file's controls' width, left of the ···
  * @param {(folder: string | null) => void} [props.onShowFolder] the phone's crumb:
  *   Home, that folder open and the note marked, in place of the popup

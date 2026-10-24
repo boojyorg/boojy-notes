@@ -3,6 +3,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { MissingAttachmentIcon, MoreHorizontalIcon, RevealIcon, TrashIcon } from "../Icons";
 import ImageMenu, { type MenuAnchor } from "./ImageMenu";
 import { fromTouch } from "../../utils/touch";
+import { pointAnchor, rectAnchor } from "../Menu";
 
 interface Props {
   /** What the note links to (`photo.png`, `Reading/report.pdf`), shown as its last segment. */
@@ -18,11 +19,6 @@ interface Props {
 /** A file the vault could hold (desktop only): never a web address or a pasted data URL. */
 export const findable = (src: string | null | undefined): src is string =>
   !!src && !!window.electronAPI?.findAttachment && !/^[a-z][a-z0-9+.-]*:/i.test(src);
-
-const rectOf = (el: Element): MenuAnchor => {
-  const r = el.getBoundingClientRect();
-  return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
-};
 
 /**
  * An attachment the note links to that is not in the vault: the card keeps
@@ -62,7 +58,7 @@ export default function MissingAttachment({
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          const p = { top: e.clientY, bottom: e.clientY, left: e.clientX, right: e.clientX };
+          const p = pointAnchor(e);
           setMenu({ anchor: p, fromBar: false });
         }}
         onMouseEnter={(e) => {
@@ -109,7 +105,7 @@ export default function MissingAttachment({
           aria-label="Attachment options"
           onClick={(e) => {
             e.stopPropagation();
-            if (moreRef.current) setMenu({ anchor: rectOf(moreRef.current), fromBar: true });
+            if (moreRef.current) setMenu({ anchor: rectAnchor(moreRef.current), fromBar: true });
           }}
           style={{
             display: "flex",

@@ -2,7 +2,6 @@ import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import { useTheme } from "../hooks/useTheme";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { useFocusTrap } from "../hooks/useFocusTrap";
-import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
 import { Z } from "../constants/zIndex";
@@ -28,6 +27,7 @@ import type { NoteData } from "../types/notes";
 import { otherFileKind, splitExtension, type OtherFile } from "../utils/otherFiles";
 import { CloseIcon, FolderIcon, OtherFileIcon, PlusIcon, SearchIcon } from "./Icons";
 import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
+import { SCRIM } from "./settings/SettingsPrimitives";
 import { fromTouch } from "../utils/touch";
 
 /**
@@ -115,7 +115,7 @@ export default function SearchPalette({
 }: SearchPaletteProps) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
-  const { accentText } = useLayout() as { accentText: string };
+  const accentText = theme.ACCENT.text; // accent as ink: the matched words
   const { noteData } = useNoteData() as { noteData: NoteData };
   const {
     search,
@@ -411,7 +411,7 @@ export default function SearchPalette({
         position: "fixed",
         inset: 0,
         zIndex: Z.OVERLAY,
-        background: "rgba(0,0,0,0.3)",
+        background: SCRIM,
         display: "flex",
         justifyContent: "center",
         alignItems: "flex-start",

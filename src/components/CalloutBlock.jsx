@@ -7,7 +7,7 @@ import { useMenuKeys } from "../hooks/useMenuKeys";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
-import { caretLength, getCaretOffset, placeCaret } from "../utils/domHelpers";
+import { caretLength, caretRect, getCaretOffset, placeCaret } from "../utils/domHelpers";
 import {
   Pencil,
   Info,
@@ -368,12 +368,14 @@ export default memo(function CalloutBlock({
           return;
         }
       }
+      // Measured with `caretRect`, never the range's own rect: a caret on an
+      // empty line has none, and read as the body's top or bottom edge.
       if (e.key === "ArrowUp") {
         // At first line → focus title
         const sel = window.getSelection();
         if (sel.rangeCount) {
           const range = sel.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
+          const rect = caretRect(range, bodyRef.current);
           const containerRect = bodyRef.current.getBoundingClientRect();
           if (rect.top - containerRect.top < 4) {
             e.preventDefault();
@@ -387,7 +389,7 @@ export default memo(function CalloutBlock({
         const sel = window.getSelection();
         if (sel.rangeCount) {
           const range = sel.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
+          const rect = caretRect(range, bodyRef.current);
           const containerRect = bodyRef.current.getBoundingClientRect();
           if (containerRect.bottom - rect.bottom < 4) {
             e.preventDefault();

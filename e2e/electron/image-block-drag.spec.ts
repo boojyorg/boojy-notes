@@ -13,13 +13,9 @@ import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { makePng } from "../../tests/fixtures/makePng";
 import { SETTLE_MS, expectNoTempFiles, launchApp, sleep, waitForFile } from "./harness";
+import { PNG } from "../fixtures";
 
 const IMAGE = "![[pic.png]]";
-// A 1x1 PNG, so the image block has a real picture and no load error.
-const PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-  "base64",
-);
 
 const seed = () =>
   launchApp(

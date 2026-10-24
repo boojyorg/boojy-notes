@@ -9,7 +9,7 @@ import path from "node:path";
  * matters for power loss: without it the rename can hit the journal while the
  * data is still only in the page cache, leaving the target pointing at zeroed
  * blocks. The temp file is `.~<name>.tmp` (`tempPathFor`): the dot keeps it
- * invisible to the chokidar watcher and the vault walk, and `.~` is a prefix
+ * invisible to the tree watcher and the vault walk, and `.~` is a prefix
  * Dropbox never syncs, so a vault in a sync folder does not upload a file
  * that exists for a few milliseconds per save to every other device.
  *

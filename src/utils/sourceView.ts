@@ -10,8 +10,7 @@
  */
 import { LINK_DEST } from "./linkDestination";
 import { blocksToMarkdown } from "./markdown";
-
-type Block = { id: string; type: string; text?: string };
+import type { Block } from "../types/notes";
 
 /**
  * Where block `i`'s lines end in the file text: the length of the text the

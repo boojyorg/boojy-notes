@@ -94,6 +94,16 @@ function caretOnLine(el, edge) {
   return box.bottom - (Number.parseFloat(cs.paddingBottom) || 0) - rect.bottom < line;
 }
 
+/** The key that moves the caret's row or column, or null. */
+function tableMoveKey(e) {
+  if (!(e.metaKey || e.ctrlKey) || !e.shiftKey) return null;
+  if (!e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown"))
+    return { kind: "row", step: e.key === "ArrowUp" ? -1 : 1 };
+  if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight"))
+    return { kind: "column", step: e.key === "ArrowLeft" ? -1 : 1 };
+  return null;
+}
+
 /**
  * The table block. A GFM pipe table drawn as a grid that sizes to its content
  * (Obsidian's model: Markdown holds no column width, so there is none to
@@ -116,16 +126,6 @@ function caretOnLine(el, edge) {
  * columns are moved, and their menus opened, by the grips on the table's
  * edges (TableHandles).
  */
-/** The key that moves the caret's row or column, or null. */
-function tableMoveKey(e) {
-  if (!(e.metaKey || e.ctrlKey) || !e.shiftKey) return null;
-  if (!e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown"))
-    return { kind: "row", step: e.key === "ArrowUp" ? -1 : 1 };
-  if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight"))
-    return { kind: "column", step: e.key === "ArrowLeft" ? -1 : 1 };
-  return null;
-}
-
 export default memo(function TableBlock({
   block,
   noteId,
@@ -154,15 +154,6 @@ export default memo(function TableBlock({
     return () => registerRef?.(block.id, null);
   }, [block.id, registerRef]);
 
-  const rows = block.rows || [
-    ["", ""],
-    ["", ""],
-  ];
-  // Rows are ragged (a row holds exactly the cells its Markdown line holds);
-  // the grid is drawn as wide as the widest row, and a row gains a cell only
-  // when one is written into it (utils/tableShape.ts).
-  const colCount = tableColumnCount(rows) || 2;
-  const alignments = block.alignments || [];
   // The rows as the keystroke ref holds them: what a cell is judged against.
   const latestRows = useCallback(
     () => latestBlock(noteDataRef, noteId, block)?.rows,
@@ -189,6 +180,11 @@ export default memo(function TableBlock({
     contextMenu,
     openGripMenu,
     closeContextMenu,
+    // The block's rows, its width (the widest row: rows are ragged, and a row
+    // gains a cell only when one is written into it) and its alignments.
+    rows,
+    colCount,
+    alignments,
   } = useTableInteractions({
     block,
     noteId,

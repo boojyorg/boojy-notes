@@ -24,7 +24,6 @@ vi.mock("../../src/hooks/useTheme", () => ({
       modalShadow: "0 8px 24px rgba(0,0,0,0.4)",
       SEMANTIC: { error: "#ef4444" },
       link: { color: "#7AA2F7", underline: "#7AA2F744", hoverBg: "#7AA2F710" },
-      searchInputBg: "#222",
     },
     isDark: true,
     themeMode: "night",

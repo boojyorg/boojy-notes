@@ -39,6 +39,8 @@ describe("typeAheadIndex", () => {
     expect(typeAheadIndex(names, "j", -1)).toBe(4);
     expect(typeAheadIndex(names, "jj", 4)).toBe(5);
     expect(typeAheadIndex(names, "js", -1)).toBe(5);
+    expect(typeAheadIndex(names, "pyt", -1)).toBe(6);
+    expect(typeAheadIndex(names, "SQ", -1)).toBe(7); // case ignored
     expect(typeAheadIndex(names, "b", 5)).toBe(1);
     expect(typeAheadIndex(names, "z", -1)).toBe(-1);
   });

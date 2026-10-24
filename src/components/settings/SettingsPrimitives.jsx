@@ -155,8 +155,6 @@ export function SmallButton({
   );
 }
 
-export { displayPath } from "../../utils/storageLocations";
-
 /** The path with a break opportunity after each separator, so a long one wraps at its folders. */
 function BreakablePath({ path }) {
   const parts = path.split("/");

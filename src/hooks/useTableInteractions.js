@@ -241,6 +241,9 @@ export function useTableInteractions({
   }, [cleanupCreate]);
 
   return {
+    rows,
+    colCount,
+    alignments,
     handleBottomZonePointerDown,
     handleBottomZoneClick,
     handleRightZonePointerDown,

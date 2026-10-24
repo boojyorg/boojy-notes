@@ -15,7 +15,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 vi.mock("../../src/context/LayoutContext", () => ({
-  useLayout: () => ({ accentColor: "#2A737D", accentText: "#2A737D" }),
+  useLayout: () => ({ accentColor: "#2A737D" }),
 }));
 vi.mock("../../src/context/NoteDataContext", () => ({
   useNoteData: () => ({ noteData: state.noteData }),

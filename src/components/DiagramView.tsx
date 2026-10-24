@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { drawDiagram, drawnBefore, fitToColumn } from "../utils/mermaid";
+import RenderFailure from "./RenderFailure";
 
 /** How long typing must pause before the diagram is drawn again. */
 const REDRAW_MS = 250;
@@ -102,33 +103,7 @@ export default function DiagramView({
       ) : !error ? (
         <div style={{ minHeight: 40 }} aria-busy="true" />
       ) : null}
-      {error && (
-        <div
-          role="status"
-          style={{
-            display: "flex",
-            gap: 7,
-            alignItems: "baseline",
-            justifyContent: "center",
-            fontSize: 12.5,
-            color: t.TEXT.muted,
-            padding: "4px 16px 0",
-          }}
-        >
-          <span
-            aria-hidden="true"
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: t.SEMANTIC.error,
-              flex: "none",
-              transform: "translateY(-1px)",
-            }}
-          />
-          {svg ? `Showing the last version that worked. ${error}` : error}
-        </div>
-      )}
+      {error && <RenderFailure error={error} kept={!!svg} padding="4px 16px 0" />}
     </div>
   );
 }

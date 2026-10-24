@@ -1,10 +1,10 @@
 import { useDeferredValue, useMemo } from "react";
 import { stripMarkdownFormatting } from "../utils/inlineFormatting";
 
-const EMPTY_STATS = { wordCount: 0, charCount: 0 };
+const EMPTY_STATS = { wordCount: 0 };
 
 /**
- * Word / character counts for a note's blocks.
+ * The word count of a note's blocks (the ··· menu shows it).
  * Defers off the latest blocks so heavy typing stays responsive.
  */
 export function useNoteStats(noteBlocks) {
@@ -16,9 +16,6 @@ export function useNoteStats(noteBlocks) {
       .map((b) => stripMarkdownFormatting(b.text))
       .join(" ");
     const wc = plainText.trim() ? plainText.trim().split(/\s+/).filter(Boolean).length : 0;
-    return {
-      wordCount: wc,
-      charCount: plainText.length,
-    };
+    return { wordCount: wc };
   }, [deferredBlocks]);
 }

@@ -42,8 +42,5 @@ export function createSyncRunner(pass: () => Promise<PassResult>, { maxRepeats =
       running = loop();
       return running;
     },
-    get busy() {
-      return running !== null;
-    },
   };
 }

@@ -79,20 +79,6 @@ export function titleFieldText(el) {
 }
 
 /**
- * The caret anchor: a `<span class="caret-anchor">` holding one zero-width
- * space, placed just after a link (or a completed tag) for the caret to rest
- * on. Chromium canonicalises a caret at the edge of an inline element to
- * *inside* it, so text typed after a rendered `[[wikilink]]` or `<a>` went into
- * the link and rewrote its alias; a boundary between a link and a following
- * text node is canonicalised the same way. A zero-width space is the one
- * anchor Chromium honours, and the element around it is what tells the
- * scaffolding from note text: a file's own U+200B is content and is kept,
- * the anchor's is dropped by the DOM→Markdown walker and the sanitiser,
- * ignored by the caret arithmetic here, and wiped by the next repaint from
- * state. Text typed on
- * the anchor lands inside the span, which the walkers read as prose.
- */
-/**
  * An inline formula (`$x^2$`): one sealed element holding its source on
  * `data-math`, whatever KaTeX draws inside it. The caret arithmetic counts it
  * as one character and never looks inside.
@@ -114,6 +100,20 @@ export const outsideMath = {
 /** Whether `node` sits inside an inline formula, where nothing is a character of the text. */
 const inMath = (node) => !!node.parentElement?.closest(`.${INLINE_MATH_CLASS}`);
 
+/**
+ * The caret anchor: a `<span class="caret-anchor">` holding one zero-width
+ * space, placed just after a link (or a completed tag) for the caret to rest
+ * on. Chromium canonicalises a caret at the edge of an inline element to
+ * *inside* it, so text typed after a rendered `[[wikilink]]` or `<a>` went into
+ * the link and rewrote its alias; a boundary between a link and a following
+ * text node is canonicalised the same way. A zero-width space is the one
+ * anchor Chromium honours, and the element around it is what tells the
+ * scaffolding from note text: a file's own U+200B is content and is kept,
+ * the anchor's is dropped by the DOM→Markdown walker and the sanitiser,
+ * ignored by the caret arithmetic here, and wiped by the next repaint from
+ * state. Text typed on the anchor lands inside the span, which the walkers
+ * read as prose.
+ */
 export const CARET_ANCHOR = "\u200B";
 export const CARET_ANCHOR_CLASS = "caret-anchor";
 const ANCHOR_RE = /\u200B/g;
@@ -128,7 +128,7 @@ export function makeCaretAnchor() {
 }
 
 /** Whether `node` is a caret anchor element. */
-export const isCaretAnchor = (node) =>
+const isCaretAnchor = (node) =>
   node?.nodeType === Node.ELEMENT_NODE && node.classList.contains(CARET_ANCHOR_CLASS);
 
 /** Whether `textNode` sits inside a caret anchor, where its U+200B is scaffolding. */
@@ -438,9 +438,11 @@ export function selectionIntoTextRoots(editorEl, blocks, blockRefs) {
  * The rect of a collapsed caret. Chromium reports all zeros for one sitting in
  * an empty text node — an empty paragraph, or one of the editor's own caret
  * anchors — and the arrow keys ask "is the caret on this block's first or last
- * line?" against it, so a zero rect would answer *no* for ever. Falls back to
- * the node the caret sits in, then to the block, which has exactly one line
- * when it is empty.
+ * line?" against it, so a zero rect would answer *no* for ever. A caret
+ * between two `<br>`s (a blank line in a field) is measured by the `<br>` it
+ * stands before, its own line; the block's box would answer "first and last
+ * line" at once. Falls back to the node the caret sits in, then to the block,
+ * which has exactly one line when it is empty.
  */
 export function caretRect(range, el) {
   const rect = range.getBoundingClientRect();
@@ -448,6 +450,11 @@ export function caretRect(range, el) {
   const [first] = range.getClientRects();
   if (first && (first.width || first.height)) return first;
   const node = range.startContainer;
+  const before = node?.nodeType === Node.ELEMENT_NODE ? node.childNodes[range.startOffset] : null;
+  if (before?.nodeName === "BR") {
+    const line = before.getBoundingClientRect();
+    if (line.height) return line;
+  }
   const host = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
   const box = host?.getBoundingClientRect?.();
   return box && (box.width || box.height) ? box : (el?.getBoundingClientRect?.() ?? rect);

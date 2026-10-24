@@ -23,9 +23,9 @@ let watcher = null;
 // - `ownUnlinks`: paths the app is removing itself (a Trash move, the old
 //   path of a rename), each consumed by the one unlink it produces. Not a
 //   timer: shell.trashItem() latency is OS-mediated and unbounded. The
-//   timeout is only a leak guard for an unlink chokidar never delivers. A
+//   timeout is only a leak guard for an unlink the watcher never delivers. A
 //   finished Trash move needs no event at all (`unlinkDone`).
-// - `ownTrees`: a directory the app is renaming or removing, which chokidar
+// - `ownTrees`: a directory the app is renaming or removing, which the watcher
 //   reports as one event per entry underneath. The renderer already knows the
 //   outcome from the IPC answer, so everything under the old and the new
 //   directory is dropped for a short window; one that escapes re-reads what

@@ -1,11 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
+import { MOD } from "./fixtures";
 
 // The sidebar tree from the keyboard (WAI-ARIA tree pattern): one Tab stop,
 // arrows between the rows that show, Right/Left open and close, F2 renames,
 // ⌘⌫ deletes, Shift+F10 opens the row's menu, Escape goes back to the note,
 // ⌃⌘S comes to the tree from anywhere. `.claude/rules/ui-chrome-and-theme.md`.
 
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const TO_SIDEBAR = process.platform === "darwin" ? "Control+Meta+s" : "Control+Alt+s";
 
 const row = (page: Page, name: string) =>

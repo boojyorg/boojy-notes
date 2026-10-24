@@ -42,13 +42,11 @@ describe("createSyncRunner", () => {
     const first = runner.request();
     const second = runner.request(); // a save
     const third = runner.request(); // pull-to-refresh
-    expect(runner.busy).toBe(true);
     await gate.releaseNext();
     await gate.releaseNext();
     await Promise.all([first, second, third]);
     expect(gate.count).toBe(2);
     expect(gate.overlapped).toBe(false);
-    expect(runner.busy).toBe(false);
   });
 
   it("starts afresh once idle", async () => {

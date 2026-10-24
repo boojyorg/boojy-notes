@@ -3,7 +3,7 @@ import Prism from "prismjs";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import CodeLangMenu from "./CodeLangMenu";
 import { canonicalLang, sameLang } from "../utils/codeLanguage";
-import Menu from "./Menu";
+import Menu, { pointAnchor } from "./Menu";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -56,19 +56,6 @@ const LANG_ALIAS = {
   html: "markup",
   xml: "markup",
   svg: "markup",
-};
-
-// Display full names for the bottom-right badge
-const LANG_DISPLAY = {
-  javascript: "JavaScript",
-  typescript: "TypeScript",
-  python: "Python",
-  html: "HTML",
-  css: "CSS",
-  json: "JSON",
-  mermaid: "Mermaid",
-  bash: "Bash",
-  sql: "SQL",
 };
 
 /**
@@ -254,7 +241,6 @@ export default memo(function CodeBlock({
       // Tab — indent (supports multi-line selection)
       if (e.key === "Tab" && !e.shiftKey) {
         e.preventDefault();
-        e.stopPropagation();
         const start = ta.selectionStart;
         const end = ta.selectionEnd;
         const val = ta.value;
@@ -281,7 +267,6 @@ export default memo(function CodeBlock({
       // Shift+Tab — dedent (supports multi-line selection)
       if (e.key === "Tab" && e.shiftKey) {
         e.preventDefault();
-        e.stopPropagation();
         const start = ta.selectionStart;
         const end = ta.selectionEnd;
         const val = ta.value;
@@ -301,8 +286,7 @@ export default memo(function CodeBlock({
       if (diagram && e.key === "Enter" && e.shiftKey) {
         e.preventDefault();
         // The field is about to be folded away: the editor takes the keys first.
-        blockRef.current?.closest("[data-editor]")?.focus({ preventScroll: true });
-        setCodeOpen(false);
+        closeCode();
         if (onBlockNav) onBlockNav(blockIndex, "next");
         return;
       }
@@ -310,7 +294,6 @@ export default memo(function CodeBlock({
       // Enter — new line with auto-indent
       if (e.key === "Enter") {
         e.preventDefault();
-        e.stopPropagation();
         const start = ta.selectionStart;
         const end = ta.selectionEnd;
         const val = ta.value;
@@ -328,7 +311,6 @@ export default memo(function CodeBlock({
       // Escape — exit code block, focus next block
       if (e.key === "Escape") {
         e.preventDefault();
-        e.stopPropagation();
         if (onBlockNav) onBlockNav(blockIndex, "next");
         return;
       }
@@ -338,7 +320,6 @@ export default memo(function CodeBlock({
         const beforeCursor = ta.value.substring(0, ta.selectionStart);
         if (!beforeCursor.includes("\n")) {
           e.preventDefault();
-          e.stopPropagation();
           if (onBlockNav) onBlockNav(blockIndex, "prev");
           return;
         }
@@ -349,7 +330,6 @@ export default memo(function CodeBlock({
         const afterCursor = ta.value.substring(ta.selectionEnd);
         if (!afterCursor.includes("\n")) {
           e.preventDefault();
-          e.stopPropagation();
           if (onBlockNav) onBlockNav(blockIndex, "next");
           return;
         }
@@ -358,12 +338,11 @@ export default memo(function CodeBlock({
       // Backspace on empty — delete block
       if (e.key === "Backspace" && ta.value === "") {
         e.preventDefault();
-        e.stopPropagation();
         if (onDelete) onDelete(blockIndex);
         return;
       }
     },
-    [blockIndex, commit, onBlockNav, onDelete, diagram],
+    [blockIndex, commit, onBlockNav, onDelete, diagram, closeCode],
   );
 
   // Copy to clipboard
@@ -386,7 +365,7 @@ export default memo(function CodeBlock({
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    setCtxMenu({ top: e.clientY, bottom: e.clientY, left: e.clientX, right: e.clientX });
+    setCtxMenu(pointAnchor(e));
   }, []);
   const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
 
@@ -428,7 +407,8 @@ export default memo(function CodeBlock({
   // string names, not the string itself. A file's ```js is JavaScript here and
   // stays `js` on disk; a word the app does not know reads as it was written.
   const canonical = canonicalLang(lang);
-  const displayLabel = LANG_DISPLAY[canonical] || canonical;
+  // Plain for no language, as the menu names it.
+  const displayLabel = LANGUAGES.find((l) => l.value === canonical)?.label || canonical;
 
   const codeField = (
     <div className="code-body">
@@ -475,7 +455,7 @@ export default memo(function CodeBlock({
         }}
         onMouseDown={(e) => e.preventDefault()}
       >
-        {displayLabel || "Plain"}
+        {displayLabel}
         <ChevronDownIcon size={12} />
       </button>
       {diagram && (

@@ -1,10 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
+import { MOD } from "./fixtures";
 
 // The accessibility pass's proof (docs/BACKLOG.md, Keyboard-only use): a note
 // is created, found, renamed, moved and deleted without the mouse. Every
 // step below is a key press; `page.mouse` and `.click()` are not used.
 
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const TO_SIDEBAR = process.platform === "darwin" ? "Control+Meta+s" : "Control+Alt+s";
 
 const row = (page: Page, name: string) =>

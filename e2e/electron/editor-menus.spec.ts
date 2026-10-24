@@ -15,12 +15,7 @@ import fs from "node:fs";
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 import { END_OF_LINE, MOD, launchApp } from "./harness";
-
-// A 1x1 PNG, so the image block has a real picture to right-click.
-const PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-  "base64",
-);
+import { PNG } from "../fixtures";
 
 const filler = (n: number, prefix: string) =>
   Array.from({ length: n }, (_, i) => `${prefix} paragraph ${i + 1}.`).join("\n\n");

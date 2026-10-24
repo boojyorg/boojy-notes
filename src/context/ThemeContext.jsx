@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useMemo, useCallback } from "react";
+import { createContext, useState, useEffect, useMemo, useRef } from "react";
 import { NIGHT, DAY } from "../constants/themes";
 
 export const ThemeContext = createContext(null);
@@ -48,7 +48,7 @@ export function ThemeProvider({ children }) {
   // working; the product words are Light / Dark / System. "auto" follows the OS
   // appearance and nothing else (the time-of-day schedule was removed 2026-09;
   // a saved `autoMethod` is simply ignored).
-  const [themeMode, setThemeModeRaw] = useState(saved.themeMode || "day");
+  const [themeMode, setThemeMode] = useState(saved.themeMode || "day");
   const [resolvedMode, setResolvedMode] = useState(() =>
     themeMode !== "auto" ? themeMode : systemPrefersDark() ? "night" : "day",
   );
@@ -72,7 +72,7 @@ export function ThemeProvider({ children }) {
   }, [themeMode]);
 
   // Smooth crossfade when theme changes
-  const isFirstRender = useMemo(() => ({ current: true }), []);
+  const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -91,7 +91,6 @@ export function ThemeProvider({ children }) {
       style.textContent = "";
     }, ms + 50);
     return () => clearTimeout(timer);
-    // Deps deliberately not exhaustive: isFirstRender is a stable ref-like object created with useMemo
   }, [resolvedMode]);
 
   const [themeOverrides, setThemeOverrides] = useState(null);
@@ -100,8 +99,6 @@ export function ThemeProvider({ children }) {
     [resolvedMode, themeOverrides],
   );
   const isDark = resolvedMode === "night";
-
-  const setThemeMode = useCallback((v) => setThemeModeRaw(v), []);
 
   const value = useMemo(
     () => ({ theme, themeMode, setThemeMode, isDark, setThemeOverrides }),

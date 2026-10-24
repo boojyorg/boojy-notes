@@ -32,8 +32,6 @@ interface CodeLangMenuProps {
   onClose: () => void;
 }
 
-export { typeAheadIndex } from "../utils/menuKeys";
-
 export default function CodeLangMenu({
   anchor,
   languages,

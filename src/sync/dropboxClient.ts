@@ -14,8 +14,8 @@ import {
 /**
  * Dropbox's HTTP API as the sync engine's Remote, with app-folder access:
  * every path is inside `Apps/Boojy Notes/`, which Dropbox calls the root.
- * `root` is the vault's folder there (`/test`), or "" for the app folder itself.
- * Plain `fetch`, no SDK: the engine needs eight calls.
+ * `root` is the vault's folder there (`/Personal`, SYNC_FOLDER), or "" for the
+ * app folder itself. Plain `fetch`, no SDK.
  * https://www.dropbox.com/developers/documentation/http/documentation
  */
 
