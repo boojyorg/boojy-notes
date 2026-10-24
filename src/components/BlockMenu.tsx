@@ -169,7 +169,7 @@ export default function BlockMenu({
         action: onDuplicate,
         hint: shortcutLabel({ key: "D" }),
       },
-      { label: "Delete", icon: <TrashIcon />, action: onDelete, hint: "⌫", danger: true },
+      { label: "Delete", icon: <TrashIcon />, action: onDelete, hint: "⌫" },
     );
 
   // The shortcuts the rows show, answered while the menu holds the keys.

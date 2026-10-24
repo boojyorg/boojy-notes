@@ -193,7 +193,8 @@ describe("PathTreeMenu", () => {
     expect(highlighted(container)).toBe("Semester 1");
     expect(row("Todd's Note").style.background).toBe("rgb(236, 236, 236)");
     expect(row("Semester 1").style.background).toBe("rgb(236, 236, 236)");
-    expect(row("Semester 1").style.boxShadow).toContain("#8FC1C6");
+    // The focus ring, never the mark (2:1 on Light).
+    expect(row("Semester 1").style.boxShadow).toContain("var(--boojy-focus-ring)");
     expect(row("Todd's Note").style.boxShadow).toBe("");
     fireEvent.mouseMove(row("Old plan"));
     expect(highlighted(container)).toBe("Old plan");

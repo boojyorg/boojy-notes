@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { localDay } from "../src/utils/localDay.js";
 import { isSkippedName } from "./vaultFs.js";
 
 /** A save's temp file for a note (`tempPathFor` in atomicWrite.ts): `.~Name.md.tmp`. */
@@ -11,13 +12,9 @@ const NOTE_TEMP = /^\.~(.+\.md)\.tmp$/;
  */
 const IN_FLIGHT_MS = 60_000;
 
-/** `2026-10-07`, in local time, as the conflicted copy writes its date. */
-const day = (now: Date) =>
-  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-
 /** A free name beside `dir` for a recovered note: `Name (recovered 2026-10-07).md`, then ` 2`… */
 function recoveredPath(dir: string, noteName: string, now: Date): string {
-  const base = `${noteName.replace(/\.md$/, "")} (recovered ${day(now)})`;
+  const base = `${noteName.replace(/\.md$/, "")} (recovered ${localDay(now)})`;
   let candidate = path.join(dir, `${base}.md`);
   for (let n = 2; fs.existsSync(candidate); n++) candidate = path.join(dir, `${base} ${n}.md`);
   return candidate;

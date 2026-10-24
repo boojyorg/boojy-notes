@@ -152,6 +152,21 @@ function insideVault(notesDir, candidate) {
 }
 
 /**
+ * The file an attachment name stands for: the vault-relative path as written,
+ * then the same name under attachments/, a file inside the vault or null. The
+ * one order every handler uses, so Copy, Open and Show in Finder reach the
+ * file the note shows (the `boojy-att` protocol draws it).
+ */
+function vaultAttachment(notesDir, name) {
+  if (typeof name !== "string") return null;
+  for (const candidate of [name, path.join("attachments", name)]) {
+    const abs = insideVault(notesDir, candidate);
+    if (abs && fs.statSync(abs, { throwIfNoEntry: false })?.isFile()) return abs;
+  }
+  return null;
+}
+
+/**
  * A vault that is not there is not recreated. The default vault is made by
  * `getNotesDir` the first time it is asked for; a vault the user chose that
  * is missing (an unmounted volume, a folder moved in Finder) must not come
@@ -886,20 +901,19 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   ipcMain.handle("resolve-attachment", (_event, filename) => {
     const notesDir = getNotesDir();
     if (typeof filename !== "string") return null;
-    const candidates = [path.join("attachments", filename), filename];
+    const found = vaultAttachment(notesDir, filename);
+    if (found) return found;
     const legacyAttDir = path.join(notesDir, ".attachments");
     if (fs.existsSync(legacyAttDir)) {
       try {
         for (const sub of fs.readdirSync(legacyAttDir, { withFileTypes: true })) {
-          if (sub.isDirectory()) candidates.push(path.join(".attachments", sub.name, filename));
+          if (!sub.isDirectory()) continue;
+          const abs = insideVault(notesDir, path.join(".attachments", sub.name, filename));
+          if (abs && fs.existsSync(abs)) return abs;
         }
       } catch {
         /* ignore */
       }
-    }
-    for (const candidate of candidates) {
-      const abs = insideVault(notesDir, candidate);
-      if (abs && fs.existsSync(abs)) return abs;
     }
     return null;
   });
@@ -961,9 +975,12 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     return true;
   });
 
-  ipcMain.handle("pick-file", async () => {
+  // One picker for /file and /image (pictures only), with one size limit:
+  // the image picker had none, and read a picture of any size whole.
+  const pickOne = async (filters) => {
     const result = await dialog.showOpenDialog(getMainWindow(), {
       properties: ["openFile"],
+      filters,
       defaultPath: _lastPickDir,
     });
     if (result.canceled || !result.filePaths[0]) return null;
@@ -981,28 +998,20 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     }
     const dataBase64 = fs.readFileSync(filePath).toString("base64");
     return { fileName: path.basename(filePath), dataBase64, size };
-  });
+  };
+  ipcMain.handle("pick-file", () => pickOne(undefined));
+  ipcMain.handle("pick-image-file", () =>
+    pickOne([{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"] }]),
+  );
 
   ipcMain.handle("get-file-size", (_event, filename) => {
-    const notesDir = getNotesDir();
-    if (typeof filename !== "string") return null;
-    for (const candidate of [path.join("attachments", filename), filename]) {
-      const abs = insideVault(notesDir, candidate);
-      if (!abs) continue;
-      try {
-        return fs.statSync(abs).size;
-      } catch {
-        /* try next */
-      }
-    }
-    return null;
+    const abs = vaultAttachment(getNotesDir(), filename);
+    return abs ? (fs.statSync(abs, { throwIfNoEntry: false })?.size ?? null) : null;
   });
 
   ipcMain.handle("copy-image-to-clipboard", async (_event, filename) => {
-    const notesDir = getNotesDir();
-    if (typeof filename !== "string") return false;
-    const absPath = insideVault(notesDir, path.join("attachments", filename));
-    if (!absPath || !fs.existsSync(absPath)) return false;
+    const absPath = vaultAttachment(getNotesDir(), filename);
+    if (!absPath) return false;
     try {
       // Electron 44's clipboard is the W3C one: `writeImage` went, and an
       // image is written as a PNG blob, whatever the file's own format.
@@ -1037,25 +1046,11 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
       await shell.openExternal(url);
     }
   });
-
-  ipcMain.handle("pick-image-file", async () => {
-    const result = await dialog.showOpenDialog(getMainWindow(), {
-      properties: ["openFile"],
-      filters: [
-        { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"] },
-      ],
-      defaultPath: _lastPickDir,
-    });
-    if (result.canceled || !result.filePaths[0]) return null;
-    const filePath = result.filePaths[0];
-    _lastPickDir = path.dirname(filePath);
-    const dataBase64 = fs.readFileSync(filePath).toString("base64");
-    return { fileName: path.basename(filePath), dataBase64 };
-  });
 }
 
 export {
   insideVault,
+  vaultAttachment,
   sanitizeFilename,
   MAX_NAME_BYTES,
   MAX_NOTE_BYTES,

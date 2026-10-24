@@ -3,9 +3,8 @@ import "./devProfile.js";
 import { app, BrowserWindow, protocol, net, nativeTheme, ipcMain, dialog, shell } from "electron";
 import path from "node:path";
 import { WINDOW_MIN_W, WINDOW_STRIP_H } from "../src/constants/layout.js";
-import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { insideVault, registerNoteFileIPC } from "./noteFileManager.js";
+import { registerNoteFileIPC, vaultAttachment } from "./noteFileManager.js";
 import { endAllSessions, onDeletedChanged, registerHistoryIPC } from "./history.js";
 import { migrateLegacyTrash, registerOSTrashIPC } from "./osTrash.js";
 import { registerFolderIPC } from "./folders.js";
@@ -308,9 +307,8 @@ app.whenReady().then(async () => {
 
   // Attachments load as `boojy-att://vault/<encoded name>`
   // (`src/utils/attachmentUrl.js`): the name is the URL's path, never its host,
-  // which Chromium refuses to hold a space in. The vault-relative path is
-  // tried first, then the same name under attachments/, and only a file inside
-  // the vault is served.
+  // which Chromium refuses to hold a space in. Only a file inside the vault is
+  // served, found as every handler finds one (`vaultAttachment`).
   protocol.handle("boojy-att", (request) => {
     let relativePath;
     try {
@@ -318,10 +316,7 @@ app.whenReady().then(async () => {
     } catch {
       return new Response("Bad request", { status: 400 });
     }
-    const notesDir = getNotesDir();
-    const absPath = [relativePath, path.join("attachments", relativePath)]
-      .map((candidate) => insideVault(notesDir, candidate))
-      .find((abs) => abs && fs.statSync(abs, { throwIfNoEntry: false })?.isFile());
+    const absPath = vaultAttachment(getNotesDir(), relativePath);
     if (!absPath) return new Response("Not found", { status: 404 });
     return net.fetch(pathToFileURL(absPath).toString());
   });
