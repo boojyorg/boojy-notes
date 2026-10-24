@@ -8,7 +8,7 @@ import type { HistoryVersion } from "../types/global";
 import { cssZoom } from "../utils/domHelpers";
 import { versionMoment, versionTime } from "../utils/versionTime";
 import { HistoryIcon, PencilIcon, RestoreIcon, TrashIcon } from "./Icons";
-import { MenuRule } from "./Menu";
+import Menu, { type MenuAnchor, MenuRule } from "./Menu";
 import RenameField from "./RenameField";
 import RowAction from "./RowAction";
 import { fromTouch } from "../utils/touch";
@@ -66,7 +66,7 @@ export default function VersionHistoryList({
   const [hovered, setHovered] = useState<string | null>(null);
   const [nowChosen, setNowChosen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
-  const [rowMenu, setRowMenu] = useState<{ id: string; top: number } | null>(null);
+  const [rowMenu, setRowMenu] = useState<{ id: string; anchor: MenuAnchor } | null>(null);
   const now = Date.now();
 
   const rows: (HistoryVersion | null)[] = [null, ...(state.off ? [] : state.versions)];
@@ -112,7 +112,7 @@ export default function VersionHistoryList({
       // Undo and the switch's own question are all part of looking back.
       if (
         t.closest(
-          "[data-past-version], [data-past-pill], [data-past-ask], [data-toast-kind], [role=alertdialog]",
+          "[data-past-version], [data-past-pill], [data-past-ask], [data-toast-kind], [role=alertdialog], [data-menu-backdrop], [role=menu]",
         )
       )
         return;
@@ -152,10 +152,8 @@ export default function VersionHistoryList({
     else if (e.key === "Enter" && on) restore(on);
     else if (e.key === "F2" && on) startRename(on);
     else if ((e.key === "Backspace" || e.key === "Delete") && on) remove(on);
-    else if (e.key === "Escape") {
-      if (rowMenu) setRowMenu(null);
-      else close();
-    } else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && on) onTypeIntoPast();
+    else if (e.key === "Escape") close();
+    else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && on) onTypeIntoPast();
     else return;
     e.preventDefault();
     e.stopPropagation();
@@ -302,8 +300,8 @@ export default function VersionHistoryList({
                 e.preventDefault();
                 if (!v) return;
                 choose(i);
-                const box = e.currentTarget.getBoundingClientRect();
-                setRowMenu({ id: v.id, top: box.bottom / cssZoom(document.documentElement) });
+                const { top, bottom, left, right } = e.currentTarget.getBoundingClientRect();
+                setRowMenu({ id: v.id, anchor: { top, bottom, left, right } });
               }}
               style={{
                 display: "flex",
@@ -416,81 +414,41 @@ export default function VersionHistoryList({
         </>
       )}
       {rowMenu && (
-        <div
-          role="menu"
-          aria-label="Version"
-          style={{
-            position: "fixed",
-            top: rowMenu.top,
-            right: (pos?.right ?? 12) + 28,
-            width: 190,
-            zIndex: Z.CONTEXT_MENU + 1,
-            background: BG.elevated,
-            border: `1px solid ${BG.divider}`,
-            borderRadius: MENU_RADIUS,
-            padding: MENU_PAD,
-            boxShadow: theme.modalShadow,
-          }}
-        >
-          {[
+        <Menu
+          label="Version"
+          idPrefix="version-row-item"
+          anchor={rowMenu.anchor}
+          align="end"
+          minWidth={190}
+          onClose={() => setRowMenu(null)}
+          items={[
             {
               label: "Rename",
-              key: "F2",
+              hint: "F2",
               icon: <PencilIcon />,
-              run: () => startRename(rowMenu.id),
+              action: () => startRename(rowMenu.id),
             },
-            { label: "Restore", key: "↵", icon: <RestoreIcon />, run: () => restore(rowMenu.id) },
-            null,
-            { label: "Delete", key: "⌫", icon: <TrashIcon />, run: () => remove(rowMenu.id) },
-          ].map((item) =>
-            item === null ? (
-              <div
-                key="rule"
-                role="separator"
-                style={{ height: 1, background: BG.divider, margin: "4px 6px" }}
-              />
-            ) : (
-              <button
-                key={item.label}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setRowMenu(null);
-                  item.run();
-                }}
-                style={{
-                  width: "100%",
-                  height: 30,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 9,
-                  padding: "0 10px",
-                  border: "none",
-                  borderRadius: MENU_ROW_RADIUS,
-                  background: "transparent",
-                  color: TEXT.primary,
-                  font: "inherit",
-                  fontSize: 13.5,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) => {
-                  if (fromTouch(e)) return;
-                  e.currentTarget.style.background = BG.hover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <span style={{ color: TEXT.secondary, display: "flex" }}>{item.icon}</span>
-                {item.label}
-                <span style={{ marginLeft: "auto", color: TEXT.muted, fontSize: 12.5 }}>
-                  {item.key}
-                </span>
-              </button>
-            ),
-          )}
-        </div>
+            {
+              label: "Restore",
+              hint: "↵",
+              icon: <RestoreIcon />,
+              action: () => {
+                setRowMenu(null);
+                restore(rowMenu.id);
+              },
+            },
+            {
+              label: "Delete",
+              hint: "⌫",
+              icon: <TrashIcon />,
+              rule: true,
+              action: () => {
+                setRowMenu(null);
+                remove(rowMenu.id);
+              },
+            },
+          ]}
+        />
       )}
     </div>
   );

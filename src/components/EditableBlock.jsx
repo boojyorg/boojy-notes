@@ -166,6 +166,7 @@ const EditableBlock = memo(
     onImageCopyImage,
     onUpdateBlockProperty,
     onFileOpen,
+    onFileOpenDefault,
     onFileShowInFolder,
     noteDataRef,
     onNavigateToNote,
@@ -307,6 +308,7 @@ const EditableBlock = memo(
           accentColor={accentColor}
           onDelete={() => onDeleteBlock(noteId, blockIndex)}
           onOpen={() => onFileOpen(block.src)}
+          onOpenDefault={() => onFileOpenDefault(block.src)}
           onShowInFolder={() => onFileShowInFolder(block.src)}
         />,
         { padding: "8px 0" },
@@ -402,12 +404,7 @@ const EditableBlock = memo(
 
     if (block.type === "embed") {
       return wholeRoot(
-        <EmbedBlock
-          block={block}
-          noteData={noteDataRef?.current}
-          accentColor={accentColor}
-          onNavigate={onNavigateToNote}
-        />,
+        <EmbedBlock block={block} accentColor={accentColor} onNavigate={onNavigateToNote} />,
         { padding: "4px 0" },
         wholeRef,
       );
