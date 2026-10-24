@@ -179,6 +179,7 @@ function FileBlock({
               label: "Delete",
               icon: <TrashIcon />,
               action: act(onDelete),
+              danger: true,
               rule: true,
             },
           ]}

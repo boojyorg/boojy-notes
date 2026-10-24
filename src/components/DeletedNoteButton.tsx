@@ -66,7 +66,6 @@ export default function DeletedNoteButton({
             {
               label: "Delete permanently",
               icon: <TrashIcon />,
-              // The one Delete that can't be taken back: the danger ink.
               danger: true,
               action: () => {
                 hide();

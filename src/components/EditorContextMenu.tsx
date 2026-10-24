@@ -155,6 +155,7 @@ export default function EditorContextMenu({
       icon: <TrashIcon />,
       action: onDeleteTable,
       rule: !onTidyTable,
+      danger: true,
     });
   }
 

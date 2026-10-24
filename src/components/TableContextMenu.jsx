@@ -89,6 +89,7 @@ export default function TableContextMenu({
                   label: "Delete",
                   icon: <TrashIcon />,
                   action: act(() => onDeleteRow(rowIndex)),
+                  danger: true,
                 },
               ]
             : []),
@@ -123,6 +124,7 @@ export default function TableContextMenu({
                   label: "Delete",
                   icon: <TrashIcon />,
                   action: act(() => onDeleteColumn(colIndex)),
+                  danger: true,
                 },
               ]
             : []),
