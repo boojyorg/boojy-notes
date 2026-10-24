@@ -31,11 +31,13 @@ export default function DiagramView({ source, emptyText }: { source: string; emp
   const drawnOnce = useRef(false);
   const renderRef = useRef<HTMLDivElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: each new drawing is fitted once
+  // Fitted whenever its element is made: a new drawing, or the same one
+  // back from empty (undo after clearing the source mounts it afresh).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: each new element is fitted once
   useLayoutEffect(() => {
     const drawing = renderRef.current?.querySelector("svg");
     if (drawing) fitToColumn(drawing);
-  }, [svg]);
+  }, [svg, empty]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the colours are keyed by `key`
   useEffect(() => {
