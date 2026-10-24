@@ -160,8 +160,6 @@ export function createSyncStatus({ now = Date.now } = {}) {
   };
 }
 
-export type SyncStatusTracker = ReturnType<typeof createSyncStatus>;
-
 /** What a problem says, and what the person can do about it here. */
 export function describeProblem(problem: SyncProblem): {
   text: string;

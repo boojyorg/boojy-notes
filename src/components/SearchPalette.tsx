@@ -28,6 +28,7 @@ import type { NoteData } from "../types/notes";
 import { otherFileKind, splitExtension, type OtherFile } from "../utils/otherFiles";
 import { CloseIcon, FolderIcon, OtherFileIcon, PlusIcon, SearchIcon } from "./Icons";
 import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
+import { SCRIM } from "./settings/SettingsPrimitives";
 import { fromTouch } from "../utils/touch";
 
 /**
@@ -411,7 +412,7 @@ export default function SearchPalette({
         position: "fixed",
         inset: 0,
         zIndex: Z.OVERLAY,
-        background: "rgba(0,0,0,0.3)",
+        background: SCRIM,
         display: "flex",
         justifyContent: "center",
         alignItems: "flex-start",

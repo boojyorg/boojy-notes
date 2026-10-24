@@ -8,6 +8,7 @@ import {
   isKnownVault,
   labelVault,
   rememberVault,
+  same,
   unlabelVault,
   vaultEntries,
 } from "./vaults.js";
@@ -140,15 +141,14 @@ function setupAutoUpdater(getMainWindow) {
 
 // ─── Register IPC handlers ───
 
-// The vault being left is remembered only if it is there: the default folder
-// a first run never made is not a vault to come back to.
 /** The vaults as Settings and the sidebar show them: named, A–Z. */
 const listVaults = (current) => {
   const cfg = loadConfig();
   return vaultEntries(cfg.vaults, current, cfg.vaultLabels);
 };
-const same = (a, b) => path.resolve(a) === path.resolve(b);
 
+// The vault being left is remembered only if it is there: the default folder
+// a first run never made is not a vault to come back to.
 const keepIfPresent = (vaults, dir) => (fs.existsSync(dir) ? rememberVault(vaults, dir) : vaults);
 
 function registerSettingsIPC(getMainWindow, restartWatcher) {
@@ -205,8 +205,7 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
   // Show in Finder for any listed location, the open one included.
   ipcMain.handle("reveal-vault", (_event, dir) => {
     if (typeof dir !== "string" || !fs.existsSync(dir)) return;
-    const listed =
-      isKnownVault(loadConfig().vaults, dir) || path.resolve(dir) === path.resolve(getNotesDir());
+    const listed = isKnownVault(loadConfig().vaults, dir) || same(dir, getNotesDir());
     if (!listed) return;
     shell.showItemInFolder(dir);
   });

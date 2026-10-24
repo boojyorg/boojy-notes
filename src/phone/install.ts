@@ -11,7 +11,7 @@ import { SYNC_FOLDER } from "./syncFolder";
  * Runs before the app renders, on the phone only (main.jsx). The vault
  * answers the editor's file calls (`getAPI()` returns it), and sync starts
  * once Dropbox is signed in. Until then a plain sign-in screen stands in for
- * the app: the phone's own design is a later session.
+ * the app.
  */
 export async function installPhone() {
   const files = capacitorFiles();
