@@ -108,16 +108,16 @@ export interface PathTreeMenuProps {
   opener?: HTMLElement | null;
   onOpen?: (id: string) => void;
   onClose: () => void;
-  /** The sidebar's press-and-hold drag, so a row here can be dragged onto a folder row here. */
+  /** The sidebar's drag (past DRAG_THRESHOLD), so a row here can be dragged onto a folder row here. */
   onRowPointerDown?: (e: ReactPointerEvent<HTMLElement>) => void;
   /** Draw the popup as the Move to… destination picker instead of the browser. */
   pick?: PickTarget;
 }
 
 /** Judged against the menus' 160–200 minimums: room for a folder and a check. */
-export const POPUP_W = 280;
+const POPUP_W = 280;
 /** About twelve rows, then the list scrolls inside the popup. */
-export const POPUP_MAX_H = 12 * (TREE_ROW_H + TREE_ROW_GAP) + 8;
+const POPUP_MAX_H = 12 * (TREE_ROW_H + TREE_ROW_GAP) + 8;
 /** Each row's element id, for `aria-activedescendant` and scrolling. */
 const rowId = (row: { key: string }) => `path-tree-${row.key.replace(/[^\w-]/g, "_")}`;
 /** The chevron's hit box in the picker: the row's own height, a square. */
@@ -294,7 +294,7 @@ export default function PathTreeMenu({
     [active, rows, toggle, activate, onClose],
   );
 
-  // On the document, as ContextMenu and SortMenu: a window listener added on
+  // On the document: a window listener added on
   // open would run after the app shell's startup listener, too late to claim
   // Escape and the arrows from it.
   useEffect(() => {
@@ -580,7 +580,7 @@ export default function PathTreeMenu({
           aria-label={pick ? "Destination" : scopeName}
           aria-activedescendant={active ? rowId(active) : undefined}
           tabIndex={-1}
-          // The browser's rows drag with the sidebar's own press-and-hold; the
+          // The browser's rows drag with the sidebar's own drag; the
           // tree is the scroller the drag auto-scrolls, and "folders" says its
           // folder rows are the only targets (no root here).
           {...(!pick && onRowPointerDown

@@ -2,7 +2,6 @@ import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import { useTheme } from "../hooks/useTheme";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { useFocusTrap } from "../hooks/useFocusTrap";
-import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
 import { Z } from "../constants/zIndex";
@@ -116,7 +115,7 @@ export default function SearchPalette({
 }: SearchPaletteProps) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
-  const { accentText } = useLayout() as { accentText: string };
+  const accentText = theme.ACCENT.text; // accent as ink: the matched words
   const { noteData } = useNoteData() as { noteData: NoteData };
   const {
     search,

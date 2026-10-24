@@ -124,6 +124,12 @@ const ROW_GAP = isPhone ? 0 : TREE_ROW_GAP;
 const NOTE_MENU_GAP = 4;
 /** How far left of the ··· button's left edge the menu's left edge sits. */
 const NOTE_MENU_SHIFT = 8;
+/** A chrome control on the phone: a touch target, the same glyph. */
+const PHONE_BTN = { width: TOUCH, height: TOUCH };
+/** Keys the tree claims even where they move nothing (an arrow at the end
+ *  would otherwise scroll the sidebar). */
+const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"]);
+
 /**
  * The anchor a row's ··· hands its menu: the row's own rectangle with the
  * menu's gap either side, left edge shifted left of the dots. Below the row
@@ -131,12 +137,6 @@ const NOTE_MENU_SHIFT = 8;
  * row. A point anchor would flip the menu over the row, under the resting
  * pointer, lighting its last item, Delete.
  */
-/** Keys the tree claims even where they move nothing (an arrow at the end
- *  would otherwise scroll the sidebar). */
-/** A chrome control on the phone: a touch target, the same glyph. */
-const PHONE_BTN = { width: TOUCH, height: TOUCH };
-const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"]);
-
 const rowMenuAnchor = (btn, row) => ({
   top: row.top - NOTE_MENU_GAP,
   bottom: row.bottom + NOTE_MENU_GAP,
@@ -715,7 +715,7 @@ const Sidebar = memo(function Sidebar({
     const menuOpen = ctxMenuNoteId === nId;
     // Desktop: quiet row grammar — a full-width pill; hover, selection and
     // multi-select all use neutral BG.hover, and the active note is
-    // distinguished by ink (weight + TEXT.primary), never by accent. A note's
+    // distinguished by ink (TEXT.primary, never bold), never by accent. A note's
     // title starts where a folder at the same depth puts its glyph (SPINE +
     // depth × TREE_INDENT, the folder row's own padding), so notes
     // and folders at one depth share a left edge and a folder's name is further

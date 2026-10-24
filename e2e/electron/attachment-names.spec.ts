@@ -13,11 +13,7 @@
 import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { launchApp, waitForFile } from "./harness";
-
-// A 1x1 PNG, so a block that loads has a real picture.
-const PNG_B64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-const PNG = Buffer.from(PNG_B64, "base64");
+import { PNG, PNG_B64 } from "../fixtures";
 
 const SCREENSHOT = "Screenshot 2026-09-23 at 10.12.33.png";
 const NAMES = [SCREENSHOT, "100% done.png", "Café menu.png", "plain.png"];

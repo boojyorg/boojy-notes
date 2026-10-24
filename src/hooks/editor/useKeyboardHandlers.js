@@ -98,7 +98,6 @@ export function useKeyboardHandlers({
   selectBlockRun,
   getBlock,
   executeSlashCommand,
-  handleBlockInput: _handleBlockInput,
 }) {
   // --- Block keyboard handler ---
   const handleBlockKeyDown = useCallback((noteId, blockIndex, e) => {

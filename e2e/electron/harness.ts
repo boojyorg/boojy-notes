@@ -41,6 +41,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { MOD } from "../fixtures";
 import {
   _electron,
   expect,
@@ -64,8 +65,7 @@ export const DICTIONARY = {
   cached: path.join(os.tmpdir(), "boojy-e2e-dictionaries", "en-US-10-1.bdic"),
 };
 
-/** The platform's primary modifier, for shortcuts the app handles itself. */
-export const MOD = isMac ? "Meta" : "Control";
+export { MOD };
 /** Moves the caret to the end of the current line. */
 export const END_OF_LINE = isMac ? "Meta+ArrowRight" : "End";
 export const START_OF_LINE = isMac ? "Meta+ArrowLeft" : "Home";

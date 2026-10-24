@@ -79,7 +79,7 @@ export interface LinkPickerProps {
   onClose: () => void;
 }
 
-export const PICKER_W = 288;
+const PICKER_W = 288;
 const ROW_H = 30;
 const MAX_ROWS = 7;
 

@@ -335,7 +335,7 @@ export interface SearchOptions {
 }
 
 /** Whether a note in `noteFolder` is inside `folder`, subfolders included. */
-export const inFolder = (noteFolder: string | null, folder: string) =>
+const inFolder = (noteFolder: string | null, folder: string) =>
   noteFolder != null && withinFolder(noteFolder, folder);
 
 /**
@@ -367,13 +367,8 @@ export function queryTerms(query: string): string[] {
 export function searchNotes(
   query: string,
   index: SearchIndex,
-  options: SearchOptions | number = {},
+  { limit = 50, noteIds = null, folder = null }: SearchOptions = {},
 ): { results: SearchResult[]; totalCount: number } {
-  const {
-    limit = 50,
-    noteIds = null,
-    folder = null,
-  } = typeof options === "number" ? { limit: options } : options;
   const words = queryTerms(query);
   let entries = noteIds
     ? [...noteIds].map((id) => index.get(id)).filter((e): e is IndexEntry => !!e)
@@ -491,7 +486,7 @@ export interface FolderHit {
 }
 
 /** At most this many folders in a result list, so notes are never pushed off it. */
-export const FOLDER_HITS = 2;
+const FOLDER_HITS = 2;
 
 /** Every term in `name` (folded), scored as a note's title is; null if one is missing. */
 function nameMatch(name: string, terms: string[]): { score: number; ranges: Range[] } | null {
@@ -545,7 +540,7 @@ export interface FileHit {
 }
 
 /** At most this many files in a result list. */
-export const FILE_HITS = 20;
+const FILE_HITS = 20;
 
 /**
  * Files that are not notes whose name holds every term, beside the notes
