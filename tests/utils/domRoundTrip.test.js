@@ -131,6 +131,13 @@ describe("inline bytes that only the DOM road could corrupt", () => {
     '[x](https://a.com "*t*") and ![a](im*a*ge.png) and [*a*](b*c*)',
     "`[a](*b*)` and [x](https://x.y/a\\*b) and [*real*](u) *real*",
     "$x [a](*b*) y$ and [a](b) $x$ [c](d*e*)",
+    // A newline closing a code span is the text's: the read-back took the
+    // `<br>` ending the element for the block's own, so a fence written in a
+    // quote or callout lost the line before its close (2026-10-24).
+    "before\n```\ncode\n```\nafter",
+    "```js\nlet a = 1\n```",
+    "`a\n`b and `x\n`",
+    "**b\n** and ==h\n==",
     // A `#` inside a link is the link's own text, never a tag inside its href.
     "https://example.com/page(#tag and https://en.wikipedia.org/wiki/Mercury_(planet)#Orbit #real",
     // A run of four stars or more is text.

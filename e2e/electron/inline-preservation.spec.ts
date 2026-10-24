@@ -19,7 +19,10 @@
  *    `<https://example.com>` grew a `;` on every edit and a URL inside a
  *    link's text was linked again inside the anchor and read back as two;
  *  - a link's destination and title survive an edit: the formatting passes
- *    once ran over them, so `*b*` in a URL reached the file as `<em>b</em>`.
+ *    once ran over them, so `*b*` in a URL reached the file as `<em>b</em>`;
+ *  - a fence written in a quote or a callout survives an edit: the `<br>`
+ *    closing its code span was read as the block's end, so the closing fence
+ *    joined the code line and the fence never closed.
  */
 import { expect, test } from "@playwright/test";
 import { END_OF_LINE, SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
@@ -175,6 +178,29 @@ test("a link's destination and title survive an edit, never formatted", async ()
     await waitForFile(h.vault.file("Dests.md"), (t) => t.includes("!"));
     await sleep(SETTLE_MS);
     expect(h.vault.read("Dests.md")).toBe(`${before}!\n`);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a fence written in a quote or a callout survives an edit", async () => {
+  const quote = "> before\n> ```\n> code\n> ```\n> after\n";
+  const callout = "> [!note] Title\n> ```js\n> let a = 1\n> ```\n";
+  const h = await launchApp({ "Quote.md": quote, "Callout.md": callout });
+  try {
+    for (const [name, md, field] of [
+      ["Quote", quote, "[data-block-id]"],
+      ["Callout", callout, ".callout-body"],
+    ] as const) {
+      await h.openNote(name);
+      await h.page.locator(field).first().click();
+      await h.page.keyboard.type("%");
+      await waitForFile(h.vault.file(`${name}.md`), (t) => t.includes("%"));
+      await sleep(SETTLE_MS);
+      // Wherever the click put the caret, the "%" is the only change.
+      expect(h.vault.read(`${name}.md`).replace("%", "")).toBe(md);
+    }
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

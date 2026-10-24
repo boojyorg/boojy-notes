@@ -249,9 +249,10 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // 12. A newline inside block text is a soft break: one line break on screen.
   // A trailing newline gets a second <br>, the way Chromium keeps an empty
   // last line visible and reachable by the caret; the DOM→Markdown walkers
-  // ignore a block's final <br>, so "a<br><br>" reads back as "a\n".
+  // ignore a block's final <br>, so "a<br><br>" reads back as "a\n", inside
+  // a closing element too (`` `x\n` ``).
   s = s.replace(/\n/g, "<br>");
-  if (s.endsWith("<br>")) s += "<br>";
+  if (/<br>(?:<\/[a-z]+>)*$/.test(s)) s += "<br>";
 
   return s;
 }
@@ -360,9 +361,11 @@ export function nodeToMarkdown(child, before = "") {
     return inner;
   }
   if (tag === "BR") {
-    // Ignore <br> at end of block (browser artifact)
-    // Only add newline if it's not the last child
-    return child.nextSibling ? "\n" : "";
+    // Ignore <br> at end of block (browser artifact): the last child of the
+    // block, or of inline elements nothing in the block follows. One closing
+    // a code span mid-line is the text's newline: dropped, a fence written in
+    // a quote (`> ```\n> code\n> ````) lost the line before its close.
+    return followedInLine(child) ? "\n" : "";
   }
   if (tag === "DIV") {
     // Browser sometimes wraps lines in <div>; treat as line break
@@ -371,6 +374,18 @@ export function nodeToMarkdown(child, before = "") {
   }
   // Unknown element — recurse children, strip the tag
   return inner;
+}
+
+/** The inline elements a block's text is made of; a `<br>` in them may still end the block. */
+const INLINE_TAGS = new Set(["STRONG", "B", "EM", "I", "CODE", "DEL", "S", "MARK", "A", "SPAN"]);
+
+/** Whether anything in the block comes after `node`: a later sibling of it or of an inline element holding it. */
+function followedInLine(node) {
+  for (let n = node; n; n = n.parentNode) {
+    if (n.nextSibling) return true;
+    if (!INLINE_TAGS.has(n.parentNode?.nodeName)) return false;
+  }
+  return false;
 }
 
 const ALLOWED_TAGS = new Set([
