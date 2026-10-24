@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { blocksToMarkdown, markdownToBlocks, parseFrontmatter } from "../../src/utils/markdown.js";
+import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown.js";
 
 // --- blocksToMarkdown ---
 
@@ -282,23 +282,5 @@ describe("round-trip", () => {
     ["a code block holding a lone 4-backtick line", "`````js\n````\ninner\n````\n`````"],
   ])("preserves %s", (_name, md) => {
     expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-});
-
-// --- parseFrontmatter ---
-
-describe("parseFrontmatter", () => {
-  it("parses full frontmatter + body", () => {
-    const result = parseFrontmatter("---\ntitle: My Note\nid: abc123\n---\nBody text");
-    expect(result).toEqual({ id: "abc123", body: "Body text" });
-  });
-
-  it("returns null for non-frontmatter content", () => {
-    expect(parseFrontmatter("Just regular text")).toBeNull();
-  });
-
-  it("reads a quoted id, and none when there is no id line", () => {
-    expect(parseFrontmatter('---\nid: "x"\n---\nbody').id).toBe("x");
-    expect(parseFrontmatter("---\ntitle: T\n---\nbody").id).toBeNull();
   });
 });

@@ -1,12 +1,12 @@
 // First: `pnpm dev` moves to its own userData before any module reads the path.
 import "./devProfile.js";
-import { app, BrowserWindow, protocol, net, nativeTheme, ipcMain, dialog, shell } from "electron";
+import { app, BrowserWindow, protocol, net, nativeTheme, ipcMain, shell } from "electron";
 import path from "node:path";
 import { WINDOW_MIN_W, WINDOW_STRIP_H } from "../src/constants/layout.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { registerNoteFileIPC, vaultAttachment } from "./noteFileManager.js";
 import { endAllSessions, onDeletedChanged, registerHistoryIPC } from "./history.js";
-import { migrateLegacyTrash, registerOSTrashIPC } from "./osTrash.js";
+import { registerOSTrashIPC } from "./osTrash.js";
 import { registerFolderIPC } from "./folders.js";
 import {
   startWatcher,
@@ -20,8 +20,6 @@ import {
 import {
   getNotesDir,
   settleSetupState,
-  loadSettings,
-  saveSettings,
   setupAutoUpdater,
   registerSettingsIPC,
   checkForUpdatesOnStartup,
@@ -280,31 +278,6 @@ app.whenReady().then(async () => {
   // native surfaces dark even for the (default) light app theme.
   nativeTheme.themeSource = "system";
 
-  const notesDir = getNotesDir();
-  let legacyTrashReport;
-  try {
-    legacyTrashReport = await migrateLegacyTrash(notesDir);
-  } catch (error) {
-    // Migration is deliberately best-effort: an unforeseen filesystem error
-    // must never block Boojy from opening or put legacy files at further risk.
-    console.error("Legacy trash migration could not run", error);
-    legacyTrashReport = {
-      legacyTrashDir: path.join(notesDir, ".trash"),
-      migrated: [],
-      untouched: [
-        {
-          path: path.join(notesDir, ".trash"),
-          reason: `Migration could not run safely: ${String(error)}`,
-        },
-      ],
-    };
-  }
-  if (legacyTrashReport.migrated.length > 0) {
-    console.info(
-      `Moved ${legacyTrashReport.migrated.length} legacy deleted note(s) to the OS Trash`,
-    );
-  }
-
   // Attachments load as `boojy-att://vault/<encoded name>`
   // (`src/utils/attachmentUrl.js`): the name is the URL's path, never its host,
   // which Chromium refuses to hold a space in. Only a file inside the vault is
@@ -335,36 +308,6 @@ app.whenReady().then(async () => {
   });
 
   createWindow();
-
-  if (legacyTrashReport.untouched.length > 0) {
-    console.warn("Legacy trash items left untouched", legacyTrashReport.untouched);
-    // The untouched set is recomputed on every launch (the files deliberately
-    // stay in place), so warn once per distinct problem set, not per launch.
-    const warnedSignature = JSON.stringify(
-      legacyTrashReport.untouched.map((item) => `${item.path} — ${item.reason}`).sort(),
-    );
-    const settings = loadSettings();
-    if (settings.legacyTrashWarnedSignature !== warnedSignature) {
-      const examples = legacyTrashReport.untouched
-        .slice(0, 8)
-        .map((item) => `• ${path.basename(item.path)} — ${item.reason}`)
-        .join("\n");
-      const remaining = legacyTrashReport.untouched.length - 8;
-      void dialog.showMessageBox(mainWindow, {
-        type: "warning",
-        title: "Some deleted notes need attention",
-        message: "Some previously deleted notes could not be moved to the system Trash.",
-        detail: `${examples}${remaining > 0 ? `\n• …and ${remaining} more` : ""}\n\nNothing listed above was deleted. It remains in:\n${legacyTrashReport.legacyTrashDir}`,
-      });
-      try {
-        saveSettings({ ...settings, legacyTrashWarnedSignature: warnedSignature });
-      } catch (error) {
-        // Failing to persist the acknowledgement re-shows the warning next
-        // launch — annoying, but it must never block startup.
-        console.error("Could not persist the legacy-trash warning signature", error);
-      }
-    }
-  }
 
   restartWatcher();
 

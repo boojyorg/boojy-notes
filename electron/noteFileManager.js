@@ -8,13 +8,7 @@ import { recoverLeftoverTemps } from "./leftoverTemps.js";
 import * as history from "./history.js";
 import { isOffloaded, offloadedAmong, readDownloading } from "./offloaded.js";
 import { isSameEntry, isSkippedName, vaultKey } from "./vaultFs.js";
-import {
-  applyEol,
-  blocksToMarkdown,
-  detectEol,
-  markdownToBlocks,
-  parseFrontmatter,
-} from "../src/utils/markdown.js";
+import { applyEol, blocksToMarkdown, detectEol, markdownToBlocks } from "../src/utils/markdown.js";
 
 // ─── Filename helpers ───
 
@@ -214,10 +208,6 @@ function indexPath(notesDir) {
   return path.join(indexDir(), `${vaultKey(notesDir)}.json`);
 }
 
-function legacyIndexPath(notesDir) {
-  return path.join(notesDir, ".boojy-index.json");
-}
-
 function loadIndex(notesDir) {
   _savedIndexJson = null;
   try {
@@ -225,22 +215,7 @@ function loadIndex(notesDir) {
     _idIndex = JSON.parse(raw);
     _savedIndexJson = raw;
   } catch {
-    _idIndex = {};
-    // Migrate a pre-v0.5.0 in-vault index, then remove it — it is Boojy's own
-    // file, and leaving it would keep the vault dirty for git-tracked folders
-    try {
-      _idIndex = JSON.parse(fs.readFileSync(legacyIndexPath(notesDir), "utf-8"));
-      // The legacy copy goes only once the index is safely saved elsewhere.
-      if (saveIndex(notesDir)) {
-        try {
-          fs.unlinkSync(legacyIndexPath(notesDir));
-        } catch {
-          /* leave the legacy copy if it can't be removed */
-        }
-      }
-    } catch {
-      /* no index anywhere — fresh vault */
-    }
+    _idIndex = {}; // no index yet: a fresh vault
   }
   return _idIndex;
 }
@@ -515,24 +490,8 @@ function parseNoteFile(filePath, notesDir, offloaded = false) {
     const folder = relDir ? relDir.split(path.sep).join("/") : null;
     const title = path.basename(filePath, ".md");
 
-    let body = raw;
-    let migratedId = null;
-
-    // Legacy Boojy files carry a Boojy-shaped `id:` in frontmatter — strip it and
-    // reuse the ID. Any other frontmatter is not ours and must stay in the body,
-    // where it round-trips as a frontmatter block. Reading never modifies disk;
-    // legacy files migrate only when the user edits them (normal write path).
-    const fm = parseFrontmatter(raw);
-    if (fm?.id && /^note-\d+-/.test(fm.id)) {
-      migratedId = fm.id;
-      body = fm.body;
-    }
-
-    // Look up existing ID from index, or use migrated ID, or generate new
+    // The id the index holds for this path, else a new one.
     let id = indexedIdAt(relPath);
-    // A legacy id already indexed at another path is that note's: this file is
-    // a copy of it (Finder, Duplicate folder) and gets an id of its own.
-    if (!id && migratedId && !(migratedId in _idIndex)) id = migratedId;
     // A note renamed or moved while the app was closed: its indexed path is
     // gone and this file holds exactly the text its history last kept, so it
     // is that note, and its versions follow it.
@@ -555,7 +514,7 @@ function parseNoteFile(filePath, notesDir, offloaded = false) {
       console.warn("History could not record a note", relPath, String(error));
     }
 
-    const blocks = markdownToBlocks(body);
+    const blocks = markdownToBlocks(raw);
 
     // Remember a CRLF file's line-ending style so saves re-apply it
     // (write-note → applyEol). LF files carry no field.
@@ -898,25 +857,9 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     return { filename: path.basename(finalPath), size };
   });
 
-  ipcMain.handle("resolve-attachment", (_event, filename) => {
-    const notesDir = getNotesDir();
-    if (typeof filename !== "string") return null;
-    const found = vaultAttachment(notesDir, filename);
-    if (found) return found;
-    const legacyAttDir = path.join(notesDir, ".attachments");
-    if (fs.existsSync(legacyAttDir)) {
-      try {
-        for (const sub of fs.readdirSync(legacyAttDir, { withFileTypes: true })) {
-          if (!sub.isDirectory()) continue;
-          const abs = insideVault(notesDir, path.join(".attachments", sub.name, filename));
-          if (abs && fs.existsSync(abs)) return abs;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-    return null;
-  });
+  ipcMain.handle("resolve-attachment", (_event, filename) =>
+    vaultAttachment(getNotesDir(), filename),
+  );
 
   // The two `shell` handlers take absolute paths (a resolved attachment, a
   // note's file, the vault itself for Reveal in Finder) and open nothing

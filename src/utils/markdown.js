@@ -1072,21 +1072,3 @@ export function parseTableRow(line) {
   // `<br/>` and `<br />` are left as the text they are, so their bytes hold.
   return cells.map((cell) => cell.trim().replace(/\\\|/g, "|").replace(/<br>/g, "\n"));
 }
-
-/**
- * A legacy Boojy file's `id:` and the text after its frontmatter, for the
- * migration in noteFileManager; any other frontmatter stays a block.
- */
-export function parseFrontmatter(content) {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!match) return null;
-  let id = "";
-  for (const line of match[1].split("\n")) {
-    const idx = line.indexOf(": ");
-    if (idx === -1 || line.slice(0, idx).trim() !== "id") continue;
-    id = line.slice(idx + 2).trim();
-    if ((id.startsWith('"') && id.endsWith('"')) || (id.startsWith("'") && id.endsWith("'")))
-      id = id.slice(1, -1);
-  }
-  return { id: id || null, body: match[2] };
-}
