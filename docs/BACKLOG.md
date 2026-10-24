@@ -191,8 +191,8 @@ the test its rule names when it is built.
   tyr@boojy.org with version and OS, shown before sending; no telemetry); help pages on sync
   and history not being a backup, and moving from Notion by hand.
 - The Known issues a finished Public Beta cannot live with: New note writing `Untitled.md` at
-  once; Replace skipping cells, callouts and code, and Find's double count; the pre-0.5
-  migrations; the symlink check.
+  once; Replace skipping cells, callouts and code, and Find's double count; the symlink
+  check.
 - A 10,000-note vault on the desktop; a first phone sync with large attachments; VoiceOver and
   TalkBack over the editor.
 - **The editor in Safari's engine**, since the demo meets Safari visitors: a Playwright WebKit
@@ -394,10 +394,6 @@ now and `tests/utils/knownRewrites.js`.
 - [ ] **A symlinked folder inside the vault** (review §2.9): unchecked since the one recursive
   watch (`treeWatcher.ts`) replaced chokidar. Check whether its notes are listed and watched
   (Public Beta).
-- [ ] **Pre-0.5 residue that reads or rewrites user files**: a legacy `id:` frontmatter key makes
-  the first write strip the whole frontmatter block; `resolve-attachment` still scans the v0.1
-  `.attachments/<noteId>/` layout; the `.trash` migration runs at every launch. Retire the three
-  migrations (about 210 lines) before Public Beta.
 
 ### Accessibility
 

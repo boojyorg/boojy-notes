@@ -1,5 +1,5 @@
 export const isElectron = typeof window !== "undefined" && !!window.electronAPI;
-// The Android app (proof of concept, Dropbox sync step 2): Capacitor's bridge
+// The Android app: Capacitor's bridge
 // is in the page before any script runs. Its vault is src/phone/.
 export const isPhone =
   typeof window !== "undefined" && !!window.Capacitor?.isNativePlatform?.() && !isElectron;

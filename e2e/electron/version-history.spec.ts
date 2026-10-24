@@ -115,6 +115,35 @@ test("Enter restores a version, keeping what was there, and Undo puts it back", 
   }
 });
 
+// The row's right-click menu is the app's Menu: its keys work (it was a
+// hand-built list with none), and Escape closes it, not the list.
+test("a version's right-click menu works from the keyboard", async () => {
+  const h = await withHistory();
+  try {
+    const list = await openList(h);
+    await list.getByRole("option").nth(1).click({ button: "right" });
+    const menu = h.page.getByRole("menu", { name: "Version" });
+    // It takes focus a frame after it opens; a key before that is the list's.
+    await expect(menu).toBeFocused();
+    await h.page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await expect(list).toBeVisible();
+
+    await list.getByRole("option").nth(1).click({ button: "right" });
+    await expect(menu).toBeFocused();
+    await h.page.keyboard.press("ArrowDown"); // Rename, the first row
+    await h.page.keyboard.press("Enter");
+    const field = h.page.getByRole("textbox", { name: "Version name" });
+    await expect(field).toBeFocused();
+    await h.page.keyboard.type("From the menu");
+    await h.page.keyboard.press("Enter");
+    await expect(list.getByRole("option").nth(1)).toContainText("From the menu");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("F2 names a version, and Backspace deletes one, with Undo", async () => {
   const h = await withHistory();
   try {

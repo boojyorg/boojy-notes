@@ -81,14 +81,20 @@ export function useWikilinkHandlers({
   }, [noteData, otherFiles]);
   const noteTitleSet = useMemo(() => new Set(noteTitlesKey.split("\0")), [noteTitlesKey]);
 
+  /** A vault file the target names, shown in the note's place: false when the vault holds none. */
+  const openFileInPlace = useCallback(
+    (target) => {
+      const file = showFile ? fileForTarget(target, otherFiles) : null;
+      if (file) showFile(file.path, file.page);
+      return !!file;
+    },
+    [showFile, otherFiles],
+  );
+
   // Wikilink click handler
   const handleWikilinkClick = useCallback(
     (target, el = null) => {
-      const file = showFile ? fileForTarget(target, otherFiles) : null;
-      if (file) {
-        showFile(file.path, file.page);
-        return;
-      }
+      if (openFileInPlace(target)) return;
       const status = wikilinkStatus(target, noteDataRef.current);
       if (status.kind === "note") {
         openNote(status.id);
@@ -99,7 +105,7 @@ export function useWikilinkHandlers({
         openLinkFixerRef.current(el, { fix: true });
       else showToast?.(unresolvedWikilinkMessage(parsed), "info");
     },
-    [openNote, noteDataRef, showToast, openLinkFixerRef, otherFiles, showFile],
+    [openNote, noteDataRef, showToast, openLinkFixerRef, openFileInPlace],
   );
 
   // Wikilink autocomplete select handler
@@ -146,5 +152,6 @@ export function useWikilinkHandlers({
     noteTitleSet,
     handleWikilinkClick,
     handleWikilinkSelect,
+    openFileInPlace,
   };
 }

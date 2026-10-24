@@ -29,7 +29,16 @@ function formatFriendlyFilename(filename) {
   return name.replace(/[-_.]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, accentColor }) {
+function FileBlock({
+  src,
+  filename,
+  size,
+  onDelete,
+  onOpen,
+  onOpenDefault,
+  onShowInFolder,
+  accentColor,
+}) {
   const { theme: fileTheme } = useTheme();
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
@@ -155,6 +164,7 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
           onClose={() => setCtxMenu(null)}
           items={[
             { label: "Open file", icon: <OpenLinkIcon />, action: act(onOpen) },
+            { label: "Open in Default App", icon: <OpenLinkIcon />, action: act(onOpenDefault) },
             {
               label: isMac ? "Show in Finder" : "Show in folder",
               icon: <FolderIcon />,
