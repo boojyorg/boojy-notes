@@ -5,18 +5,22 @@ Direction, what is left to do and what is known to be broken. Shipped work goes 
 decide what deserves to exist next. Nothing is added because it sounds
 plausible.
 
-**Stages.** Early access (v0.7.0 to v0.14.0, 2026-09-11 to 2026-10-06): signed, published
-builds anyone can download from boojy.org, with rough edges said out loud. **Beta (now, since
-v0.15.0 on 2026-10-07):** the desktop app is complete enough for daily use; the release
-requirements it waited for are met (below). Problems bad enough to fix before anything else sit
-in their own short list below.
+**Stages.** Early access ran from v0.7.0 to v0.14.0. **Beta (now, since v0.15.0 on
+2026-10-07)** is the desktop app complete enough for Tyr's and a few friends' daily use; its
+release requirements (daily use reliable, the Windows smoke test, a tag that publishes itself)
+were met. **Public Beta (next)** is when anyone can install it: desktop on macOS, Windows
+(signed) and Linux, Android through Google Play, and a demo on boojy.org/notes. **1.0** adds
+the iOS app, a web app that keeps notes, and a second sync route besides Dropbox.
 
-Three tiers, kept apart. **Release requirements** were what Beta waited for (met). **Beta candidates**
-are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-17,
-the v0.16.0 release pass (sync working on Tyr's Mac and phone); before that 2026-09-30, the
-whole-product pass (Tyr marked 89 features from Apple Notes, Obsidian and Notion). Items marked *review §n* come from the whole-app review of
-2026-09-07, whose fixes shipped in v0.7.0.
+**The bar for Public Beta, and again for 1.0 on its platforms: fully usable without depending
+on future features.** Versions stay 0.x until 1.0. Problems bad enough to fix before anything
+else sit in Fix now.
+
+The tiers, kept apart. **Requirements** are what a stage waits for. **Candidates** are
+optional; each is judged on its own and may be declined. **Future** is everything after 1.0,
+recorded so a preference and its open question are not lost. Last reviewed: 2026-10-24, the 1.0
+scope pass (a read-only audit of v0.18.0, an independent review and a Codex review). Items
+marked *review §n* come from the whole-app review of 2026-09-07.
 
 ## Direction
 
@@ -27,26 +31,21 @@ avoid. Bring existing notes in, create and edit without ceremony, find them agai
 files. Migration quality, editing comfort and access across devices are expected to matter
 more than any feature nobody else has. That is a product hypothesis, not validated demand.
 
-- **Beta is desktop-first, and for Tyr and a few friends**: local files, no account; sync only
-  through a Dropbox folder (Platforms, below).
-  There is no rush to a public launch; the aim is the best product for daily use. Personal
-  tools only; collaboration is excluded.
-- **Sync with the phone is the next goal, after Beta's release requirements** (Tyr,
-  2026-10-06): write on the laptop, read and write the same notes on an Android phone, and back.
-  It matters more to daily use than any missing desktop feature. Before sync work starts, only
-  the release requirements below and files and safety at 8/10; the other rows of the scorecard
-  and the Beta candidates (Word import, PDF export, the public-face batch, backlinks) wait until
-  after sync. Files and safety keeps its bar because sync multiplies outside edits and renames.
-  **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety 7.5 (since then, 2026-10-07: the corpus
-  run passed, every note of Obsidian's help vault, `~/Documents/Vault` and the daily vault saving
-  back unchanged, and the rename and temporary-file crash windows are closed; nothing left); repo and tests holds at 7.5 (left: the hook-dependency audit and the small lint
-  warnings, the two flaky macOS tests, Actions pinned by SHA). **The order** (the sync design, 2026-10-15): Beta (reached 2026-10-07); Dropbox sync on
-  desktop and an installable Android app on the same editor, **writing offline on the phone
-  from day one**; then a web app; a public launch after that. Boojy Cloud is weighed once
-  Dropbox's limits are known. One requirement carries over from the earlier plan: a remote
-  update never disrupts typing or loses unsaved edits (stable block ids are one possible fix).
-  **Where it stands (2026-10-17):** Tyr's vault syncs between his Mac and his Pixel through
-  Dropbox, offline writing included (#350–#363); the phone app is not yet distributed.
+- **Next: Public Beta** (decided 2026-10-24). Phone sync, the previous goal, works in Tyr's
+  daily use (Mac and Pixel through Dropbox, offline writing included); the Android app is not
+  yet distributed. There is no date: a stage ships when it meets the bar, and its requirements
+  are the plan. Personal tools only; collaboration is excluded. **The order:** Public Beta;
+  1.0 (iOS, the web app, a second sync route); Boojy Cloud is weighed once third-party sync's
+  limits are known.
+- **Sync is provider-neutral.** Dropbox is the first provider built and tested, not a
+  permanent requirement: **local use on every supported platform works with no Dropbox and no
+  account**. Two kinds of sync are kept apart: the app editing a folder another app syncs
+  (Dropbox's or Google Drive's desktop app, iCloud, Syncthing, git), and the app connecting to a
+  provider itself (the phone's engine, `src/sync/`). A folder that works on the desktop proves
+  nothing about direct sync with that provider on a phone. **One sync mechanism per
+  collection**: changing provider keeps the local notes and is an explicit, safe migration,
+  never automatic. **Self-hosting means connecting to a server the user already runs** (such as
+  Nextcloud), not a self-hostable Boojy Cloud backend.
 - **Local-first; the cloud is opt-in.** Nothing leaves the machine unless you turn sync on,
   and a device that never signs in loses nothing. **Hosting must stay cheap to run**: a design
   that could cost $1,000 a month is the wrong design, so quotas, size caps and a budget alarm
@@ -60,8 +59,8 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   backlog assumes any particular Cloud outcome.
 - **Obsidian compatibility and Notion-first import are complementary.** Existing Markdown
   folders, Obsidian vaults included, open as they are (the spec's support dimensions). Notion is
-  the first migration priority for a whole collection and a Word document for a single file;
-  Apple Notes follows.
+  the first migration priority for a whole collection, after 1.0; a Word document for a single
+  file and Apple Notes follow.
 - **Dependable everyday Markdown and interoperability come before more formatting features.**
   The read/render, edit/write and preservation contract lives in
   `docs/SPEC-markdown-source-of-truth.md`; broader syntax support need not expand the menus.
@@ -77,7 +76,7 @@ more than any feature nobody else has. That is a product hypothesis, not validat
 
 ## Open decisions
 
-Product calls for Tyr; each trades conventional Markdown meaning against byte preservation.
+Product calls for Tyr.
 
 - **A spare empty row is two blank lines in the file.** One blank line between blocks is
   structure (the gap every Markdown reader needs), so Enter twice after a paragraph shows one
@@ -85,69 +84,177 @@ Product calls for Tyr; each trades conventional Markdown meaning against byte pr
   (2026-09-24). The alternative, one blank line per spare row, would make a single blank mean
   either a gap or a row depending on context. Also open: whether the row's height (a line plus
   the paragraph gap) reads as a bigger hole than the Enter that made it.
-- **Setext headings (`===` and hyphen underlines).** Recommended direction: recognise both
-  forms while preserving their authored spelling. Editing behaviour remains unresolved; this
-  recommendation does not change the spec's documented current behaviour. `===` underlines
-  currently remain paragraph text. A `---` directly under a paragraph is read as a divider. To
-  every other reader `hello` / `---` is a heading called "hello"; Boojy Notes shows a paragraph
-  and a rule, and its first save writes the blank line that makes the file a divider everywhere
-  (a sanctioned byte change, see the spec). Reading it as a heading would be right and needs a
-  setext heading form the serializer can write back byte-exact. On record as one `it.fails` in
-  `tests/utils/markdownInterop.test.js`. The same underline problem has a second form since
-  2026-09-06: an empty bullet left tight under a paragraph (`hello` / `- `, now read as an empty
-  item rather than folded into the paragraph) is a setext underline outside too, and no blank
-  is written for it, so the file keeps meaning a heading there. One decision, two `it.fails`.
+- **Setext headings (`===` and hyphen underlines). Settle before Public Beta.** Recommended:
+  recognise both, keeping their spelling; editing behaviour unresolved. Today `===` stays
+  paragraph text, and `hello` / `---` (a heading to every other reader) shows as a paragraph and
+  a rule, its first save writing the blank that makes it a divider everywhere (sanctioned in the
+  spec). One `it.fails` in `tests/utils/markdownInterop.test.js`. An empty bullet tight under a
+  paragraph (`hello` / `- `) is the same underline outside; its spelling is kept.
+- **Which sync route besides Dropbox, for 1.0.** A supported route that works between desktop
+  and mobile. Investigate Google Drive and WebDAV (Nextcloud) first and recommend one; building
+  both is not committed. Judged on: permissions (Google Drive's full access needs
+  restricted-scope verification; what narrower access allows is to check), safe writes (an
+  atomic replace or a revision check), conflicts (how the provider reports a clash, and
+  whether the engine's keep-both rule holds), offline behaviour, and the cost of maintaining
+  it. The provider-neutral rules in Direction apply.
 
 ## Fix now
 
 Problems Beta users can hit today. Each is small and comes before anything else.
 
-None open.
+- [ ] **Typing in a block rewrites two kinds of link in the file.** A keystroke's read-back
+  (`useInputHandler.js:128` → `domNodeToMarkdown`) turns `[text]([[Note]])` into
+  `[text](<span class="wikilink" …>Note</span>)`, and `[x](https://a.com/*b*)` into
+  `[x](https://a.com/<em>b</em>)`: the emphasis and wikilink passes in `inlineFormatting.js`
+  run over a link's destination. Reproduced by rendering and reading back the block in jsdom;
+  the read-back is deterministic, so the first keystroke in such a block writes it. The
+  regression test that comes with the fix proves it in Electron. Found in a real note of
+  `~/Documents/Vault`. The real-vault corpus test reads and writes only, never the typing
+  path: it gains that pass with the fix.
+- [ ] **A fence inside a callout or quote may lose the newline before its closing fence**
+  (`x\n` + a fence reads back as `x` + the fence on one line). Reproduced only with the plain
+  renderer in jsdom, not with the callout's own field; confirm in the app first.
+  `domRoundTrip.test.js` skips callouts (`isEditableBlock`).
 
-## Beta: release requirements (met)
+## Public Beta: requirements
 
-Met on 2026-10-07 with v0.15.0, Tyr's call. **Daily use feels reliable**: the friction log in
-the vault keeps going, each entry reproduced in the real app (`BOOJY_TRACE`, the files rule)
-before it is fixed. **The Windows smoke test** passed on Tyr's PC (2026-10-05, `pnpm dev`) and on
-the published installer in the VM: SmartScreen says "Windows protected your PC … Unknown
-publisher", and More info, then Run anyway, is said on boojy.org. The installer is unsigned;
-Azure Artifact Signing (about $10 a month) is open only to organisations in the UK, an OV
-certificate costs a few hundred pounds a year, and neither removes the warning at once. Revisit
-before a public launch. The install took about two minutes in the VM: time it on a real PC.
-**A tag publishes itself**: v0.15.0 was the first (13 minutes from tag to boojy.org). Still to
-confirm: Check for Updates on the Mac offering it.
+What Public Beta waits for, by area (decided 2026-10-24 unless marked open). Each is proved by
+the test its rule names when it is built.
 
-## Beta: candidates
+**Files and safety**
+
+- **A moved vault keeps its history.** The note index and version history are keyed by a hash
+  of the folder's path (`vaultKey`, `electron/vaultFs.ts:33`), so any move, the one into
+  Dropbox that sync setup asks for included, detaches history, Recently Deleted, Recents and
+  PDF positions (moving it back restores them).
+- **Recovery is demonstrated**: export and a tested restore on every platform; full storage,
+  revoked folder access and a disconnected Dropbox stated and tested, local notes usable
+  throughout. The crash screen promises a backup whose write can fail silently and that
+  nothing reads back (`ErrorBoundary.jsx:18`): fix the path and the wording.
+- **An outside edit to the open note**: with no unsaved typing it updates in place, caret kept
+  and that note's undo cleared; with unsaved typing both versions are kept and the editor stays
+  on the user's. Content-stable block ids are part of it, not all: `applyExternalNote` drops the
+  undo entries (`useHistory.js:190`) and the clash path opens the copy (`useFileSystem.js:353`).
+
+**Compatibility**
+
+- **Attachments resolve as Obsidian resolves them**: by name anywhere in the vault, and by a
+  path relative to the note. Only the root and `attachments/` are tried today
+  (`electron/main.js:314-327`): 18 of 23 file embeds in `~/Documents/Vault` show Not found.
+- **Relative `.md` links open the note; link titles leave the address; code spans, `_`/`__`
+  emphasis and the other divider forms draw as they mean**, each keeping its spelling (Markdown
+  compatibility, below).
+- **The Obsidian extensions, explicitly.** Drawn and edited: wikilinks and aliases,
+  `[[Note#Heading]]`, embeds with size and `#page=`, callouts, `==highlight==`, `#tags`,
+  frontmatter (collapsed), maths, Mermaid. **Preserved only**, byte for byte and shown as text:
+  footnotes, `%%comments%%`, task states beyond `[ ]`/`[x]`, `^block-id`, HTML,
+  reference-style links, plugin syntax. The spec takes this list when the work lands.
+
+**Connected notes** (one link index)
+
+- **Links follow an in-app rename or move.** Once the name settles, `[[…]]`, `![[…]]` and
+  `[x](Note.md)` links resolving to the note are rewritten in readable notes, with the name the
+  write chose, `#subpath` and alias kept, the shortest clear target (`linkTargetFor`). A version
+  first, one toast with the count; not undoable, like a move. Renames outside the app, on the
+  phone or while closed are reported, never rewritten; offloaded and unreadable notes are
+  skipped and counted. The spec's preservation promise gains the carve-out.
+- **`[[Note#Heading]]` jumps to the heading**, matched by text as Obsidian does.
+- **A quiet backlinks section** at the foot of the note.
+
+**Organisation**
+
+- **Favourites, the same on every device**: from the note's ··· menu; a section that comes
+  with the first and goes with the last; a second route, never a move. Kept in one small file
+  in the vault (under `.boojy/`, by vault-relative path), written with the first favourite,
+  remapped by the app's moves; a missing path is ignored and losing the file damages nothing.
+  Sync and the phone's listing skip dot paths (`src/sync/engine.ts:57`, `phoneVault.ts:365`):
+  that one file is let through. **Tried first** on a branch with local storage, which never
+  merges. Open: ordering, folders.
+
+**Phone (Android)**
+
+- **Works offline with no Dropbox and no account.** The sign-in screen goes
+  (`src/phone/install.ts:43`); Connect Dropbox is optional, from Home, choosing the folder
+  (fixed to `Personal` today, `syncFolder.ts:8`). A damaged sign-in file never locks anyone
+  out (`phoneSync.ts:59-68`). The first connect is tested on a phone that already has notes.
+- **A folder the user can see** (Storage Access Framework), as well as app-private storage: a
+  native plugin and a new file layer under sync, where other apps may write (the hash cache
+  assumes they never do, `phoneVault.ts:186`). Prove one folder's saves and crash recovery on
+  the Pixel first.
+- **Export and import**, **adding pictures** (off, `platform.js:12`), the Dropbox token in
+  Android's Keystore (a plain file today), a deliberate backup setting (settings yes, token
+  never), Settings laid out for a phone.
+- **Google Play, without the Mac**: a release key, `versionCode` from `package.json`, an AAB
+  from CI, the data-safety form.
+
+**Desktop**
+
+- **Windows signed** through the SignPath Foundation (free for open source; names SignPath as
+  publisher; a policy page; each release approved by hand). SmartScreen still warns until
+  reputation builds, but Smart App Control blocks unsigned apps that have none. Try the first
+  signed update over an unsigned install in the VM. A Microsoft Store listing (free, re-signed
+  by Microsoft, no warning) is planned and does not block; boojy.org leads with one route.
+- **Export and print to PDF** from the main window with a print layout (no chrome, page breaks
+  that never split a table row or a picture, maths and diagrams drawn); no second window.
+
+**Help, quality, web and stores**
+
+- A first-run welcome, a shortcuts sheet, **Help → Report a Problem** (an email to
+  tyr@boojy.org with version and OS, shown before sending; no telemetry); help pages on sync
+  and history not being a backup, and moving from Notion by hand.
+- The Known issues a finished Public Beta cannot live with: New note writing `Untitled.md` at
+  once; Replace skipping cells, callouts and code, and Find's double count; the pre-0.5
+  migrations; the symlink check.
+- A 10,000-note vault on the desktop; a first phone sync with large attachments; VoiceOver and
+  TalkBack over the editor.
+- **The editor in Safari's engine**, since the demo meets Safari visitors: a Playwright WebKit
+  project (a signal, not Safari) and a check on a real iPad.
+- **The demo inside boojy.org/notes**: the real editor and a sample note, saving nothing; the
+  download keeps notes. `boojy-notes-web.pages.dev` says it is a test build.
+- The privacy page names Dropbox; Dropbox production approval (500 users in development; the
+  50th starts a two-week deadline).
+
+**Build order**: the boundaries (platforms, storage, recovery); Fix now; the favourites trial;
+Android storage and a moved vault's identity; one resolution for attachments and links;
+renames, heading jumps, backlinks; favourites; PDF export and onboarding; device, access and
+performance acceptance. Signing and stores alongside. **Start early**, since they wait on
+others: SignPath; the Microsoft Store account; Play's closed test (12 testers opted in for 14
+days in a row before production can be applied for); the Dropbox application.
+
+## 1.0: requirements
+
+Public Beta, plus:
+
+- **The iOS app** on the same editor (Capacitor), through TestFlight and the App Store; its
+  folder shown in the Files app. It needs an iPhone or iPad in daily use, and Tyr's iPad is
+  not one, so it waits on that.
+- **The web app at notes.boojy.org** that keeps notes: real `.md` files in the browser's
+  private file system (OPFS) through the phone's `FileOps` shape, persistent storage asked for
+  and its state said plainly, export and import, the app loading offline with updates that
+  never reload mid-typing, attachments, one writer across tabs, a full quota handled, notes in
+  today's `localStorage` carried over. Folder access in Chromium desktop is an extra. Chrome,
+  Edge and Safari supported; Firefox best effort.
+- **A second supported sync route**, desktop to mobile (Open decisions). Sync on the web is
+  separately scoped (Future), not part of 1.0.
+
+## Candidates
 
 Optional. Each is considered on its own, judged by daily-drive friction, and may be declined;
-none blocks the release. The shared question comes first because three candidates wait on it.
+none blocks a stage.
 
-- **Where app metadata lives.** Favourites, folder appearance and any later archive state need
-  something the Markdown cannot hold. The spec permits app metadata outside the note (the note
-  index already lives in userData). Options: userData (per machine, lost with the vault) or a
-  dotfile in the vault such as `.boojy/` (travels with a provider-synced folder, visible to
-  other tools). Still to weigh: how an entry follows a folder or note through the app's own
-  moves and through external renames, and whether losing it on an external rename is
-  tolerable. Two fixed requirements: losing it must never damage a note, and existing
-  `.boojy-meta.json` files stay untouched and unread. Decide once.
+- **Callout contents as real blocks.** Lists, fences and nested callouts inside a callout show
+  as text today, and a fold (`-`/`+`) is kept but ignored; whether a click folds one is part of
+  the same question. Decided only after a round of mockups.
 - **Tables that work better.** Wanted (Tyr, 2026-09-24): 101 of the 213 notes in his vault hold
   one. Grips, alignment, Duplicate and Clear contents shipped (`CHANGELOG.md`). Left, in the
   order daily use asks for them: a paste from a spreadsheet (tab-separated text) into a
   paragraph becoming a table, and dragging several rows at once (the keyboard path shipped
   2026-09-25). No colour, by decision: Markdown cannot hold it.
-- **Whole-block selection for code, callout and file blocks.** The table joined the divider
-  and image as a block addressed as a whole on 2026-09-10 (Escape selects, Backspace from
-  below and forward Delete from above select rather than step over). **The arrows caught up on
-  2026-09-19**: they walk into any block that keeps a field of its own, code and callout
-  included. Deletion did not, deliberately — Backspace merges text, so it may only land where
-  text can go, and Backspace under a code block still deletes the paragraph into the one above
-  it. That is the half left to judge; a file block, which has no field, is stepped over by both.
-- **Note information** at the bottom of the note's ··· menu. The word count half shipped on
-  2026-09-16 (`428 words`, one muted line under the menu's only rule, counting written content
-  rather than Markdown punctuation; a character count was shown and dropped, since nobody writes
-  a note to a character limit). Still a candidate: "Edited today at 11:37" beside it, exact
-  timestamp on demand. Edited follows the sort's recency rule (rename and move count; opening
-  never does); imports, external changes and appearance changes need the same rule stated once.
+- **Whole-block deletion for code, callout and file blocks.** The arrows enter code and
+  callouts; Backspace and Delete still step over them (Backspace merges text, so it lands only
+  where text can go), and a file block is stepped over by both. That half is left to judge.
+- **"Edited today at 11:37"** beside the ··· menu's word count, exact time on demand,
+  following the sort's recency rule (rename and move count; opening never does).
 - **Lecture files in the app, the rest.** PDFs and pictures open in the note's place
   (`CHANGELOG.md`). Left: `![[Slides.pdf#page=12]]` embedding a page in a note, audio and video
   playing inline (`![[clip.mp4]]`) or in the note's place (they get the card for now), the
@@ -155,78 +262,25 @@ none blocks the release. The shared question comes first because three candidate
   note as a page link, Rename and Move to… for a viewed file (with backlinks, so its links
   follow), and the open file surviving a relaunch. Not planned: annotating PDFs, reading text
   from pictures.
-- **Backlinks, and links that follow a rename.** Wanted soon (Tyr, 2026-09-30). One link index
-  serves three things: a note lists the notes that link to it (unlinked mentions under them, as
-  Obsidian); **renaming a note updates the links to it, automatically**, as Tyr's Obsidian vault
-  does (decided 2026-09-30; the spec's preservation promise gains the carve-out when this is
-  built); and `[[Note#Heading]]` jumps to the heading. Replaces the Data safety entry below.
-- **Favourites.** Wanted soon (2026-09-30); Favourites or Pinned, named when built. Decided in shape (2026-09-12): a note is favourited and
-  unfavourited from its own ··· menu; a Favourites section appears with the first favourite and
-  disappears when the last is removed; the note keeps its place in its folder, and the section
-  is a second route to it, never a move. One concept, not Favourite and Pin. Still open:
-  ordering, placement (a sibling list above the Notes row keeps the one-tree rule), whether
-  folders qualify. Needs the metadata decision above; nothing here is built until that is made.
-- **Folder colours and icons.** Someday (2026-09-30: about 25 icons and 8 colours, emoji too). Colour the folder glyph, keep the label and row neutral; Light
-  and Dark variants; selection never colour-only; a reset to the default folder. The reference
-  used outline icons, not emoji, roughly 25–30 icons and 7–8 colours; the catalogue is
-  undecided (a smaller first set drawn from Lucide is one option). Never renames a
-  directory or adds emoji to its name. Needs the metadata decision. Not approved: per-note
-  icons (small optional icons beside titles if ever revisited, never page covers), and
-  arbitrary text or background colour inside notes (no portable Markdown syntax; word-level
-  colour stored outside the file breaks when another editor changes the text; `==highlight==`
-  is already an extension).
-- **The Markdown view's residue** (shipped 2026-09-24: ··· menu, View, ⌘/, the lit `</>`).
-  No Find in it yet: ⌘F and Edit → Find do nothing while it is on. The keys are a plain text
-  field's (no list continuation on Enter, no auto-pairing); add them only if typing there
-  proves common. Its edits are typing-grain undo entries; the "one entry on the way back"
-  alternative was not needed. Decided 2026-09-24, to revisit after daily use: **no slash menu
-  in it** (`/` is typed there constantly, in addresses, paths and dates, and the view is where
-  the syntax is written by hand), and **no table alignment as you type** (padding every row
-  when one cell grows is the rewrite the table preservation fix removed, and it moves text
-  under the caret). Tidy table shipped in the formatted view's cell menu (`CHANGELOG.md`); a
-  Tidy for the table under the caret in this view is the candidate if hand-aligning pipes here
-  becomes a chore.
-- **Version History, later.** The store, save points, the list and Recently Deleted shipped
-  in v0.10.0 (`CHANGELOG.md`; behaviour in the files and chrome rules). Later: a Settings switch for all notes,
-  and history through Boojy Cloud. Neither sync nor history replaces an independent backup.
+- **The Markdown view's residue.** No Find in it yet (⌘F does nothing while it is on); list
+  continuation and auto-pairing only if typing there proves common; a Tidy for the table under
+  the caret if hand-aligning pipes becomes a chore. Decided, to revisit after use: no slash
+  menu in it (`/` is typed there constantly) and no alignment as you type (it moves text under
+  the caret).
+- **Version History, later**: a Settings switch for all notes; history through Boojy Cloud.
+  Neither sync nor history replaces an independent backup.
 - **Searchable `/link`.** Consider an entry point to the existing inline-link controls, not a
   new block type. Discoverability and interaction need live judgement; adding it may be declined.
-- **Notion import.** The first migration priority; wanted soon (2026-09-30).
-  Notion exports Markdown and CSV in a ZIP. Proposed flow: pick the ZIP, preview the
-  conversion, choose a destination, review a report that counts notes and attachments and
-  lists what was skipped or simplified. Must handle page hierarchy, duplicate titles,
-  attachments and internal links; databases need an explicit policy (simple tables, or folders
-  of notes with an index, keeping the CSV). Sources stay untouched; duplicate detection on
-  repeated imports is worth considering. No live databases, relations or Notion layouts, ever.
-  Next step, which sets the scope: gather representative exports and study what they contain;
-  proving the conversion as a script over fixtures before any UI is one way to do that.
-  Distinct from the File menu
-  Import removed on 2026-09-05: a one-time journey with a report, not a converter.
-- **Word import.** Nice to have, after sync (Tyr, 2026-10-06; wanted for Beta on 2026-09-24): a `.docx` arrives as a note that looks
-  right in the app. A converter to semantic HTML (mammoth is the candidate) feeding the rich
-  paste reader that already exists (`utils/richPaste.ts`: headings, lists, tasks, tables,
-  links, emphasis), with the pictures saved into `attachments/`. The source file is left
-  untouched. Entry point unchosen: File → Import…, a drop on the sidebar, or both. PowerPoint is
-  not imported.
-- **Export and print to PDF.** Wanted (Tyr, 2026-09-24). Electron prints a page to PDF, so the
-  work is a clean print layout (no chrome, the note's own type, page breaks that never split a
-  table row or a picture). Word export is later (Future).
-- **Other files in the tree, the rest.** They show, open in their own app, and can be shown in
-  Finder or deleted (2026-09-25). Still to come: Rename and Move to… on the row, and a drag
-  into a note that writes a link to it. Every file operation must be
-  right for a non-note file too; an attachment stays open-only, because a rename rewrites no
-  links. A Finder change reaches the tree on window focus; watching them is a later step if
-  that proves slow to notice. PDFs and pictures open in the app since v0.15.0.
+- **Other files in the tree, the rest**: Rename and Move to… on the row (once links follow
+  renames), and a drag into a note that writes a link. A Finder change reaches the tree on
+  window focus; watching them only if that proves slow.
 - **Quick capture and a `boojy-notes://` link.** Wanted (Tyr, 2026-09-24): a global shortcut
   from anywhere on the Mac makes an ordinary new note, the same creation as Cmd+N (no inbox, no
   quick-note type). A `boojy-notes://new?title=…&text=…` scheme is the one door for it, a
   bookmarklet, the Shortcuts app and Raycast, and later a web clipper (Future). Initial focus,
   location and the moment an empty note becomes a file are undecided for every entry point. Not
   accepted: deriving the title from the first line.
-- **For friends at Beta.** A keyboard shortcuts sheet (a screen reached from Help or Settings),
-  a way to report a problem, and a first-run explainer (a
-  welcome note or a short tour, undecided). Custom shortcuts come in Beta, once the defaults
-  are good (2026-09-30).
+- **Custom shortcuts**, once the defaults are good (2026-09-30).
 - **Find in note, as good as a code editor's.** Cmd+F finds and replaces (it opens as it was
   last left; Edit → Find ▸ since the menu bar); Tyr asked for it without knowing it was there
   (2026-09-24). Add match-case and whole-word toggles, and draw it in the app's grammar (Lucide
@@ -239,14 +293,16 @@ none blocks the release. The shared question comes first because three candidate
   exists.
 - **The public face, current.** The README's screenshots and feature list, the GitHub repo's
   description, topics and social preview, and boojy.org/notes (in `boojy-web`) describe the app
-  as it is at Beta. Short, friendly help pages come after Beta (the sync-folder page may come
-  first); the aim is that nobody needs them.
+  as it is. boojy.org/notes may show a short Now / Public Beta / 1.0 table (three plain lists,
+  no dates), updated in each release's docs pass. Short, friendly help pages; the aim is that
+  nobody needs them.
 
 ## Known issues
 
 ### From the September 2026 review
 
-Still reproduce on master, in the review's order. None blocks Beta on its own.
+Still reproduce on master, in the review's order. Those named in Public Beta's requirements
+block it; the rest do not.
 
 - [ ] **New note writes `Untitled.md` at once** — `createNote` makes a real note, so the sidebar's
   New note and Cmd+N reach disk within a second even if nothing is typed; only the empty-state
@@ -289,39 +345,25 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 
 ### Markdown compatibility
 
-Priority for assessment, not additional Beta release requirements. New findings here come from
-the 2026-09-10 code inspection and sample probes, not a full desktop interaction test. Verify
-the relevant read, edit and save journeys before choosing a fix; missing support is distinct
-from a correctness defect. Existing preservation blockers retain their status under Data safety.
-**Two-way use with Obsidian is not yet a general guarantee** (assessed 2026-09-15 on a copy of
-Tyr's vault, six findings reproduced in the real app, four of them since fixed): a note's
-*text* survives switching apps, and a click on any link Obsidian writes now opens the note or
-creates nothing, and a table keeps its spelling through a save, but a rename leaves dangling
-references (Data safety). Until that closes, treat the promise as "the bytes it
-understands are safe and the rest is preserved", not "switch freely".
+Re-verified on 2026-10-24 (v0.18.0) with converter probes; the first four are Public Beta
+requirements (reference-style links aside, which stay preserved only). Missing support is distinct from a correctness defect; each keeps the file's
+bytes on load and save. **Two-way use with Obsidian is not yet a general guarantee**: the
+bytes the app understands are safe and the rest is preserved, but a rename leaves dangling
+references and attachments are found only in two places (Public Beta).
 
-- **Links: parsing defects and missing navigation.** Optional link titles are treated as part
-  of the URL. Reference-style links are unresolved;
-  relative `.md` links use the external-link path rather than navigating within the vault.
-  Assess correct parsing, source preservation and destination handling together. Heading
-  targets are a separate future item below.
-- **Code: literal handling and delimiter support.** Formatting inside a code span can render
-  as active emphasis; multi-backtick spans need correct delimiter handling. Indented code is
-  not recognised as code. Keep contents literal through reading, editing and writing.
-- **Missing rendering: imported underscore emphasis.** `_italic_` and `__bold__` are CommonMark,
-  and typing them converts (saved in the star form, 2026-09-10), but the renderer and writer
-  speak only `*`. Rendering imported underscores must not cause the first edit to rewrite
-  their marker style; source-preserving editing needs to accompany rendering support.
-- **Missing syntax variants: alternate dividers.** `***` and `___` are not recognised as
-  dividers. Assess common forms without normalising their authored spelling on save. (A run of
-  four stars or more is text since 2026-10-05; it was paired as bold and italic, and an edit
-  lost it.)
-
-**Found by the generated documents (2026-10-05)**, each an entry in `tests/utils/knownRewrites.js`
-to delete when fixed, and a fixture to add then:
-
-- **Delimiters interleaved** (`**a==b**c==`, an escaped one beside live ones) are paired
-  differently by the renderer than as written; with "Code: literal handling" above.
+- **Links.** A link title joins the address (`[a](b "t")` → `href="b "t""`); reference-style
+  links show as text; a relative `.md` link does nothing when clicked.
+- **Code.** Formatting inside a code span draws as emphasis; a multi-backtick span splits;
+  indented code is a paragraph.
+- **Imported `_italic_` and `__bold__`** show literally (typing them converts to the star
+  form). Drawing them must not make the first edit rewrite their markers.
+- **Dividers.** Only exactly `---` is one: `***`, `___` and `-----` are text, and `* * *` reads
+  as a bullet holding an empty emphasis.
+- **Delimiters interleaved** (`**a==b**c==`, an escaped one beside live ones) pair differently
+  than written; `tests/utils/knownRewrites.js` holds them, an entry deleted with each fix.
+- **Embeds.** `![[x.png|alt|300]]` and an embed mid-line show as `!` and a link; `![[Note]]`
+  embeds the first note of that name, ignoring a folder path (`EmbedBlock.jsx`).
+- **`=====`** (a setext underline) draws as a highlight.
 
 ### Found by the Windows and macOS CI (2026-10-05)
 
@@ -343,8 +385,8 @@ to delete when fixed, and a fixture to add then:
 ### Data safety / reliability
 
 **First-edit mutations.** The first edit of an affected note can rewrite third-party content.
-The preservation suite's `KNOWN_FAILURES` is empty since 2026-10-05; what remains is listed
-here and in `tests/utils/knownRewrites.js`.
+The preservation suite's `KNOWN_FAILURES` is empty since 2026-10-05; what remains is in Fix
+now and `tests/utils/knownRewrites.js`.
 
 
 **Lost edits and filesystem.**
@@ -359,14 +401,15 @@ here and in `tests/utils/knownRewrites.js`.
   what is left is that a renderer that has already died still holds the quit for the cap.
 - [ ] **Wikilink rename does not update referrers** — rename `Beta` to `Gamma` and `[[Beta]]`
   elsewhere stays as written and draws dashed. The rename is a new file plus an unlink, so
-  Obsidian's own link update never runs either. Fixed by Backlinks (Beta candidates): links
-  follow a rename, decided 2026-09-30.
+  Obsidian's own link update never runs either. A folder rename breaks every `[[Folder/…]]`
+  link under it. Fixed by Public Beta's "links follow an in-app rename or move".
 - [ ] **A symlinked folder inside the vault** (review §2.9): unchecked since the one recursive
-  watch (`treeWatcher.ts`) replaced chokidar. Check whether its notes are listed and watched.
+  watch (`treeWatcher.ts`) replaced chokidar. Check whether its notes are listed and watched
+  (Public Beta).
 - [ ] **Pre-0.5 residue that reads or rewrites user files**: a legacy `id:` frontmatter key makes
   the first write strip the whole frontmatter block; `resolve-attachment` still scans the v0.1
   `.attachments/<noteId>/` layout; the `.trash` migration runs at every launch. Retire the three
-  migrations (about 210 lines) once every tester has installed a post-0.5 build, not before.
+  migrations (about 210 lines) before Public Beta.
 
 ### Accessibility
 
@@ -391,19 +434,14 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   control that makes a future slip inert. It touches HMR, inline styles and `boojy-att:`, so it
   is a job on its own. `javascript:` hrefs survive into the DOM and only the main process
   filters them: inert on desktop, and the web build's `window.open` fallback is not product.
-- **The hook-dependency warnings are most of the lint gate's noise**: 207
-  `useExhaustiveDependencies` (2026-10-05), and about 46 small ones that crept in after the
-  2026-09-24 cleanup (`useTemplate`, `useOptionalChain`, `useLiteralKeys`, unused
-  suppressions; the two `noFocusedTests` in `SourceView.tsx` are false positives). Most name a ref's
-  `.current` or a function from the frozen `EditorContext` (AGENTS.md gotcha 3), which the rule
-  cannot see is stable, so adding them blindly would change behaviour; a few may be real stale
-  closures. One audit: teach the rule the app's stable hooks, suppress each deliberate site with
-  its reason, fix the real ones. Two rules are off by decision: `noAssignInExpressions` (the
-  `while ((node = walker.nextNode()))` idiom throughout the walkers and the parser) and
-  `noNonNullAssertion` (an invariant TypeScript cannot prove, and the tests' idiom). Also from
-  review §6: Actions are pinned by major tag, not SHA. Zero unit coverage on
-  `useTableInteractions`, `useSidebarDrag`, `FindBar`, `SidebarContext`, the watcher's event
-  handlers and `folderOps`; the Electron suite is the trustworthy layer for those journeys.
+- **The hook-dependency warnings are most of the lint gate's noise** (207
+  `useExhaustiveDependencies` and about 46 small ones, 2026-10-05). Most name a ref's `.current`
+  or a function from the frozen `EditorContext` (AGENTS.md gotcha 3), so adding them blindly
+  would change behaviour. One audit: teach the rule the stable hooks, suppress each deliberate
+  site with its reason, fix the real ones. `noAssignInExpressions` and `noNonNullAssertion` are
+  off by decision. Actions are pinned by tag, not SHA. No unit coverage on
+  `useTableInteractions`, `useSidebarDrag`, `FindBar`, `SidebarContext`, the watcher's handlers
+  or `folderOps`; the Electron suite covers those journeys.
 - **Chrome ink, one pass if it is seen** (review §5): fourteen popovers carry hardcoded black
   shadows at 0.4–0.5 where `theme.modalShadow` is 0.12/0.08 in Light; the code block's
   context-menu hover is white at 6% over a white surface, invisible in Light; the find
@@ -412,12 +450,11 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   (`Inter` is named first and never shipped, so every geometry judgement in the rules was made
   in SF Pro), four mono stacks, no `tabular-nums` where counts change width.
 - **Block IDs are minted on every re-parse** — `markdownToBlocks` uses a module-global counter,
-  so a re-sync remounts every block and loses the caret. Fix is content-stable IDs; non-trivial.
-- **Updater behaviour is undecided** — today `autoDownload` is on and every launch checks,
-  with a failed check swallowed (`autoUpdater.checkForUpdates().catch(() => {})` in
-  `electron/settingsManager.js`). The alternative is check-and-ask with a visible error. Live
-  for release users since macOS builds became signed in v0.7.0, so this is a real choice now;
-  the other empty catches are localStorage guards and are fine.
+  so a re-sync remounts every block and loses the caret; part of Public Beta's outside-edit
+  requirement.
+- **Updater behaviour** — `autoDownload` is on and every launch checks. A failed check reaches
+  Settings → Updates ("Couldn't check for updates", Try again; `settingsManager.js:136`,
+  `UpdatesTab.tsx`) and nowhere else; the promise's own `catch(() => {})` is harmless.
 - **Editor hook copies, for a quiet window with the Electron suite green**: the "text before and
   after the caret" split helper exists six times and the block-update boilerplate about
   eighteen times across the editor hooks (~150 lines on hot paths). Mechanical, but not during
@@ -427,14 +464,13 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   prop threaded through 18 files when it is always `theme.ACCENT.primary` (worth it only if a
   second accent ever appears).
 - **Small residue, tidy when touching the file**: `z-index: 999`/`9999` literals in
-  `GlobalStyles.jsx` beside the `Z` scale; the `index.html` viewport meta is PWA residue; the
-  crash screen's `boojy-error-backup` is written but nothing reads it back; a bad `%` in a
+  `GlobalStyles.jsx` beside the `Z` scale; the `index.html` viewport meta is PWA residue; a bad `%` in a
   `boojy-att://` URL throws in `decodeURIComponent`; the UI rule's known colour leaks (plain
   black alphas, per-theme callout and syntax colours), Dark's first-paint flash, and the
   consume-once `textOnlyEdit` flags in `useHistory`, which have no margin against a second
   reader (a spurious recompute costs a repaint, never a keystroke).
 
-## Future, after Beta
+## Future, after 1.0
 
 Recorded so a preference survives; nothing here is scheduled, and nothing here is an
 instruction to start. Each line carries the direction taken and what is still open. The dated
@@ -443,24 +479,29 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ### Migration and portability
 
-- **Obsidian: open the files.** Conventional Markdown, lists, tables and alignment, relative
-  attachment paths, wikilinks and aliases, heading links, callouts, frontmatter, and
-  preservation of everything else. Compatibility with a document never requires the feature
-  that produced it; plugin syntax stays preserved source, never executable. Graph, Canvas and
-  plugin configuration are outside the promise.
+- **Notion import**, the first migration priority. Notion exports Markdown and CSV in a ZIP.
+  Proposed flow: pick the ZIP, preview, choose a destination, review a report counting notes
+  and attachments and listing what was skipped or simplified. Must handle page hierarchy,
+  duplicate titles, the 32-character ids in names, attachments (percent-encoded, page-relative)
+  and internal links; databases need an explicit policy (simple tables, or folders of notes
+  with an index, keeping the CSV). Sources stay untouched. No live databases, relations or
+  Notion layouts, ever. Builds on Public Beta's attachment and `.md` link resolution. Next
+  step: gather real exports now and prove the conversion as a script over them before any UI.
+- **Word import**: a `.docx` arrives as a note that looks right. A converter to semantic HTML
+  (mammoth is the candidate) feeding the rich paste reader (`utils/richPaste.ts`), pictures
+  saved into `attachments/` (the reader drops `IMG`). Entry point unchosen. PowerPoint is not
+  imported.
 - **Apple Notes.** Wanted (2026-09-30), sized after Word and Notion: with no bulk export, an
   importer reads Apple's own database. The Mac exports Markdown per note (File → Export as → Markdown); dropped
   into the vault, that works today, and bulk export is the gap. A later Mac importer could
   follow the route Obsidian's Importer proves (images, scans, PDFs, note links; locked notes
   unlocked first): evidence of feasibility, not a decision to reuse it. Good formatted paste
   helps with a few notes. Attachments, dates and formatting need tested policies.
-- **Export.** Desktop already exposes the files. A web or mobile build must offer a folder or
-  ZIP of Markdown and attachments with working relative links. Importing converts; editing an
-  existing Markdown folder preserves. **Word export** wanted soon, after PDF (2026-09-30): the `docx`
+- **Word export**, after PDF (2026-09-30): the `docx`
   library handles headings, lists, tables and pictures, but "looks right in Word" is a long
   tail, so it waits for a real document to judge it against.
 - **A web clipper**, "save to Boojy Notes" from a page, through the `boojy-notes://` link
-  (Beta candidates). Meanwhile Obsidian's clipper can save into the same vault. What it keeps is undecided: the link and the selected text, or the whole
+  (Candidates). Meanwhile Obsidian's clipper can save into the same vault. What it keeps is undecided: the link and the selected text, or the whole
   article as Markdown with its pictures.
 - **Copy as Markdown and as formatted text.** Selection behaviour shipped on 2026-09-16: a
   whole-block copy carries the blocks' Markdown as plain text and their structure as block
@@ -471,18 +512,20 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ### Editor and organisation
 
-- **Someday (Tyr, 2026-09-30), each as Obsidian does it:** maths (`$…$`, `$$…$$`); footnotes;
-  a note shown inside another (`![[Note]]`); a linked note previewed on hover; moving a
-  selection into a new note, leaving a link; Mermaid diagrams from a code block (not
-  Excalidraw); emoji by `:name:`; smart quotes and arrows (never in code); a plain editor for
+- **Someday (Tyr, 2026-09-30), each as Obsidian does it:** footnotes drawn; unlinked mentions
+  under the backlinks; a linked note previewed on hover; moving a selection into a new note,
+  leaving a link; emoji by `:name:`; smart quotes and arrows (never in code); a plain editor for
   the frontmatter block (Obsidian's Properties); the Mac Share menu, through the
   `boojy-notes://` link.
+- **Folder colours and icons** (2026-09-30: about 25 icons and 8 colours). Colour the folder
+  glyph, keep the label and row neutral; Light and Dark variants; selection never colour-only;
+  a reset to the default. Catalogue undecided (a first set from Lucide is one option). Kept in
+  the vault file favourites use; never renames a directory or adds emoji to its name. Not
+  approved: per-note icons, and text or background colour inside notes (no portable Markdown).
 - **Open a note in a new window**: only if the in-place viewer with Back and Forward is not
   enough (2026-09-30). Still one note per window, never tabs.
-- **Foldable callouts** (`> [!faq]-`): the marker is kept; whether a click opens and closes
-  them is undecided. Folding headings and toggle blocks are declined (Not doing).
-- **Block targets in links** (`[[Note#^block]]`): opening works; the jump waits for the
-  heading jump (Beta candidates). A folder-path link to a missing note creates nothing.
+- **Block targets in links** (`[[Note#^block]]`): opening works; the jump follows the heading
+  jump (Public Beta). A folder-path link to a missing note creates nothing.
 - **Richer nested quotes and list contents.** Consider nested quote depth and Markdown elements
   inside quotes or list items. Basic list indentation is separate. Source preservation and
   editing across those structures need a design before broader support is selected.
@@ -508,57 +551,28 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ### Platforms, sync and accounts
 
-- **Sync: Dropbox first, by device** (decided 2026-10-15). Desktop never talks to Dropbox: the
-  vault sits in `Dropbox/Apps/Boojy Notes/<vault>/` and Dropbox's own app syncs it (app-folder
-  permission only). The phone connects to Dropbox directly with Boojy's sync engine
+- **Sync: Dropbox, the first provider** (decided 2026-10-15). Desktop never talks to Dropbox:
+  the vault sits in `Dropbox/Apps/Boojy Notes/<vault>/` and Dropbox's own app syncs it
+  (app-folder permission only). The phone connects directly with Boojy's sync engine
   (`src/sync`: local, Dropbox and the last-synced record compared; a clash keeps both, an edit
-  beats a delete, the phone never deletes a folder), and shows sync's state on Home. In Tyr's
-  daily use since 2026-10-17. **Before anyone else uses it:** a moved vault keeps its version
-  history (history and the note index are keyed by the vault's path; Tyr's were copied by hand,
-  so moving a vault in loses them today); a signed Android build that installs and updates
-  without the Mac, its sign-in in Android's keystore; the folder chosen at sign-in, not fixed in
-  code (the safe switch, `src/phone/folderSwitch.ts`, exists). Other providers wait: Google Drive's full
-  access needs restricted-scope verification. One sync mechanism per collection, never
-  overlapping. Found live: Dropbox's Mac app can stop syncing while saying it is up to date,
-  so Boojy may need to notice a synced vault gone quiet.
-- **Web storage** needs its own design discussion. User-selected local folder (real files where
-  the browser supports it; support and permission persistence vary, not a foundation for
-  mobile, Safari or Firefox), browser-managed storage (offline without a folder; not visible,
-  quota-bound, lost with site data), or cloud with offline storage (consistent across devices;
-  needs accounts, sync, conflict recovery and a service). Cloud with offline capability was
-  recommended; local-file behaviour is explicitly deferred. Since the sync design (2026-10-15)
-  the web app could also use Dropbox directly. The spec keeps web outside the
-  product promise until then. The ~200 lines of localStorage/IndexedDB note persistence stay
-  meanwhile: they are what lets `pnpm dev:web` survive a reload during visual iteration.
-- **The editor works on a phone** (2026-10-06: the web build in Chrome on a Pixel 8a, Gboard
-  with suggestions and two languages). Typing, voice, typed headings, bold, italic and lists,
-  Enter and Backspace all held, so the phone work is layout, touch and storage, not the editor.
-  Found: a long-press is a `contextmenu`, which opens the app's desktop menu instead of
-  Android's selection bar, and its Paste cannot read a browser's clipboard (leave a touch
-  long-press to the system); the block grip shows on touch; the desktop layout puts the sidebar
-  over half the screen. Test layout in a phone-sized Chromium, the keyboard on the real phone
-  (USB debugging, `chrome://inspect`); an emulator's typed input skips the keyboard's composition.
-- **Mobile shell: Capacitor**, chosen in sync step 2 (#353). The
-  editor is `contentEditable` on the browser's Selection and Range APIs, so a shell that keeps
-  the browser DOM can reuse it, and one that does not (full React Native, Flutter) means
-  rebuilding the editor. Keyboard, selection, attachments, filesystem access and background
-  sync need real-device evaluation. **The phone's layout** (designed 2026-10-16 from Notion,
-  Obsidian and Apple Notes; Tyr: the closer to the desktop, the better): two screens, Home (the
-  sidebar, full width) and the note, with a bar above the keyboard; the rules are in
-  `ui-chrome-and-theme.md`. Next on it: a select mode (long-press → Select, then Move to… or
-  Delete for several notes; a phone has no Shift-click), only once Tyr misses it; pictures on
-  the phone, which the bar's image button waits on (showing them first, then adding);
-  `attachments` shows as an ordinary folder at the top of Home (the desktop's last row); a
-  long-press on a row also selects its text; Search's Recent is empty; Settings laid out for a
-  phone; Gboard's floating keyboard hides the bar. The earlier Capacitor spec, mobile
-  spec, navigation exploration and release strategy are archived in `docs/private/archive/` as
-  reference, not plan. **Tyr's phone is Android** (a Pixel 8a), and a good phone app would
-  double his use (2026-09-30). The phone comes first as an installable Android app on the same
-  editor (one vault, chosen at sign-in; attachments all downloaded at first; no version history
-  beyond Dropbox's own); the browser stays a development and test surface until the web app
-  (Direction). Tablets: no ink or
-  sketching; handwriting to text comes from iPadOS Scribble in any text field (verify in the
-  shell).
+  beats a delete, the phone never deletes a folder). In Tyr's daily use since 2026-10-17. A
+  second provider is a 1.0 decision (Open decisions). Found live: Dropbox's Mac app can stop
+  syncing while saying it is up to date, so Boojy may need to notice a synced vault gone quiet.
+- **Sync on the web** (Dropbox or the second route through an https sign-in): separately
+  scoped, not part of 1.0. The engine is browser-capable as written (plain `fetch`,
+  `crypto.subtle`); only `src/phone/phoneSync.ts` is Capacitor-bound. Until the web app, the
+  dev build's one `localStorage` blob (`useAppPersistence.js`) stays: it lets `pnpm dev:web`
+  survive a reload.
+- **The phone, the rest.** Mobile shell: Capacitor (#353), because the editor keeps the
+  browser DOM. The layout is two screens, Home and the note, with a bar above the keyboard
+  (`ui-chrome-and-theme.md`). Next, only once missed: a select mode (long-press → Select, then
+  Move to… or Delete); `attachments` as a folder on Home; a long-press on a row selecting its
+  text; Search's Recent (reported empty, unverified); Gboard's floating keyboard hiding the bar
+  (the bar reads the window shrinking, `PhoneKeyBar.tsx`); PDFs and files in the note's place;
+  version history. Test layout in a phone-sized Chromium and the keyboard on the real phone; an
+  emulator's typed input skips the keyboard's composition. Tablets: no ink or sketching;
+  handwriting comes from iPadOS Scribble (verify in the shell). The earlier mobile specs are
+  archived in `docs/private/archive/` as reference, not plan.
 - **Accounts: email-only** when accounts are needed (codes or links; session length open).
   Local desktop use never requires one.
 - **Encryption: none in Dropbox, end-to-end in Boojy Cloud** (2026-10-15). In Dropbox, notes
@@ -584,34 +598,19 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ## Not doing
 
-No AI features or agents; no calendar; no Inbox; no daily-note feature; no
-templates; no tabs or split view; no separate quick-note workflow; no command palette (the menu
-bar and the shortcuts are the keyboard path) and no fuzzy matching in Search. The spec
-additionally excludes layouts and blocks that cannot round-trip to readable Markdown.
+No AI features or agents; no calendar, Inbox, daily notes or templates (reconsidered only if
+duplicating notes by hand becomes a daily chore); no tabs or split view; no separate
+quick-note workflow; no command palette (the menu bar and shortcuts are the keyboard path); no
+fuzzy matching in Search. The spec excludes layouts and blocks that cannot round-trip to
+readable Markdown.
 
-Declined 2026-09-12, when the sidebar was rearranged: **Collapse all folders** (folders toggle
-on click and persist as left, and the list menu has no room for an action nobody reached for),
-and **Back and Forward** through recently open notes (one active note, no navigation stack; the
-sidebar and Search are how you get back to a note; Recent notes in Search, which shipped on
-2026-09-20, is the idea that survives from it). Back and Forward returned on 2026-09-30 and shipped
-in v0.13.0.
-
-Declined 2026-09-24, planning the phase before cloud: **databases, properties views, bases and
-saved searches** (folders, tags and search are the whole model; "avoid becoming gimmicky"), **an
-outline or heading picker**, **a vim mode** (keyboard-only use is the goal, not modal editing),
-**a git interface** (a vault kept in git keeps git; local version history is the app's answer),
-and **more block types** for now. Templates and daily notes stay out, reconsidered only if
-duplicating notes by hand becomes a daily chore.
-
-Declined 2026-09-30, the whole-product pass: **collaboration** (Boojy Notes is local-first with
-the cloud opt-in; editing together would make the cloud the default, multiply running costs,
-and meet Google Docs and OneNote on their own ground; a read-only link is the part that
-survives); **folding headings, toggle blocks and columns** (simple and clean; toggles and
-columns have no Markdown form); **sketching, audio recording, transcription, scanning** (a
-Markdown editor, not a drawing or recording app); **Canvas, graph view, slides, reading mode,
-focus mode**; **date groups in the list** (folders are the structure); **merging notes**;
-**smart folders** (search gets better instead); **an outline** (until notes run long);
-**replacing across every note** (one wrong pattern damages them all); **link preview cards** (a
-YouTube card may return); **inserting today's date**; **text search in pictures**; **custom CSS
-and plugins** (the app should be good without them); **per-note icons**. Templates and daily
-notes stay out for now.
+Also declined: **graph view, permanently**; Canvas, slides, reading mode, focus mode;
+**collaboration** (it would make the cloud the default and multiply running costs; a read-only
+link is the part that survives); databases, properties views, bases, saved searches and smart
+folders (folders, tags and search are the whole model); an outline or heading picker (until
+notes run long); a vim mode; a git interface (a vault kept in git keeps git); more block types
+for now; folding headings, toggle blocks and columns (no Markdown form); sketching, audio
+recording, transcription and scanning (a Markdown editor, not a drawing or recording app); date
+groups in the list; merging notes; replacing across every note (one wrong pattern damages them
+all); link preview cards (a YouTube card may return); inserting today's date; text search in
+pictures; custom CSS and plugins; per-note icons; Collapse all folders.
