@@ -341,6 +341,9 @@ test("the full-size view keeps its events: ⌘D and a right-click reach nothing 
   await block(h.page).getByRole("button", { name: "View full size" }).click();
   const view = h.page.getByRole("dialog", { name: "Diagram" });
   await expect(view).toBeVisible();
+  // It takes focus a frame after it opens (useFocusTrap); a key before that is
+  // still the paragraph's, which no person could press in time.
+  await expect(view).toBeFocused();
   await h.page.keyboard.press(`${MOD}+d`);
   await view.locator(".diagram-lightbox-panel").click({ button: "right" });
   await expect(h.page.getByRole("menu", { name: "Code block options" })).toHaveCount(0);
