@@ -7,7 +7,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
     theme: {
       TEXT: { primary: "#fff", secondary: "#aaa", muted: "#666" },
       BG: { divider: "#444" },
-      ACCENT: { primary: "#A4CACE", onAccent: "#FFFFFF", onAccentText: "#13151C" },
+      ACCENT: { primary: "#A4CACE", onAccent: "#FFFFFF" },
       SEMANTIC: { error: "#ef4444" },
       button: { bg: "transparent", border: "#444" },
       modalBg: "#1a1a1e",
@@ -31,20 +31,13 @@ const baseConfirm = {
 describe("ConfirmDialog", () => {
   it("renders nothing when confirm is null", () => {
     const { container } = render(
-      <ConfirmDialog confirm={null} accentColor="#abc" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+      <ConfirmDialog confirm={null} onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
     expect(container.querySelector('[role="alertdialog"]')).toBeNull();
   });
 
   it("renders the title, message, and labels when open", () => {
-    render(
-      <ConfirmDialog
-        confirm={baseConfirm}
-        accentColor="#abc"
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
+    render(<ConfirmDialog confirm={baseConfirm} onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByText("Delete note?")).toBeTruthy();
     expect(screen.getByText("This can't be undone.")).toBeTruthy();
     expect(screen.getByText("Delete")).toBeTruthy();
@@ -53,28 +46,14 @@ describe("ConfirmDialog", () => {
 
   it("fires onConfirm when the confirm button is clicked", () => {
     const onConfirm = vi.fn();
-    render(
-      <ConfirmDialog
-        confirm={baseConfirm}
-        accentColor="#abc"
-        onConfirm={onConfirm}
-        onCancel={vi.fn()}
-      />,
-    );
+    render(<ConfirmDialog confirm={baseConfirm} onConfirm={onConfirm} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByText("Delete"));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
   it("fires onCancel when the cancel button is clicked", () => {
     const onCancel = vi.fn();
-    render(
-      <ConfirmDialog
-        confirm={baseConfirm}
-        accentColor="#abc"
-        onConfirm={vi.fn()}
-        onCancel={onCancel}
-      />,
-    );
+    render(<ConfirmDialog confirm={baseConfirm} onConfirm={vi.fn()} onCancel={onCancel} />);
     fireEvent.click(screen.getByText("Cancel"));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
@@ -82,14 +61,7 @@ describe("ConfirmDialog", () => {
   it("Escape cancels", () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
-    render(
-      <ConfirmDialog
-        confirm={baseConfirm}
-        accentColor="#abc"
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-      />,
-    );
+    render(<ConfirmDialog confirm={baseConfirm} onConfirm={onConfirm} onCancel={onCancel} />);
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
@@ -100,12 +72,7 @@ describe("ConfirmDialog", () => {
   it("Enter is left to the focused button: a danger dialog opens on Cancel, a plain one on Confirm", () => {
     const onConfirm = vi.fn();
     const { rerender } = render(
-      <ConfirmDialog
-        confirm={baseConfirm}
-        accentColor="#abc"
-        onConfirm={onConfirm}
-        onCancel={vi.fn()}
-      />,
+      <ConfirmDialog confirm={baseConfirm} onConfirm={onConfirm} onCancel={vi.fn()} />,
     );
     expect(document.activeElement).toBe(screen.getByText("Cancel"));
     const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
@@ -116,7 +83,6 @@ describe("ConfirmDialog", () => {
     rerender(
       <ConfirmDialog
         confirm={{ title: "Rename?", confirmLabel: "Rename" }}
-        accentColor="#abc"
         onConfirm={onConfirm}
         onCancel={vi.fn()}
       />,
@@ -127,26 +93,42 @@ describe("ConfirmDialog", () => {
   it("a re-render with fresh callbacks does not move focus back to the default button", () => {
     const confirm = baseConfirm;
     const { rerender } = render(
-      <ConfirmDialog confirm={confirm} accentColor="#abc" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+      <ConfirmDialog confirm={confirm} onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
     screen.getByText("Delete").focus();
     // The app re-renders (a toast expiring) and hands the dialog new arrows.
-    rerender(
-      <ConfirmDialog confirm={confirm} accentColor="#abc" onConfirm={vi.fn()} onCancel={vi.fn()} />,
-    );
+    rerender(<ConfirmDialog confirm={confirm} onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(document.activeElement).toBe(screen.getByText("Delete"));
   });
 
   it("falls back to default labels when none are given", () => {
-    render(
+    render(<ConfirmDialog confirm={{ title: "Sure?" }} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByText("Confirm")).toBeTruthy();
+    expect(screen.getByText("Cancel")).toBeTruthy();
+  });
+
+  it("every choice is the same bordered button: the confirm bold, a destructive one in red ink", () => {
+    const { rerender } = render(
+      <ConfirmDialog confirm={baseConfirm} onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    const remove = screen.getByRole("button", { name: "Delete" });
+    for (const button of [cancel, remove]) {
+      expect(button.style.background).toBe("transparent");
+      expect(button.style.border).toBe("1px solid rgb(68, 68, 68)");
+    }
+    expect(remove.style.color).toBe("rgb(239, 68, 68)");
+    expect(remove.style.fontWeight).toBe("600");
+
+    rerender(
       <ConfirmDialog
-        confirm={{ title: "Sure?" }}
-        accentColor="#abc"
+        confirm={{ title: "Remove?", confirmLabel: "Remove" }}
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.getByText("Confirm")).toBeTruthy();
-    expect(screen.getByText("Cancel")).toBeTruthy();
+    const confirm = screen.getByRole("button", { name: "Remove" });
+    expect(confirm.style.color).toBe("rgb(255, 255, 255)");
+    expect(confirm.style.background).toBe("transparent");
   });
 });

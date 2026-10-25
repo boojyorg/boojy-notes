@@ -47,12 +47,10 @@ for (const theme of [NIGHT, DAY]) {
       }
     }
 
-    it("a label on the mark reads", () => {
-      expect(contrast(theme.ACCENT.onAccentText, theme.ACCENT.primary)).toBeGreaterThanOrEqual(4.5);
-    });
-
-    it("a label on the danger button reads", () => {
-      expect(contrast(theme.SEMANTIC.onError, theme.SEMANTIC.error)).toBeGreaterThanOrEqual(4.5);
+    it("a destructive label reads on a button", () => {
+      // Light's button is transparent: it sits on the dialog's elevated ground.
+      const button = theme.button.bg === "transparent" ? theme.BG.elevated : theme.button.bg;
+      expect(contrast(theme.SEMANTIC.error, button)).toBeGreaterThanOrEqual(4.5);
     });
   });
 }

@@ -13,7 +13,7 @@ vi.mock("../../../src/hooks/useTheme", () => ({
         surface: "#F4F4F5",
         hover: "#ECECEC",
       },
-      ACCENT: { primary: "#8FC1C6", text: "#2A737D", onAccentText: "#14110F" },
+      ACCENT: { primary: "#8FC1C6", text: "#2A737D" },
       SEMANTIC: { error: "#C62D2D" },
       modalShadow: "none",
       button: { bg: "transparent", border: "#DCDCDC" },

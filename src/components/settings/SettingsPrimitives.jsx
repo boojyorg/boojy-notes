@@ -108,8 +108,9 @@ export function SettingRow({ label, children }) {
 /**
  * A 30px bordered button. `kind`: "normal" (enabled, primary ink on the
  * theme's button surface), "disabled" (`aria-disabled`, muted, no surface, so
- * an enabled button is told from it before hover), "accent" (the mark with
- * the dark label ink, for the one action that needs a decision).
+ * an enabled button is told from it before hover), "strong" (normal with a
+ * bold label, for the one action a pane or dialog is asking for). Never
+ * filled: one button shape across the app.
  * Hover and focus are CSS (`settingsStyles`).
  */
 export function SmallButton({
@@ -120,13 +121,13 @@ export function SmallButton({
   ...rest
 }) {
   const { theme } = useTheme();
-  const { TEXT, ACCENT } = theme;
+  const { TEXT } = theme;
   const disabled = kind === "disabled";
-  const accent = kind === "accent";
+  const strong = kind === "strong";
   return (
     <button
       type="button"
-      className={`settings-button${accent ? " is-accent" : ""}`}
+      className="settings-button"
       aria-disabled={disabled || undefined}
       {...rest}
       onClick={disabled ? undefined : rest.onClick}
@@ -134,11 +135,11 @@ export function SmallButton({
         height: 30,
         padding: "0 12px",
         borderRadius: 8,
-        border: accent ? "none" : `1px solid ${disabled ? theme.BG.divider : theme.button.border}`,
-        background: accent ? ACCENT.primary : disabled ? "transparent" : theme.button.bg,
-        color: accent ? ACCENT.onAccentText : disabled ? TEXT.muted : TEXT.primary,
+        border: `1px solid ${disabled ? theme.BG.divider : theme.button.border}`,
+        background: disabled ? "transparent" : theme.button.bg,
+        color: disabled ? TEXT.muted : TEXT.primary,
         fontSize: 13,
-        fontWeight: accent ? 600 : 500,
+        fontWeight: strong ? 600 : 500,
         fontFamily: "inherit",
         cursor: disabled ? "default" : "pointer",
         whiteSpace: "nowrap",
@@ -289,8 +290,7 @@ export const settingsStyles = (theme) => `
   .settings-path-control:hover { color: ${theme.TEXT.primary} !important; }
   .settings-path-control:hover .settings-path-glyph { color: ${theme.TEXT.secondary} !important; }
   .settings-path-control:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
-  .settings-button:not([aria-disabled="true"]):not(.is-accent):hover { background: ${theme.BG.surface} !important; }
-  .settings-button.is-accent:hover { filter: brightness(0.96); }
+  .settings-button:not([aria-disabled="true"]):hover { background: ${theme.BG.surface} !important; }
   .settings-button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--boojy-focus-ring); }
   .settings-reset:hover { color: ${theme.TEXT.primary} !important; }
   .settings-reset:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--boojy-focus-ring); border-radius: 6px; }

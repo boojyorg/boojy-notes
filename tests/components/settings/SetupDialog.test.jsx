@@ -9,7 +9,7 @@ vi.mock("../../../src/hooks/useTheme", () => ({
     theme: {
       TEXT: { primary: "#14110F", secondary: "#47403A", muted: "#7A736C" },
       BG: { elevated: "#fff", divider: "#E9E9E9", surface: "#F4F4F5", hover: "#ECECEC" },
-      ACCENT: { primary: "#8FC1C6", onAccent: "#fff", onAccentText: "#14110F" },
+      ACCENT: { primary: "#8FC1C6", onAccent: "#fff" },
       button: { bg: "transparent", border: "#DCDCDC" },
       modalShadow: "none",
     },

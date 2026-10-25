@@ -1864,7 +1864,6 @@ export default function BoojyNotes() {
 
       <ConfirmDialog
         confirm={confirmState}
-        accentColor={accentColor}
         onConfirm={() => resolveConfirm(true)}
         onCancel={() => resolveConfirm(false)}
         onAlt={() => resolveConfirm("alt")}

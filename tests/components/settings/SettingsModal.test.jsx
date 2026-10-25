@@ -17,7 +17,7 @@ vi.mock("../../../src/hooks/useTheme", () => ({
         hover: "#555",
         darkest: "#111",
       },
-      ACCENT: { primary: "#A4CACE", text: "#A4CACE", onAccent: "#FFFFFF", onAccentText: "#111" },
+      ACCENT: { primary: "#A4CACE", text: "#A4CACE", onAccent: "#FFFFFF" },
       button: { bg: "transparent", border: "#444" },
       SEMANTIC: {},
       modalBg: "#1a1a1e",

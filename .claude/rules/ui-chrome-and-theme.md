@@ -13,16 +13,16 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
   sidebar, `BG.surface` content hover, `BG.hover` row, menu and icon-button hover *and* selected, `BG.divider`
   borders. Text is `primary` / `secondary` / `muted`.
 - **The accent is two tokens.** `ACCENT.primary` is the mark (fills, bars, markers);
-  `ACCENT.text` is accent as readable ink. A label on the mark takes `ACCENT.onAccentText`;
-  `onAccent` (white) is for shapes only.
+  `ACCENT.text` is accent as readable ink; `onAccent` (white) is for shapes only.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
+  **One button, bordered and neutral**: the asked-for action is bold, Delete red ink.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`),
   a note's selection (`bandFill`, below the ==highlight==), a search hit's words.
 - **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
   alone. A choice is ticked; a surface it cannot be uses `menuSurface`. `Menu.test.tsx`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
-  hover included; a label on a filled button takes its ground's `on…` token. `themeContrast.test.js`, `e2e/accessibility.spec.ts`.
+  hover included. `themeContrast.test.js`, `e2e/accessibility.spec.ts`.
 - **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);
   tree rows draw it inset. Keyboard focus only, and a lone modifier is not keyboard
   (`focusRing.ts`); never `outline: none` on a control.

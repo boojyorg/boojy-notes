@@ -20,7 +20,7 @@ import { Z } from "../constants/zIndex";
  * Escape.
  * Focus is placed once per dialog and Tab stays inside it.
  */
-export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCancel, onAlt }) {
+export default function ConfirmDialog({ confirm, onConfirm, onCancel, onAlt }) {
   const { theme } = useTheme();
   const dialogRef = useRef(null);
   const scrimRef = useRef(null);
@@ -53,7 +53,20 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
 
   if (!confirm) return null;
 
-  const confirmBg = danger ? theme.SEMANTIC.error : accentColor;
+  // One button for every choice, the app's bordered one; the confirm is told
+  // by its weight, and a destructive one by its red ink.
+  const button = {
+    height: 34,
+    padding: "0 20px",
+    borderRadius: 8,
+    border: `1px solid ${theme.button.border}`,
+    background: theme.button.bg,
+    color: theme.TEXT.primary,
+    fontSize: 13,
+    fontWeight: 500,
+    fontFamily: "inherit",
+    cursor: "pointer",
+  };
 
   return (
     <div
@@ -113,65 +126,23 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
           </p>
         )}
         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-          <button
-            ref={cancelRef}
-            onClick={onCancel}
-            className="settings-button"
-            style={{
-              height: 34,
-              padding: "0 20px",
-              borderRadius: 8,
-              border: `1px solid ${theme.button.border}`,
-              background: theme.button.bg,
-              color: theme.TEXT.primary,
-              fontSize: 13,
-              fontWeight: 500,
-              fontFamily: "inherit",
-              cursor: "pointer",
-            }}
-          >
+          <button ref={cancelRef} onClick={onCancel} className="settings-button" style={button}>
             {confirm.cancelLabel || "Cancel"}
           </button>
-          {/* A middle way, where there is one (Keep Them beside Delete Them):
-              an ordinary button, never the mark. */}
+          {/* A middle way, where there is one (Keep Them beside Delete Them). */}
           {confirm.altLabel && (
-            <button
-              type="button"
-              onClick={onAlt}
-              className="settings-button"
-              style={{
-                height: 34,
-                padding: "0 20px",
-                borderRadius: 8,
-                border: `1px solid ${theme.button.border}`,
-                background: theme.button.bg,
-                color: theme.TEXT.primary,
-                fontSize: 13,
-                fontWeight: 500,
-                fontFamily: "inherit",
-                cursor: "pointer",
-              }}
-            >
+            <button type="button" onClick={onAlt} className="settings-button" style={button}>
               {confirm.altLabel}
             </button>
           )}
           <button
             ref={confirmRef}
             onClick={onConfirm}
-            className="settings-button is-accent"
+            className="settings-button"
             style={{
-              height: 34,
-              padding: "0 20px",
-              borderRadius: 8,
-              border: "none",
-              background: confirmBg,
-              // Each ground takes the label ink that reads on it (white on the
-              // teal is 2:1, and on Dark's orange 2.8:1).
-              color: danger ? theme.SEMANTIC.onError : theme.ACCENT.onAccentText,
-              fontSize: 13,
+              ...button,
+              color: danger ? theme.SEMANTIC.error : theme.TEXT.primary,
               fontWeight: 600,
-              fontFamily: "inherit",
-              cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
