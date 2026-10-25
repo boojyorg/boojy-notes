@@ -293,9 +293,12 @@ app.whenReady().then(async () => {
   // No Dock icon either while hidden for tests, or launching would still pull
   // focus to the app on macOS.
   if (hiddenForTests) app.dock?.hide();
-  // Native chrome (menus, dialogs) follows the OS. Forcing "dark" here made
-  // native surfaces dark even for the (default) light app theme.
+  // Native chrome (menus, dialogs, full screen's title strip) follows the
+  // app's theme, which the renderer reports; until it does, the OS's.
   nativeTheme.themeSource = "system";
+  ipcMain.on("set-native-theme", (_, mode) => {
+    nativeTheme.themeSource = mode === "night" ? "dark" : mode === "day" ? "light" : "system";
+  });
 
   // Attachments load as `boojy-att://vault/<encoded name>`
   // (`src/utils/attachmentUrl.js`): the name is the URL's path, never its host,

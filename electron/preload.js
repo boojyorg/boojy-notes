@@ -92,6 +92,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // The pointer crossed the strip to another name: that menu is open now.
   onMenuOpened: subscribe("menu-opened"),
   setTitleBarOverlay: (colors) => ipcRenderer.send("set-title-bar-overlay", colors),
+  // The app's theme ("day" / "night" / "auto"), for the system's own surfaces.
+  setNativeTheme: (mode) => ipcRenderer.send("set-native-theme", mode),
   // Show a note's file in Finder or Explorer, by its id.
   revealNote: (noteId) => ipcRenderer.invoke("reveal-note", noteId),
 
