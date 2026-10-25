@@ -168,7 +168,7 @@ function createWindow() {
   }
   // The strip macOS slides down in full screen puts the window's title beside
   // the lights, never centred: there the window has no title and a centred
-  // label of the app's own stands in (fullScreenTitle.ts, an experiment).
+  // label of the app's own stands in (fullScreenTitle.ts).
   if (isMac) {
     mainWindow.on("enter-full-screen", () => {
       mainWindow?.setTitle("");

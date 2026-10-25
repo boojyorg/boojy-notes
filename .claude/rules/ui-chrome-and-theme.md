@@ -7,7 +7,8 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
 
 `src/constants/themes.js` is the only colour authority.
 
-- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`.
+- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. The
+  system's own surfaces take it (`nativeTheme`). `settings-dialog.spec.ts`.
 - Neutral palettes; teal is the identity.
 - **Use surfaces by role**: `BG.editor` sheet, `BG.elevated` menus/modals, `BG.standard`
   sidebar, `BG.surface` content hover, `BG.hover` row, menu and icon-button hover *and* selected, `BG.divider`
@@ -57,7 +58,9 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 - The window is shown on `ready-to-show` (else an empty canvas). `first-paint.spec.ts`.
 - **No title bar** (`hiddenInset`); the traffic lights sit in the sidebar header. In full screen
-  they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone.
+  they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone. **Full
+  screen's strip has no window title but a centred label of its own** (`fullScreenTitle.ts`,
+  through undocumented AppKit: check it after each macOS update).
 - **Windows and Linux: `WindowStrip` above the Mac's row** (`hasWindowStrip`): File, Edit,
   Format, View open the real menus (`popup-menu`); one open, the pointer on another name opens
   it. Window and Help are the Mac's. The system's buttons are the overlay. Fixed chrome stands
