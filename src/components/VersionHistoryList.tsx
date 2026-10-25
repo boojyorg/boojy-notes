@@ -34,7 +34,7 @@ interface Props {
 const ROW_H = 30;
 const WIDTH = 320;
 const MAX_ROWS = 13;
-export const VERSION_LIST_ID = "version-history-list";
+const VERSION_LIST_ID = "version-history-list";
 
 /**
  * Version History's list: the ··· menu turned into the note's past, in the

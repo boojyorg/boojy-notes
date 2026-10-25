@@ -470,7 +470,6 @@ function SyncedVaultLabel({ name, sync, TEXT }) {
 const Sidebar = memo(function Sidebar({
   activeNote,
   toggle,
-  openNote,
   renameNote,
   setCtxMenu,
   renameFolder,
@@ -728,7 +727,7 @@ const Sidebar = memo(function Sidebar({
         role="treeitem"
         aria-selected={act}
         {...rowProps(noteKey(nId))}
-        onClick={handleNoteClick ? (e) => handleNoteClick(nId, e) : () => openNote(nId)}
+        onClick={(e) => handleNoteClick(nId, e)}
         // Double-click = rename in place: the row swaps its title for the same
         // inline input folders use. The two single-clicks it also fires just
         // open the note, harmlessly.

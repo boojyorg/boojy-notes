@@ -614,9 +614,6 @@ export default function BoojyNotes() {
     [activeNoteRef, noteDataRef],
   );
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
-  // Opening is side-effect-free for ordering: "Most recent" means most
-  // recently modified, and the row must not move under the pointer.
-  const openNote = setActiveNote;
 
   // Start renaming a note where the user can see it: the sidebar row swaps to
   // an inline input (same grammar as folder rename). Only when the sidebar is
@@ -629,7 +626,7 @@ export default function BoojyNotes() {
         setRenamingNote(id);
         return;
       }
-      openNote(id);
+      setActiveNote(id);
       setTimeout(() => {
         const el = titleRef.current;
         if (!el) return;
@@ -642,7 +639,7 @@ export default function BoojyNotes() {
         sel.addRange(range);
       }, 60);
     },
-    [sidebarVisible, setRenamingNote, openNote],
+    [sidebarVisible, setRenamingNote, setActiveNote],
   );
   const {
     createNote,
@@ -853,7 +850,7 @@ export default function BoojyNotes() {
     clearSelectionRef,
     blockRefs,
     accentColor,
-    openNote,
+    openNote: setActiveNote,
   });
 
   // ── Effects ─────────────────────────────────────────────────────────
@@ -1066,7 +1063,7 @@ export default function BoojyNotes() {
       noteData,
       noteDataRef,
       textOnlyEdit,
-      openNote,
+      openNote: setActiveNote,
       wikilinkMenuRef,
       setWikilinkMenu,
       syncGeneration,
@@ -1147,13 +1144,11 @@ export default function BoojyNotes() {
     sortedRootNotes,
     expanded,
     noteDataRef,
-    openNote,
+    openNote: setActiveNote,
   });
 
   multiSelectRef.current = selectedNotes;
   clearSelectionRef.current = clearSelection;
-
-  const selectedCount = selectedNotes.size;
 
   // Deletion asks only when it should, in words that say what happens
   // (utils/deletionPrompt owns the wording). Desktop moves a note's file to the
@@ -1600,7 +1595,6 @@ export default function BoojyNotes() {
           <Sidebar
             activeNote={activeNote}
             toggle={toggle}
-            openNote={openNote}
             renameNote={renameNote}
             setCtxMenu={setCtxMenu}
             ctxMenuNoteId={ctxMenu?.type === "note" ? ctxMenu.id : null}
@@ -1694,7 +1688,7 @@ export default function BoojyNotes() {
               setBlockSelection={setBlockSelection}
               lightbox={lightbox}
               setLightbox={setLightbox}
-              openNote={openNote}
+              openNote={setActiveNote}
               onPathRowPointerDown={handleSidebarPointerDown}
               onShowFolder={isPhone ? showFolder : undefined}
               onTitleBlur={settleTitle}
@@ -1756,7 +1750,6 @@ export default function BoojyNotes() {
         setRenamingFolder={setRenamingFolder}
         onRenameNote={startNoteRename}
         selectedNotes={selectedNotes}
-        selectedCount={selectedCount}
         bulkDeleteNotes={bulkDeleteNotes}
         onMoveTo={openMovePicker}
         wordCount={wordCount}
