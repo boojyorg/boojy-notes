@@ -291,6 +291,9 @@ export const settingsStyles = (theme) => `
   .settings-path-control:hover .settings-path-glyph { color: ${theme.TEXT.secondary} !important; }
   .settings-path-control:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
   .settings-button:not([aria-disabled="true"]):hover { background: ${theme.BG.surface} !important; }
+  /* Pressed, the ground goes a step deeper and the label is left alone: a
+     filter would dim Delete's red under 4.5:1 (BG.hover is a contrast-tested ground). */
+  .settings-button:not([aria-disabled="true"]):active { background: ${theme.BG.hover} !important; }
   .settings-button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--boojy-focus-ring); }
   .settings-reset:hover { color: ${theme.TEXT.primary} !important; }
   .settings-reset:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--boojy-focus-ring); border-radius: 6px; }

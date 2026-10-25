@@ -435,7 +435,6 @@ export default function GlobalStyles() {
            data-pressed, since no :active follows a refused touchstart. */
         .press:active:not(:disabled):not([aria-disabled="true"]),
         .press[data-pressed]:not([aria-disabled="true"]),
-        .settings-button:active:not([aria-disabled="true"]),
         .theme-pill:active,
         .sidebar-action-row:active,
         .sidebar-section-action:active { filter: brightness(0.93); }
