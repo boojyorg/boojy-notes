@@ -72,7 +72,7 @@ import { panelTransition } from "../tokens/motion";
 import { atScale } from "../utils/uiScale";
 import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../utils/blockRun";
 import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
-import { LIST_TYPES } from "../utils/crossBlockEdit";
+import { LIST_TYPES } from "../utils/blockKinds";
 import BlockMenu from "./BlockMenu";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { wholeBlocksCopy } from "../utils/clipboardCopy";

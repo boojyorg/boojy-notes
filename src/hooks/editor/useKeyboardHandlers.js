@@ -23,12 +23,7 @@ import {
 import { inlineFieldFor, inlineFormatForKey } from "../../utils/inlineFormatCommands";
 
 import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../../utils/inlineFormatting";
-import {
-  LIST_TYPES,
-  SOFT_BREAK_TYPES,
-  markdownAfter,
-  markdownBefore,
-} from "../../utils/crossBlockEdit";
+import { SOFT_BREAK_TYPES, markdownAfter, markdownBefore } from "../../utils/crossBlockEdit";
 import { SLASH_COMMANDS, filterSlashCommands } from "../../constants/data";
 import {
   bareFenceLang,
@@ -39,6 +34,7 @@ import {
 import { measureBlockPlaces, settleBlocks } from "../../utils/blockSettle";
 import { stepIndex } from "../../utils/menuKeys";
 import { editBlocks } from "../../utils/editBlocks";
+import { LINE_KIND_TYPES, LIST_TYPES } from "../../utils/blockKinds";
 
 /**
  * Blocks a Backspace at their start turns into a plain paragraph before it
@@ -46,18 +42,7 @@ import { editBlocks } from "../../utils/editBlocks";
  * deletes the `### `): the text and the caret stay, only the kind goes. A
  * second Backspace then merges or reaches across as a paragraph's would.
  */
-const DEMOTES_TO_PARAGRAPH = new Set([
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "bullet",
-  "numbered",
-  "checkbox",
-  "blockquote",
-]);
+const DEMOTES_TO_PARAGRAPH = LINE_KIND_TYPES;
 
 /** A text root that sits inside a row beside its marker (a list item, a task). */
 function inRow(el) {
@@ -149,8 +134,7 @@ export function useKeyboardHandlers({
       // ship it. The round-trip test (tests/utils/markdown.test.js) guards this.
       // Anywhere else Tab leaves the note, as it does any text field; Shift+Tab
       // goes back to its name. Swallowing it (Notion's way) was a keyboard trap.
-      const INDENTABLE = ["bullet", "numbered", "checkbox"];
-      if (!INDENTABLE.includes(block.type)) {
+      if (!LIST_TYPES.has(block.type)) {
         focusBeyondNote(e.shiftKey ? -1 : 1);
         return;
       }

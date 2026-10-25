@@ -12,6 +12,7 @@ import {
   neededWidths,
   separatorStyle,
 } from "./tableAlign";
+import { MAX_INDENT } from "./blockKinds";
 
 /** A line that is one `![alt](src)` and nothing else; `src` may hold balanced parens. */
 const MD_IMAGE_LINE_RE = new RegExp(String.raw`^!\[([^\]]*)\]\((${LINK_DEST})\)$`);
@@ -888,7 +889,7 @@ export function markdownToBlocks(md) {
     // numbered parents need their marker width, not a fixed two spaces.
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
-    const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
+    const indent = Math.min(MAX_INDENT, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
     /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string }; checkMark?: "X"; dividerSource?: string; gap?: string; lead?: string; trail?: string }} */
     let block;
     const applyListIndent = (b) => {

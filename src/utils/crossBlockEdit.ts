@@ -13,12 +13,10 @@
 import type { Block } from "../types/notes";
 import { getBlockFromNode, isEditableBlock, isSelectableBlock } from "./domHelpers";
 import { htmlToInlineMarkdown, sanitizeInlineHtml } from "./inlineFormatting";
+import { LIST_TYPES } from "./blockKinds";
 
 /** Blocks whose Markdown may span lines, so Shift+Enter puts a soft break inside them. */
 export const SOFT_BREAK_TYPES = new Set(["p", "bullet", "numbered", "checkbox", "blockquote"]);
-
-/** Blocks that Enter continues as another of their kind rather than a paragraph. */
-export const LIST_TYPES = new Set(["bullet", "numbered", "checkbox"]);
 
 export interface BlockPoint {
   blockIndex: number;

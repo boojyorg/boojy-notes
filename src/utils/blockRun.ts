@@ -1,5 +1,6 @@
 import type { Block } from "../types/notes";
 import { reorderFloor } from "./blockOrder";
+import { LIST_TYPES, MAX_INDENT } from "./blockKinds";
 
 /**
  * A whole-block selection: the block it started on (`anchor`) and the block
@@ -13,8 +14,6 @@ export interface BlockSelection {
   grip?: boolean;
 }
 
-const LIST_KINDS = new Set(["bullet", "numbered", "checkbox"]);
-
 /**
  * The last index of block `i` and what is nested under it: the blocks that
  * follow a list item at a deeper indent. Anything else has no children
@@ -24,7 +23,7 @@ const LIST_KINDS = new Set(["bullet", "numbered", "checkbox"]);
  */
 export function subtreeEnd(blocks: readonly Block[], i: number): number {
   const block = blocks[i];
-  if (!block || !LIST_KINDS.has(block.type)) return i;
+  if (!block || !LIST_TYPES.has(block.type)) return i;
   const depth = block.indent || 0;
   let end = i;
   while (end + 1 < blocks.length && (blocks[end + 1].indent || 0) > depth) end++;
@@ -81,9 +80,9 @@ export function moveStep(blocks: readonly Block[], i: number, dir: 1 | -1): Bloc
  */
 export function belowItem(blocks: readonly Block[], i: number): number {
   let top = i;
-  while (top > 0 && LIST_KINDS.has(blocks[top]?.type) && (blocks[top].indent || 0) > 0) top--;
+  while (top > 0 && LIST_TYPES.has(blocks[top]?.type) && (blocks[top].indent || 0) > 0) top--;
   // A nested item with no item above it to belong to: under itself.
-  if (!LIST_KINDS.has(blocks[top]?.type)) top = i;
+  if (!LIST_TYPES.has(blocks[top]?.type)) top = i;
   return subtreeEnd(blocks, top) + 1;
 }
 
@@ -158,19 +157,19 @@ export function indentRun(
 ): Block[] | null {
   const moving = new Set<number>();
   for (let i = from; i <= to; i++) {
-    if (!LIST_KINDS.has(blocks[i]?.type) || moving.has(i)) continue;
+    if (!LIST_TYPES.has(blocks[i]?.type) || moving.has(i)) continue;
     if (delta < 0 && !(blocks[i].indent || 0)) continue;
     for (let k = i; k <= subtreeEnd(blocks, i); k++) moving.add(k);
   }
   if (!moving.size) return null;
   if (delta > 0) {
     for (const k of moving) {
-      if ((blocks[k].indent || 0) >= 6) return null;
+      if ((blocks[k].indent || 0) >= MAX_INDENT) return null;
       let above = k - 1;
       while (above >= 0 && isBlank(blocks[above])) above--;
       if (moving.has(above)) continue;
       const parent = blocks[above];
-      if (!parent || !LIST_KINDS.has(parent.type)) return null;
+      if (!parent || !LIST_TYPES.has(parent.type)) return null;
       if ((parent.indent || 0) < (blocks[k].indent || 0)) return null;
     }
   }
