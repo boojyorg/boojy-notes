@@ -32,6 +32,7 @@ import {
   registerSpellingIPC,
   watchMenuSpelling,
 } from "./spelling.js";
+import { hideFullScreenTitle, setFullScreenTitle, showFullScreenTitle } from "./fullScreenTitle.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -165,6 +166,24 @@ function createWindow() {
   ]) {
     mainWindow.on(event, () => mainWindow?.webContents.send("full-screen-changed", on));
   }
+  // The strip macOS slides down in full screen puts the window's title beside
+  // the lights, never centred: there the window has no title and a centred
+  // label of the app's own stands in (fullScreenTitle.ts).
+  if (isMac) {
+    mainWindow.on("enter-full-screen", () => {
+      mainWindow?.setTitle("");
+      if (mainWindow) showFullScreenTitle(mainWindow, mainWindow.webContents.getTitle());
+    });
+    mainWindow.on("leave-full-screen", () => {
+      hideFullScreenTitle();
+      mainWindow?.setTitle(mainWindow.webContents.getTitle());
+    });
+    mainWindow.on("page-title-updated", (e, title) => {
+      if (!mainWindow?.isFullScreen()) return;
+      e.preventDefault();
+      setFullScreenTitle(title);
+    });
+  }
 
   // The renderer never opens windows and never navigates. An `http(s)` link
   // (the footer's boojy.org, a link block) goes to the system browser; a
@@ -274,9 +293,12 @@ app.whenReady().then(async () => {
   // No Dock icon either while hidden for tests, or launching would still pull
   // focus to the app on macOS.
   if (hiddenForTests) app.dock?.hide();
-  // Native chrome (menus, dialogs) follows the OS. Forcing "dark" here made
-  // native surfaces dark even for the (default) light app theme.
+  // Native chrome (menus, dialogs, full screen's title strip) follows the
+  // app's theme, which the renderer reports; until it does, the OS's.
   nativeTheme.themeSource = "system";
+  ipcMain.on("set-native-theme", (_, mode) => {
+    nativeTheme.themeSource = mode === "night" ? "dark" : mode === "day" ? "light" : "system";
+  });
 
   // Attachments load as `boojy-att://vault/<encoded name>`
   // (`src/utils/attachmentUrl.js`): the name is the URL's path, never its host,

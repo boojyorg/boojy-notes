@@ -120,6 +120,8 @@ declare global {
       onMenuOpened: (callback: (label: string) => void) => () => void;
       /** The window buttons' ground and ink, drawn over the strip's right end. */
       setTitleBarOverlay: (colors: { color: string; symbolColor: string }) => void;
+      /** The system's surfaces (menus, dialogs, full screen's strip) take the app's theme. */
+      setNativeTheme: (mode: "day" | "night" | "auto") => void;
       revealNote: (noteId: string) => Promise<void>;
 
       // Platform Trash / Recycle Bin

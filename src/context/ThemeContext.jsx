@@ -58,6 +58,12 @@ export function ThemeProvider({ children }) {
     saveThemeSettings({ themeMode });
   }, [themeMode]);
 
+  // The system's own surfaces take the same theme. Back on "auto" the window
+  // reads the OS again, and the listener below hears the change.
+  useEffect(() => {
+    window.electronAPI?.setNativeTheme?.(themeMode);
+  }, [themeMode]);
+
   // Resolve System mode against the OS and follow it live.
   useEffect(() => {
     if (themeMode !== "auto") {

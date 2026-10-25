@@ -245,7 +245,7 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
 
   ipcMain.on("set-window-title", (_, title) => {
     const win = getMainWindow();
-    if (win) win.setTitle(title);
+    if (win && !win.isFullScreen()) win.setTitle(title);
   });
 
   // Whether the window is in (macOS) full screen right now; main.js sends

@@ -100,6 +100,28 @@ test("the appearance pills switch the theme live and persist; the switch and upd
   }
 });
 
+// Menus, dialogs and full screen's title strip are drawn by the system: they
+// take the app's theme, not the Mac's (a dark app wore a light strip).
+test("the system's own surfaces take the app's theme", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    const source = () => h.app.evaluate(({ nativeTheme }) => nativeTheme.themeSource);
+    await expect.poll(source).toBe("light");
+    const settings = await openSettings(h);
+    for (const [pill, expected] of [
+      ["Dark", "dark"],
+      ["System", "system"],
+      ["Light", "light"],
+    ]) {
+      await settings.getByRole("radio", { name: pill }).click();
+      await expect.poll(source).toBe(expected);
+    }
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 // Escape is a key, so Chromium would ring whatever focus goes back to: a
 // clicked wordmark lit up as Settings closed. Focus goes back ringed only if
 // it was ringed when Settings opened.
