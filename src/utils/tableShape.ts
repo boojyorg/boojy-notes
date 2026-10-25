@@ -159,3 +159,21 @@ export function dropIndex(
   while (to - 1 >= 0 && start < mid(to - 1)) to--;
   return to;
 }
+
+/** The longest cell, in characters, a column may hold and still never wrap. */
+export const SHORT_CELL_MAX = 16;
+
+/**
+ * Which columns hold only short cells (codes, numbers, Pass/Fail): those stay
+ * on one line, so the space a narrow column lacks is taken from the columns
+ * of running text, which wrap at their words. A soft break (`<br>`) is a
+ * line the author wrapped, so its column is never short.
+ */
+export function shortColumns(rows: string[][], colCount: number): boolean[] {
+  return Array.from({ length: colCount }, (_, col) =>
+    rows.every((row) => {
+      const cell = cellAt(row, col);
+      return cell.length <= SHORT_CELL_MAX && !/<br\s*\/?>/i.test(cell);
+    }),
+  );
+}

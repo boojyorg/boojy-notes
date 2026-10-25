@@ -3,6 +3,7 @@ import {
   cellAt,
   dropIndex,
   moveCell,
+  shortColumns,
   tableColumnCount,
   withAlignment,
   withCell,
@@ -135,5 +136,25 @@ describe("tableShape — the grips' operations", () => {
       expect(dropIndex(spans, 2, 59, 99)).toBe(1);
       expect(dropIndex(spans, 2, -300, -260)).toBe(0);
     });
+  });
+});
+
+describe("shortColumns: a column of short cells never wraps", () => {
+  const rows = [
+    ["Module", "Title", "Credits", "Overall mark", "Result"],
+    ["COMP201", "Software Engineering I", "15", "74%", "Pass (Resit)"],
+    ["COMP285", "Computer Aided Software Development", "7.5"],
+  ];
+
+  it("short codes, numbers and results stay on one line; running text wraps", () => {
+    expect(shortColumns(rows, 5)).toEqual([true, false, true, true, true]);
+  });
+
+  it("one long cell anywhere in the column, header included, lets it wrap", () => {
+    expect(shortColumns([["A description of it"], ["x"]], 1)).toEqual([false]);
+  });
+
+  it("a soft break is a line the author wrapped", () => {
+    expect(shortColumns([["Note"], ["one<br>two"]], 1)).toEqual([false]);
   });
 });

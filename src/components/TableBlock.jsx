@@ -4,7 +4,7 @@ import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { useRhythm } from "../tokens/rhythm";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { caretLength, getCaretOffset, placeCaret } from "../utils/domHelpers";
-import { cellAt, tableColumnCount, withCell } from "../utils/tableShape";
+import { cellAt, shortColumns, tableColumnCount, withCell } from "../utils/tableShape";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
@@ -403,6 +403,7 @@ export default memo(function TableBlock({
 
   const band = isSelected ? bandFill(accent, theme.name) : null;
 
+  const short = shortColumns(rows, colCount);
   // A row's cells, as wide as the grid: the header's `th`, bold, and the body's `td`.
   const cellsOf = (rowIdx) =>
     Array.from({ length: colCount }, (_, colIdx) => (
@@ -423,6 +424,7 @@ export default memo(function TableBlock({
         style={{
           ...(rowIdx === 0 && { fontWeight: 600 }),
           textAlign: alignments[colIdx] || "left",
+          ...(short[colIdx] && { whiteSpace: "nowrap" }),
         }}
       />
     ));

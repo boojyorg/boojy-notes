@@ -21,14 +21,15 @@ function AppErrorBoundary({ children }) {
   return <ErrorBoundary noteDataRef={noteDataRef}>{children}</ErrorBoundary>;
 }
 
-// `?tweak` on a dev build mounts the colour, spacing and motion panels (dev/, outside
+// `?tweak` on a dev build mounts the colour, spacing, motion and table panels (dev/, outside
 // the coverage denominator; `pnpm dev:tweak` opens the desktop app with it).
 // Dead code in a production build.
 const tweaking = import.meta.env.DEV && new URLSearchParams(window.location.search).has("tweak");
 const ThemeTweaker = tweaking ? lazy(() => import("../dev/ThemeTweaker.jsx")) : null;
 const RhythmTweaker = tweaking ? lazy(() => import("../dev/RhythmTweaker.jsx")) : null;
 const MotionTweaker = tweaking ? lazy(() => import("../dev/MotionTweaker.jsx")) : null;
-// The phone's own panel stands in for the three: they are desktop-wide.
+const TableTweaker = tweaking ? lazy(() => import("../dev/TableTweaker.jsx")) : null;
+// The phone's own panel stands in for the four: they are desktop-wide.
 const PhoneTweaker = tweaking && isPhone ? lazy(() => import("../dev/PhoneTweaker.jsx")) : null;
 
 // The phone's own rules in GlobalStyles hang off this class (no hover, touch sizes).
@@ -78,6 +79,7 @@ ready.then(
                   <ThemeTweaker />
                   <RhythmTweaker />
                   <MotionTweaker />
+                  <TableTweaker />
                 </>
               )}
             </Suspense>
