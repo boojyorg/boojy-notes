@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useExitGhost } from "../hooks/useExitGhost";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
-import { Z } from "../constants/zIndex";
+import { MENU_ROW_RADIUS } from "../constants/layout";
 import { useTheme } from "../hooks/useTheme";
 import { type VersionHistoryState, versionLabel } from "../hooks/useVersionHistory";
 import type { HistoryVersion } from "../types/global";
 import { cssZoom } from "../utils/domHelpers";
 import { versionMoment, versionTime } from "../utils/versionTime";
 import { HistoryIcon, PencilIcon, RestoreIcon, TrashIcon } from "./Icons";
-import Menu, { type MenuAnchor, MenuRule } from "./Menu";
+import Menu, { type MenuAnchor, MenuRule, menuSurface } from "./Menu";
 import RenameField from "./RenameField";
 import RowAction from "./RowAction";
 import { fromTouch } from "../utils/touch";
@@ -244,16 +243,10 @@ export default function VersionHistoryList({
       className="motion-pop motion-from-end"
       data-version-history
       style={{
-        position: "fixed",
+        ...menuSurface(theme),
         top: pos?.top ?? 46,
         right: pos?.right ?? 12,
         width: WIDTH,
-        zIndex: Z.CONTEXT_MENU,
-        background: BG.elevated,
-        border: `1px solid ${BG.divider}`,
-        borderRadius: MENU_RADIUS,
-        padding: MENU_PAD,
-        boxShadow: theme.modalShadow,
         visibility: pos ? "visible" : "hidden",
       }}
     >

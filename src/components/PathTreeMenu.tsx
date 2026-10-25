@@ -15,7 +15,6 @@ import { useMenuPosition } from "../hooks/useMenuPosition";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
-import { Z } from "../constants/zIndex";
 import {
   ACTION_RADIUS,
   ROW_INSET,
@@ -25,7 +24,6 @@ import {
   TREE_INDENT,
   TREE_ROW_GAP,
   TREE_ROW_H,
-  MENU_RADIUS,
 } from "../constants/layout";
 import type { SidebarNode } from "../types/notes";
 import {
@@ -40,6 +38,7 @@ import {
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "./Icons";
 import Collapsible from "./Collapsible";
 import { fromTouch } from "../utils/touch";
+import { menuSurface } from "./Menu";
 
 /**
  * The path's folder popup: the sidebar's tree drawn small under
@@ -541,17 +540,13 @@ export default function PathTreeMenu({
         aria-label={dialogName}
         data-testid={pick ? "move-picker" : "path-tree"}
         style={{
-          position: "fixed",
+          ...menuSurface(theme),
+          padding: 0,
           top: pos?.top,
           left: pos?.left,
-          zIndex: Z.CONTEXT_MENU,
           width: POPUP_W,
           boxSizing: "border-box",
           overflow: "hidden",
-          background: BG.elevated,
-          border: `1px solid ${BG.divider}`,
-          borderRadius: MENU_RADIUS,
-          boxShadow: theme.modalShadow,
           // The chrome row above is the window's drag region; the popup is not.
           ["WebkitAppRegion" as string]: "no-drag",
         }}

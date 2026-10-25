@@ -1,13 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useExitGhost } from "../hooks/useExitGhost";
-import {
-  MENU_PAD,
-  MENU_RADIUS,
-  MENU_ROW_RADIUS,
-  PHONE_LABEL_SIZE,
-  TOUCH,
-} from "../constants/layout";
-import { Z } from "../constants/zIndex";
+import { MENU_ROW_RADIUS, PHONE_LABEL_SIZE, TOUCH } from "../constants/layout";
 import type { DeletedNote } from "../hooks/useRecentlyDeleted";
 import { useTheme } from "../hooks/useTheme";
 import { cssZoom } from "../utils/domHelpers";
@@ -16,6 +9,7 @@ import { STATUS_BAR_H } from "../utils/uiScale";
 import { TrashIcon, RestoreIcon } from "./Icons";
 import RowAction from "./RowAction";
 import { fromTouch } from "../utils/touch";
+import { menuSurface } from "./Menu";
 
 interface Props {
   items: DeletedNote[];
@@ -136,8 +130,7 @@ export default function RecentlyDeletedMenu({
       tabIndex={-1}
       onKeyDown={onKeyDown}
       style={{
-        outline: "none",
-        position: "fixed",
+        ...menuSurface(theme),
         left: pos?.left ?? DEFAULT_LEFT,
         bottom: pos?.bottom ?? 10,
         // As wide as what it holds, no wider (the 30-days line, usually), and
@@ -146,12 +139,6 @@ export default function RecentlyDeletedMenu({
         ...(isPhone
           ? { right: PHONE_GUTTER }
           : { width: "fit-content", minWidth: 220, maxWidth: 320 }),
-        zIndex: Z.CONTEXT_MENU,
-        background: BG.elevated,
-        border: `1px solid ${BG.divider}`,
-        borderRadius: MENU_RADIUS,
-        padding: MENU_PAD,
-        boxShadow: theme.modalShadow,
         visibility: pos ? "visible" : "hidden",
         boxSizing: "border-box",
         maxHeight: pos ? `calc(${pos.room}px - ${STATUS_BAR_H} - ${TOP_AIR}px)` : undefined,
