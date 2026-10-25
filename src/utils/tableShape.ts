@@ -159,3 +159,36 @@ export function dropIndex(
   while (to - 1 >= 0 && start < mid(to - 1)) to--;
   return to;
 }
+
+/** The longest cell, in characters, a column may hold and still never wrap. */
+export const SHORT_CELL_MAX = 16;
+
+/**
+ * Which columns hold only short cells (codes, numbers, Pass/Fail): those stay
+ * on one line, so the space a narrow column lacks is taken from the columns
+ * of running text, which wrap at their words. A soft break (`<br>`) is a
+ * line the author wrapped, so its column is never short.
+ */
+export function shortColumns(rows: string[][], colCount: number): boolean[] {
+  return Array.from({ length: colCount }, (_, col) =>
+    rows.every((row) => {
+      const cell = cellAt(row, col);
+      return cell.length <= SHORT_CELL_MAX && !/<br\s*\/?>/i.test(cell);
+    }),
+  );
+}
+
+/** The shortest unbroken run a cell gives up keeping whole. */
+export const LONG_TOKEN_MIN = 25;
+const LONG_TOKEN = new RegExp(`\\S{${LONG_TOKEN_MIN},}`);
+
+/**
+ * Whether a cell holds a run too long to keep whole (a URL, a hash): such a
+ * cell may break anywhere, or its column would be as wide as the run and the
+ * table would scroll. Only what is shown counts: a link's address and a
+ * wikilink's target are hidden behind their words.
+ */
+export function hasLongToken(cell: string): boolean {
+  const shown = cell.replace(/\]\([^)]*\)/g, "]").replace(/\[\[[^\]|]*\|/g, "[[");
+  return LONG_TOKEN.test(shown);
+}

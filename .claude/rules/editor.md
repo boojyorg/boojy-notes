@@ -280,7 +280,7 @@ it; a new one starts open. Its ⤢ views it full size in the image's room (`Ligh
   scroller clips); a carried row passes a neighbour at its middle; one write, on drop.
   `table-handles.spec.ts`. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column (`⌘⇧←/→`
   stays select-to-edge).
-- Content-sized, then scrolling. `table-block.spec.ts`.
+- Wraps at words, then scrolls; a short column never wraps. `table-widths.spec.ts`.
 
 ## Whole-block selection
 

@@ -912,8 +912,13 @@ ${tagPillCss(theme)}
         }
         /* Shrink before you scroll, the way Chrome's tabs do: auto layout
            shares the column's width between the columns in proportion to
-           their content and wraps text, down to a 72px floor per cell (about
-           six characters); only past that does the scroller take over. The
+           their content and wraps text at its words, down to a 72px floor per
+           cell; a column of short cells never wraps (shortColumns); only past
+           that does the scroller take over. A word breaks only when it cannot
+           fit a line alone: overflow-wrap: anywhere made every column
+           shrinkable to one letter, so a tight table cut COMP201 in two. A
+           cell holding a run too long to keep (a URL: hasLongToken) still
+           takes anywhere, or its column would be the URL's width. The
            240px minimum is the table's, not the cells', so an empty 2×2 still
            reads as a small grid while eight empty columns fit the column. */
         .table-block {
@@ -932,10 +937,12 @@ ${tagPillCss(theme)}
           text-align: left;
           outline: none;
           min-width: 72px;
-          overflow-wrap: anywhere;
+          overflow-wrap: break-word;
         }
+        /* The header row on a faint ground mixed from the ink: neutral in
+           both themes, never the accent; the selection band shows through. */
         .table-block th {
-          background: transparent;
+          background: color-mix(in srgb, ${theme.TEXT.primary} 4%, transparent);
           font-weight: 600;
           color: ${theme.TEXT.primary};
         }

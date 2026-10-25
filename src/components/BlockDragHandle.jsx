@@ -40,11 +40,6 @@ export const HANDLE_H = 24;
  * selected block never touch.
  */
 export const HANDLE_GAP = 8;
-/**
- * A table's own row grips sit across its left edge, 7px out; beside a table
- * the block's grip stands this much further off so the two never touch.
- */
-export const TABLE_GRIP_CLEARANCE = 14;
 
 /**
  * The first line box of a block: the rect of its first rendered text line
@@ -120,12 +115,10 @@ function gripAt(els, i, anchor) {
   return {
     blockId: els[i].dataset.blockId,
     top: (line.top - origin.top) / zoom + (line.height / zoom - HANDLE_H) / 2,
-    // Negative on purpose: the grip lives in the column's left padding.
-    left:
-      (r.left - origin.left) / zoom -
-      HANDLE_W -
-      HANDLE_GAP -
-      (els[i].dataset.blockType === "table" ? TABLE_GRIP_CLEARANCE : 0),
+    // Negative on purpose: the grip lives in the column's left padding. A
+    // table's too, though its header row's own grip, across the left edge,
+    // then stands close beside it: one line of grips down the page.
+    left: (r.left - origin.left) / zoom - HANDLE_W - HANDLE_GAP,
   };
 }
 
