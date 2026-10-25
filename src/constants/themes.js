@@ -1,5 +1,5 @@
 // The one teal. Marks and fills — the checkbox, the quote bar, drop markers,
-// focus rings, the selection band, switches, buttons, the wordmark's N — are
+// focus rings, the selection band, switches, the wordmark's N — are
 // the same colour in both themes: the misty brand teal (#A4CACE, hue 186) two
 // steps deeper (more saturated reads blue). 2.0:1 on white, 9:1 on the dark
 // sheet. What sits on it is white in both themes: 2:1, a soft tick by design,
@@ -7,10 +7,6 @@
 // on both grounds — so that is `ACCENT.text`, per theme.
 export const MARK = "#8FC1C6";
 export const ON_MARK = "#FFFFFF";
-/** A label read on the mark (Create note, Restart to update, a confirm button):
- *  the dark ink is about 9.7:1 on the teal where white is 2:1.
- *  `ON_MARK` stays for the tick, which is a shape, not a word. */
-export const ON_MARK_TEXT = "#14110F";
 
 export const NIGHT = {
   name: "night",
@@ -35,12 +31,10 @@ export const NIGHT = {
     primary: MARK, // marks and fills: the one teal, shared with DAY
     text: "#9CC9CE", // accent as ink on the ground: misty, 9:1 on the sheet
     onAccent: ON_MARK,
-    onAccentText: ON_MARK_TEXT,
   },
   SEMANTIC: {
     warning: "#FFC107",
-    error: "#FF6B3D", // 4.9:1 on a hovered row (a hovered Delete)
-    onError: ON_MARK_TEXT, // the danger button's label: white on this orange is 2.8:1
+    error: "#FF6B3D", // 4.9:1 on a hovered row, 4.7:1 on a button (Delete)
     // The spelling dots: Chromium's own (Apple's red), as Obsidian shows them.
     // Under the 3:1 a meaningful glyph takes, by decision: a hint beside the
     // word, matched to every other app's.
@@ -151,12 +145,10 @@ export const DAY = {
     primary: MARK, // marks and fills: the one teal, shared with NIGHT
     text: "#2A737D", // accent as ink on the ground: 5.5:1 on the sheet, 4.6:1 on a selected row
     onAccent: ON_MARK,
-    onAccentText: ON_MARK_TEXT,
   },
   SEMANTIC: {
     warning: "#B07808", // a toast's glyph, never words: 3.2:1 on a hovered row
     error: "#C62D2D", // 4.7:1 on a hovered row
-    onError: "#FFFFFF", // 5.5:1
     misspelled: "rgba(255, 59, 48, 0.76)", // Chromium's dots, by decision (NIGHT says why)
   },
   scrollbar: {

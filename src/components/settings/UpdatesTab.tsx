@@ -63,7 +63,7 @@ export default function UpdatesTab({ SectionHeader }: UpdatesTabProps) {
       status = `v${updateStatus?.version} is ready to install`;
       statusColor = TEXT.primary;
       button = (
-        <SmallButton kind="accent" onClick={install}>
+        <SmallButton kind="strong" onClick={install}>
           Restart to update
         </SmallButton>
       );

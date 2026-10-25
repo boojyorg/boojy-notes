@@ -68,7 +68,7 @@ export default function SetupDialog({ notesDir, folderExists, onChooseFolder, on
 
       <div style={{ display: "flex", justifyContent: "center", marginTop: 32 }}>
         <SmallButton
-          kind="accent"
+          kind="strong"
           icon={<NewNoteIcon size={18} />}
           onClick={() => onDone("create")}
           style={{ height: 38, padding: "0 22px", fontSize: 14 }}

@@ -26,7 +26,7 @@ vi.mock("../../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
       TEXT: { primary: "#14110F", secondary: "#47403A", muted: "#7A736C" },
-      ACCENT: { primary: "#2A737D", onAccent: "#FFFFFF", onAccentText: "#14110F", text: "#2A737D" },
+      ACCENT: { primary: "#2A737D", onAccent: "#FFFFFF", text: "#2A737D" },
       SEMANTIC: { error: "#D43030" },
       BG: { hover: "#ECECEC", divider: "#E9E9E9", surface: "#F4F4F5" },
       button: { bg: "transparent", border: "#DCDCDC" },
@@ -89,7 +89,7 @@ describe("UpdatesTab", () => {
     }
   });
 
-  it("checks on Check for updates and installs on Restart to update, in the mark's label ink", () => {
+  it("checks on Check for updates and installs on Restart to update, the one bordered button with a bold label", () => {
     const check = vi.fn();
     const install = vi.fn();
     Object.assign(window.electronAPI, { checkForUpdate: check, installUpdate: install });
@@ -102,8 +102,10 @@ describe("UpdatesTab", () => {
     mocks.settings.updateStatus = { state: "downloaded", version: "9.9.9" };
     render(<UpdatesTab SectionHeader={() => null} />);
     const restart = screen.getByRole("button", { name: "Restart to update" });
+    // Never filled with the teal: the app's one button shape.
     expect(restart.style.color).toBe("rgb(20, 17, 15)");
-    expect(restart.style.background).toBe("rgb(42, 115, 125)");
+    expect(restart.style.background).toBe("transparent");
+    expect(restart.style.fontWeight).toBe("600");
     fireEvent.click(restart);
     expect(install).toHaveBeenCalledTimes(1);
 

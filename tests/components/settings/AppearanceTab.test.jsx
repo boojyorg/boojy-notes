@@ -14,7 +14,7 @@ vi.mock("../../../src/hooks/useTheme", () => ({
     theme: {
       TEXT: { primary: "#14110F", secondary: "#47403A", muted: "#7A736C" },
       BG: { hover: "#ECECEC", surface: "#F4F4F5", divider: "#E9E9E9" },
-      ACCENT: { primary: "#8FC1C6", onAccentText: "#14110F" },
+      ACCENT: { primary: "#8FC1C6" },
       button: { bg: "transparent", border: "#E0E0E0" },
     },
     themeMode: mocks.themeMode,
