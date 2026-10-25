@@ -1,3 +1,5 @@
+import { baseName } from "./vaultPath";
+
 // The sidebar tree as the keyboard and a screen reader meet it: the rows a
 // person can see, in order, each with its level and its place among its
 // siblings (WAI-ARIA's tree pattern). The Sidebar renders the same order.
@@ -57,7 +59,7 @@ export function visibleTreeRows(
   files: TreeFiles = {},
 ): TreeRow[] {
   const rows: TreeRow[] = [];
-  const fileLabel = files.fileLabel ?? ((p: string) => p.slice(p.lastIndexOf("/") + 1));
+  const fileLabel = files.fileLabel ?? baseName;
   const store = files.attachments ?? null;
   const walk = (
     subfolders: TreeFolder[],

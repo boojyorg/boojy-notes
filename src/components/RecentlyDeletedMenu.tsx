@@ -10,6 +10,7 @@ import { TrashIcon, RestoreIcon } from "./Icons";
 import RowAction from "./RowAction";
 import { fromTouch } from "../utils/touch";
 import { menuSurface } from "./Menu";
+import { baseName } from "../utils/vaultPath";
 
 interface Props {
   items: DeletedNote[];
@@ -216,7 +217,7 @@ export default function RecentlyDeletedMenu({
                 }}
               >
                 {item.folder && (
-                  <span style={{ color: TEXT.secondary }}>{item.folder.split("/").pop()} / </span>
+                  <span style={{ color: TEXT.secondary }}>{baseName(item.folder)} / </span>
                 )}
                 {item.name || "Untitled"}
               </span>

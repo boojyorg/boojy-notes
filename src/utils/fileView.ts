@@ -3,8 +3,9 @@
 // one of its pages. Pure, so the viewer and its tests share one reading.
 
 import type { OtherFile } from "../types/global";
-import { baseName, splitExtension } from "./otherFiles";
+import { splitExtension } from "./otherFiles";
 import { parseWikilinkTarget } from "./wikilinkTarget";
+import { baseName } from "./vaultPath";
 
 /** How a file is shown: drawn as pages, as a picture, or as a card saying it can't be. */
 export type FileViewKind = "pdf" | "picture" | "card";

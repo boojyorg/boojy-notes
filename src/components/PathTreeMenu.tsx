@@ -27,7 +27,6 @@ import {
 } from "../constants/layout";
 import type { SidebarNode } from "../types/notes";
 import {
-  ancestorFolders,
   parentRowIndex,
   type PickRow,
   pickerRows,
@@ -39,6 +38,7 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "./Icon
 import Collapsible, { IndentGuide } from "./Collapsible";
 import { fromTouch } from "../utils/touch";
 import { menuSurface } from "./Menu";
+import { ancestorFolders, baseName } from "../utils/vaultPath";
 
 /**
  * The path's folder popup: the sidebar's tree drawn small under
@@ -319,7 +319,7 @@ export default function PathTreeMenu({
     return () => document.removeEventListener("mousedown", onPress, true);
   }, [opener, onClose]);
 
-  const scopeName = scope ? (scope.split("/").pop() as string) : "Notes";
+  const scopeName = scope ? baseName(scope) : "Notes";
   const dialogName = pick ? pick.label : `Contents of ${scopeName}`;
 
   const highlightRow = (key: string) => {

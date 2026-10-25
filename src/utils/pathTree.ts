@@ -12,6 +12,7 @@
  * own, and it starts fresh each time the popup opens.
  */
 import type { SidebarNode } from "../types/notes";
+import { withinFolder } from "./vaultPath";
 
 export interface TreeScope {
   /** The folders shown at the popup's top level, in the tree's own order. */
@@ -125,19 +126,6 @@ export interface PickRow {
   disabled: boolean;
 }
 
-/** The parent folder's path, or null at the root. */
-export function parentFolder(path: string): string | null {
-  const slash = path.lastIndexOf("/");
-  return slash === -1 ? null : path.slice(0, slash);
-}
-
-/** Every folder above `path`, outermost first (`a/b/c` → `a`, `a/b`); none for null. */
-export function ancestorFolders(path: string | null): string[] {
-  if (!path) return [];
-  const parts = path.split("/");
-  return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("/"));
-}
-
 /**
  * The one folder a set of things share, `null` for the root, or `undefined`
  * when they are spread over more than one — the picker then ticks nothing.
@@ -150,14 +138,6 @@ export function sharedFolder(
   for (const f of folders) if ((f ?? null) !== first) return undefined;
   return first;
 }
-
-/** Whether `path` is `folder` or lies inside it. */
-export const withinFolder = (path: string, folder: string) =>
-  path === folder || path.startsWith(`${folder}/`);
-
-/** Renames paths for a folder moved from `from` to `to`: it and everything under it follow. */
-export const remapFolderPath = (from: string, to: string) => (path: string) =>
-  withinFolder(path, from) ? to + path.slice(from.length) : path;
 
 /**
  * The picker's rows, top to bottom: the root, then every folder, its

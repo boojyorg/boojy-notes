@@ -29,6 +29,7 @@ import { CloseIcon, FolderIcon, OtherFileIcon, PlusIcon, SearchIcon } from "./Ic
 import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
 import { SCRIM } from "./settings/SettingsPrimitives";
 import { fromTouch } from "../utils/touch";
+import { baseName } from "../utils/vaultPath";
 
 /**
  * The desktop search, as a palette (Cmd+P): a field over a dimmed window,
@@ -270,7 +271,7 @@ export default function SearchPalette({
     if (backToText && tag) setSearch(`#${tag}`);
     inputRef.current?.focus();
   };
-  const folderName = folderFilter ? folderFilter.slice(folderFilter.lastIndexOf("/") + 1) : "";
+  const folderName = folderFilter ? baseName(folderFilter) : "";
   const chooseFolder = (path: string) => {
     setFolderFilter?.(path, "");
     setSearch("");

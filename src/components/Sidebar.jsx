@@ -15,7 +15,6 @@ import {
 } from "../utils/treeNav";
 import {
   attachmentLabel,
-  baseName,
   groupOtherFiles,
   otherFileKind,
   splitExtension,
@@ -78,9 +77,9 @@ import {
   TREE_ROW_H as DESKTOP_ROW_H,
   WORDMARK_H,
 } from "../constants/layout";
-import { parentFolder } from "../utils/pathTree";
 import { NAV_BAR_H } from "../utils/uiScale";
 import { fromTouch } from "../utils/touch";
+import { baseName, parentFolder } from "../utils/vaultPath";
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.

@@ -28,7 +28,7 @@ const SettingsModal = React.lazy(() => import("./components/settings/SettingsMod
 const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
 import ContextMenu from "./components/ContextMenu";
 import PathTreeMenu from "./components/PathTreeMenu";
-import { ancestorFolders, parentFolder, sharedFolder, withinFolder } from "./utils/pathTree";
+import { sharedFolder } from "./utils/pathTree";
 import SlashMenu from "./components/SlashMenu";
 import LinkPicker from "./components/LinkPicker";
 import TagMenu from "./components/TagMenu";
@@ -78,6 +78,7 @@ import { useFileView } from "./hooks/useFileView";
 import { fileLinkTarget, pageLink } from "./utils/fileView";
 import { blocksToMarkdown } from "./utils/markdown";
 import { wholeBlocksCopy } from "./utils/clipboardCopy";
+import { ancestorFolders, parentFolder, withinFolder, baseName } from "./utils/vaultPath";
 
 export default function BoojyNotes() {
   const { theme } = useTheme();
@@ -398,7 +399,7 @@ export default function BoojyNotes() {
   const trashOtherFile = useCallback(
     async (rel) => {
       if (await trashFile(rel)) {
-        showToast(trashedToast(rel.slice(rel.lastIndexOf("/") + 1)), "done", { icon: "trash" });
+        showToast(trashedToast(baseName(rel)), "done", { icon: "trash" });
       }
     },
     [trashFile, showToast],
@@ -1196,7 +1197,7 @@ export default function BoojyNotes() {
       const count = Object.values(noteDataRef.current || {}).filter(
         (n) => n.folder && withinFolder(n.folder, folderPath),
       ).length;
-      const name = folderPath.split("/").pop();
+      const name = baseName(folderPath);
       if (!(await askBeforeDeleting("folder", { count, name }))) return;
       deleteFolder(folderPath);
     },
@@ -1394,7 +1395,7 @@ export default function BoojyNotes() {
     const { subject } = movePicker;
     if (subject.kind === "folder") {
       return {
-        label: `Move “${subject.path.split("/").pop()}” to`,
+        label: `Move “${baseName(subject.path)}” to`,
         current: parentFolder(subject.path),
         excluded: subject.path,
         onPick: (folder) => moveFolderTo(subject.path, folder),

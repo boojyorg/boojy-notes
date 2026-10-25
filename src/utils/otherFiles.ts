@@ -5,6 +5,7 @@
 
 import type { OtherFile } from "../types/global";
 import { naturalCompare } from "./sidebarTree";
+import { baseName } from "./vaultPath";
 
 export type { OtherFile };
 
@@ -28,8 +29,6 @@ add("video", "mp4 m4v mov webm mkv avi");
 add("slides", "ppt pptx key odp");
 add("sheet", "xls xlsx csv tsv numbers ods");
 add("archive", "zip rar 7z tar gz tgz bz2 xz");
-
-export const baseName = (rel: string) => rel.slice(rel.lastIndexOf("/") + 1);
 
 /** `report.final.pdf` → `report.final` and `.pdf`; a dotfile-like or extensionless name has no extension. */
 export function splitExtension(name: string): { stem: string; ext: string } {

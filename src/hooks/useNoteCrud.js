@@ -1,5 +1,5 @@
 import { genNoteId, genBlockId } from "../utils/storage";
-import { parentFolder, remapFolderPath, withinFolder } from "../utils/pathTree";
+import { parentFolder, remapFolderPath, withinFolder, baseName } from "../utils/vaultPath";
 
 export function useNoteCrud({
   commitNoteData,
@@ -165,7 +165,7 @@ export function useNoteCrud({
     const parent = targetParent || null;
     if (parent === parentFolder(folderPath)) return Promise.resolve(null);
     if (parent && withinFolder(parent, folderPath)) return Promise.resolve(null);
-    const name = folderPath.slice(folderPath.lastIndexOf("/") + 1);
+    const name = baseName(folderPath);
     return changeFolderPath(folderPath, parent ? `${parent}/${name}` : name);
   };
 

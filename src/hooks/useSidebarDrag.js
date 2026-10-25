@@ -1,8 +1,8 @@
 import { useRef, useEffect } from "react";
 import { useTheme } from "./useTheme";
 import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
-import { withinFolder } from "../utils/pathTree";
 import { isPhone } from "../utils/platform";
+import { withinFolder } from "../utils/vaultPath";
 
 const LIFT_MS = 120;
 const SETTLE_MS = 200;
