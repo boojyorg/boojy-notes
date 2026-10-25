@@ -143,7 +143,6 @@ const EditableBlock = memo(
     isOnlyBlockSelected,
     onBlockSelect,
     onImageDragPress,
-    onImageLightbox,
     onImageCopyImage,
     onUpdateBlockProperty,
     onFileOpen,
@@ -258,7 +257,6 @@ const EditableBlock = memo(
           selectedAlone={isOnlyBlockSelected}
           accentColor={accentColor}
           onSelect={() => onBlockSelect(block.id)}
-          onLightbox={() => onImageLightbox(block.src, block.alt)}
           onDelete={() => onDeleteBlock(noteId, blockIndex)}
           onCopyImage={() => onImageCopyImage(block.src)}
           onShowInFolder={

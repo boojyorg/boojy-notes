@@ -163,8 +163,6 @@ const EditorArea = memo(
     // The whole-block selection (utils/blockRun): anchor and head block ids.
     blockSelection,
     setBlockSelection,
-    lightbox: _lightbox,
-    setLightbox,
     openNote: openNoteProp,
     // The sidebar's press-and-hold drag, for the rows of the path's popup.
     onPathRowPointerDown,
@@ -826,13 +824,6 @@ const EditorArea = memo(
       return `${selectors.join(",")}{background:${fill};border-radius:4px;box-shadow:-${BAND_REACH}px 0 0 ${fill},${BAND_REACH}px 0 0 ${fill}}`;
     }, [selectedRun, note, accentColor, theme.name]);
 
-    const handleImageLightbox = useCallback(
-      (src, alt) => {
-        setLightbox({ src, alt });
-      },
-      [setLightbox],
-    );
-
     const handleImageCopyImage = useCallback((src) => {
       const api = getAPI();
       if (api?.copyImageToClipboard) {
@@ -1460,7 +1451,6 @@ const EditorArea = memo(
                               }
                               onBlockSelect={setSelectedBlockId}
                               onImageDragPress={imageDragPress}
-                              onImageLightbox={handleImageLightbox}
                               onImageCopyImage={handleImageCopyImage}
                               onUpdateBlockProperty={updateBlockProperty}
                               onFileOpen={handleFileOpen}
@@ -1729,8 +1719,7 @@ const EditorArea = memo(
       prev.editorFadeIn === next.editorFadeIn &&
       // toolbarState is decided above, before the text-only fast path.
       prev.noteTitleSet === next.noteTitleSet &&
-      prev.blockSelection === next.blockSelection &&
-      prev.lightbox === next.lightbox
+      prev.blockSelection === next.blockSelection
     );
   },
 );

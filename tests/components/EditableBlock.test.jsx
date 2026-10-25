@@ -56,7 +56,6 @@ function baseProps(block, overrides = {}) {
     onBlockNav: noop,
     isBlockSelected: false,
     onBlockSelect: noop,
-    onImageLightbox: noop,
     onImageCopyImage: noop,
     onUpdateBlockProperty: noop,
     onFileOpen: noop,

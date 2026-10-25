@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 /**
  * The surfaces that float over the app: the context menu, the confirm dialog,
- * the lightbox and the editor's suggestion menus. Held by the root alone; the
+ * and the editor's suggestion menus. Held by the root alone; the
  * menus' refs let native handlers read the open menu without a render.
  */
 export function useOverlays() {
@@ -27,7 +27,6 @@ export function useOverlays() {
     resolve?.(result);
   }, []);
 
-  const [lightbox, setLightbox] = useState(null);
   const [slashMenu, setSlashMenu] = useState(null);
   const slashMenuRef = useRef(null);
   slashMenuRef.current = slashMenu;
@@ -41,8 +40,6 @@ export function useOverlays() {
   return {
     ctxMenu,
     setCtxMenu,
-    lightbox,
-    setLightbox,
     slashMenu,
     setSlashMenu,
     slashMenuRef,

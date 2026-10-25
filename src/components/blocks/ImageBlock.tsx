@@ -7,6 +7,8 @@ import { ExpandIcon, MoreHorizontalIcon } from "../Icons";
 import { Tooltip, useTooltip } from "../Tooltip";
 import ImageMenu, { type MenuAnchor } from "./ImageMenu";
 import MissingAttachment, { findable } from "./MissingAttachment";
+import ImageLightbox from "../ImageLightbox";
+import { attachmentName } from "../../utils/attachmentUrl";
 import { fromTouch } from "../../utils/touch";
 import { pointAnchor } from "../Menu";
 
@@ -21,7 +23,6 @@ interface ImageBlockProps {
   /** Selected and the only block selected: it shows its outline and corner dots. */
   selectedAlone?: boolean;
   onSelect: () => void;
-  onLightbox: () => void;
   onDelete: () => void;
   onCopyImage: () => void;
   /** Desktop only. */
@@ -144,7 +145,6 @@ function ImageBlock({
   onDragPress,
   selectedAlone = false,
   onSelect,
-  onLightbox,
   onDelete,
   onCopyImage,
   onShowInFolder,
@@ -154,6 +154,10 @@ function ImageBlock({
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const [hovered, setHovered] = useState(false);
+  // The full-size view is the block's own, as a diagram's is: it closes with
+  // the block, so a note switch or a deletion leaves none behind.
+  const [viewing, setViewing] = useState(false);
+  const view = () => setViewing(true);
   const [errored, setErrored] = useState(false);
   const [loading, setLoading] = useState(true);
   // A new picture is a new load (an outside edit, an undo), so a source that
@@ -268,7 +272,7 @@ function ImageBlock({
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => {
           e.stopPropagation();
-          onLightbox();
+          view();
         }}
         onContextMenu={handleContextMenu}
         style={{
@@ -352,7 +356,7 @@ function ImageBlock({
               boxShadow: theme.floatShadow,
             }}
           >
-            <BarButton label="View full size" onClick={() => onLightbox()}>
+            <BarButton label="View full size" onClick={view}>
               <ExpandIcon />
             </BarButton>
             <BarButton
@@ -437,12 +441,20 @@ function ImageBlock({
         <ImageMenu
           anchor={menu.anchor}
           fromBar={menu.fromBar}
-          onView={onLightbox}
+          onView={view}
           onCopy={onCopyImage}
           onShowInFolder={onShowInFolder}
           onOriginalSize={displayWidth != null ? () => onUpdateWidth(null) : undefined}
           onDelete={onDelete}
           onClose={() => setMenu(null)}
+        />
+      )}
+      {viewing && (
+        <ImageLightbox
+          src={src}
+          alt={alt}
+          name={attachmentName(src)}
+          onClose={() => setViewing(false)}
         />
       )}
     </div>

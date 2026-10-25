@@ -17,7 +17,14 @@ vi.mock("../../../src/hooks/useTheme", () => ({
   }),
 }));
 
+// The full-size view is the block's own; drawn here as a stand-in dialog.
+vi.mock("../../../src/components/ImageLightbox", () => ({
+  default: ({ name }) => <div role="dialog" aria-label={`Image: ${name}`} />,
+}));
+
 import ImageBlock from "../../../src/components/blocks/ImageBlock";
+
+const viewOpen = () => screen.queryByRole("dialog", { name: /^Image/ }) !== null;
 
 const props = {
   alt: "",
@@ -25,7 +32,6 @@ const props = {
   isSelected: false,
   accentColor: "#8FC1C6",
   onSelect: () => {},
-  onLightbox: () => {},
   onDelete: () => {},
   onCopyImage: () => {},
   onUpdateWidth: () => {},
@@ -79,7 +85,6 @@ describe("ImageBlock", () => {
 function loaded(extra = {}) {
   const spies = {
     onSelect: vi.fn(),
-    onLightbox: vi.fn(),
     onDelete: vi.fn(),
     onCopyImage: vi.fn(),
     onUpdateWidth: vi.fn(),
@@ -93,16 +98,16 @@ function loaded(extra = {}) {
 // Redesigned 2026-09-23 from a prototype judged against Obsidian and Notion.
 describe("ImageBlock controls", () => {
   it("a press selects, before the release, and does not open the full-size view; a double-click does", () => {
-    const { box, onSelect, onLightbox } = loaded();
+    const { box, onSelect } = loaded();
     fireEvent.mouseDown(box);
     // Before 2026-09-23 the selection waited for the release.
     expect(onSelect).toHaveBeenCalled();
     fireEvent.click(box);
     // Before: every click also opened the lightbox, so an image could not be
     // selected to delete it without the full-size view coming up first.
-    expect(onLightbox).not.toHaveBeenCalled();
+    expect(viewOpen()).toBe(false);
     fireEvent.doubleClick(box);
-    expect(onLightbox).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("dialog", { name: "Image: shot.png" })).toBeTruthy();
   });
 
   it("shows nothing but the picture at rest, and only the bar on hover", () => {
@@ -156,11 +161,11 @@ describe("ImageBlock controls", () => {
   });
 
   it("the bar's full-size button opens the view without selecting through it", () => {
-    const { box, onLightbox, onSelect } = loaded();
+    const { box, onSelect } = loaded();
     fireEvent.mouseEnter(box);
     fireEvent.mouseDown(screen.getByRole("button", { name: "View full size" }));
     fireEvent.click(screen.getByRole("button", { name: "View full size" }));
-    expect(onLightbox).toHaveBeenCalledTimes(1);
+    expect(viewOpen()).toBe(true);
     expect(onSelect).not.toHaveBeenCalled();
   });
 
@@ -234,7 +239,7 @@ describe("ImageBlock controls", () => {
     fireEvent.doubleClick(screen.getAllByTestId("image-resize-handle")[0]);
     expect(sized.onUpdateWidth).toHaveBeenCalledWith(null);
     // The dot's double-click is its own, never the picture's full-size view.
-    expect(sized.onLightbox).not.toHaveBeenCalled();
+    expect(viewOpen()).toBe(false);
     cleanup();
 
     const own = loaded({ isSelected: true, selectedAlone: true });
