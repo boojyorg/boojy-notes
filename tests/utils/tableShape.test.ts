@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cellAt,
   dropIndex,
+  hasLongToken,
   moveCell,
   shortColumns,
   tableColumnCount,
@@ -156,5 +157,18 @@ describe("shortColumns: a column of short cells never wraps", () => {
 
   it("a soft break is a line the author wrapped", () => {
     expect(shortColumns([["Note"], ["one<br>two"]], 1)).toEqual([false]);
+  });
+});
+
+describe("hasLongToken: a run too long to keep whole may break anywhere", () => {
+  it("a long URL or hash is too long; words, codes and short links are not", () => {
+    expect(hasLongToken(`see https://example.com/${"a".repeat(40)}`)).toBe(true);
+    expect(hasLongToken("Computer Aided Software Development")).toBe(false);
+    expect(hasLongToken("COMP201")).toBe(false);
+  });
+
+  it("only what is shown counts: a link's address and a wikilink's target are hidden", () => {
+    expect(hasLongToken(`[the spec](https://example.com/${"a".repeat(40)})`)).toBe(false);
+    expect(hasLongToken(`[[${"Long".repeat(10)}|short]]`)).toBe(false);
   });
 });

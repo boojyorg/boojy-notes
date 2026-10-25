@@ -916,7 +916,9 @@ ${tagPillCss(theme)}
            cell; a column of short cells never wraps (shortColumns); only past
            that does the scroller take over. A word breaks only when it cannot
            fit a line alone: overflow-wrap: anywhere made every column
-           shrinkable to one letter, so a tight table cut COMP201 in two. The
+           shrinkable to one letter, so a tight table cut COMP201 in two. A
+           cell holding a run too long to keep (a URL: hasLongToken) still
+           takes anywhere, or its column would be the URL's width. The
            240px minimum is the table's, not the cells', so an empty 2×2 still
            reads as a small grid while eight empty columns fit the column. */
         .table-block {

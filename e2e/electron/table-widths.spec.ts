@@ -92,3 +92,22 @@ test("the header row sits on a faint neutral ground; the body has none", async (
     await h.close();
   }
 });
+
+test("a cell holding a long URL breaks it rather than widening the table", async () => {
+  const url = `https://example.com/${"abcdefgh".repeat(28)}`;
+  const h = await launchApp({ "Links.md": `| Name | Link |\n| --- | --- |\n| Spec | ${url} |\n` });
+  try {
+    await h.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(820, 700));
+    await h.openNote("Links");
+    const table = h.page.locator("table.table-block");
+    await expect(table).toBeVisible();
+    const column = await h.page
+      .locator(".table-outer")
+      .evaluate((el) => el.parentElement?.clientWidth ?? 0);
+    // Before: the column was the URL's whole width, ~1,800px, and scrolled.
+    expect(await table.evaluate((t) => t.scrollWidth)).toBeLessThanOrEqual(column);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

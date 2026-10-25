@@ -4,7 +4,13 @@ import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { useRhythm } from "../tokens/rhythm";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { caretLength, getCaretOffset, placeCaret } from "../utils/domHelpers";
-import { cellAt, shortColumns, tableColumnCount, withCell } from "../utils/tableShape";
+import {
+  cellAt,
+  hasLongToken,
+  shortColumns,
+  tableColumnCount,
+  withCell,
+} from "../utils/tableShape";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
@@ -425,6 +431,7 @@ export default memo(function TableBlock({
           ...(rowIdx === 0 && { fontWeight: 600 }),
           textAlign: alignments[colIdx] || "left",
           ...(short[colIdx] && { whiteSpace: "nowrap" }),
+          ...(hasLongToken(cellAt(rows[rowIdx], colIdx)) && { overflowWrap: "anywhere" }),
         }}
       />
     ));

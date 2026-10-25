@@ -177,3 +177,18 @@ export function shortColumns(rows: string[][], colCount: number): boolean[] {
     }),
   );
 }
+
+/** The shortest unbroken run a cell gives up keeping whole. */
+export const LONG_TOKEN_MIN = 25;
+const LONG_TOKEN = new RegExp(`\\S{${LONG_TOKEN_MIN},}`);
+
+/**
+ * Whether a cell holds a run too long to keep whole (a URL, a hash): such a
+ * cell may break anywhere, or its column would be as wide as the run and the
+ * table would scroll. Only what is shown counts: a link's address and a
+ * wikilink's target are hidden behind their words.
+ */
+export function hasLongToken(cell: string): boolean {
+  const shown = cell.replace(/\]\([^)]*\)/g, "]").replace(/\[\[[^\]|]*\|/g, "[[");
+  return LONG_TOKEN.test(shown);
+}
