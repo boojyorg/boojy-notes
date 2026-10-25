@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { useAttachmentSrc } from "../../hooks/useAttachmentSrc";
 import { cssZoom } from "../../utils/domHelpers";
@@ -51,6 +51,8 @@ const CORNERS = [
 ] as const;
 /** How close to the picture's own size a drag lands on it exactly. */
 const SNAP_PX = 8;
+/** How long a loading picture holds its room unseen before the placeholder shows. */
+const PLACEHOLDER_WAIT_MS = 150;
 
 /** A 28px button in the hover bar, named by the app's tooltip chip. */
 function BarButton({
@@ -175,6 +177,15 @@ function ImageBlock({
   const imgRef = useRef<HTMLImageElement>(null);
 
   const { url: resolvedSrc, next: tryNextPlace, loaded } = useAttachmentSrc(src);
+  // A picture the browser already holds (a note opened again) is drawn in the
+  // first paint: its load event comes a frame later, after the placeholder
+  // has shown and the text below has jumped.
+  useLayoutEffect(() => {
+    const img = imgRef.current;
+    if (!loading || !img?.complete || !img.naturalWidth) return;
+    loaded();
+    setLoading(false);
+  });
   // Found again (Find it…): a new load, remounted so no failed load is reused.
   const [attempt, setAttempt] = useState(0);
   const findMissing = async () => {
@@ -295,11 +306,14 @@ function ImageBlock({
               height: 120,
               borderRadius: 6,
               background: BG.elevated,
-              animation: "img-pulse 1.5s ease-in-out infinite",
+              // Unseen for its first moment, so a picture that loads at once
+              // never flashes grey; its room is held throughout. With reduced
+              // motion no keyframe plays and it shows at once, still.
+              animation: `img-wait ${PLACEHOLDER_WAIT_MS}ms step-end, img-pulse 1.5s ease-in-out ${PLACEHOLDER_WAIT_MS}ms infinite`,
             }}
           />
         )}
-        <style>{`@keyframes img-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }`}</style>
+        <style>{`@keyframes img-wait { from, to { opacity: 0; } } @keyframes img-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }`}</style>
         <img
           key={attempt}
           ref={imgRef}
