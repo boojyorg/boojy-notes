@@ -38,7 +38,6 @@ const layoutState = {
   // that leaves this out renders a sidebar nothing can query.
   sidebarVisible: true,
   toggleSidebar: vi.fn(),
-  chromeBg: "#222",
   sidebarHandles: { current: [] },
   isDragging: { current: false },
   startDrag: vi.fn(),

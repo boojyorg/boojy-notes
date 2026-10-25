@@ -115,7 +115,6 @@ export default function BoojyNotes() {
     toggleSidebar,
     sourceView,
     setSourceView,
-    chromeBg,
     accentColor,
     sidebarHandles,
     isDragging,
@@ -1483,7 +1482,11 @@ export default function BoojyNotes() {
         // The phone's app starts below Android's status bar, which stands on
         // the ground of the screen shown: Home's, or the note's sheet.
         ...(isPhone && { boxSizing: "border-box", paddingTop: STATUS_BAR_H }),
-        background: isPhone ? (sidebarVisible ? chromeBg : theme.BG.editor) : theme.BG.darkest,
+        background: isPhone
+          ? sidebarVisible
+            ? theme.BG.standard
+            : theme.BG.editor
+          : theme.BG.darkest,
         display: "flex",
         flexDirection: "column",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -1586,7 +1589,7 @@ export default function BoojyNotes() {
             // The phone shows one screen at a time: Home is the sidebar, full width.
             width: sidebarVisible ? (isPhone ? "100%" : sidebarWidth) : 0,
             minWidth: sidebarVisible ? (isPhone ? "100%" : sidebarWidth) : 0,
-            background: chromeBg,
+            background: theme.BG.standard,
             display: "flex",
             flexShrink: 0,
             overflow: "hidden",

@@ -272,15 +272,8 @@ const EditorArea = memo(
       (id) => setBlockSelection(id ? { anchor: id, head: id } : null),
       [setBlockSelection],
     );
-    const {
-      accentColor,
-      editorBg,
-      sidebarVisible,
-      sidebarWidth,
-      fullScreen,
-      sourceView,
-      setSourceView,
-    } = useLayout();
+    const { accentColor, sidebarVisible, sidebarWidth, fullScreen, sourceView, setSourceView } =
+      useLayout();
 
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
@@ -1226,7 +1219,7 @@ const EditorArea = memo(
           // A viewed file scrolls its own pages, so the pane keeps no lane.
           scrollbarGutter: fileView ? "auto" : "stable",
           ...(fileView ? { overflowY: "hidden" } : null),
-          background: editorBg,
+          background: theme.BG.editor,
           position: "relative",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
@@ -1243,7 +1236,7 @@ const EditorArea = memo(
             rightControlsW={fileView?.controlsWidth ?? 0}
             collapsed={!sidebarVisible}
             fullScreen={fullScreen}
-            bg={editorBg}
+            bg={theme.BG.editor}
             activeNote={activeNote}
             onOpenNote={openNoteProp}
             onRowPointerDown={onPathRowPointerDown}

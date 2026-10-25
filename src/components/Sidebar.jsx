@@ -510,7 +510,7 @@ const Sidebar = memo(function Sidebar({
   // The phone: sync's state, after the folder's name (useSyncStatus).
   sync = null,
 }) {
-  const { chromeBg, sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
+  const { sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
   // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
   // survive a collapse — but a zero-width, overflow-hidden panel still hands
   // its buttons to Tab and to a screen reader, and the editor header renders
@@ -1261,7 +1261,7 @@ const Sidebar = memo(function Sidebar({
           {/* New note and the list's controls, above the list's scroller:
           they never scroll, so the scrollbar spans the list alone, from
           under the vault row down to Recently Deleted. */}
-          <div inert={hiddenControls} style={{ background: chromeBg, flexShrink: 0 }}>
+          <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
             <div style={{ height: COLUMN_HEAD_GAP }} />
             <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />
             <SectionHeader

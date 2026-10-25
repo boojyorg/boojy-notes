@@ -7,7 +7,7 @@ import { render, act, cleanup } from "@testing-library/react";
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
-      BG: { dark: "#111", editor: "#000", divider: "#333" },
+      BG: { editor: "#000", divider: "#333" },
       ACCENT: { primary: "#A4CACE", text: "#A4CACE", onAccent: "#FFFFFF" },
       // LayoutContext reads this to hand usePanelResize the drag colour.
       sidebarHandle: { hover: "#3A3D4A", active: "#4A4D5A" },
@@ -60,8 +60,6 @@ afterEach(() => {
 describe("LayoutContext sidebar presentation", () => {
   it("derives its palette directly from the active theme", () => {
     renderLayout();
-    expect(layout.chromeBg).toBe("#111");
-    expect(layout.editorBg).toBe("#000");
     expect(layout.accentColor).toBe("#A4CACE");
     expect(layout).not.toHaveProperty("setChromeBg");
     expect(layout).not.toHaveProperty("selectionStyle");
