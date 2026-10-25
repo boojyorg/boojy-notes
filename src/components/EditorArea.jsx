@@ -1249,9 +1249,6 @@ const EditorArea = memo(
               marginLeft: colMargin,
               marginRight: "auto",
               width: "100%",
-              // The room right of the text: the margin and the padding (read
-              // by the `?tweak` table panel's Grow experiment).
-              "--col-reach": `calc(${colMargin} + ${colPad})`,
               // The fade is opacity alone. No transform, ever: a transformed
               // element is the containing block for every `position: fixed`
               // descendant, and the link, code, image and file menus and the

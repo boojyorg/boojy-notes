@@ -73,3 +73,22 @@ test("a tight table wraps its running text at words and keeps short columns on o
     await h.close();
   }
 });
+
+test("the header row sits on a faint neutral ground; the body has none", async () => {
+  const h = await launchApp({ "Results.md": NOTE });
+  try {
+    await h.openNote("Results");
+    const ground = (sel: string) =>
+      h.page
+        .locator(sel)
+        .first()
+        .evaluate((el) => getComputedStyle(el).backgroundColor);
+    const header = await ground("table.table-block th");
+    // A few percent of the ink: a grey, not transparent, never the teal.
+    expect(header).not.toBe("rgba(0, 0, 0, 0)");
+    expect(header).toMatch(/^(rgba|color)\(/);
+    expect(await ground("table.table-block td")).toBe("rgba(0, 0, 0, 0)");
+  } finally {
+    await h.close();
+  }
+});

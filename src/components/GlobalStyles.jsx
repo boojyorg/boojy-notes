@@ -937,8 +937,10 @@ ${tagPillCss(theme)}
           min-width: 72px;
           overflow-wrap: break-word;
         }
+        /* The header row on a faint ground mixed from the ink: neutral in
+           both themes, never the accent; the selection band shows through. */
         .table-block th {
-          background: transparent;
+          background: color-mix(in srgb, ${theme.TEXT.primary} 4%, transparent);
           font-weight: 600;
           color: ${theme.TEXT.primary};
         }
