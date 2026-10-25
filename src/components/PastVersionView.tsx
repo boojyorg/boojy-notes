@@ -41,7 +41,12 @@ export default function PastVersionView({
   );
   const positions = listLayout(blocks);
 
+  // Only what happens in the version itself. A surface a block draws in a
+  // portal (a picture's full-size view) is outside it on the page, yet React
+  // still hands it its events: those keys are that surface's own.
+  const own = (e: React.SyntheticEvent) => e.currentTarget.contains(e.target as Node);
   const stop = (e: React.SyntheticEvent) => {
+    if (!own(e)) return;
     e.preventDefault();
     e.stopPropagation();
   };
@@ -56,6 +61,7 @@ export default function PastVersionView({
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the version can be focused to select and copy from it
       tabIndex={0}
       onKeyDownCapture={(e) => {
+        if (!own(e)) return;
         const edits =
           (e.key.length === 1 && !e.metaKey && !e.ctrlKey) ||
           e.key === "Enter" ||

@@ -7,7 +7,9 @@
  * is the way back. Needs the real app: versions live in the main process and
  * the note's text is read back from disk.
  */
+import fs from "node:fs";
 import { expect, test } from "@playwright/test";
+import { makePng } from "../../tests/fixtures/makePng";
 import { type AppHandle, END_OF_LINE, MOD, launchApp, noteText, waitForFile } from "./harness";
 
 /** "Text." with two save points: "Text. one" and "Text. one two". */
@@ -213,6 +215,45 @@ test("a press elsewhere hides the list and keeps the version; the pill shows it 
     await h.openNote("Other");
     await expect(past(h)).toHaveCount(0);
     await expect(pill(h)).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// A picture's full-size view is drawn from its block, so React hands its
+// events to the past version's capture handlers too: Enter on its Close
+// button asked "Viewing an earlier version" instead of closing the view.
+test("a picture viewed full size from a past version keeps its own keys", async () => {
+  const h = await launchApp(
+    { "Pics.md": "One\n![[Pic.png]]\n" },
+    {
+      prepare: (vault) => {
+        fs.mkdirSync(vault.file("attachments"), { recursive: true });
+        fs.writeFileSync(vault.file("attachments/Pic.png"), makePng(40, 20));
+      },
+    },
+  );
+  try {
+    await h.openNote("Pics");
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.type(" two");
+    await h.page.keyboard.press(`${MOD}+s`);
+    await expect(h.page.locator("[data-toast-kind]")).toContainText("Save point");
+    await openList(h);
+    await h.page.keyboard.press("ArrowDown");
+    await expect(past(h).locator("img")).toBeVisible();
+
+    await past(h).locator("img").dblclick();
+    const view = h.page.getByRole("dialog", { name: "Image: Pic.png" });
+    await expect(view).toBeFocused();
+    await h.page.keyboard.press("Tab");
+    await expect(view.getByRole("button", { name: /close/i })).toBeFocused();
+    await h.page.keyboard.press("Enter");
+    await expect(view).toHaveCount(0);
+    await expect(h.page.getByRole("dialog", { name: "Viewing an earlier version" })).toHaveCount(0);
+    await expect(past(h)).toBeVisible();
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
