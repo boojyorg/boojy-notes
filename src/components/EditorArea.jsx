@@ -229,8 +229,6 @@ const EditorArea = memo(
       registerBlockRef,
       insertBlockAfter,
       updateBlockText,
-      updateCodeLang,
-      updateCallout,
       updateCalloutTitle,
       updateTableCell,
       updateTableRows,
@@ -1449,8 +1447,6 @@ const EditorArea = memo(
                               accentColor={accentColor}
                               numberedIndex={block.type === "numbered" ? numberedIndex : undefined}
                               onUpdateText={updateBlockText}
-                              onUpdateLang={updateCodeLang}
-                              onUpdateCallout={updateCallout}
                               onUpdateCalloutTitle={updateCalloutTitle}
                               onUpdateTableCell={updateTableCell}
                               onUpdateTableRows={updateTableRows}

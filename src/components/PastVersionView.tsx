@@ -85,8 +85,6 @@ export default function PastVersionView({
           accentColor={accentColor}
           numberedIndex={block.type === "numbered" ? positions[i]?.number : undefined}
           onUpdateText={noop}
-          onUpdateLang={noop}
-          onUpdateCallout={noop}
           onUpdateCalloutTitle={noop}
           onUpdateTableCell={noop}
           onUpdateTableRows={noop}

@@ -69,7 +69,7 @@ describe("CalloutBlock", () => {
     noteId: "note-1",
     blockIndex: 0,
     syncGen: 1,
-    onUpdateCallout: vi.fn(),
+    onUpdateBlock: vi.fn(),
     onUpdateText: vi.fn(),
     onUpdateTitle: vi.fn(),
     onBlockNav: vi.fn(),

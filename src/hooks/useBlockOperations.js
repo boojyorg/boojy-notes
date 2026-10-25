@@ -296,22 +296,6 @@ export function useBlockOperations({
     [blockRefs],
   );
 
-  // --- Code block operations (the text goes through updateBlockText) ---
-  const updateCodeLang = useCallback(
-    (noteId, blockIndex, lang) => {
-      commitNoteData(patchBlock(noteId, blockIndex, { lang }));
-    },
-    [commitNoteData],
-  );
-
-  // --- Callout operations ---
-  const updateCallout = useCallback(
-    (noteId, blockIndex, updates) => {
-      commitNoteData(patchBlock(noteId, blockIndex, updates));
-    },
-    [commitNoteData],
-  );
-
   // --- Table operations ---
   // A structural change to a table (a row or column added, removed or
   // moved, an alignment, a CSV paste) is a function of the rows as the ref
@@ -469,8 +453,6 @@ export function useBlockOperations({
     saveAndInsertFiles,
     flipCheck,
     registerBlockRef,
-    updateCodeLang,
-    updateCallout,
     updateCalloutTitle,
     updateTableCell,
     updateTableRows,

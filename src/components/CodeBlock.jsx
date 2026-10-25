@@ -103,7 +103,7 @@ export default memo(function CodeBlock({
   syncGen,
   noteDataRef,
   onUpdateCode,
-  onUpdateLang,
+  onUpdateBlock,
   onBlockNav,
   onDelete,
 }) {
@@ -387,9 +387,9 @@ export default memo(function CodeBlock({
       if (sameLang(newLang, lang)) return;
       // A code block that becomes a diagram opens, its code where it was.
       if (canonicalLang(newLang) === "mermaid") setCodeOpen(true);
-      onUpdateLang(noteId, blockIndex, newLang);
+      onUpdateBlock(noteId, blockIndex, { lang: newLang });
     },
-    [noteId, blockIndex, onUpdateLang, lang],
+    [noteId, blockIndex, onUpdateBlock, lang],
   );
 
   /** The context menu's own row: it closes and hands the menu to the label. */

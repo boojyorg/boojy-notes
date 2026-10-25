@@ -49,8 +49,6 @@ function baseProps(block, overrides = {}) {
     fontSize: 14,
     numberedIndex: 1,
     onUpdateText: noop,
-    onUpdateLang: noop,
-    onUpdateCallout: noop,
     onUpdateCalloutTitle: noop,
     onUpdateTableCell: noop,
     onUpdateTableRows: noop,

@@ -54,7 +54,7 @@ describe("CodeBlock", () => {
     blockIndex: 0,
     syncGen: 1,
     onUpdateCode: vi.fn(),
-    onUpdateLang: vi.fn(),
+    onUpdateBlock: vi.fn(),
     onBlockNav: vi.fn(),
     onDelete: vi.fn(),
   };
@@ -110,7 +110,7 @@ describe("CodeBlock", () => {
     expect(langLabel.getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("calls onUpdateLang when a language is chosen from the menu", () => {
+  it("calls onUpdateBlock when a language is chosen from the menu", () => {
     const { container } = render(<CodeBlock {...defaultProps} />);
     fireEvent.click(container.querySelector(".code-lang"));
     const menu = document.body.querySelector("[data-testid='code-lang-menu']");
@@ -118,7 +118,7 @@ describe("CodeBlock", () => {
       o.textContent.includes("Python"),
     );
     fireEvent.click(python);
-    expect(defaultProps.onUpdateLang).toHaveBeenCalledWith("note-1", 0, "python");
+    expect(defaultProps.onUpdateBlock).toHaveBeenCalledWith("note-1", 0, { lang: "python" });
     expect(document.body.querySelector("[data-testid='code-lang-menu']")).toBeNull();
   });
 
