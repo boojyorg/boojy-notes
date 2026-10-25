@@ -128,3 +128,23 @@ test("Escape while a row's menu is open closes the menu, however soon", async ({
   await expect(page.getByRole("menu")).toHaveCount(0);
   expect(await focusedKey(page)).not.toBeNull();
 });
+
+// A modifier alone is not keyboard use: Shift held for a Shift-click lit the
+// row clicked before it (Chromium rings at any key but ⌘, Ctrl and ⌥). The
+// first real key brings the ring back. utils/focusRing.ts.
+test("Shift held after a click draws no ring; the arrows do", async ({ page }) => {
+  await setUp(page);
+  const outline = () =>
+    page.evaluate(() => getComputedStyle(document.activeElement as Element).outlineStyle);
+  await row(page, "Alpha").click();
+  await expect(row(page, "Alpha")).toBeFocused();
+  await page.keyboard.down("Shift");
+  expect(await outline()).toBe("none");
+  await row(page, "Beta").click();
+  await page.keyboard.up("Shift");
+  // The Shift-click still selected (a selected row holds its pill).
+  await expect(row(page, "Beta")).toHaveClass(/is-held/);
+  expect(await outline()).toBe("none");
+  await page.keyboard.press("ArrowUp");
+  expect(await outline()).toBe("solid");
+});

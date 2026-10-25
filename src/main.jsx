@@ -8,6 +8,7 @@ import { SidebarProvider } from "./context/SidebarContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
 import { installTraceProbes } from "./utils/trace";
+import { installFocusRingGuard } from "./utils/focusRing";
 import { isPhone } from "./utils/platform";
 import { applyUiScale, initialUiScale } from "./utils/uiScale";
 import { showStartupFailure } from "./phone/startupFailure";
@@ -47,6 +48,7 @@ document.head.appendChild(highlightStyle);
 // Log unhandled promise rejections
 window.addEventListener("unhandledrejection", (e) => console.error("[unhandled]", e.reason));
 installTraceProbes();
+installFocusRingGuard();
 
 // The phone's vault and sign-in come before the app's first render.
 const ready = isPhone ? import("./phone/install").then((m) => m.installPhone()) : Promise.resolve();

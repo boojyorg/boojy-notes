@@ -8,7 +8,7 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
 `src/constants/themes.js` is the only colour authority.
 
 - Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`.
-- Neutral palettes; teal is the identity. `?tweak` (dev only) overrides live.
+- Neutral palettes; teal is the identity.
 - **Use surfaces by role**: `BG.editor` sheet, `BG.elevated` menus/modals, `BG.standard`
   sidebar, `BG.surface` content hover, `BG.hover` row, menu and icon-button hover *and* selected, `BG.divider`
   borders. Text is `primary` / `secondary` / `muted`.
@@ -24,7 +24,8 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
   hover included; a label on a filled button takes its ground's `on…` token. `themeContrast.test.js`, `e2e/accessibility.spec.ts`.
 - **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);
-  tree rows draw it inset. Keyboard focus only; never `outline: none` on a control.
+  tree rows draw it inset. Keyboard focus only, and a lone modifier is not keyboard
+  (`focusRing.ts`); never `outline: none` on a control.
 
 ## Toasts
 

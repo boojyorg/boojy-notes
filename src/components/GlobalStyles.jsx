@@ -387,6 +387,9 @@ export default function GlobalStyles() {
         .sidebar-note:focus-visible, .sidebar-folder:focus-visible {
           outline: 2px solid var(--boojy-focus-ring); outline-offset: -2px;
         }
+        /* Focus a click gave keeps no ring when a lone modifier is pressed
+           (utils/focusRing). After every ring rule, so it outranks them. */
+        [data-pointer-focus]:focus-visible { outline: none; }
         /* The press squeezes the drawn box; the hit area around it never
            transforms. On .checkbox-box itself the scale would pull the
            element's edges in from under the pointer, and a press near an edge
