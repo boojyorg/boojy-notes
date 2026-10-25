@@ -36,7 +36,7 @@ import {
   visibleRows,
 } from "../utils/pathTree";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "./Icons";
-import Collapsible from "./Collapsible";
+import Collapsible, { IndentGuide } from "./Collapsible";
 import { fromTouch } from "../utils/touch";
 import { menuSurface } from "./Menu";
 
@@ -484,17 +484,9 @@ export default function PathTreeMenu({
             <div role="group" style={{ position: "relative" }}>
               {/* The sidebar's indent guide: a hairline from the glyph's centre
                   through the children, which is what says "this folder ends here". */}
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  bottom: TREE_ROW_GAP,
-                  left: SPINE + SPINE_ICON / 2 + (depth + shift) * TREE_INDENT - ROW_INSET,
-                  width: 1,
-                  background: BG.divider,
-                  pointerEvents: "none",
-                }}
+              <IndentGuide
+                bottom={TREE_ROW_GAP}
+                left={SPINE + SPINE_ICON / 2 + (depth + shift) * TREE_INDENT - ROW_INSET}
               />
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((id) => renderNote(id, depth + 1))}
@@ -615,18 +607,7 @@ export default function PathTreeMenu({
               {/* No role: these are the tree's own top-level items, drawn
                   under the head row with its indent guide. */}
               <div style={{ position: "relative" }}>
-                <div
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    bottom: TREE_ROW_GAP,
-                    left: SPINE + SPINE_ICON / 2 - ROW_INSET,
-                    width: 1,
-                    background: BG.divider,
-                    pointerEvents: "none",
-                  }}
-                />
+                <IndentGuide bottom={TREE_ROW_GAP} left={SPINE + SPINE_ICON / 2 - ROW_INSET} />
                 {rows.length === 0 && (
                   <div
                     style={{

@@ -52,7 +52,7 @@ import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import SyncStatusButton from "./SyncStatusButton";
 import RenameField from "./RenameField";
-import Collapsible from "./Collapsible";
+import Collapsible, { IndentGuide } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
 import { SYNC_FOLDER } from "../phone/syncFolder";
 import Wordmark from "./Wordmark";
@@ -985,17 +985,9 @@ const Sidebar = memo(function Sidebar({
                 folder glyph's centre through its children; the line ending is
                 what says "this folder ends here" in a mixed tree. */}
             <div style={{ position: "relative" }}>
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  bottom: ROW_GAP,
-                  left: TREE_SPINE + SPINE_ICON / 2 + depth * TREE_INDENT,
-                  width: 1,
-                  background: BG.divider,
-                  pointerEvents: "none",
-                }}
+              <IndentGuide
+                bottom={ROW_GAP}
+                left={TREE_SPINE + SPINE_ICON / 2 + depth * TREE_INDENT}
               />
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((nId) => renderNote(nId, depth + 1))}
@@ -1070,18 +1062,7 @@ const Sidebar = memo(function Sidebar({
         {files.length > 0 && (
           <Collapsible open={isOpen}>
             <div style={{ position: "relative" }}>
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  bottom: ROW_GAP,
-                  left: TREE_SPINE + SPINE_ICON / 2,
-                  width: 1,
-                  background: BG.divider,
-                  pointerEvents: "none",
-                }}
-              />
+              <IndentGuide bottom={ROW_GAP} left={TREE_SPINE + SPINE_ICON / 2} />
               {files.map((path) => renderFile(path, 1, attachmentLabel(path)))}
             </div>
           </Collapsible>
