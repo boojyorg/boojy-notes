@@ -165,6 +165,14 @@ function createWindow() {
   ]) {
     mainWindow.on(event, () => mainWindow?.webContents.send("full-screen-changed", on));
   }
+  // The strip macOS slides down in full screen puts the window's title beside
+  // the lights, never centred; the note's name is already centred just below
+  // it (NotePath), so there the window has no title.
+  mainWindow.on("enter-full-screen", () => mainWindow?.setTitle(""));
+  mainWindow.on("leave-full-screen", () => mainWindow?.setTitle(mainWindow.webContents.getTitle()));
+  mainWindow.on("page-title-updated", (e) => {
+    if (mainWindow?.isFullScreen()) e.preventDefault();
+  });
 
   // The renderer never opens windows and never navigates. An `http(s)` link
   // (the footer's boojy.org, a link block) goes to the system browser; a
