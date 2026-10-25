@@ -16,6 +16,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 // Mutable so one test can put the window into full screen.
 const layout = vi.hoisted(() => ({ fullScreen: false }));
 vi.mock("../../src/context/LayoutContext", () => ({
+  useSourceView: () => [false, () => {}],
   useLayout: () => ({
     sidebarVisible: false,
     sidebarWidth: 260,

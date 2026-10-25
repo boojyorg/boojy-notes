@@ -48,8 +48,8 @@ interface Options {
   flushAll: () => Promise<void>;
   commitNoteData: (updater: (prev: NoteMap) => NoteMap) => void;
   syncGeneration: MutableRefObject<number>;
-  sourceView: boolean;
-  setSourceView: (on: boolean) => void;
+  /** Hides a note's Markdown view without changing its saved choice (LayoutContext). */
+  pauseSourceView: (noteId: string | null) => void;
   showToast: (message: string, kind?: ToastKind, options?: ToastOptions) => number;
   requestConfirm: (prompt: Record<string, unknown>) => Promise<unknown>;
 }
@@ -67,16 +67,13 @@ export function useVersionHistory({
   flushAll,
   commitNoteData,
   syncGeneration,
-  sourceView,
-  setSourceView,
+  pauseSourceView,
   showToast,
   requestConfirm,
 }: Options) {
   const [state, setState] = useState<VersionHistoryState>(CLOSED);
   const stateRef = useRef(state);
   stateRef.current = state;
-  // The Markdown view is off while the past is looked at, and back after.
-  const hadSourceView = useRef(false);
   const readSeq = useRef(0);
   const [hour12, setHour12] = useState<boolean | undefined>(undefined);
 
@@ -96,10 +93,9 @@ export function useVersionHistory({
 
   const close = useCallback(() => {
     readSeq.current++;
-    if (stateRef.current.noteId && hadSourceView.current) setSourceView(true);
-    hadSourceView.current = false;
+    pauseSourceView(null);
     setState(CLOSED);
-  }, [setSourceView]);
+  }, [pauseSourceView]);
 
   const open = useCallback(async () => {
     const noteId = activeNote;
@@ -108,10 +104,9 @@ export function useVersionHistory({
     if (noteDataRef.current[noteId]?.unreadable) return;
     // The list shows what the file holds, so pending edits are written first.
     await flushAll();
-    if (sourceView && stateRef.current.noteId === null) {
-      hadSourceView.current = true;
-      setSourceView(false);
-    }
+    // The Markdown view is hidden while the past is looked at, and back after;
+    // its saved choice is untouched, so a quit meanwhile keeps it.
+    pauseSourceView(noteId);
     // The list opens with its versions in it: shown empty first, an arrow
     // pressed before they arrived landed on Now (seen under load).
     const api = historyAPI();
@@ -122,7 +117,7 @@ export function useVersionHistory({
         ? { ...s, listOpen: true, versions, off }
         : { ...CLOSED, noteId, listOpen: true, versions, off },
     );
-  }, [activeNote, flushAll, sourceView, setSourceView, noteDataRef]);
+  }, [activeNote, flushAll, pauseSourceView, noteDataRef]);
 
   // Escape is Now from anywhere while a version is on screen and the list is
   // hidden (the list takes its own Escape). On the document, before the

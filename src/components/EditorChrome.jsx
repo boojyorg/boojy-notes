@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
-import { useLayout } from "../context/LayoutContext";
+import { useLayout, useSourceView } from "../context/LayoutContext";
 import {
   SidebarToggleIcon,
   MoreHorizontalIcon,
@@ -266,7 +266,8 @@ export default function EditorChrome({
   // A file shown in the note's place (useFileView): its controls stand left of the ···.
   fileView = null,
 }) {
-  const { sidebarVisible, fullScreen, toggleSidebar, revealSidebar, sourceView } = useLayout();
+  const { sidebarVisible, fullScreen, toggleSidebar, revealSidebar } = useLayout();
+  const [sourceView] = useSourceView(activeNote);
   const { theme } = useTheme();
   const collapsed = !sidebarVisible;
 

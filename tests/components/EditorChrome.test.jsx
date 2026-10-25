@@ -26,6 +26,7 @@ const layoutState = {
 
 vi.mock("../../src/context/LayoutContext", () => ({
   useLayout: () => layoutState,
+  useSourceView: () => [layoutState.sourceView, vi.fn()],
   LayoutProvider: ({ children }) => children,
 }));
 

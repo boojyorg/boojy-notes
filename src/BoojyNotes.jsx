@@ -5,7 +5,7 @@ import { belowItem, selectedIds } from "./utils/blockRun";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
-import { useLayout } from "./context/LayoutContext";
+import { useLayout, useSourceView } from "./context/LayoutContext";
 import { PANEL_MS, panelTransition } from "./tokens/motion";
 import { useSidebar } from "./context/SidebarContext";
 import { useFileSystem } from "./hooks/useFileSystem";
@@ -112,8 +112,7 @@ export default function BoojyNotes() {
     revealSidebar,
     hideSidebar,
     toggleSidebar,
-    sourceView,
-    setSourceView,
+    pauseSourceView,
     accentColor,
     sidebarHandles,
     isDragging,
@@ -160,6 +159,7 @@ export default function BoojyNotes() {
   // ── State ──────────────────────────────────────────────────────────
   // Navigation state: one active note. Opening a note replaces the current one.
   const { activeNote, setActiveNote: setActiveNoteRaw } = useActiveNote();
+  const [sourceView] = useSourceView(activeNote);
   // On the phone a note is a screen of its own: opening one shows it, and
   // losing the open note (deleted, the vault switched) goes back to Home. A
   // launch restores the note without passing here, so the app opens on Home;
@@ -285,8 +285,7 @@ export default function BoojyNotes() {
     flushAll,
     commitNoteData,
     syncGeneration,
-    sourceView,
-    setSourceView,
+    pauseSourceView,
     showToast,
     requestConfirm,
   });

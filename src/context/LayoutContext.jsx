@@ -1,9 +1,22 @@
-import { createContext, useState, useContext, useMemo, useRef, useCallback } from "react";
+import {
+  createContext,
+  useState,
+  useContext,
+  useMemo,
+  useRef,
+  useCallback,
+  useEffect,
+} from "react";
 import { useTheme } from "../hooks/useTheme";
 import { usePanelResize } from "../hooks/usePanelResize";
 import { useFullScreen } from "../hooks/useFullScreen";
 import { useWindowWidth } from "../hooks/useWindowWidth";
 import { SIDEBAR_DEFAULT_W, SIDEBAR_MAX_W, sidebarWidthFor } from "../constants/layout";
+import {
+  readMarkdownViewNotes,
+  withMarkdownView,
+  writeMarkdownViewNotes,
+} from "../utils/markdownViewNotes";
 
 const LayoutContext = createContext(null);
 
@@ -51,12 +64,20 @@ export function LayoutProvider({ children }) {
   const hideSidebar = useCallback(() => setCollapsed(true), []);
 
   /**
-   * The Markdown view (SourceView): the note shown as its file. App-wide while
-   * it is on, so the next note opens in it too; never saved, so every launch
-   * starts in the formatted view. Only the switch in
-   * EditorArea writes it, because the caret's place is read on the way.
+   * The Markdown view (SourceView): the note shown as its file. Per note, and
+   * remembered across restarts (`markdownViewNotes`); a new note opens
+   * formatted. Read through `useSourceView`. Only the switch in EditorArea
+   * turns it on or off, because the caret's place is read on the way. Version
+   * History hides it for the note it looks back on (`pauseSourceView`), never
+   * touching the saved choice.
    */
-  const [sourceView, setSourceView] = useState(false);
+  const [markdownViewNotes, setMarkdownViewNotes] = useState(readMarkdownViewNotes);
+  const setNoteSourceView = useCallback(
+    (noteId, on) => setMarkdownViewNotes((ids) => withMarkdownView(ids, noteId, on)),
+    [],
+  );
+  useEffect(() => writeMarkdownViewNotes(markdownViewNotes), [markdownViewNotes]);
+  const [sourceViewPausedFor, pauseSourceView] = useState(null);
 
   const sidebarHandles = useRef([]);
 
@@ -80,8 +101,10 @@ export function LayoutProvider({ children }) {
       toggleSidebar,
       revealSidebar,
       hideSidebar,
-      sourceView,
-      setSourceView,
+      markdownViewNotes,
+      setNoteSourceView,
+      sourceViewPausedFor,
+      pauseSourceView,
       accentColor,
       sidebarHandles,
       isDragging,
@@ -95,7 +118,9 @@ export function LayoutProvider({ children }) {
       toggleSidebar,
       revealSidebar,
       hideSidebar,
-      sourceView,
+      markdownViewNotes,
+      setNoteSourceView,
+      sourceViewPausedFor,
       accentColor,
       isDragging,
       startDrag,
@@ -109,4 +134,17 @@ export function useLayout() {
   const ctx = useContext(LayoutContext);
   if (!ctx) throw new Error("useLayout must be used within LayoutProvider");
   return ctx;
+}
+
+/** Whether `noteId` is in the Markdown view, and the switch for it. */
+export function useSourceView(noteId) {
+  const { markdownViewNotes, setNoteSourceView, sourceViewPausedFor } = useLayout();
+  const on = !!noteId && noteId !== sourceViewPausedFor && markdownViewNotes.includes(noteId);
+  const setOn = useCallback(
+    (next) => {
+      if (noteId) setNoteSourceView(noteId, next);
+    },
+    [noteId, setNoteSourceView],
+  );
+  return [on, setOn];
 }

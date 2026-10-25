@@ -208,8 +208,8 @@ cell or callout its field commits it. `inline-math.spec.ts`.
 
 ## The Markdown view is the file, edited as typing
 
-`SourceView`: the note as `blocksToMarkdown` writes it, a plain monospace field. `sourceView`
-is app-wide in `LayoutContext`, never saved.
+`SourceView`: the note as `blocksToMarkdown` writes it, a plain monospace field. **Each note
+keeps its own view, saved** (`useSourceView`).
 
 - **Switching commits nothing**, so it changes no byte. Each input is parsed with
   `markdownToBlocks` and committed via `commitTextChange` (one undo burst).

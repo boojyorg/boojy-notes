@@ -11,7 +11,7 @@ import {
   SCROLLBAR_W,
 } from "../constants/layout";
 import { Z } from "../constants/zIndex";
-import { useLayout } from "../context/LayoutContext";
+import { useLayout, useSourceView } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
@@ -254,8 +254,8 @@ const EditorArea = memo(
       (id) => setBlockSelection(id ? { anchor: id, head: id } : null),
       [setBlockSelection],
     );
-    const { accentColor, sidebarVisible, sidebarWidth, fullScreen, sourceView, setSourceView } =
-      useLayout();
+    const { accentColor, sidebarVisible, sidebarWidth, fullScreen } = useLayout();
+    const [sourceView, setSourceView] = useSourceView(activeNote);
 
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
