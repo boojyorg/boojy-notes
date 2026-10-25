@@ -7,58 +7,16 @@ import { genBlockId } from "../../utils/storage";
 import { TAG_TAIL_RE } from "../../utils/tags";
 import { SLASH_COMMANDS } from "../../constants/data";
 import {
-  TYPED_DIVIDER_RE,
-  TYPED_FENCE_RE,
-  TYPED_MATH_RE,
+  LINE_MARKER_ON_TEXT_RE,
+  TYPED_IMAGE_RE,
   TYPED_TABLE_RE,
+  lineKind,
+  typedBlockType,
   typedFenceLang,
   typedTableColumns,
 } from "../../utils/blockTriggers";
 import { editBlocks } from "../../utils/editBlocks";
 import { addsFiles } from "../../utils/platform";
-
-// Pre-compiled markdown shortcut patterns (avoid re-creating RegExp on every keystroke)
-const S = "[\\s\\u00a0]";
-const MD_PATTERNS = [
-  { regex: new RegExp(`^######${S}$`), type: "h6" },
-  { regex: new RegExp(`^#####${S}$`), type: "h5" },
-  { regex: new RegExp(`^####${S}$`), type: "h4" },
-  { regex: new RegExp(`^###${S}$`), type: "h3" },
-  { regex: new RegExp(`^##${S}$`), type: "h2" },
-  { regex: new RegExp(`^#${S}$`), type: "h1" },
-  { regex: new RegExp(`^[-*]${S}$`), type: "bullet" },
-  { regex: new RegExp(`^\\[\\]${S}$`), type: "checkbox" },
-  { regex: new RegExp(`^\\[${S}\\]${S}$`), type: "checkbox" },
-  { regex: new RegExp(`^1\\.${S}$`), type: "numbered" },
-  { regex: new RegExp(`^>${S}$`), type: "blockquote" },
-  // Every marker waits for its space, these two included: a marker that fires
-  // on its last character can never be given an argument (```js, `||||`), and
-  // could never be typed as text.
-  { regex: TYPED_DIVIDER_RE, type: "spacer" },
-  { regex: TYPED_FENCE_RE, type: "code" },
-  { regex: TYPED_MATH_RE, type: "math" },
-];
-
-/**
- * A line kind's marker typed at the start of a paragraph that already has
- * text: `- ` before `Full stack or frontend?` makes that line the bullet, as
- * it does on an empty line, rather than staying text written as `\- `. Only
- * the kinds a line can be; a fence, a divider
- * or a table makes a block of its own and still wants an empty line. Cmd+Z
- * straight after brings the literal marker back, for the rare line that
- * starts with one.
- */
-const LINE_MARKER_RE = new RegExp(`^(#{1,6}|[-*]|1\\.|\\[${S}?\\]|>)${S}(?=\\S)`);
-const LINE_MARKER_TYPE = (marker) =>
-  marker.startsWith("#")
-    ? `h${marker.length}`
-    : marker === "-" || marker === "*"
-      ? "bullet"
-      : marker === "1."
-        ? "numbered"
-        : marker === ">"
-          ? "blockquote"
-          : "checkbox";
 
 /**
  * Typed triggers for the two blocks the menu makes through its own path (a
@@ -70,7 +28,7 @@ const LINE_MARKER_TYPE = (marker) =>
  */
 const MENU_TRIGGERS = [
   { regex: TYPED_TABLE_RE, id: "table" },
-  ...(addsFiles ? [{ regex: new RegExp(`^!\\[\\]${S}$`), id: "image" }] : []),
+  ...(addsFiles ? [{ regex: TYPED_IMAGE_RE, id: "image" }] : []),
 ];
 
 /** An open `[[` not yet closed: the wikilink menu's trigger. */
@@ -141,44 +99,46 @@ export function useInputHandler({
     updateBlockText(noteId, blockIndex, text);
 
     const currentBlock = noteDataRef.current[noteId].content.blocks[blockIndex];
-    for (const pat of MD_PATTERNS) {
-      if (pat.regex.test(text)) {
-        // Code block auto-conversion
-        if (pat.type === "code") {
-          el.innerHTML = "<br>";
-          // The info string is kept as it was typed — ```js stays `js` in the
-          // file, and the corner reads JavaScript (`canonicalLang`). The block
-          // owns the next keystroke: the caret goes into its own field, not
-          // the paragraph under it, exactly as the slash menu's Code does.
-          openCodeBlock(noteId, blockIndex, typedFenceLang(text) ?? "");
-          return;
-        }
-
+    // Every marker waits for its space: a marker that fires on its last
+    // character can never be given an argument (```js, `||||`), and could
+    // never be typed as text.
+    const typedType = typedBlockType(text);
+    if (typedType) {
+      // Code block auto-conversion
+      if (typedType === "code") {
         el.innerHTML = "<br>";
-        // A formula's source opens in its panel, the caret in it.
-        if (pat.type === "math") {
-          openMathBlock(noteId, blockIndex);
-          return;
-        }
-        // A divider holds no text and takes no caret, so it ends in a fresh
-        // paragraph; `openDivider` is that operation, shared with the Enter
-        // that opens one.
-        if (pat.type === "spacer") {
-          openDivider(noteId, blockIndex);
-          return;
-        }
-        commitNoteData(
-          editBlocks(noteId, (blks) => {
-            const updated = { ...blks[blockIndex], text: "", type: pat.type };
-            if (pat.type === "checkbox") updated.checked = false;
-            if (pat.type !== "checkbox") delete updated.checked;
-            blks[blockIndex] = updated;
-          }),
-        );
-        focusBlockId.current = currentBlock.id;
-        focusCursorPos.current = 0;
+        // The info string is kept as it was typed — ```js stays `js` in the
+        // file, and the corner reads JavaScript (`canonicalLang`). The block
+        // owns the next keystroke: the caret goes into its own field, not
+        // the paragraph under it, exactly as the slash menu's Code does.
+        openCodeBlock(noteId, blockIndex, typedFenceLang(text) ?? "");
         return;
       }
+
+      el.innerHTML = "<br>";
+      // A formula's source opens in its panel, the caret in it.
+      if (typedType === "math") {
+        openMathBlock(noteId, blockIndex);
+        return;
+      }
+      // A divider holds no text and takes no caret, so it ends in a fresh
+      // paragraph; `openDivider` is that operation, shared with the Enter
+      // that opens one.
+      if (typedType === "spacer") {
+        openDivider(noteId, blockIndex);
+        return;
+      }
+      commitNoteData(
+        editBlocks(noteId, (blks) => {
+          const updated = { ...blks[blockIndex], text: "", type: typedType };
+          if (typedType === "checkbox") updated.checked = false;
+          else delete updated.checked;
+          blks[blockIndex] = updated;
+        }),
+      );
+      focusBlockId.current = currentBlock.id;
+      focusCursorPos.current = 0;
+      return;
     }
 
     // A marker typed at the start of a line with text: the space just typed
@@ -189,10 +149,10 @@ export function useInputHandler({
       !native.isComposing &&
       /^[\s\u00a0]$/.test(native.data ?? "") &&
       !text.includes("\n")
-        ? LINE_MARKER_RE.exec(text)
+        ? LINE_MARKER_ON_TEXT_RE.exec(text)
         : null;
     if (lineMarker && getCaretOffset(el) === lineMarker[0].length) {
-      const type = LINE_MARKER_TYPE(lineMarker[1]);
+      const type = lineKind(lineMarker[1]);
       const rest = text.slice(lineMarker[0].length);
       commitNoteData(
         editBlocks(noteId, (blks) => {
