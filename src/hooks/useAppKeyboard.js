@@ -5,6 +5,7 @@ import { withAlignment } from "../utils/tableShape";
 import { indentRun } from "../utils/blockRun";
 import { focusSidebar } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
+import { selectedTodoTargets, todoFlip } from "../utils/todoToggle";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -65,6 +66,8 @@ export function useAppKeyboard({
   deleteNote,
   applyFormat,
   setBlockKind,
+  // Format → Check Off: ⌘Enter's to-dos (`todoFlip`).
+  checkTodos,
   duplicateBlocks,
   blockSelectionIds,
   // The phone's ⇤ ⇥: what Tab and Shift+Tab run (`indentSpan`).
@@ -116,6 +119,7 @@ export function useAppKeyboard({
     deleteNote,
     applyFormat,
     setBlockKind,
+    checkTodos,
     duplicateBlocks,
     blockSelectionIds,
     updateBlockIndent,
@@ -322,6 +326,7 @@ export function useAppKeyboard({
         textField: isTextField(document.activeElement),
         formats: formats ? Object.keys(formats).filter((f) => formats[f]) : [],
         kind: blocks.find((b) => b.id === caretBlock)?.type ?? null,
+        todosDone: todosDone(L, blocks),
         align: columnAlignment(blocks),
         sidebarVisible: !!sidebarVisible,
         sourceView: !!sourceView,
@@ -484,6 +489,18 @@ export function indentSpan(blocks, chosenIds, delta) {
   return indentRun(blocks, from, to, delta) ? { from, to } : null;
 }
 
+/** Check Off's blocks: those selected whole, else the text selection's (`selectedTodoTargets`). */
+function todoTargets(L, blocks) {
+  const chosen = L.blockSelectionIds?.() ?? [];
+  return chosen.length ? chosen : selectedTodoTargets(blocks, window.getSelection());
+}
+
+/** Whether Check Off's to-dos are all ticked, for its check; null with none (greyed). */
+function todosDone(L, blocks) {
+  const flip = todoFlip(blocks, todoTargets(L, blocks));
+  return flip ? !flip.checked : null;
+}
+
 /** The ids of the blocks the selection runs through, first to last, in the editor. */
 function selectedBlockIds(blocks) {
   const sel = window.getSelection();
@@ -607,6 +624,11 @@ function runMenuCommand(id, L, titleRef) {
     if (!span) return;
     if (span.from === span.to) L.updateBlockIndent?.(note, span.from, delta, true);
     else L.indentBlockRange?.(note, span.from, span.to, delta);
+    return;
+  }
+  if (id === "toggleTodo") {
+    const flip = todoFlip(blocks, todoTargets(L, blocks));
+    if (flip) L.checkTodos?.(note, flip.ids, flip.checked);
     return;
   }
   if (id in BLOCK_KINDS) {

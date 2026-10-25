@@ -71,6 +71,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - Leave the `resolveInitialActiveNote()` migration read path.
 - The wordmark opens Settings. No About, Help or Recently Deleted.
 - **The header ··· is the active note's menu** (a row's ··· is its first group and Delete).
+  Both end with words and when edited (`editedLabel`), always one line.
   While the Markdown view is on, a lit `</>` stands left of the ···; the path band reserves its
   room.
 - **The menu bar is every command with its shortcut** (`electron/appMenu.ts`). **An item does
