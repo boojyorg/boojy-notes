@@ -17,7 +17,7 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
 | `remapNoteFolders` | a directory rename or move | no |
 | `replaceNoteData` | the whole vault: load, switch, rebuild after outside delete | keeps existing notes' |
 
-- **Undo and redo act on the open note only** (`takeNewestFor`); stacks shared, capped at 50.
+- **Undo and redo act on the open note only** (`takeNewestFor`); stacks shared.
   A typing group belongs to one note and a structural commit closes it. Undo never conjures a
   deleted note; a move is not undoable. `undo-scope.spec.ts`.
 - A draft ends in the ref at its first keystroke. The rebuild after an
@@ -79,6 +79,7 @@ app's, made through state.**
   back. Shift+Arrow is always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
 - **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), landing as arrows do, on screen.
   `block-jump.spec.ts`.
+- **⌘Enter ticks the selected to-dos one way** (`todoFlip`); else Enter. `todo-toggle.spec.ts`.
 
 ## Backspace sheds the kind before it merges
 
@@ -164,9 +165,8 @@ app's, made through state.**
   hold (Android reuses finger ids). `hold-to-grab.spec.ts`.
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.
-- **The page is still mid-drag.** A reorder glides moved blocks from their old places
-  (`settleBlocks`); a drag that moves nothing sends its copy home.
-  `motion.spec.ts`.
+- **The page is still mid-drag.** Moved blocks glide (`settleBlocks`); a drag that moves
+  nothing sends its copy home. `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (no item changes
   parent); nested, among siblings only; one selected block too (`moveStep`). `list-move.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (UI scale).

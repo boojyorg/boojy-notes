@@ -40,6 +40,7 @@ export function useEditorHandlers({
   moveBlock,
   selectBlock,
   selectBlockRun,
+  checkTodos,
   onError,
 }) {
   // Use a ref for activeNote so inner helpers don't need it as a dependency
@@ -106,6 +107,7 @@ export function useEditorHandlers({
     selectBlock,
     selectBlockRun,
     executeSlashCommand,
+    checkTodos,
   });
   const { handleEditorPaste, handleEditorCopy, handleEditorCut } = usePasteHandler({
     ...shared,

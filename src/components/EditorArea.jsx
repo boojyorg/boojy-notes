@@ -77,6 +77,7 @@ import BlockMenu from "./BlockMenu";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { wholeBlocksCopy } from "../utils/clipboardCopy";
 import { fromTouch } from "../utils/touch";
+import { isTodoKey, todoFlip } from "../utils/todoToggle";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -223,6 +224,7 @@ const EditorArea = memo(
       commitTextChange,
       syncGeneration,
       flipCheck,
+      checkTodos,
       deleteBlock,
       registerBlockRef,
       insertBlockAfter,
@@ -728,6 +730,15 @@ const EditorArea = memo(
           openBlockMenuAt(blocks[range.from].id);
           return true;
         }
+        if (isTodoKey(e)) {
+          const run = blocks.slice(range.from, range.to + 1).map((b) => b.id);
+          const flip = todoFlip(blocks, run);
+          if (flip) {
+            e.preventDefault();
+            checkTodos(activeNote, flip.ids, flip.checked);
+            return true;
+          }
+        }
         if (e.key === "Enter") {
           e.preventDefault();
           setSelectedBlockId(null);
@@ -748,6 +759,7 @@ const EditorArea = memo(
         noteDataRef,
         blockRefs,
         deleteWholeBlock,
+        checkTodos,
         copySelectedBlocks,
         insertBlockAfter,
         indentBlockRange,

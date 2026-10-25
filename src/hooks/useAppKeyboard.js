@@ -5,6 +5,7 @@ import { withAlignment } from "../utils/tableShape";
 import { indentRun } from "../utils/blockRun";
 import { focusSidebar } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
+import { todoFlip } from "../utils/todoToggle";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -65,6 +66,8 @@ export function useAppKeyboard({
   deleteNote,
   applyFormat,
   setBlockKind,
+  // Format → Check Off: ⌘Enter's to-dos (`todoFlip`).
+  checkTodos,
   duplicateBlocks,
   blockSelectionIds,
   // The phone's ⇤ ⇥: what Tab and Shift+Tab run (`indentSpan`).
@@ -116,6 +119,7 @@ export function useAppKeyboard({
     deleteNote,
     applyFormat,
     setBlockKind,
+    checkTodos,
     duplicateBlocks,
     blockSelectionIds,
     updateBlockIndent,
@@ -322,6 +326,7 @@ export function useAppKeyboard({
         textField: isTextField(document.activeElement),
         formats: formats ? Object.keys(formats).filter((f) => formats[f]) : [],
         kind: blocks.find((b) => b.id === caretBlock)?.type ?? null,
+        checked: !!blocks.find((b) => b.id === caretBlock)?.checked,
         align: columnAlignment(blocks),
         sidebarVisible: !!sidebarVisible,
         sourceView: !!sourceView,
@@ -607,6 +612,12 @@ function runMenuCommand(id, L, titleRef) {
     if (!span) return;
     if (span.from === span.to) L.updateBlockIndent?.(note, span.from, delta, true);
     else L.indentBlockRange?.(note, span.from, span.to, delta);
+    return;
+  }
+  if (id === "toggleTodo") {
+    const chosen = L.blockSelectionIds?.() ?? [];
+    const flip = todoFlip(blocks, chosen.length ? chosen : selectedBlockIds(blocks));
+    if (flip) L.checkTodos?.(note, flip.ids, flip.checked);
     return;
   }
   if (id in BLOCK_KINDS) {

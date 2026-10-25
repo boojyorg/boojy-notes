@@ -276,6 +276,20 @@ export function useBlockOperations({
     [commitNoteData],
   );
 
+  // ⌘Enter's to-dos (`todoFlip`): every one ticked or unticked together, in one commit.
+  const checkTodos = useCallback(
+    (noteId, ids, checked) => {
+      commitNoteData(
+        editBlocks(noteId, (blocks) => {
+          blocks.forEach((block, i) => {
+            if (ids.includes(block.id)) blocks[i] = { ...block, checked, checkMark: undefined };
+          });
+        }),
+      );
+    },
+    [commitNoteData],
+  );
+
   const registerBlockRef = useCallback(
     (id, el) => {
       if (el) blockRefs.current[id] = el;
@@ -440,6 +454,7 @@ export function useBlockOperations({
     updateBlockProperty,
     saveAndInsertFiles,
     flipCheck,
+    checkTodos,
     registerBlockRef,
     updateCalloutTitle,
     updateTableCell,

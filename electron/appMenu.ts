@@ -39,6 +39,8 @@ export type MenuState = {
   formats: string[];
   /** The kind of the line the caret is in (`p`, `h2`, `bullet`, …), or null outside the editor. */
   kind: string | null;
+  /** That line is a to-do, ticked: Check Off carries a check. */
+  checked: boolean;
   /** The alignment of the table column the caret is in, or null outside a table cell. */
   align: string | null;
   sidebarVisible: boolean;
@@ -59,6 +61,7 @@ const INITIAL: MenuState = {
   textField: false,
   formats: [],
   kind: null,
+  checked: false,
   align: null,
   sidebarVisible: true,
   sourceView: false,
@@ -265,6 +268,13 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
             kind("todo", "checkbox", "To-do List", "[]", "CmdOrCtrl+9"),
           ],
         },
+        // Ticks the to-dos the selection runs through (`todoFlip`); the
+        // editor answers the key itself, as it does Cmd+B.
+        note("toggleTodo", "Check Off", "CmdOrCtrl+Enter", {
+          type: "checkbox",
+          enabled: state.kind === "checkbox",
+          checked: state.kind === "checkbox" && state.checked,
+        }),
         kind("quote", "blockquote", "Quote", ">"),
         { type: "separator" },
         // A table column's alignment, with the caret in one of its cells: the

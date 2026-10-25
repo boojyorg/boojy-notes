@@ -35,6 +35,7 @@ import { measureBlockPlaces, settleBlocks } from "../../utils/blockSettle";
 import { stepIndex } from "../../utils/menuKeys";
 import { editBlocks } from "../../utils/editBlocks";
 import { LINE_KIND_TYPES, LIST_TYPES } from "../../utils/blockKinds";
+import { isTodoKey, todoFlip } from "../../utils/todoToggle";
 
 /**
  * Blocks a Backspace at their start turns into a plain paragraph before it
@@ -83,6 +84,7 @@ export function useKeyboardHandlers({
   selectBlockRun,
   getBlock,
   executeSlashCommand,
+  checkTodos,
 }) {
   // --- Block keyboard handler ---
   const handleBlockKeyDown = useCallback((noteId, blockIndex, e) => {
@@ -625,6 +627,20 @@ export function useKeyboardHandlers({
       e.preventDefault();
       applyFormat(format);
       return;
+    }
+
+    // ⌘Enter ticks the to-dos the selection runs through; with none, it is Enter.
+    if (isTodoKey(e)) {
+      const start = getBlock(range.startContainer);
+      const end = getBlock(range.endContainer) || start;
+      const blocks = noteDataRef.current[currentNote]?.content?.blocks ?? [];
+      const ids = start ? blocks.slice(start.blockIndex, end.blockIndex + 1).map((b) => b.id) : [];
+      const flip = todoFlip(blocks, ids);
+      if (flip) {
+        e.preventDefault();
+        checkTodos(currentNote, flip.ids, flip.checked);
+        return;
+      }
     }
 
     // Which block roots the selection touches decides who handles the key.
