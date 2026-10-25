@@ -180,7 +180,6 @@ export default function SettingsModal({
             <>
               <SettingsRule />
               <StorageTab
-                isDesktop={isDesktop}
                 SectionHeader={SectionTitle}
                 vaults={vaults}
                 switchVault={switchVault}
@@ -192,7 +191,7 @@ export default function SettingsModal({
               <SettingsRule />
               <SpellingSection SectionHeader={SectionTitle} />
               <SettingsRule />
-              <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionTitle} />
+              <UpdatesTab SectionHeader={SectionTitle} />
             </>
           )}
           <SettingsFooter />

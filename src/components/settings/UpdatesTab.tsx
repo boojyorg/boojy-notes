@@ -5,7 +5,6 @@ import { useSettings } from "../../context/SettingsContext";
 import { SettingRow, SmallButton, Switch } from "./SettingsPrimitives";
 
 interface UpdatesTabProps {
-  isDesktop: boolean;
   SectionHeader: ComponentType<{ title: string }>;
 }
 
@@ -23,30 +22,21 @@ interface UpdateStatus {
  * state changes the button's look, because it is the one that needs a
  * decision. An error keeps its feedback in the error ink with `Try again`.
  */
-export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps) {
-  const { autoUpdateEnabled, setAutoUpdateEnabled, updateStatus } = useSettings() as {
+export default function UpdatesTab({ SectionHeader }: UpdatesTabProps) {
+  const { autoUpdateEnabled, changeAutoUpdate, updateStatus } = useSettings() as {
     autoUpdateEnabled: boolean;
-    setAutoUpdateEnabled: (enabled: boolean) => void;
+    changeAutoUpdate: (enabled: boolean) => void;
     updateStatus: UpdateStatus | null;
   };
   const { theme } = useTheme();
   const { TEXT, SEMANTIC } = theme;
 
-  const handleToggleAutoUpdate = useCallback(
-    (enabled: boolean) => {
-      setAutoUpdateEnabled(enabled);
-      window.electronAPI?.setAutoUpdate?.(enabled);
-    },
-    [setAutoUpdateEnabled],
-  );
   const check = useCallback(() => {
     window.electronAPI?.checkForUpdate?.();
   }, []);
   const install = useCallback(() => {
     window.electronAPI?.installUpdate?.();
   }, []);
-
-  if (!isDesktop) return null;
 
   const state = updateStatus?.state ?? "idle";
   let status: string;
@@ -93,11 +83,7 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
       <SectionHeader title="Updates" />
 
       <SettingRow label="Automatic updates">
-        <Switch
-          checked={autoUpdateEnabled}
-          label="Automatic updates"
-          onChange={handleToggleAutoUpdate}
-        />
+        <Switch checked={autoUpdateEnabled} label="Automatic updates" onChange={changeAutoUpdate} />
       </SettingRow>
 
       <div

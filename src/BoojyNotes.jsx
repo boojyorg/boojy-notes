@@ -356,10 +356,6 @@ export default function BoojyNotes() {
   const pastShown = versionHistory.state.selected
     ? versionHistory.state.versions.find((v) => v.id === versionHistory.state.selected)
     : null;
-  const revealVault = useCallback(() => {
-    if (notesDir) window.electronAPI?.showItemInFolder(notesDir);
-  }, [notesDir]);
-
   // Storage locations (electron/vaults.ts; code calls one a vault). The
   // sidebar's menu switches at once, since nothing moves; adding, removing
   // and revealing are Settings', where Manage storage locations… lands.
@@ -1873,7 +1869,7 @@ export default function BoojyNotes() {
             notesDir={notesDir}
             folderExists={setupFolderExists}
             onChooseFolder={chooseFolderInSetup}
-            onReveal={revealVault}
+            onReveal={() => revealVaultAt(notesDir)}
             onDone={finishSetup}
           />
         )}

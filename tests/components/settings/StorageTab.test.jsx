@@ -60,7 +60,6 @@ const VAULTS = [
 const renderTab = (props = {}) =>
   render(
     <StorageTab
-      isDesktop
       SectionHeader={Header}
       vaults={VAULTS}
       switchVault={vi.fn()}
@@ -80,13 +79,6 @@ const openMenu = (utils, name) => {
 
 describe("StorageTab (Storage locations)", () => {
   afterEach(cleanup);
-
-  it("renders nothing off the desktop", () => {
-    const { container } = render(
-      <StorageTab isDesktop={false} SectionHeader={Header} vaults={VAULTS} />,
-    );
-    expect(container).toBeEmptyDOMElement();
-  });
 
   it("is one row a location, in the order given, the open one ticked", () => {
     const { getAllByTestId, getByTestId } = renderTab();

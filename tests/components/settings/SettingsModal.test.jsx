@@ -51,18 +51,17 @@ vi.mock("../../../src/components/settings/AppearanceTab", () => ({
   default: () => <div data-testid="appearance-tab">Appearance</div>,
 }));
 vi.mock("../../../src/components/settings/UpdatesTab", () => ({
-  default: ({ isDesktop }) => (isDesktop ? <div data-testid="updates-tab">Updates</div> : null),
+  default: () => <div data-testid="updates-tab">Updates</div>,
 }));
 vi.mock("../../../src/components/settings/StorageTab", () => ({
-  default: ({ isDesktop, revealVault, switchVault, addVault, forgetVault }) =>
-    isDesktop ? (
-      <div
-        data-testid="storage-tab"
-        data-reveal={revealVault && switchVault && addVault && forgetVault ? "yes" : "no"}
-      >
-        Storage
-      </div>
-    ) : null,
+  default: ({ revealVault, switchVault, addVault, forgetVault }) => (
+    <div
+      data-testid="storage-tab"
+      data-reveal={revealVault && switchVault && addVault && forgetVault ? "yes" : "no"}
+    >
+      Storage
+    </div>
+  ),
 }));
 vi.mock("../../../src/components/settings/SettingsFooter", () => ({
   default: () => <div data-testid="settings-footer" />,
