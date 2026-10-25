@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import Lightbox from "./Lightbox";
 
@@ -55,7 +54,7 @@ export default function DiagramLightbox({ svg, onClose }: { svg: string; onClose
     drawing.style.height = `${size.h * scale}px`;
   });
 
-  return createPortal(
+  return (
     <Lightbox label="Diagram" onClose={onClose}>
       <div
         ref={roomRef}
@@ -80,7 +79,6 @@ export default function DiagramLightbox({ svg, onClose }: { svg: string; onClose
           dangerouslySetInnerHTML={{ __html: svg }}
         />
       </div>
-    </Lightbox>,
-    document.body,
+    </Lightbox>
   );
 }

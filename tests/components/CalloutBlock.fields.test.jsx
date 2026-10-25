@@ -31,7 +31,7 @@ function mount(overrides = {}) {
     blockIndex: 0,
     syncGen: 1,
     noteTitleSet: new Set(["Other"]),
-    onUpdateCallout: vi.fn(),
+    onUpdateBlock: vi.fn(),
     onUpdateText: vi.fn(),
     onUpdateTitle: vi.fn(),
     onBlockNav: vi.fn(),
@@ -55,7 +55,7 @@ describe("CalloutBlock fields", () => {
     fireEvent.focus(body);
     fireEvent.blur(body);
     expect(props.onUpdateText).not.toHaveBeenCalled();
-    expect(props.onUpdateCallout).not.toHaveBeenCalled();
+    expect(props.onUpdateBlock).not.toHaveBeenCalled();
   });
 
   it("an edit commits the body as Markdown, formatting kept", () => {

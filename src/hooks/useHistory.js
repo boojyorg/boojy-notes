@@ -4,6 +4,9 @@ import { trace } from "../utils/trace";
 import { reconcileListEdit } from "../utils/listStructure";
 import { keepGapsInPlace } from "../utils/blockOrder";
 
+/** Undo entries kept for the session, shared by every note. */
+const HISTORY_LIMIT = 50;
+
 export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef) {
   const undoStack = useRef([]);
   const redoStack = useRef([]);
@@ -36,10 +39,26 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       textFlushTimer.current = null;
     }
     hasPendingFlush.current = false;
-    textOnlyEdit.current = false;
-    textOnlyEditForSidebar.current = false;
-    textOnlyEditForEditor.current = false;
+    markTextOnly(false);
   };
+
+  // A text-only edit is pending: the editor and the sidebar each skip the
+  // render it would cost, and each clears its own flag once it has.
+  const markTextOnly = (on) => {
+    textOnlyEdit.current = on;
+    textOnlyEditForSidebar.current = on;
+    textOnlyEditForEditor.current = on;
+  };
+
+  // Ends the typing group now, so the next text commit opens an undo entry of
+  // its own. Not a seventh way to change a note: it changes nothing, only
+  // where the next entry begins (a completion inserted as one step: `\fr` →
+  // `\frac{}{}` is undone back to `\fr`, never with the typing before it).
+  const closeTypingGroup = useCallback(() => {
+    if (historyTimer.current) clearTimeout(historyTimer.current);
+    historyTimer.current = null;
+    historyGroupNote.current = null;
+  }, []);
 
   const cloneNote = (n) => {
     if (!n?.content?.blocks) return { ...n };
@@ -92,7 +111,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       if (noteDataRef.current[noteId] === noteToClone) return;
       undoStack.current.push({ noteId, snapshot });
       dropDeadEntries();
-      if (undoStack.current.length > 50) undoStack.current.shift();
+      if (undoStack.current.length > HISTORY_LIMIT) undoStack.current.shift();
       // A new edit ends this note's redo lineage and no one else's: an edit
       // here says nothing about an edit undone in another note.
       redoStack.current = redoStack.current.filter((e) => e.noteId !== noteId);
@@ -107,13 +126,9 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   // edit and leaves the stacks alone. Called from an effect in BoojyNotes;
   // `activeNoteRef` is already the new id by then.
   const onActiveNoteChanged = useCallback(() => {
-    if (historyTimer.current) {
-      clearTimeout(historyTimer.current);
-      historyTimer.current = null;
-    }
-    historyGroupNote.current = null;
+    closeTypingGroup();
     syncAvailability();
-  }, []);
+  }, [closeTypingGroup]);
 
   const commitNoteData = (updater) => applyCommit(updater, true);
 
@@ -205,13 +220,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     // A structural edit ends the typing group, as an undo does: the
     // keystrokes after Enter, a paste or a checkbox are a new entry, not part
     // of the one this commit pushed.
-    if (recordHistory) {
-      if (historyTimer.current) {
-        clearTimeout(historyTimer.current);
-        historyTimer.current = null;
-      }
-      historyGroupNote.current = null;
-    }
+    if (recordHistory) closeTypingGroup();
     // Apply updater to ref so it reflects both pending text changes AND this structural change
     const before = noteDataRef.current;
     noteDataRef.current = updater(before);
@@ -294,37 +303,24 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     noteDataRef.current = updater(noteDataRef.current);
     endDraftIfText();
     hasPendingFlush.current = true;
-    textOnlyEdit.current = true;
-    textOnlyEditForSidebar.current = true;
-    textOnlyEditForEditor.current = true;
+    markTextOnly(true);
     if (activeNoteRef.current) unflushedNotes.current.add(activeNoteRef.current);
 
-    // Batch: debounce setNoteData so React only re-renders when typing pauses.
-    // The contentEditable DOM is already correct; noteDataRef has the data for handlers.
-    // Flushing per-frame caused ~130ms React reconciliation + ~1.2s browser layout/paint.
+    // State trails the ref by one keystroke. A keystroke while another is
+    // pending publishes that one at once (above) and holds itself back; the
+    // last of a burst is published 300 ms after it, in a transition. The
+    // contentEditable DOM is already right, and handlers read the ref.
     if (textFlushTimer.current) clearTimeout(textFlushTimer.current);
     textFlushTimer.current = setTimeout(() => {
       textFlushTimer.current = null;
       hasPendingFlush.current = false;
-      textOnlyEdit.current = false;
-      textOnlyEditForSidebar.current = false;
-      textOnlyEditForEditor.current = false;
+      markTextOnly(false);
       trace("textcommit → setNoteData");
       startTransition(() => {
         setNoteData(noteDataRef.current);
       });
     }, 300);
   };
-
-  // Ends the typing group now, so the next text commit opens an undo entry of
-  // its own. Not a seventh way to change a note: it changes nothing, only
-  // where the next entry begins (a completion inserted as one step: `\fr` →
-  // `\frac{}{}` is undone back to `\fr`, never with the typing before it).
-  const closeTypingGroup = useCallback(() => {
-    if (historyTimer.current) clearTimeout(historyTimer.current);
-    historyTimer.current = null;
-    historyGroupNote.current = null;
-  }, []);
 
   // Restore a snapshot as the note's current state, for undo and redo.
   //
@@ -349,11 +345,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   const restoreSnapshot = (noteId, snapshot) => {
     cancelPendingText();
     // Typing that resumes after an undo starts a fresh history entry.
-    if (historyTimer.current) {
-      clearTimeout(historyTimer.current);
-      historyTimer.current = null;
-    }
-    historyGroupNote.current = null;
+    closeTypingGroup();
     syncGeneration.current++;
     trace("restoreSnapshot (undo/redo)", noteId);
     const live = noteDataRef.current[noteId];

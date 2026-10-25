@@ -1,8 +1,7 @@
 import { type ComponentType, useMemo } from "react";
 import { listLayout } from "../utils/listStructure";
 import EditableBlock from "./EditableBlock";
-
-type Block = { id: string; type: string; text?: string; [key: string]: unknown };
+import type { Block } from "../types/notes";
 
 interface Props {
   /** The version's own id: a new one remounts every block, which paints it. */
@@ -42,7 +41,12 @@ export default function PastVersionView({
   );
   const positions = listLayout(blocks);
 
+  // Only what happens in the version itself. A surface a block draws in a
+  // portal (a picture's full-size view) is outside it on the page, yet React
+  // still hands it its events: those keys are that surface's own.
+  const own = (e: React.SyntheticEvent) => e.currentTarget.contains(e.target as Node);
   const stop = (e: React.SyntheticEvent) => {
+    if (!own(e)) return;
     e.preventDefault();
     e.stopPropagation();
   };
@@ -57,6 +61,7 @@ export default function PastVersionView({
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the version can be focused to select and copy from it
       tabIndex={0}
       onKeyDownCapture={(e) => {
+        if (!own(e)) return;
         const edits =
           (e.key.length === 1 && !e.metaKey && !e.ctrlKey) ||
           e.key === "Enter" ||
@@ -86,8 +91,6 @@ export default function PastVersionView({
           accentColor={accentColor}
           numberedIndex={block.type === "numbered" ? positions[i]?.number : undefined}
           onUpdateText={noop}
-          onUpdateLang={noop}
-          onUpdateCallout={noop}
           onUpdateCalloutTitle={noop}
           onUpdateTableCell={noop}
           onUpdateTableRows={noop}
@@ -95,7 +98,6 @@ export default function PastVersionView({
           onBlockNav={noop}
           isBlockSelected={false}
           onBlockSelect={noop}
-          onImageLightbox={noop}
           onImageCopyImage={noop}
           onUpdateBlockProperty={noop}
           onFileOpen={noop}

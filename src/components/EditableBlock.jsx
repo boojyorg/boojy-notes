@@ -37,23 +37,6 @@ if (typeof window !== "undefined") {
 /** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
 const CHECKBOX_LINE_HEIGHT = 1.6;
 const CHECKBOX_SIZE = 16;
-/**
- * The checkbox is two elements: the square you see, and the hit area around it
- * that takes the click.
- *
- * `:active` scales the square to 0.85 and Chromium hit-tests against the
- * transformed box, so a press near its edge would release on the row instead.
- * The hit area covers the square's footprint and never transforms; the press
- * animation belongs to the square inside it.
- *
- * The hit area is that footprint and no more: the target is the box you can
- * see, and slop around it would tick tasks the pointer was not on.
- */
-
-// One render path for all heading levels: type and margins come from the
-// rhythm (tokens/rhythm.ts); the smaller levels keep body-sized text and use
-// weight and spacing to remain headings. No extra editor chrome.
-
 const INDENT_PX = 24;
 /**
  * Every list item's marker takes one column, then the air, then the text: a
@@ -151,8 +134,6 @@ const EditableBlock = memo(
     accentColor,
     numberedIndex,
     onUpdateText,
-    onUpdateLang,
-    onUpdateCallout,
     onUpdateCalloutTitle,
     onUpdateTableCell,
     onUpdateTableRows,
@@ -162,7 +143,6 @@ const EditableBlock = memo(
     isOnlyBlockSelected,
     onBlockSelect,
     onImageDragPress,
-    onImageLightbox,
     onImageCopyImage,
     onUpdateBlockProperty,
     onFileOpen,
@@ -182,8 +162,7 @@ const EditableBlock = memo(
     // press that did nothing (and a code block could not be moved at all,
     // since the keyboard reorder needs a caret its field never gives).
     // Kept apart from `elRef` on purpose: that ref's repaint effect paints the
-    // block's text, and these carry none. Registration is for the grip; whole-
-    // block selection for these three is still deferred (`isSelectableBlock`).
+    // block's text, and these carry none.
     const wholeRef = useRef(null);
 
     // Paint the text on mount, on a sync-generation bump (undo, redo, a paste,
@@ -278,7 +257,6 @@ const EditableBlock = memo(
           selectedAlone={isOnlyBlockSelected}
           accentColor={accentColor}
           onSelect={() => onBlockSelect(block.id)}
-          onLightbox={() => onImageLightbox(block.src, block.alt)}
           onDelete={() => onDeleteBlock(noteId, blockIndex)}
           onCopyImage={() => onImageCopyImage(block.src)}
           onShowInFolder={
@@ -325,7 +303,7 @@ const EditableBlock = memo(
           syncGen={syncGen}
           noteDataRef={noteDataRef}
           onUpdateCode={onUpdateText}
-          onUpdateLang={onUpdateLang}
+          onUpdateBlock={onUpdateBlockProperty}
           onBlockNav={onBlockNav}
           onDelete={(idx) => onDeleteBlock(noteId, idx)}
         />,
@@ -369,7 +347,7 @@ const EditableBlock = memo(
           syncGen={syncGen}
           noteDataRef={noteDataRef}
           noteTitleSet={noteTitleSet}
-          onUpdateCallout={onUpdateCallout}
+          onUpdateBlock={onUpdateBlockProperty}
           onUpdateText={onUpdateText}
           onUpdateTitle={onUpdateCalloutTitle}
           onBlockNav={onBlockNav}
@@ -579,9 +557,11 @@ const EditableBlock = memo(
     if (block.type === "checkbox") {
       return listRow(
         <>
-          {/* The hit area, not the drawn box: the same footprint as the square,
-              but it never transforms, so the press animation cannot move the
-              target out from under the pointer. */}
+          {/* The hit area, not the drawn box: `:active` scales the square, and
+              Chromium hit-tests the scaled box, so a press near its edge
+              released on the row. The hit area is the square's footprint and
+              never transforms; no slop round it, or it would tick tasks the
+              pointer was not on. */}
           <div
             className="checkbox-hit"
             role="checkbox"

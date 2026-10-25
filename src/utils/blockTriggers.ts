@@ -1,4 +1,4 @@
-// @ts-check
+import type { BlockType } from "../types/notes";
 
 /**
  * What a typed marker opens, and what its argument says.
@@ -21,6 +21,8 @@
 
 /** The space that ends a marker; Chromium holds a typed trailing one as U+00A0. */
 const SP = "[ \\u00a0]";
+/** A line kind's marker ends in any space (a soft break after `#` opens the heading too). */
+const S = "[\\s\\u00a0]";
 
 /** `` ```js `` typed with its space: the space is the trigger, never a tab or a newline. */
 export const TYPED_FENCE_RE = new RegExp(`^\`\`\`(\\S*)${SP}$`);
@@ -78,4 +80,44 @@ export function bareTableColumns(text: string): number | null {
 function columnsFrom(pipes: string | undefined): number | null {
   if (!pipes) return null;
   return Math.min(pipes.length - 1, MAX_TYPED_COLUMNS);
+}
+
+/** A line kind's marker: `#`…`######`, `-` or `*`, `1.`, `[]` or `[ ]`, `>`. */
+const LINE_MARKER = `(#{1,6}|[-*]|1\\.|\\[${S}?\\]|>)`;
+/** A line kind's marker typed with its space on an empty line. */
+const TYPED_LINE_MARKER_RE = new RegExp(`^${LINE_MARKER}${S}$`);
+/**
+ * A line kind's marker typed at the start of a paragraph that already has
+ * text: `- ` before `Full stack or frontend?` makes that line the bullet, as
+ * it does on an empty line, rather than staying text written as `\- `. Only
+ * the kinds a line can be; a fence, a divider or a table makes a block of its
+ * own and still wants an empty line. Cmd+Z straight after brings the literal
+ * marker back, for the rare line that starts with one.
+ */
+export const LINE_MARKER_ON_TEXT_RE = new RegExp(`^${LINE_MARKER}${S}(?=\\S)`);
+
+/** `![] `: an image, through the menu's own picker. */
+export const TYPED_IMAGE_RE = new RegExp(`^!\\[\\]${S}$`);
+
+/** The kind a line marker makes. */
+export function lineKind(marker: string): BlockType {
+  if (marker.startsWith("#")) return `h${marker.length}` as BlockType;
+  if (marker === "-" || marker === "*") return "bullet";
+  if (marker === "1.") return "numbered";
+  if (marker === ">") return "blockquote";
+  return "checkbox";
+}
+
+/**
+ * The block an empty line's typed marker opens, or null: a line kind, or a
+ * divider, fence or formula. A table and an image go through the menu's
+ * commands instead (`TYPED_TABLE_RE`, `TYPED_IMAGE_RE`).
+ */
+export function typedBlockType(text: string): BlockType | null {
+  const line = TYPED_LINE_MARKER_RE.exec(text);
+  if (line) return lineKind(line[1]);
+  if (TYPED_DIVIDER_RE.test(text)) return "spacer";
+  if (TYPED_FENCE_RE.test(text)) return "code";
+  if (TYPED_MATH_RE.test(text)) return "math";
+  return null;
 }

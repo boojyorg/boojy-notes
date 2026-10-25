@@ -35,7 +35,6 @@ import TagMenu from "./components/TagMenu";
 import Sidebar from "./components/Sidebar";
 import { EditorProvider } from "./context/EditorContext";
 import EditorArea from "./components/EditorArea";
-import ImageLightbox from "./components/ImageLightbox";
 import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
 import EditorChrome from "./components/EditorChrome";
@@ -71,7 +70,6 @@ import { usePhoneScreens } from "./phone/usePhoneScreens";
 import { useDeletedReturn } from "./phone/useDeletedReturn";
 import PhoneKeyBar from "./components/PhoneKeyBar";
 import { SLASH_COMMANDS } from "./constants/data";
-import { attachmentName } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
 import { fileFromHistoryKey, fileHistoryKey, useNoteHistory } from "./hooks/useNoteHistory";
 import { useFileView } from "./hooks/useFileView";
@@ -145,8 +143,6 @@ export default function BoojyNotes() {
   const {
     ctxMenu,
     setCtxMenu,
-    lightbox,
-    setLightbox,
     slashMenu,
     setSlashMenu,
     slashMenuRef,
@@ -855,7 +851,6 @@ export default function BoojyNotes() {
   useEffect(() => {
     setEditorFadeIn(false);
     setSelectedBlockId(null);
-    setLightbox(null);
     const t = setTimeout(() => setEditorFadeIn(true), 30);
     return () => clearTimeout(t);
   }, [activeNote]);
@@ -1683,8 +1678,6 @@ export default function BoojyNotes() {
               describeLink={describeLink}
               blockSelection={blockSelection}
               setBlockSelection={setBlockSelection}
-              lightbox={lightbox}
-              setLightbox={setLightbox}
               openNote={setActiveNote}
               onPathRowPointerDown={handleSidebarPointerDown}
               onShowFolder={isPhone ? showFolder : undefined}
@@ -1844,15 +1837,6 @@ export default function BoojyNotes() {
             onDismiss={() => setTagMenu(null)}
           />
         </>
-      )}
-
-      {lightbox && (
-        <ImageLightbox
-          src={lightbox.src}
-          alt={lightbox.alt}
-          name={attachmentName(lightbox.src)}
-          onClose={() => setLightbox(null)}
-        />
       )}
 
       <React.Suspense fallback={null}>

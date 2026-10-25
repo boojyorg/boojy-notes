@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  LINE_MARKER_ON_TEXT_RE,
   MAX_TYPED_COLUMNS,
+  TYPED_IMAGE_RE,
   TYPED_MATH_RE,
   isBareMath,
   bareFenceLang,
   bareTableColumns,
   isBareDivider,
+  lineKind,
+  typedBlockType,
   typedFenceLang,
   typedTableColumns,
 } from "../../src/utils/blockTriggers";
@@ -95,5 +99,46 @@ describe("the $$ trigger", () => {
     expect(TYPED_MATH_RE.test("$$x ")).toBe(false);
     expect(isBareMath("$$")).toBe(true);
     expect(isBareMath("$$ ")).toBe(false);
+  });
+});
+
+describe("an empty line's typed marker", () => {
+  it("opens each line kind, the space typed or held as U+00A0", () => {
+    expect(typedBlockType("# ")).toBe("h1");
+    expect(typedBlockType("###### ")).toBe("h6");
+    expect(typedBlockType("####### ")).toBeNull();
+    expect(typedBlockType("- ")).toBe("bullet");
+    expect(typedBlockType("*\u00a0")).toBe("bullet");
+    expect(typedBlockType("[] ")).toBe("checkbox");
+    expect(typedBlockType("[ ] ")).toBe("checkbox");
+    expect(typedBlockType("1. ")).toBe("numbered");
+    expect(typedBlockType("> ")).toBe("blockquote");
+    // A soft break after the marker opens it as the space does.
+    expect(typedBlockType("#\n")).toBe("h1");
+  });
+
+  it("opens a divider, a fence and a formula; waits for the space", () => {
+    expect(typedBlockType("--- ")).toBe("spacer");
+    expect(typedBlockType("```js ")).toBe("code");
+    expect(typedBlockType("$$ ")).toBe("math");
+    expect(typedBlockType("#")).toBeNull();
+    expect(typedBlockType("---")).toBeNull();
+    expect(typedBlockType("- text")).toBeNull();
+  });
+
+  it("leaves a table and an image to the menu's commands", () => {
+    expect(typedBlockType("||| ")).toBeNull();
+    expect(typedBlockType("![] ")).toBeNull();
+    expect(TYPED_IMAGE_RE.test("![] ")).toBe(true);
+  });
+});
+
+describe("a line marker typed before a paragraph's text", () => {
+  it("names its kind and its length", () => {
+    const m = LINE_MARKER_ON_TEXT_RE.exec("## Plans");
+    expect(m?.[0]).toBe("## ");
+    expect(lineKind(m?.[1] ?? "")).toBe("h2");
+    expect(LINE_MARKER_ON_TEXT_RE.exec("- ")).toBeNull();
+    expect(LINE_MARKER_ON_TEXT_RE.exec("--- x")).toBeNull();
   });
 });

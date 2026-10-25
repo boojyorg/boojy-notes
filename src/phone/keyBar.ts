@@ -1,13 +1,12 @@
 /** The phone's bar above the keyboard (PhoneKeyBar): its rules, kept pure. */
 
 import { hasOwnField } from "../utils/domHelpers";
+import { LIST_TYPES } from "../utils/blockKinds";
 
 export type BarMode = "blocks" | "format" | "heading" | "list" | "more";
 
-const LIST_KINDS = new Set(["bullet", "numbered", "checkbox"]);
-
 /** Whether a block of this kind is a list item, whose row the bar shows by itself. */
-export const isListKind = (kind: string | null) => LIST_KINDS.has(kind ?? "");
+export const isListKind = (kind: string | null) => LIST_TYPES.has(kind ?? "");
 
 /**
  * Which row a change of selection leaves open. A selection opens the text

@@ -2,6 +2,7 @@ import type { Block, BlockType } from "../types/notes";
 import { inlineMarkdownToHtml } from "./inlineFormatting";
 import { blocksToMarkdown } from "./markdown";
 import { listLayout } from "./listStructure";
+import { LIST_TYPES } from "./blockKinds";
 
 /**
  * The two public clipboard formats a copy writes, `text/plain` and
@@ -103,8 +104,6 @@ export function inlineCopyPayload(sanitisedHtml: string): CopyPayload {
   const body = parseInline(sanitisedHtml);
   return { text: visibleText(body), html: body.innerHTML };
 }
-
-const LIST_TYPES: ReadonlySet<BlockType> = new Set<BlockType>(["bullet", "numbered", "checkbox"]);
 
 /** A run of list items as nested `<ul>`/`<ol>` HTML, depth from `indent`. */
 function listHtml(items: CopiedBlock[]): string {

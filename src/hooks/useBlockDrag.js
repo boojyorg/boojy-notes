@@ -4,13 +4,12 @@ import { cssZoom, runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 import { reorderFloor } from "../utils/blockOrder";
 import { selectedIds, subtreeEnd } from "../utils/blockRun";
 import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
+import { EDGE_GAP, gapY, placeMarker } from "../utils/dropMarker";
 
 /** Pointer travel from the grip that means "this is a drag, not a click". */
 const DRAG_THRESHOLD = 3;
 /** The copy that follows the pointer: a translucent print of the block, no card. */
 const GHOST_OPACITY = 0.35;
-/** Marker offset when the drop position has no neighbour on one side. */
-const EDGE_GAP = 4;
 
 /**
  * Block reorder by drag — started from the gutter grip (`BlockDragHandle`),
@@ -230,7 +229,7 @@ export function useBlockDrag({
       if (i < targetIndex) after = el;
       else if (!before) before = el;
     }
-    let y;
+    let y = gapY(before, after);
     const firstEl = blockRefs.current[blocks[firstDragged]?.id];
     const straddles = firstEl && targetIndex >= firstDragged && targetIndex <= lastDragged + 1;
     if (straddles) {
@@ -242,26 +241,16 @@ export function useBlockDrag({
       // boundary below appears once the pointer passes the next block's middle.
       const runTop = firstEl.getBoundingClientRect().top;
       y = after ? (after.getBoundingClientRect().bottom + runTop) / 2 : runTop - EDGE_GAP;
-    } else if (before && after) {
-      y = (after.getBoundingClientRect().bottom + before.getBoundingClientRect().top) / 2;
-    } else if (before) {
-      y = before.getBoundingClientRect().top - EDGE_GAP;
-    } else if (after) {
-      y = after.getBoundingClientRect().bottom + EDGE_GAP;
-    } else {
+    } else if (y === null) {
       marker.style.display = "none";
       return;
     }
     const col = (editorRef.current || before || after).getBoundingClientRect();
-    const zoom = bd.zoom || 1;
     Object.assign(marker.style, {
       transition: targetIndex === bd.markerIndex ? "none" : "",
       display: "block",
-      left: `${col.left / zoom}px`,
-      width: `${col.width / zoom}px`,
-      // offsetHeight is already CSS pixels; only the measured y is scaled.
-      top: `${y / zoom - marker.offsetHeight / 2}px`,
     });
+    placeMarker(marker, col, y, bd.zoom || 1);
     bd.markerIndex = targetIndex;
   };
 

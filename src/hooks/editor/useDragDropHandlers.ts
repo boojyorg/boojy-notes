@@ -2,9 +2,7 @@ import { type DragEvent, type RefObject, useCallback, useRef } from "react";
 import type { NoteData } from "../../types/notes";
 import { reorderFloor } from "../../utils/blockOrder";
 import { cssZoom } from "../../utils/domHelpers";
-
-/** How far outside the first or last block the marker sits when there is no neighbour. */
-const EDGE_GAP = 4;
+import { gapY, placeMarker } from "../../utils/dropMarker";
 
 interface Options {
   noteDataRef: RefObject<NoteData>;
@@ -72,27 +70,16 @@ export function useDragDropHandlers({
       e.preventDefault();
       e.dataTransfer.dropEffect = "copy";
       const { before, after } = boundaryAt(e.clientY);
-      let y: number;
-      if (before && after)
-        y = (after.getBoundingClientRect().bottom + before.getBoundingClientRect().top) / 2;
-      else if (before) y = before.getBoundingClientRect().top - EDGE_GAP;
-      else if (after) y = after.getBoundingClientRect().bottom + EDGE_GAP;
-      else return hideMarker();
+      const y = gapY(before, after);
+      if (y === null) return hideMarker();
       if (!markerRef.current) {
         markerRef.current = document.createElement("div");
         markerRef.current.className = "block-drop-marker";
         document.body.appendChild(markerRef.current);
       }
-      const marker = markerRef.current;
-      // Measured in viewport pixels, styled inside the UI scale's zoom.
-      const zoom = cssZoom(document.body);
       const col = (editorRef.current ?? before ?? after)?.getBoundingClientRect();
       if (!col) return;
-      Object.assign(marker.style, {
-        left: `${col.left / zoom}px`,
-        width: `${col.width / zoom}px`,
-        top: `${y / zoom - marker.offsetHeight / 2}px`,
-      });
+      placeMarker(markerRef.current, col, y, cssZoom(document.body));
     },
     [activeNoteRef, boundaryAt, editorRef, hideMarker],
   );

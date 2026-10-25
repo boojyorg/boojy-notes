@@ -210,7 +210,7 @@ export default memo(function CalloutBlock({
   syncGen,
   noteTitleSet,
   noteDataRef,
-  onUpdateCallout,
+  onUpdateBlock,
   onUpdateText,
   onUpdateTitle,
   onBlockNav,
@@ -319,9 +319,9 @@ export default memo(function CalloutBlock({
       if (!currentTitle || currentTitle === oldConfig.defaultTitle) {
         updates.title = newConfig.defaultTitle;
       }
-      onUpdateCallout(noteId, blockIndex, updates);
+      onUpdateBlock(noteId, blockIndex, updates);
     },
-    [calloutType, block.title, noteId, blockIndex, onUpdateCallout, saveScroll],
+    [calloutType, block.title, noteId, blockIndex, onUpdateBlock, saveScroll],
   );
 
   /* ─── Keyboard: title ─── */

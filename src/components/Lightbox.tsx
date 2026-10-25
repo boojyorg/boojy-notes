@@ -1,4 +1,5 @@
 import { type ReactNode, type RefObject, type SyntheticEvent, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -59,7 +60,8 @@ interface LightboxProps {
  * centred in what is left. Escape, the close button or a click anywhere but
  * the content closes it. The arrow keys close it too, as they always have, so
  * a key meant for the note never lands behind it; no other event reaches what
- * opened it (`BOUNDARY`).
+ * opened it (`BOUNDARY`). Portalled to `<body>`, so a view opened from a block
+ * stands over the whole window.
  */
 export default function Lightbox({ label, name, onClose, children }: LightboxProps) {
   const { theme } = useTheme();
@@ -71,7 +73,7 @@ export default function Lightbox({ label, name, onClose, children }: LightboxPro
   useFocusTrap(containerRef as RefObject<HTMLElement>, true, "container");
   useExitGhost(containerRef, true);
 
-  return (
+  return createPortal(
     <div
       ref={containerRef}
       className="motion-fade"
@@ -177,6 +179,7 @@ export default function Lightbox({ label, name, onClose, children }: LightboxPro
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

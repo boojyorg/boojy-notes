@@ -10,22 +10,10 @@ import { addsFiles } from "../utils/platform";
 import { editBlocks, patchBlock } from "../utils/editBlocks";
 import { settleTypedSpaces } from "../utils/inlineFormatting";
 import { openMathSource } from "../utils/mathOpen";
+import { LINE_KIND_TYPES, LIST_TYPES, MAX_INDENT } from "../utils/blockKinds";
 
 /** The text blocks the Format menu can turn into one another. */
-const KIND_TYPES = new Set([
-  "p",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "bullet",
-  "numbered",
-  "checkbox",
-  "blockquote",
-]);
-const LIST_KINDS = new Set(["bullet", "numbered", "checkbox"]);
+const KIND_TYPES = new Set(["p", ...LINE_KIND_TYPES]);
 
 export function useBlockOperations({
   commitNoteData,
@@ -296,22 +284,6 @@ export function useBlockOperations({
     [blockRefs],
   );
 
-  // --- Code block operations (the text goes through updateBlockText) ---
-  const updateCodeLang = useCallback(
-    (noteId, blockIndex, lang) => {
-      commitNoteData(patchBlock(noteId, blockIndex, { lang }));
-    },
-    [commitNoteData],
-  );
-
-  // --- Callout operations ---
-  const updateCallout = useCallback(
-    (noteId, blockIndex, updates) => {
-      commitNoteData(patchBlock(noteId, blockIndex, updates));
-    },
-    [commitNoteData],
-  );
-
   // --- Table operations ---
   // A structural change to a table (a row or column added, removed or
   // moved, an alignment, a CSV paste) is a function of the rows as the ref
@@ -395,7 +367,7 @@ export function useBlockOperations({
           blocks.splice(0, blocks.length, ...moved);
           return;
         }
-        const newIndent = Math.max(0, Math.min(6, (block.indent || 0) + delta));
+        const newIndent = Math.max(0, Math.min(MAX_INDENT, (block.indent || 0) + delta));
         // Drop any preserved raw indent prefix (tabs/odd spaces from a parsed
         // file) — after an in-app indent change it no longer matches, and a
         // stale one would serialise the OLD indentation (see utils/markdown.js)
@@ -441,7 +413,7 @@ export function useBlockOperations({
           changed = true;
           const next = { id: block.id, type, text: block.text ?? "" };
           if (type === "checkbox") next.checked = false;
-          if (LIST_KINDS.has(type) && LIST_KINDS.has(block.type) && block.indent) {
+          if (LIST_TYPES.has(type) && LIST_TYPES.has(block.type) && block.indent) {
             next.indent = block.indent;
           }
           blocks[i] = next;
@@ -469,8 +441,6 @@ export function useBlockOperations({
     saveAndInsertFiles,
     flipCheck,
     registerBlockRef,
-    updateCodeLang,
-    updateCallout,
     updateCalloutTitle,
     updateTableCell,
     updateTableRows,
