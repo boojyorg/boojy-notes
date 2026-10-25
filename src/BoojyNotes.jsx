@@ -28,7 +28,7 @@ const SettingsModal = React.lazy(() => import("./components/settings/SettingsMod
 const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
 import ContextMenu from "./components/ContextMenu";
 import PathTreeMenu from "./components/PathTreeMenu";
-import { ancestorFolders, parentFolder, sharedFolder, withinFolder } from "./utils/pathTree";
+import { sharedFolder } from "./utils/pathTree";
 import SlashMenu from "./components/SlashMenu";
 import LinkPicker from "./components/LinkPicker";
 import TagMenu from "./components/TagMenu";
@@ -78,6 +78,7 @@ import { useFileView } from "./hooks/useFileView";
 import { fileLinkTarget, pageLink } from "./utils/fileView";
 import { blocksToMarkdown } from "./utils/markdown";
 import { wholeBlocksCopy } from "./utils/clipboardCopy";
+import { ancestorFolders, parentFolder, withinFolder, baseName } from "./utils/vaultPath";
 
 export default function BoojyNotes() {
   const { theme } = useTheme();
@@ -115,7 +116,6 @@ export default function BoojyNotes() {
     toggleSidebar,
     sourceView,
     setSourceView,
-    chromeBg,
     accentColor,
     sidebarHandles,
     isDragging,
@@ -357,10 +357,6 @@ export default function BoojyNotes() {
   const pastShown = versionHistory.state.selected
     ? versionHistory.state.versions.find((v) => v.id === versionHistory.state.selected)
     : null;
-  const revealVault = useCallback(() => {
-    if (notesDir) window.electronAPI?.showItemInFolder(notesDir);
-  }, [notesDir]);
-
   // Storage locations (electron/vaults.ts; code calls one a vault). The
   // sidebar's menu switches at once, since nothing moves; adding, removing
   // and revealing are Settings', where Manage storage locations… lands.
@@ -403,7 +399,7 @@ export default function BoojyNotes() {
   const trashOtherFile = useCallback(
     async (rel) => {
       if (await trashFile(rel)) {
-        showToast(trashedToast(rel.slice(rel.lastIndexOf("/") + 1)), "done", { icon: "trash" });
+        showToast(trashedToast(baseName(rel)), "done", { icon: "trash" });
       }
     },
     [trashFile, showToast],
@@ -615,9 +611,6 @@ export default function BoojyNotes() {
     [activeNoteRef, noteDataRef],
   );
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
-  // Opening is side-effect-free for ordering: "Most recent" means most
-  // recently modified, and the row must not move under the pointer.
-  const openNote = setActiveNote;
 
   // Start renaming a note where the user can see it: the sidebar row swaps to
   // an inline input (same grammar as folder rename). Only when the sidebar is
@@ -630,7 +623,7 @@ export default function BoojyNotes() {
         setRenamingNote(id);
         return;
       }
-      openNote(id);
+      setActiveNote(id);
       setTimeout(() => {
         const el = titleRef.current;
         if (!el) return;
@@ -643,7 +636,7 @@ export default function BoojyNotes() {
         sel.addRange(range);
       }, 60);
     },
-    [sidebarVisible, setRenamingNote, openNote],
+    [sidebarVisible, setRenamingNote, setActiveNote],
   );
   const {
     createNote,
@@ -854,7 +847,7 @@ export default function BoojyNotes() {
     clearSelectionRef,
     blockRefs,
     accentColor,
-    openNote,
+    openNote: setActiveNote,
   });
 
   // ── Effects ─────────────────────────────────────────────────────────
@@ -1067,7 +1060,7 @@ export default function BoojyNotes() {
       noteData,
       noteDataRef,
       textOnlyEdit,
-      openNote,
+      openNote: setActiveNote,
       wikilinkMenuRef,
       setWikilinkMenu,
       syncGeneration,
@@ -1148,13 +1141,11 @@ export default function BoojyNotes() {
     sortedRootNotes,
     expanded,
     noteDataRef,
-    openNote,
+    openNote: setActiveNote,
   });
 
   multiSelectRef.current = selectedNotes;
   clearSelectionRef.current = clearSelection;
-
-  const selectedCount = selectedNotes.size;
 
   // Deletion asks only when it should, in words that say what happens
   // (utils/deletionPrompt owns the wording). Desktop moves a note's file to the
@@ -1206,7 +1197,7 @@ export default function BoojyNotes() {
       const count = Object.values(noteDataRef.current || {}).filter(
         (n) => n.folder && withinFolder(n.folder, folderPath),
       ).length;
-      const name = folderPath.split("/").pop();
+      const name = baseName(folderPath);
       if (!(await askBeforeDeleting("folder", { count, name }))) return;
       deleteFolder(folderPath);
     },
@@ -1404,7 +1395,7 @@ export default function BoojyNotes() {
     const { subject } = movePicker;
     if (subject.kind === "folder") {
       return {
-        label: `Move “${subject.path.split("/").pop()}” to`,
+        label: `Move “${baseName(subject.path)}” to`,
         current: parentFolder(subject.path),
         excluded: subject.path,
         onPick: (folder) => moveFolderTo(subject.path, folder),
@@ -1483,7 +1474,11 @@ export default function BoojyNotes() {
         // The phone's app starts below Android's status bar, which stands on
         // the ground of the screen shown: Home's, or the note's sheet.
         ...(isPhone && { boxSizing: "border-box", paddingTop: STATUS_BAR_H }),
-        background: isPhone ? (sidebarVisible ? chromeBg : theme.BG.editor) : theme.BG.darkest,
+        background: isPhone
+          ? sidebarVisible
+            ? theme.BG.standard
+            : theme.BG.editor
+          : theme.BG.darkest,
         display: "flex",
         flexDirection: "column",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -1586,7 +1581,7 @@ export default function BoojyNotes() {
             // The phone shows one screen at a time: Home is the sidebar, full width.
             width: sidebarVisible ? (isPhone ? "100%" : sidebarWidth) : 0,
             minWidth: sidebarVisible ? (isPhone ? "100%" : sidebarWidth) : 0,
-            background: chromeBg,
+            background: theme.BG.standard,
             display: "flex",
             flexShrink: 0,
             overflow: "hidden",
@@ -1597,7 +1592,6 @@ export default function BoojyNotes() {
           <Sidebar
             activeNote={activeNote}
             toggle={toggle}
-            openNote={openNote}
             renameNote={renameNote}
             setCtxMenu={setCtxMenu}
             ctxMenuNoteId={ctxMenu?.type === "note" ? ctxMenu.id : null}
@@ -1691,7 +1685,7 @@ export default function BoojyNotes() {
               setBlockSelection={setBlockSelection}
               lightbox={lightbox}
               setLightbox={setLightbox}
-              openNote={openNote}
+              openNote={setActiveNote}
               onPathRowPointerDown={handleSidebarPointerDown}
               onShowFolder={isPhone ? showFolder : undefined}
               onTitleBlur={settleTitle}
@@ -1753,7 +1747,6 @@ export default function BoojyNotes() {
         setRenamingFolder={setRenamingFolder}
         onRenameNote={startNoteRename}
         selectedNotes={selectedNotes}
-        selectedCount={selectedCount}
         bulkDeleteNotes={bulkDeleteNotes}
         onMoveTo={openMovePicker}
         wordCount={wordCount}
@@ -1877,7 +1870,7 @@ export default function BoojyNotes() {
             notesDir={notesDir}
             folderExists={setupFolderExists}
             onChooseFolder={chooseFolderInSetup}
-            onReveal={revealVault}
+            onReveal={() => revealVaultAt(notesDir)}
             onDone={finishSetup}
           />
         )}

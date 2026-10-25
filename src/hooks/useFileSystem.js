@@ -5,7 +5,7 @@ import { blocksToMarkdown } from "../utils/markdown";
 import { genNoteId } from "../utils/storage";
 import { localDay } from "../utils/localDay";
 import { trace } from "../utils/trace";
-import { remapFolderPath, withinFolder } from "../utils/pathTree";
+import { remapFolderPath, withinFolder, baseName } from "../utils/vaultPath";
 
 const WRITE_DEBOUNCE_MS = 500;
 const WRITE_RETRY_MS = 5000;
@@ -938,7 +938,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
             setCustomFolders((prev) => prev.filter((f) => !withinFolder(f, relPath)));
             return;
           }
-          const name = relPath.split("/").pop();
+          const name = baseName(relPath);
           onErrorRef.current?.(
             `"${name}" still holds files that are not notes, so it stays on disk`,
             "notice",

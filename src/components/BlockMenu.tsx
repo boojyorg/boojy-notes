@@ -39,7 +39,7 @@ export const KIND_KEYS: Record<string, string> = {
 const KIND_BY_KEY = Object.fromEntries(Object.entries(KIND_KEYS).map(([t, k]) => [k, t]));
 
 /** The text kinds a block can be turned from (H4–H6 included: they turn into the listed ones). */
-export const TURNABLE = new Set([...TURN_INTO.map((k) => k.type), "h4", "h5", "h6"]);
+const TURNABLE = new Set([...TURN_INTO.map((k) => k.type), "h4", "h5", "h6"]);
 
 /** A block kind's name, as the `/` menu says it (a paragraph is Text). */
 export function kindLabel(type: string): string {

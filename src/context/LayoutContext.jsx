@@ -23,8 +23,6 @@ export function LayoutProvider({ children }) {
   const windowWidth = useWindowWidth();
   const sidebarWidth = sidebarWidthFor(sidebarPrefWidth, windowWidth);
   const sidebarMaxWidth = sidebarWidthFor(SIDEBAR_MAX_W, windowWidth);
-  const chromeBg = theme.BG.dark;
-  const editorBg = theme.BG.editor;
   const accentColor = theme.ACCENT.primary; // marks and fills
 
   /**
@@ -84,8 +82,6 @@ export function LayoutProvider({ children }) {
       hideSidebar,
       sourceView,
       setSourceView,
-      chromeBg,
-      editorBg,
       accentColor,
       sidebarHandles,
       isDragging,
@@ -100,8 +96,6 @@ export function LayoutProvider({ children }) {
       revealSidebar,
       hideSidebar,
       sourceView,
-      chromeBg,
-      editorBg,
       accentColor,
       isDragging,
       startDrag,

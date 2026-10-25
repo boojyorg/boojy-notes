@@ -29,6 +29,7 @@ import { CloseIcon, FolderIcon, OtherFileIcon, PlusIcon, SearchIcon } from "./Ic
 import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
 import { SCRIM } from "./settings/SettingsPrimitives";
 import { fromTouch } from "../utils/touch";
+import { baseName } from "../utils/vaultPath";
 
 /**
  * The desktop search, as a palette (Cmd+P): a field over a dimmed window,
@@ -270,7 +271,7 @@ export default function SearchPalette({
     if (backToText && tag) setSearch(`#${tag}`);
     inputRef.current?.focus();
   };
-  const folderName = folderFilter ? folderFilter.slice(folderFilter.lastIndexOf("/") + 1) : "";
+  const folderName = folderFilter ? baseName(folderFilter) : "";
   const chooseFolder = (path: string) => {
     setFolderFilter?.(path, "");
     setSearch("");
@@ -378,6 +379,49 @@ export default function SearchPalette({
   };
   const glyph = { display: "inline-flex", color: TEXT.secondary, flexShrink: 0 } as const;
 
+  // A folder, file or Create row: its glyph, its name, then what follows it.
+  const glyphRow = (icon: React.ReactNode, name: React.ReactNode, trail: React.ReactNode) => (
+    <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <span style={{ ...titleStyle, display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={glyph}>{icon}</span>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+      </span>
+      {trail}
+    </span>
+  );
+
+  // A chip's ×, which takes the filter back off.
+  const chipClose = (label: string, onClick: () => void) => (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 16,
+        height: 16,
+        border: "none",
+        borderRadius: 4,
+        background: "none",
+        color: TEXT.muted,
+        cursor: "pointer",
+        padding: 0,
+        flexShrink: 0,
+      }}
+      onMouseEnter={(e) => {
+        if (fromTouch(e)) return;
+        e.currentTarget.style.color = TEXT.primary;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = TEXT.muted;
+      }}
+    >
+      <CloseIcon size={12} />
+    </button>
+  );
+
   const rowProps = (i: number) => ({
     type: "button" as const,
     "data-search-index": i,
@@ -390,13 +434,6 @@ export default function SearchPalette({
     onMouseMove: (e: React.MouseEvent) => {
       if (fromTouch(e)) return;
       setActive(i);
-    },
-    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (fromTouch(e)) return;
-      if (i !== active) e.currentTarget.style.background = BG.surface;
-    },
-    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (i !== active) e.currentTarget.style.background = "transparent";
     },
     style: rowStyle(i === active),
   });
@@ -478,34 +515,7 @@ export default function SearchPalette({
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {folderName}
               </span>
-              <button
-                type="button"
-                aria-label={`Remove ${folderName} folder filter`}
-                onClick={() => removeFolderChip(false)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 16,
-                  height: 16,
-                  border: "none",
-                  borderRadius: 4,
-                  background: "none",
-                  color: TEXT.muted,
-                  cursor: "pointer",
-                  padding: 0,
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                  if (fromTouch(e)) return;
-                  e.currentTarget.style.color = TEXT.primary;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = TEXT.muted;
-                }}
-              >
-                <CloseIcon size={12} />
-              </button>
+              {chipClose(`Remove ${folderName} folder filter`, () => removeFolderChip(false))}
             </span>
           )}
           {tagFilter && (
@@ -522,33 +532,7 @@ export default function SearchPalette({
               }}
             >
               #{tagFilter}
-              <button
-                type="button"
-                aria-label={`Remove #${tagFilter} filter`}
-                onClick={() => removeChip(false)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 16,
-                  height: 16,
-                  border: "none",
-                  borderRadius: 4,
-                  background: "none",
-                  color: TEXT.muted,
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-                onMouseEnter={(e) => {
-                  if (fromTouch(e)) return;
-                  e.currentTarget.style.color = TEXT.primary;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = TEXT.muted;
-                }}
-              >
-                <CloseIcon size={12} />
-              </button>
+              {chipClose(`Remove #${tagFilter} filter`, () => removeChip(false))}
             </span>
           )}
           <input
@@ -686,23 +670,11 @@ export default function SearchPalette({
                 if (row.kind === "folder")
                   return (
                     <button key={rowKey(row)} {...rowProps(i)} onClick={() => act(row)}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span
-                          style={{ ...titleStyle, display: "flex", alignItems: "center", gap: 8 }}
-                        >
-                          <span style={glyph}>
-                            <FolderIcon size={14} />
-                          </span>
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {renderHighlightedTitle(
-                              row.folder.name,
-                              row.folder.nameRanges,
-                              accentText,
-                            )}
-                          </span>
-                        </span>
-                        {folderPath(row.folder.parent)}
-                      </span>
+                      {glyphRow(
+                        <FolderIcon size={14} />,
+                        renderHighlightedTitle(row.folder.name, row.folder.nameRanges, accentText),
+                        folderPath(row.folder.parent),
+                      )}
                     </button>
                   );
                 if (row.kind === "file") {
@@ -715,47 +687,33 @@ export default function SearchPalette({
                       .map(([a, b]) => [Math.max(a, from) - from, Math.min(b, to) - from] as Range);
                   return (
                     <button key={rowKey(row)} {...rowProps(i)} onClick={() => act(row)}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span
-                          style={{ ...titleStyle, display: "flex", alignItems: "center", gap: 8 }}
-                        >
-                          <span style={glyph}>
-                            <OtherFileIcon kind={otherFileKind(row.file.name)} size={14} />
+                      {glyphRow(
+                        <OtherFileIcon kind={otherFileKind(row.file.name)} size={14} />,
+                        <>
+                          {renderHighlightedTitle(stem, clip(0, stem.length), accentText)}
+                          <span style={{ color: TEXT.muted }}>
+                            {renderHighlightedTitle(
+                              ext,
+                              clip(stem.length, row.file.name.length),
+                              accentText,
+                            )}
                           </span>
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {renderHighlightedTitle(stem, clip(0, stem.length), accentText)}
-                            <span style={{ color: TEXT.muted }}>
-                              {renderHighlightedTitle(
-                                ext,
-                                clip(stem.length, row.file.name.length),
-                                accentText,
-                              )}
-                            </span>
-                          </span>
-                        </span>
-                        {folderPath(row.file.folder)}
-                      </span>
+                        </>,
+                        folderPath(row.file.folder),
+                      )}
                     </button>
                   );
                 }
                 if (row.kind === "create")
                   return (
                     <button key={rowKey(row)} {...rowProps(i)} onClick={() => act(row)}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span
-                          style={{ ...titleStyle, display: "flex", alignItems: "center", gap: 8 }}
-                        >
-                          <span style={glyph}>
-                            <PlusIcon size={14} />
-                          </span>
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                            Create “{row.title}”
-                          </span>
-                        </span>
-                        {folderFilter && (
+                      {glyphRow(
+                        <PlusIcon size={14} />,
+                        <>Create “{row.title}”</>,
+                        folderFilter && (
                           <span style={folderStyle}>{folderFilter.split("/").join(" / ")}</span>
-                        )}
-                      </span>
+                        ),
+                      )}
                     </button>
                   );
                 const r = row.result;

@@ -1,4 +1,6 @@
 import { SCALE_OPTIONS } from "../constants/data";
+import { PHONE_UI_SCALE } from "../constants/layout";
+import { isPhone } from "./platform";
 
 /**
  * The UI scale as a number: the presets the menu offers, the ends a custom
@@ -16,6 +18,24 @@ export const SCALE_MAX = SCALE_OPTIONS[SCALE_OPTIONS.length - 1];
 
 /** The scale the app opens at, and what Reset goes back to. */
 export const SCALE_DEFAULT = 100;
+
+/** The scale saved by the last session, else the device's default. */
+export function initialUiScale(): number {
+  const saved = localStorage.getItem("boojy-ui-scale");
+  return saved ? Number(saved) : isPhone ? PHONE_UI_SCALE : SCALE_DEFAULT;
+}
+
+/**
+ * Draw the app at `scale`. `--ui-scale` goes beside the zoom because `vw` and
+ * `vh` are not divided by `zoom` (a `100vh` box is twice the window at 200%):
+ * anything sized against the viewport divides by it (`atScale`).
+ */
+export function applyUiScale(scale: number) {
+  const root = document.documentElement.style;
+  root.zoom = `${scale}%`;
+  root.setProperty("--ui-scale", String(scale / 100));
+  root.minHeight = scale !== 100 ? `${10000 / scale}vh` : "";
+}
 
 /** A whole percentage inside the range. */
 export const clampScale = (n: number) => Math.min(SCALE_MAX, Math.max(SCALE_MIN, Math.round(n)));
@@ -48,7 +68,7 @@ export function parseScale(text: string): number | null {
  * A viewport-unit length in the app's own pixels. `vw` and `vh` ignore the CSS
  * `zoom` the scale is made of, so `100vh` is the window's height times the
  * scale; anything sized against the viewport divides by `--ui-scale`, which
- * `SettingsContext` writes beside the zoom.
+ * `applyUiScale` writes beside the zoom.
  */
 export const atScale = (expr: string) => `calc((${expr}) / var(--ui-scale, 1))`;
 

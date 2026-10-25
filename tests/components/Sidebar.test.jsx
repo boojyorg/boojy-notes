@@ -38,7 +38,6 @@ const layoutState = {
   // that leaves this out renders a sidebar nothing can query.
   sidebarVisible: true,
   toggleSidebar: vi.fn(),
-  chromeBg: "#222",
   sidebarHandles: { current: [] },
   isDragging: { current: false },
   startDrag: vi.fn(),
@@ -129,7 +128,6 @@ function renderSidebar(overrides = {}) {
   const props = {
     activeNote: overrides.activeNote ?? null,
     toggle: overrides.toggle ?? vi.fn(),
-    openNote: overrides.openNote ?? vi.fn(),
     renameNote: overrides.renameNote ?? vi.fn(),
     setCtxMenu: overrides.setCtxMenu ?? vi.fn(),
     ctxMenuFolderId: overrides.ctxMenuFolderId ?? null,
@@ -138,7 +136,7 @@ function renderSidebar(overrides = {}) {
     createNote: overrides.createNote ?? vi.fn(),
     handleSidebarPointerDown: noop,
     selectedNotes: new Set(),
-    handleNoteClick: null,
+    handleNoteClick: overrides.handleNoteClick ?? vi.fn(),
     clearSelection: noop,
     onOpenSearch: overrides.onOpenSearch,
     notesDir: overrides.notesDir ?? "/v/University",
@@ -262,8 +260,8 @@ describe("Sidebar", () => {
     expect(queryByText("Hidden Note")).not.toBeInTheDocument();
   });
 
-  it("calls openNote when a note is clicked", () => {
-    const openNote = vi.fn();
+  it("opens a note when its row is clicked", () => {
+    const handleNoteClick = vi.fn();
     const noteData = buildNoteData([{ id: "n1", title: "Clickable Note" }]);
     const folderTree = [
       {
@@ -274,9 +272,9 @@ describe("Sidebar", () => {
       },
     ];
     const expanded = { "My Folder": true };
-    const { getByText } = renderSidebar({ folderTree, noteData, expanded, openNote });
+    const { getByText } = renderSidebar({ folderTree, noteData, expanded, handleNoteClick });
     fireEvent.click(getByText("Clickable Note"));
-    expect(openNote).toHaveBeenCalledWith("n1");
+    expect(handleNoteClick).toHaveBeenCalledWith("n1", expect.anything());
   });
 
   it("calls toggle when a folder is clicked", () => {

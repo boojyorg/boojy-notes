@@ -1,19 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
-import { Z } from "../../constants/zIndex";
 import { useSettings } from "../../context/SettingsContext";
-import { useExitGhost } from "../../hooks/useExitGhost";
-import { useFocusTrap } from "../../hooks/useFocusTrap";
-import { atScale } from "../../utils/uiScale";
-import { fontWeight } from "../../tokens/typography";
 import AppearanceTab from "./AppearanceTab";
 import UpdatesTab from "./UpdatesTab";
 import SpellingSection from "./SpellingSection";
 import StorageTab from "./StorageTab";
 import SettingsFooter from "./SettingsFooter";
-import { SCRIM, SectionTitle, SettingsRule, dialogSurface } from "./SettingsPrimitives";
-import { CloseIcon, SettingsIcon } from "../Icons";
-import { ChromeButton } from "../EditorChrome";
+import { SectionTitle, SettingsRule } from "./SettingsPrimitives";
+import { DialogShell } from "./DialogShell";
+import { SettingsIcon } from "../Icons";
 
 /** Settings' width: room for a long notes-folder path beside its button. */
 export const SETTINGS_WIDTH = 540;
@@ -45,159 +40,57 @@ export default function SettingsModal({
   const { theme } = useTheme();
   const { TEXT } = theme;
 
-  const modalRef = useRef(null);
-  // Scrim and pane are siblings, so each leaves its own copy (useExitGhost).
-  const scrimRef = useRef(null);
-  const centreRef = useRef(null);
-
-  useFocusTrap(modalRef, settingsOpen, "container");
-  useExitGhost(scrimRef, settingsOpen);
-  useExitGhost(centreRef, settingsOpen);
-
-  // Settings closes itself on Escape, as every other surface does; the app
-  // shell's handler never needs to know it is open. On the document, so it
-  // runs before the shell's window listener, and only for an Escape nothing
-  // above it has taken. A menu opened from inside (a location's ···) owns
-  // Escape even in the frame before focus reaches it, when its own document
-  // listener, added after this one, would hear the key second.
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const onKey = (e) => {
-      if (e.key !== "Escape" || e.defaultPrevented) return;
-      if (document.querySelector('[role="menu"]')) return;
-      e.preventDefault();
-      setSettingsOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [settingsOpen, setSettingsOpen]);
-
-  if (!settingsOpen) return null;
-
   // One pane on the search palette's surface: Appearance, the
   // notes folder and Updates, parted by rules, then the quiet version line.
   // No navigation and no branding block; the cog beside the title is the one
   // glyph, the same one the ··· menu gives Settings.
   return (
-    <>
-      {/* Scrim: the palette's, no blur */}
-      <div
-        ref={scrimRef}
-        className="motion-fade"
-        onClick={() => setSettingsOpen(false)}
-        style={{ position: "fixed", inset: 0, zIndex: Z.SETTINGS, background: SCRIM }}
-      />
-
-      {/* The pane is centred by a wrapper rather than by `translate(-50%, -50%)`
-          on itself: a transform would make the pane the containing block for
-          anything `fixed` inside it, and the wrapper is also what lets the pane
-          carry a zoom of its own without fighting percentage offsets. It takes
-          no pointer events, so a click beside the pane still reaches the scrim
-          and closes Settings. */}
-      <div
-        ref={centreRef}
-        className="motion-from-center"
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: Z.SETTINGS_INNER,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          pointerEvents: "none",
-        }}
-      >
-        <div
-          ref={modalRef}
-          // Grows in by `scale`, which is `none` at rest, so it never makes
-          // the pane a containing block for `fixed` children (a transform would).
-          className="motion-pop motion-from-center"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Settings"
-          data-settings-pane=""
-          tabIndex={-1}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            pointerEvents: "auto",
-            // Its own scale, held at the one it opened with: `zoom` nests
-            // multiplicatively, so this cancels the difference exactly. The
-            // local `--ui-scale` keeps the viewport-unit maths below resolving
-            // against the pane's own scale rather than the app's (`atScale`).
-            zoom: openedAt === uiScale ? undefined : openedAt / uiScale,
-            "--ui-scale": openedAt / 100,
-            width: SETTINGS_WIDTH,
-            // Divided by the scale: `vw`/`vh` ignore the zoom the UI scale is
-            // made of, so at 200% this pane would be twice the window.
-            maxWidth: atScale("100vw - 32px"),
-            maxHeight: atScale("100vh - 48px"),
-            boxSizing: "border-box",
-            padding: "20px 28px",
-            display: "flex",
-            flexDirection: "column",
-            overflowY: "auto",
-            outline: "none",
-            ...dialogSurface(theme),
-          }}
-        >
-          {/* Header */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              height: 32,
-              margin: "0 -8px 20px 0",
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                fontSize: 17,
-                fontWeight: fontWeight.semibold,
-                color: TEXT.primary,
-              }}
-            >
-              <span style={{ display: "inline-flex", color: TEXT.secondary }}>
-                <SettingsIcon size={18} />
-              </span>
-              <span>Settings</span>
-            </div>
-            <ChromeButton
-              label="Close"
-              ariaLabel="Close settings"
-              onClick={() => setSettingsOpen(false)}
-            >
-              <CloseIcon />
-            </ChromeButton>
-          </div>
-
-          <AppearanceTab SectionHeader={SectionTitle} />
-          {isDesktop && (
-            <>
-              <SettingsRule />
-              <StorageTab
-                isDesktop={isDesktop}
-                SectionHeader={SectionTitle}
-                vaults={vaults}
-                switchVault={switchVault}
-                addVault={addVault}
-                forgetVault={forgetVault}
-                renameVault={renameVault}
-                revealVault={revealVault}
-              />
-              <SettingsRule />
-              <SpellingSection SectionHeader={SectionTitle} />
-              <SettingsRule />
-              <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionTitle} />
-            </>
-          )}
-          <SettingsFooter />
-        </div>
-      </div>
-    </>
+    <DialogShell
+      open={settingsOpen}
+      label="Settings"
+      title={
+        <>
+          <span style={{ display: "inline-flex", color: TEXT.secondary }}>
+            <SettingsIcon size={18} />
+          </span>
+          <span>Settings</span>
+        </>
+      }
+      onClose={() => setSettingsOpen(false)}
+      closeAriaLabel="Close settings"
+      width={SETTINGS_WIDTH}
+      padding="20px 28px"
+      headerGap={20}
+      paneProps={{ "data-settings-pane": "" }}
+      // Its own scale, held at the one it opened with: `zoom` nests
+      // multiplicatively, so this cancels the difference exactly. The local
+      // `--ui-scale` keeps the viewport-unit maths resolving against the
+      // pane's own scale rather than the app's (`atScale`).
+      paneStyle={{
+        zoom: openedAt === uiScale ? undefined : openedAt / uiScale,
+        "--ui-scale": openedAt / 100,
+      }}
+    >
+      <AppearanceTab SectionHeader={SectionTitle} />
+      {isDesktop && (
+        <>
+          <SettingsRule />
+          <StorageTab
+            SectionHeader={SectionTitle}
+            vaults={vaults}
+            switchVault={switchVault}
+            addVault={addVault}
+            forgetVault={forgetVault}
+            renameVault={renameVault}
+            revealVault={revealVault}
+          />
+          <SettingsRule />
+          <SpellingSection SectionHeader={SectionTitle} />
+          <SettingsRule />
+          <UpdatesTab SectionHeader={SectionTitle} />
+        </>
+      )}
+      <SettingsFooter />
+    </DialogShell>
   );
 }

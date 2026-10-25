@@ -2,8 +2,8 @@
 
 import type { Block, Note, NoteData } from "../types/notes";
 import { stripMarkdownFormatting } from "./inlineFormatting";
-import { withinFolder } from "./pathTree";
 import { naturalCompare } from "./sidebarTree";
+import { withinFolder, baseName, parentFolder } from "./vaultPath";
 
 /**
  * What one block contributes to a note's searchable text: prose, a callout's
@@ -502,11 +502,6 @@ function nameMatch(name: string, terms: string[]): { score: number; ranges: Rang
   return { score, ranges: ranges.sort((a, b) => a[0] - b[0]) };
 }
 
-const parentOf = (path: string) => {
-  const slash = path.lastIndexOf("/");
-  return slash === -1 ? null : path.slice(0, slash);
-};
-
 /**
  * Folders whose own name holds every term of the query, scored as a note's
  * title is: `univ` finds University, never Archive inside it. Best first,
@@ -517,9 +512,10 @@ export function searchFolders(query: string, folders: string[], limit = FOLDER_H
   if (terms.length === 0) return [];
   const hits: FolderHit[] = [];
   for (const path of folders) {
-    const name = path.slice(path.lastIndexOf("/") + 1);
+    const name = baseName(path);
     const m = nameMatch(name, terms);
-    if (m) hits.push({ path, name, parent: parentOf(path), score: m.score, nameRanges: m.ranges });
+    if (m)
+      hits.push({ path, name, parent: parentFolder(path), score: m.score, nameRanges: m.ranges });
   }
   const depth = (p: string) => p.split("/").length;
   hits.sort(
@@ -558,9 +554,9 @@ export function searchFiles(
   const hits: FileHit[] = [];
   for (const f of files) {
     if (f.attachment) continue;
-    const parent = parentOf(f.path);
+    const parent = parentFolder(f.path);
     if (folder && !inFolder(parent, folder)) continue;
-    const name = f.path.slice(f.path.lastIndexOf("/") + 1);
+    const name = baseName(f.path);
     const m = nameMatch(name, terms);
     if (m) hits.push({ path: f.path, name, folder: parent, score: m.score, nameRanges: m.ranges });
   }

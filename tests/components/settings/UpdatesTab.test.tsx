@@ -3,8 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  setAutoUpdateEnabled: vi.fn(),
-  setAutoUpdate: vi.fn(),
+  changeAutoUpdate: vi.fn(),
   settings: {
     autoUpdateEnabled: true,
     updateStatus: { state: "idle" } as { state: string; version?: string },
@@ -14,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../../src/context/SettingsContext", () => ({
   useSettings: () => ({
     autoUpdateEnabled: mocks.settings.autoUpdateEnabled,
-    setAutoUpdateEnabled: mocks.setAutoUpdateEnabled,
+    changeAutoUpdate: mocks.changeAutoUpdate,
     updateStatus: mocks.settings.updateStatus,
   }),
 }));
@@ -45,20 +44,16 @@ describe("UpdatesTab", () => {
     vi.clearAllMocks();
     mocks.settings.autoUpdateEnabled = true;
     mocks.settings.updateStatus = { state: "idle" };
-    Object.assign(window.electronAPI, {
-      setAutoUpdate: mocks.setAutoUpdate.mockResolvedValue({}),
-    });
   });
 
   it("exposes auto-update as a keyboard-operable switch", () => {
-    render(<UpdatesTab isDesktop SectionHeader={() => null} />);
+    render(<UpdatesTab SectionHeader={() => null} />);
 
     const toggle = screen.getByRole("switch", { name: "Automatic updates" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
 
     fireEvent.click(toggle);
-    expect(mocks.setAutoUpdateEnabled).toHaveBeenCalledWith(false);
-    expect(mocks.setAutoUpdate).toHaveBeenCalledWith(false);
+    expect(mocks.changeAutoUpdate).toHaveBeenCalledWith(false);
   });
 
   // One button and one status line (2026-09-17). The button says what it is
@@ -84,7 +79,7 @@ describe("UpdatesTab", () => {
     ];
     for (const [status, button, line] of states) {
       mocks.settings.updateStatus = status;
-      const view = render(<UpdatesTab isDesktop SectionHeader={() => null} />);
+      const view = render(<UpdatesTab SectionHeader={() => null} />);
       const btn = screen.getByRole("button", { name: button });
       expect(screen.getByTestId("update-status")).toHaveTextContent(line);
       const disabled = status.state === "checking" || status.state === "downloading";
@@ -99,13 +94,13 @@ describe("UpdatesTab", () => {
     const install = vi.fn();
     Object.assign(window.electronAPI, { checkForUpdate: check, installUpdate: install });
     mocks.settings.updateStatus = { state: "idle" };
-    const view = render(<UpdatesTab isDesktop SectionHeader={() => null} />);
+    const view = render(<UpdatesTab SectionHeader={() => null} />);
     fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
     expect(check).toHaveBeenCalledTimes(1);
     view.unmount();
 
     mocks.settings.updateStatus = { state: "downloaded", version: "9.9.9" };
-    render(<UpdatesTab isDesktop SectionHeader={() => null} />);
+    render(<UpdatesTab SectionHeader={() => null} />);
     const restart = screen.getByRole("button", { name: "Restart to update" });
     expect(restart.style.color).toBe("rgb(20, 17, 15)");
     expect(restart.style.background).toBe("rgb(42, 115, 125)");
@@ -119,7 +114,7 @@ describe("UpdatesTab", () => {
 
   it("gives the off-state knob a visible ink on the neutral track", () => {
     mocks.settings.autoUpdateEnabled = false;
-    render(<UpdatesTab isDesktop SectionHeader={() => null} />);
+    render(<UpdatesTab SectionHeader={() => null} />);
     const knob = screen.getByRole("switch", { name: "Automatic updates" })
       .firstElementChild as HTMLElement;
     // TEXT.secondary; a white knob on the 6% track was invisible in Light.

@@ -9,7 +9,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
 import { installTraceProbes } from "./utils/trace";
 import { isPhone } from "./utils/platform";
-import { PHONE_UI_SCALE } from "./constants/layout";
+import { applyUiScale, initialUiScale } from "./utils/uiScale";
 import { showStartupFailure } from "./phone/startupFailure";
 
 // The crash screen promises "your notes have been backed up to local
@@ -33,14 +33,8 @@ const PhoneTweaker = tweaking && isPhone ? lazy(() => import("../dev/PhoneTweake
 // The phone's own rules in GlobalStyles hang off this class (no hover, touch sizes).
 if (isPhone) document.documentElement.classList.add("is-phone");
 
-// Apply saved UI scale immediately to prevent flash
-const savedScale =
-  localStorage.getItem("boojy-ui-scale") ?? (isPhone ? String(PHONE_UI_SCALE) : null);
-if (savedScale && savedScale !== "100") {
-  const scale = Number(savedScale);
-  document.documentElement.style.zoom = `${scale}%`;
-  document.documentElement.style.minHeight = `${10000 / scale}vh`;
-}
+// Draw at the saved UI scale before the first paint, so nothing jumps.
+applyUiScale(initialUiScale());
 
 // Inject CSS Custom Highlight API styles for find-in-note
 const highlightStyle = document.createElement("style");

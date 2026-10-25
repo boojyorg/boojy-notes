@@ -12,10 +12,11 @@ import { useTheme } from "../hooks/useTheme";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
+import { MENU_PAD, MENU_ROW_RADIUS } from "../constants/layout";
 import { readAddress, shownAddress } from "../utils/linkDestination";
 import { LinkIcon, PlusIcon } from "./Icons";
 import { fromTouch } from "../utils/touch";
+import { menuSurface } from "./Menu";
 
 /**
  * The link picker: one popover for a web address and a note alike, opened by
@@ -298,16 +299,13 @@ export default function LinkPicker({
       className="link-picker motion-pop"
       data-testid="link-picker"
       style={{
-        position: "fixed",
+        ...menuSurface(theme),
+        padding: 0,
         top: pos?.top,
         left: pos?.left,
         width: PICKER_W,
         zIndex: Z.DROPDOWN,
         boxSizing: "border-box",
-        background: BG.elevated,
-        border: `1px solid ${BG.divider}`,
-        borderRadius: MENU_RADIUS,
-        boxShadow: theme.modalShadow,
         fontFamily: "inherit",
       }}
     >

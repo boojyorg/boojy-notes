@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useTheme } from "../hooks/useTheme";
 import { prefersReducedMotion } from "../tokens/motion";
 
 /** Duration of the folder expand/collapse slide. */
@@ -55,5 +56,28 @@ export default function Collapsible({ open, children }: { open: boolean; childre
     >
       <div style={{ overflow: "hidden", minHeight: 0 }}>{children}</div>
     </div>
+  );
+}
+
+/**
+ * The tree's indent guide: a hairline from a folder glyph's centre down
+ * through its open children, its end saying where the folder ends. Drawn in
+ * the children's group, which is `position: relative`.
+ */
+export function IndentGuide({ left, bottom }: { left: number; bottom: number }) {
+  const { theme } = useTheme();
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        top: 0,
+        bottom,
+        left,
+        width: 1,
+        background: theme.BG.divider,
+        pointerEvents: "none",
+      }}
+    />
   );
 }

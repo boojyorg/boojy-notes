@@ -4,13 +4,14 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { Z } from "../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS, TOUCH } from "../constants/layout";
+import { MENU_PAD, MENU_ROW_RADIUS, TOUCH } from "../constants/layout";
 import { isPhone } from "../utils/platform";
 import { filterSlashCommands } from "../constants/data";
 import { cssZoom } from "../utils/domHelpers";
 import { fromTouch } from "../utils/touch";
 import { menuRoom } from "../phone/menuRoom";
 import { SlashCommandIcon } from "./Icons";
+import { menuSurface } from "./Menu";
 
 /** Row height is icon (20) + 7px above and below; a touch target on the phone. */
 const ICON_COL = 20;
@@ -77,7 +78,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
         role="listbox"
         aria-label="Slash commands"
         style={{
-          position: "fixed",
+          ...menuSurface(theme),
           ...(phone
             ? {
                 left: phone.left,
@@ -91,12 +92,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                 left: pos?.left,
               }),
           zIndex: Z.DROPDOWN,
-          background: BG.elevated,
-          border: `1px solid ${BG.divider}`,
-          borderRadius: MENU_RADIUS,
-          padding: MENU_PAD,
           minWidth: phone ? undefined : MENU_WIDTH,
-          boxShadow: theme.modalShadow,
         }}
       >
         {filtered.length === 0 ? (

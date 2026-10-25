@@ -1,20 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
-import { Z } from "../../constants/zIndex";
-import { useExitGhost } from "../../hooks/useExitGhost";
-import { useFocusTrap } from "../../hooks/useFocusTrap";
-import { fontWeight } from "../../tokens/typography";
 import { ThemePills } from "./AppearanceTab";
-import {
-  FolderPathControl,
-  SCRIM,
-  SectionTitle,
-  SmallButton,
-  dialogSurface,
-} from "./SettingsPrimitives";
-import { CloseIcon, FolderOpenIcon, NewNoteIcon } from "../Icons";
-import { atScale } from "../../utils/uiScale";
-import { ChromeButton } from "../EditorChrome";
+import { FolderPathControl, SectionTitle, SmallButton } from "./SettingsPrimitives";
+import { FolderOpenIcon, NewNoteIcon } from "../Icons";
+import { DialogShell } from "./DialogShell";
 
 /** Setup's width: Settings' minus a step, enough for the default path and its button on one line. */
 export const SETUP_WIDTH = 480;
@@ -36,115 +25,57 @@ export const SETUP_WIDTH = 480;
 export default function SetupDialog({ notesDir, folderExists, onChooseFolder, onReveal, onDone }) {
   const { theme, setThemeMode } = useTheme();
   const { TEXT } = theme;
-  const ref = useRef(null);
-  const scrimRef = useRef(null);
-  useFocusTrap(ref, true, "container");
-  // Arrives and leaves as Settings does: scrim and dialog each leave a copy.
-  useExitGhost(scrimRef);
-  useExitGhost(ref);
 
   // A fresh install starts on System; an existing user never sees this.
   useEffect(() => {
     setThemeMode("auto");
   }, [setThemeMode]);
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key !== "Escape" || e.defaultPrevented) return;
-      e.preventDefault();
-      onDone("dismiss");
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onDone]);
-
+  const dismiss = () => onDone("dismiss");
   return (
-    <>
-      <div
-        ref={scrimRef}
-        className="motion-fade"
-        data-testid="setup-scrim"
-        onClick={() => onDone("dismiss")}
-        style={{ position: "fixed", inset: 0, zIndex: Z.SETTINGS, background: SCRIM }}
-      />
-      <div
-        ref={ref}
-        className="motion-pop motion-from-center"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Welcome to Boojy Notes"
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: Z.SETTINGS_INNER,
-          width: SETUP_WIDTH,
-          maxWidth: atScale("100vw - 32px"),
-          maxHeight: atScale("100vh - 48px"),
-          boxSizing: "border-box",
-          padding: "20px 28px 28px",
-          display: "flex",
-          flexDirection: "column",
-          overflowY: "auto",
-          outline: "none",
-          ...dialogSurface(theme),
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            height: 32,
-            margin: "0 -8px 10px 0",
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ fontSize: 17, fontWeight: fontWeight.semibold, color: TEXT.primary }}>
-            Welcome to Boojy Notes
+    <DialogShell
+      label="Welcome to Boojy Notes"
+      title="Welcome to Boojy Notes"
+      onClose={dismiss}
+      width={SETUP_WIDTH}
+      padding="20px 28px 28px"
+      headerGap={10}
+      scrimTestId="setup-scrim"
+    >
+      <p style={{ margin: "0 0 24px", fontSize: 14, lineHeight: "22px", color: TEXT.secondary }}>
+        A simple place to write and organise your notes, saved as Markdown files in a folder you
+        choose.
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <SectionTitle title="Notes folder" />
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 16px" }}>
+          <FolderPathControl path={notesDir} onReveal={folderExists ? onReveal : undefined} />
+          <div style={{ marginLeft: "auto" }}>
+            <SmallButton icon={<FolderOpenIcon />} onClick={onChooseFolder}>
+              Choose folder…
+            </SmallButton>
           </div>
-          <ChromeButton label="Close" onClick={() => onDone("dismiss")}>
-            <CloseIcon />
-          </ChromeButton>
-        </div>
-        <p style={{ margin: "0 0 24px", fontSize: 14, lineHeight: "22px", color: TEXT.secondary }}>
-          A simple place to write and organise your notes, saved as Markdown files in a folder you
-          choose.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <SectionTitle title="Notes folder" />
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 16px" }}>
-            <FolderPathControl path={notesDir} onReveal={folderExists ? onReveal : undefined} />
-            <div style={{ marginLeft: "auto" }}>
-              <SmallButton icon={<FolderOpenIcon />} onClick={onChooseFolder}>
-                Choose folder…
-              </SmallButton>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ height: 24 }} />
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <SectionTitle title="Appearance" />
-          <ThemePills />
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "center", marginTop: 32 }}>
-          <SmallButton
-            kind="accent"
-            icon={<NewNoteIcon size={18} />}
-            onClick={() => onDone("create")}
-            style={{ height: 38, padding: "0 22px", fontSize: 14 }}
-          >
-            Create note
-          </SmallButton>
         </div>
       </div>
-    </>
+
+      <div style={{ height: 24 }} />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <SectionTitle title="Appearance" />
+        <ThemePills />
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 32 }}>
+        <SmallButton
+          kind="accent"
+          icon={<NewNoteIcon size={18} />}
+          onClick={() => onDone("create")}
+          style={{ height: 38, padding: "0 22px", fontSize: 14 }}
+        >
+          Create note
+        </SmallButton>
+      </div>
+    </DialogShell>
   );
 }

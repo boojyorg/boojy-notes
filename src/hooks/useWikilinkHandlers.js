@@ -7,7 +7,7 @@ import {
 } from "../utils/wikilinkTarget";
 import { editBlocks } from "../utils/editBlocks";
 import { fileForTarget } from "../utils/fileView";
-import { baseName } from "../utils/otherFiles";
+import { baseName } from "../utils/vaultPath";
 
 /**
  * Wikilink wiring for the editor:

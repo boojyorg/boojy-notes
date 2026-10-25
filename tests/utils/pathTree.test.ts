@@ -1,17 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { SidebarNode } from "../../src/types/notes";
 import {
-  ancestorFolders,
   crumbScope,
   findFolder,
-  parentFolder,
   parentRowIndex,
   pickerRows,
   scopeContents,
   sharedFolder,
   visibleRows,
-  withinFolder,
 } from "../../src/utils/pathTree";
+import { ancestorFolders, parentFolder, withinFolder } from "../../src/utils/vaultPath";
 
 /**
  * The example vault of the design: University holds Archive (with 2024 and

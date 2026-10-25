@@ -37,7 +37,6 @@ describe("a folder's menu on the phone", () => {
         duplicateFolder={vi.fn()}
         onMoveTo={vi.fn()}
         selectedNotes={new Set()}
-        selectedCount={0}
       />,
     );
     expect(getAllByRole("menuitem").map((el) => el.textContent)).toEqual([

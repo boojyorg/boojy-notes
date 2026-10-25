@@ -14,7 +14,7 @@ import {
   zoomPercent,
 } from "../utils/fileView";
 import { openPdf, pageSizes } from "../utils/pdfDocument";
-import { baseName } from "../utils/otherFiles";
+import { baseName } from "../utils/vaultPath";
 
 /** What to show in the note's place: a vault-relative file, at a page a link asked for. */
 export interface OpenFile {

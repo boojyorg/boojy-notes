@@ -16,7 +16,7 @@ const EMPTY = {};
 const GROUPS = [
   {
     group: "BG",
-    keys: ["editor", "standard", "dark", "darkest", "elevated", "surface", "hover", "divider"],
+    keys: ["editor", "standard", "darkest", "elevated", "surface", "hover", "divider"],
   },
   { group: "TEXT", keys: ["primary", "secondary", "muted"] },
   { group: "ACCENT", keys: ["primary", "text", "onAccent"] },

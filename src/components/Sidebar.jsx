@@ -15,7 +15,6 @@ import {
 } from "../utils/treeNav";
 import {
   attachmentLabel,
-  baseName,
   groupOtherFiles,
   otherFileKind,
   splitExtension,
@@ -52,7 +51,7 @@ import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import SyncStatusButton from "./SyncStatusButton";
 import RenameField from "./RenameField";
-import Collapsible from "./Collapsible";
+import Collapsible, { IndentGuide } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
 import { SYNC_FOLDER } from "../phone/syncFolder";
 import Wordmark from "./Wordmark";
@@ -78,9 +77,9 @@ import {
   TREE_ROW_H as DESKTOP_ROW_H,
   WORDMARK_H,
 } from "../constants/layout";
-import { parentFolder } from "../utils/pathTree";
 import { NAV_BAR_H } from "../utils/uiScale";
 import { fromTouch } from "../utils/touch";
+import { baseName, parentFolder } from "../utils/vaultPath";
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.
@@ -470,7 +469,6 @@ function SyncedVaultLabel({ name, sync, TEXT }) {
 const Sidebar = memo(function Sidebar({
   activeNote,
   toggle,
-  openNote,
   renameNote,
   setCtxMenu,
   renameFolder,
@@ -510,7 +508,7 @@ const Sidebar = memo(function Sidebar({
   // The phone: sync's state, after the folder's name (useSyncStatus).
   sync = null,
 }) {
-  const { chromeBg, sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
+  const { sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
   // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
   // survive a collapse — but a zero-width, overflow-hidden panel still hands
   // its buttons to Tab and to a screen reader, and the editor header renders
@@ -728,7 +726,7 @@ const Sidebar = memo(function Sidebar({
         role="treeitem"
         aria-selected={act}
         {...rowProps(noteKey(nId))}
-        onClick={handleNoteClick ? (e) => handleNoteClick(nId, e) : () => openNote(nId)}
+        onClick={(e) => handleNoteClick(nId, e)}
         // Double-click = rename in place: the row swaps its title for the same
         // inline input folders use. The two single-clicks it also fires just
         // open the note, harmlessly.
@@ -986,17 +984,9 @@ const Sidebar = memo(function Sidebar({
                 folder glyph's centre through its children; the line ending is
                 what says "this folder ends here" in a mixed tree. */}
             <div style={{ position: "relative" }}>
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  bottom: ROW_GAP,
-                  left: TREE_SPINE + SPINE_ICON / 2 + depth * TREE_INDENT,
-                  width: 1,
-                  background: BG.divider,
-                  pointerEvents: "none",
-                }}
+              <IndentGuide
+                bottom={ROW_GAP}
+                left={TREE_SPINE + SPINE_ICON / 2 + depth * TREE_INDENT}
               />
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((nId) => renderNote(nId, depth + 1))}
@@ -1071,18 +1061,7 @@ const Sidebar = memo(function Sidebar({
         {files.length > 0 && (
           <Collapsible open={isOpen}>
             <div style={{ position: "relative" }}>
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  bottom: ROW_GAP,
-                  left: TREE_SPINE + SPINE_ICON / 2,
-                  width: 1,
-                  background: BG.divider,
-                  pointerEvents: "none",
-                }}
-              />
+              <IndentGuide bottom={ROW_GAP} left={TREE_SPINE + SPINE_ICON / 2} />
               {files.map((path) => renderFile(path, 1, attachmentLabel(path)))}
             </div>
           </Collapsible>
@@ -1261,7 +1240,7 @@ const Sidebar = memo(function Sidebar({
           {/* New note and the list's controls, above the list's scroller:
           they never scroll, so the scrollbar spans the list alone, from
           under the vault row down to Recently Deleted. */}
-          <div inert={hiddenControls} style={{ background: chromeBg, flexShrink: 0 }}>
+          <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
             <div style={{ height: COLUMN_HEAD_GAP }} />
             <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />
             <SectionHeader

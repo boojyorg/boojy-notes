@@ -37,7 +37,6 @@ import { fromTouch } from "../../utils/touch";
  */
 
 interface StorageTabProps {
-  isDesktop: boolean;
   SectionHeader: ComponentType<{ title: string }>;
   vaults?: VaultEntry[];
   switchVault?: (dir: string) => void;
@@ -214,7 +213,6 @@ function LocationRow({ v, editing, menuOpen, onMenu, onSwitch, onRename, moreRef
 }
 
 export default function StorageTab({
-  isDesktop,
   SectionHeader,
   vaults = [],
   switchVault,
@@ -239,7 +237,6 @@ export default function StorageTab({
     setRefocus(null);
   }, [refocus]);
 
-  if (!isDesktop) return null;
   // The open location can be removed only when there is another to switch to.
   const canSwitchAway = vaults.some((o) => !o.current && o.exists);
   const removable = (v: VaultEntry) => !v.current || canSwitchAway;
