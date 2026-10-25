@@ -27,8 +27,11 @@ export function useFocusTrap(containerRef, isOpen, initialFocus = "first") {
   useEffect(() => {
     if (!isOpen) return;
 
-    // Remember what was focused before the trap opened
+    // Remember what was focused before the trap opened, and whether it wore
+    // the focus ring: focus handed back after a click-opened surface closes
+    // on Escape would otherwise light up, since the last input was a key.
     previousFocusRef.current = document.activeElement;
+    const ringed = document.activeElement?.matches?.(":focus-visible") ?? false;
 
     const container = containerRef.current;
     if (!container) return;
@@ -100,7 +103,7 @@ export function useFocusTrap(containerRef, isOpen, initialFocus = "first") {
       // Never scrolled: handing focus back to the editor, a contentEditable
       // spanning the note, scrolls it to wherever its caret sits.
       if (stillHeld && previous && typeof previous.focus === "function") {
-        previous.focus({ preventScroll: true });
+        previous.focus({ preventScroll: true, focusVisible: ringed });
       }
     };
   }, [isOpen, containerRef, initialFocus]);

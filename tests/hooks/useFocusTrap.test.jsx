@@ -64,7 +64,7 @@ describe("useFocusTrap", () => {
     const { rerender } = render(<Surface open />);
     await nextFrame();
     rerender(<Surface open={false} />);
-    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(focus).toHaveBeenCalledWith(expect.objectContaining({ preventScroll: true }));
   });
 
   it("leaves focus where the surface itself put it", async () => {

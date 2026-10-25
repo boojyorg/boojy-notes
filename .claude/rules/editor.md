@@ -68,8 +68,8 @@ app's, made through state.**
 - **An open modal, or a focused menu, owns every key beneath it** (`focusOwner()`). Each
   surface closes itself on Escape; Escape never hides the sidebar.
 - A native text field outside the editor owns its editing keys.
-- **A closing surface hands focus back only while it holds it, with `preventScroll`**
-  (else the note scrolls). `useFocusTrap`.
+- **A closing surface hands focus back only while it holds it, unscrolled, ringed only if
+  it was** (Escape lit a clicked button). `useFocusTrap`.
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
   completion (tags: prefix match). The `[[` picker is a dialog and takes focus.
 - A completion from a native listener commits at once (`commitNoteData`). A triple-click
@@ -153,7 +153,7 @@ app's, made through state.**
 ## Block drag: the gutter grip; on the phone, a hold
 
 - **On the desktop text never starts a block drag; a picture does.** One floating grip
-  (`BlockDragHandle`) in the left padding, on hover, desktop only, `aria-hidden`; a click
+  (`BlockDragHandle`) in the left padding, on hover, `aria-hidden`; a click
   selects the block. None under two blocks.
 - A key hides the grip (a modifier alone doesn't: Shift-click) and clears `hoveringHandle`.
   **Blur cancels a press unconditionally** (Cmd-Tab left a phantom drag).

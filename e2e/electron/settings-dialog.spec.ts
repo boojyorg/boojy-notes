@@ -99,3 +99,41 @@ test("the appearance pills switch the theme live and persist; the switch and upd
     await h.close();
   }
 });
+
+// Escape is a key, so Chromium would ring whatever focus goes back to: a
+// clicked wordmark lit up as Settings closed. Focus goes back ringed only if
+// it was ringed when Settings opened.
+test("closing Settings hands focus back with a ring only if it had one", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    const wordmark = h.page.getByTestId("wordmark-settings-button");
+    const ringed = () => wordmark.evaluate((el) => el.matches(":focus-visible"));
+
+    // Settings takes focus a frame after it opens; an Escape before then
+    // would be pressed on the wordmark itself.
+    const settings = await openSettings(h);
+    await expect(settings).toBeFocused();
+    await h.page.keyboard.press("Escape");
+    await expect(settings).toHaveCount(0);
+    await expect(wordmark).toBeFocused();
+    expect(await ringed()).toBe(false);
+
+    // Reached by keyboard (a key, then focus moved in script, standing in for
+    // Tab): the ring is the user's place, and it comes back with them. A
+    // modifier alone is not keyboard use to Chromium.
+    await h.page.keyboard.press("Escape");
+    await wordmark.evaluate((el: HTMLElement) => {
+      el.blur();
+      el.focus();
+    });
+    expect(await ringed()).toBe(true);
+    await h.page.keyboard.press("Enter");
+    await expect(settings).toBeFocused();
+    await h.page.keyboard.press("Escape");
+    await expect(wordmark).toBeFocused();
+    expect(await ringed()).toBe(true);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
