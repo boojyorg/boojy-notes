@@ -5,7 +5,7 @@ import { withAlignment } from "../utils/tableShape";
 import { indentRun } from "../utils/blockRun";
 import { focusSidebar } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
-import { todoFlip } from "../utils/todoToggle";
+import { selectedTodoTargets, todoFlip } from "../utils/todoToggle";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -326,7 +326,7 @@ export function useAppKeyboard({
         textField: isTextField(document.activeElement),
         formats: formats ? Object.keys(formats).filter((f) => formats[f]) : [],
         kind: blocks.find((b) => b.id === caretBlock)?.type ?? null,
-        checked: !!blocks.find((b) => b.id === caretBlock)?.checked,
+        todosDone: todosDone(L, blocks),
         align: columnAlignment(blocks),
         sidebarVisible: !!sidebarVisible,
         sourceView: !!sourceView,
@@ -489,6 +489,18 @@ export function indentSpan(blocks, chosenIds, delta) {
   return indentRun(blocks, from, to, delta) ? { from, to } : null;
 }
 
+/** Check Off's blocks: those selected whole, else the text selection's (`selectedTodoTargets`). */
+function todoTargets(L, blocks) {
+  const chosen = L.blockSelectionIds?.() ?? [];
+  return chosen.length ? chosen : selectedTodoTargets(blocks, window.getSelection());
+}
+
+/** Whether Check Off's to-dos are all ticked, for its check; null with none (greyed). */
+function todosDone(L, blocks) {
+  const flip = todoFlip(blocks, todoTargets(L, blocks));
+  return flip ? !flip.checked : null;
+}
+
 /** The ids of the blocks the selection runs through, first to last, in the editor. */
 function selectedBlockIds(blocks) {
   const sel = window.getSelection();
@@ -615,8 +627,7 @@ function runMenuCommand(id, L, titleRef) {
     return;
   }
   if (id === "toggleTodo") {
-    const chosen = L.blockSelectionIds?.() ?? [];
-    const flip = todoFlip(blocks, chosen.length ? chosen : selectedBlockIds(blocks));
+    const flip = todoFlip(blocks, todoTargets(L, blocks));
     if (flip) L.checkTodos?.(note, flip.ids, flip.checked);
     return;
   }

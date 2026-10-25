@@ -132,3 +132,39 @@ test("Format → Check Off shows ⌘Enter, is ticked on a done to-do, and runs t
     await h.close();
   }
 });
+
+test("a selection that stops before a to-do's first letter leaves that to-do alone", async () => {
+  const h = await launchApp({ "List.md": "- [ ] First\n- [ ] Second\n" });
+  const file = h.vault.file("List.md");
+  try {
+    await h.openNote("List");
+    await line(h, "First").click();
+    await h.page.keyboard.press(START_OF_LINE);
+    // Ends at the very start of Second: only "First" is selected.
+    await h.page.keyboard.press("Shift+ArrowDown");
+    await h.page.keyboard.press(`${MOD}+Enter`);
+    await waitForFile(file, (t) => t === "- [x] First\n- [ ] Second\n", {
+      label: "only First ticked",
+    });
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("Check Off is offered for a selection that reaches a to-do from a plain line", async () => {
+  const h = await launchApp({ "List.md": "Plain\n- [ ] Task\n" });
+  try {
+    await h.openNote("List");
+    await line(h, "Plain").click();
+    await line(h, "Task").click({ modifiers: ["Shift"] });
+    await expect.poll(() => menuEnabled(h, "toggleTodo")).toBe(true);
+    await menuClick(h, "toggleTodo");
+    await waitForFile(h.vault.file("List.md"), (t) => t === "Plain\n- [x] Task\n", {
+      label: "the task ticked by the menu",
+    });
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
