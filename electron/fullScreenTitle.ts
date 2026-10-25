@@ -50,7 +50,9 @@ function loadAppKit() {
 }
 
 let appKit: AppKit | null = null;
+/** Retained by us, so it outlives its window; released by `hideFullScreenTitle`. */
 let label: Ptr = null;
+let owner: BrowserWindow | null = null;
 
 /** Runs `fn` with AppKit, or not at all: a failure only costs the label. */
 function withAppKit(fn: (k: AppKit) => void): void {
@@ -84,7 +86,11 @@ export function showFullScreenTitle(win: BrowserWindow, text: string): void {
     k.sendVFL(field, lowResistance, 1, NS_HORIZONTAL);
     k.sendVB(field, sel("setTranslatesAutoresizingMaskIntoConstraints:"), false);
     k.sendVP(bar, sel("addSubview:"), field);
-    label = field;
+    // A closed window frees its views without leaving full screen first: a
+    // pointer we didn't own would dangle and crash the next call.
+    label = k.sendP(field, sel("retain"));
+    owner = win;
+    win.once("closed", hideFullScreenTitle);
 
     const anchor = (v: Ptr, name: string) => k.sendP(v, sel(name));
     const equal = (a: Ptr, b: Ptr) => k.sendPP(a, sel("constraintEqualToAnchor:"), b);
@@ -111,7 +117,12 @@ export function setFullScreenTitle(text: string): void {
 }
 
 export function hideFullScreenTitle(): void {
+  if (owner && !owner.isDestroyed()) owner.removeListener("closed", hideFullScreenTitle);
+  owner = null;
   if (!label) return;
-  withAppKit(({ sel, sendV }) => sendV(label, sel("removeFromSuperview")));
+  withAppKit(({ sel, sendV }) => {
+    sendV(label, sel("removeFromSuperview"));
+    sendV(label, sel("release"));
+  });
   label = null;
 }
