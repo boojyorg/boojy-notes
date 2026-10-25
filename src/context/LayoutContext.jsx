@@ -67,8 +67,9 @@ export function LayoutProvider({ children }) {
    * The Markdown view (SourceView): the note shown as its file. Per note, and
    * remembered across restarts (`markdownViewNotes`); a new note opens
    * formatted. Read through `useSourceView`. Only the switch in EditorArea
-   * turns it on or off, because the caret's place is read on the way; Version
-   * History sets it aside while it looks back.
+   * turns it on or off, because the caret's place is read on the way. Version
+   * History hides it for the note it looks back on (`pauseSourceView`), never
+   * touching the saved choice.
    */
   const [markdownViewNotes, setMarkdownViewNotes] = useState(readMarkdownViewNotes);
   const setNoteSourceView = useCallback(
@@ -76,6 +77,7 @@ export function LayoutProvider({ children }) {
     [],
   );
   useEffect(() => writeMarkdownViewNotes(markdownViewNotes), [markdownViewNotes]);
+  const [sourceViewPausedFor, pauseSourceView] = useState(null);
 
   const sidebarHandles = useRef([]);
 
@@ -101,6 +103,8 @@ export function LayoutProvider({ children }) {
       hideSidebar,
       markdownViewNotes,
       setNoteSourceView,
+      sourceViewPausedFor,
+      pauseSourceView,
       accentColor,
       sidebarHandles,
       isDragging,
@@ -116,6 +120,7 @@ export function LayoutProvider({ children }) {
       hideSidebar,
       markdownViewNotes,
       setNoteSourceView,
+      sourceViewPausedFor,
       accentColor,
       isDragging,
       startDrag,
@@ -133,8 +138,8 @@ export function useLayout() {
 
 /** Whether `noteId` is in the Markdown view, and the switch for it. */
 export function useSourceView(noteId) {
-  const { markdownViewNotes, setNoteSourceView } = useLayout();
-  const on = !!noteId && markdownViewNotes.includes(noteId);
+  const { markdownViewNotes, setNoteSourceView, sourceViewPausedFor } = useLayout();
+  const on = !!noteId && noteId !== sourceViewPausedFor && markdownViewNotes.includes(noteId);
   const setOn = useCallback(
     (next) => {
       if (noteId) setNoteSourceView(noteId, next);

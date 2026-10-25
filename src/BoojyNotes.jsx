@@ -112,7 +112,7 @@ export default function BoojyNotes() {
     revealSidebar,
     hideSidebar,
     toggleSidebar,
-    setNoteSourceView,
+    pauseSourceView,
     accentColor,
     sidebarHandles,
     isDragging,
@@ -285,8 +285,7 @@ export default function BoojyNotes() {
     flushAll,
     commitNoteData,
     syncGeneration,
-    sourceView,
-    setNoteSourceView,
+    pauseSourceView,
     showToast,
     requestConfirm,
   });

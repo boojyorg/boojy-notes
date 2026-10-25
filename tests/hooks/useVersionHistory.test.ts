@@ -38,8 +38,7 @@ function setup(overrides = {}) {
     flushAll: vi.fn().mockResolvedValue(undefined),
     commitNoteData: vi.fn(),
     syncGeneration: { current: 0 },
-    sourceView: false,
-    setNoteSourceView: vi.fn(),
+    pauseSourceView: vi.fn(),
     showToast: vi.fn().mockReturnValue(1),
     requestConfirm: vi.fn(),
     ...overrides,
@@ -72,14 +71,14 @@ describe("useVersionHistory", () => {
     expect(result.current.hour12).toBe(false);
   });
 
-  it("shows a chosen version, and turns the Markdown view off while it looks back", async () => {
-    const { result, deps } = setup({ sourceView: true });
+  it("shows a chosen version, and hides the Markdown view while it looks back", async () => {
+    const { result, deps } = setup();
     await act(() => result.current.open());
-    expect(deps.setNoteSourceView).toHaveBeenCalledWith("n1", false);
+    expect(deps.pauseSourceView).toHaveBeenCalledWith("n1");
     await act(() => result.current.select("v1"));
     expect(result.current.state.past?.id).toBe("v1");
     act(() => result.current.close());
-    expect(deps.setNoteSourceView).toHaveBeenLastCalledWith("n1", true);
+    expect(deps.pauseSourceView).toHaveBeenLastCalledWith(null);
     expect(result.current.state.noteId).toBeNull();
   });
 

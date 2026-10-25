@@ -241,3 +241,30 @@ test("each note keeps its own view, through a restart", async () => {
     await h.close();
   }
 });
+
+test("Version History hides the view for a while, and a quit meanwhile keeps it", async () => {
+  const h = await launchApp({ "Alpha.md": "# A\n" });
+  const markdown = () => h.page.getByRole("textbox", { name: "Markdown" });
+  const openHistory = async () => {
+    await h.page.locator("button[aria-label='Note actions']").click();
+    await h.page.getByRole("menuitem", { name: /Version History/ }).click();
+    await expect(h.page.getByRole("listbox", { name: "Versions" })).toBeFocused();
+  };
+  try {
+    await h.openNote("Alpha");
+    await h.page.keyboard.press(`${MOD}+/`);
+    await expect(markdown()).toHaveValue("# A\n");
+    await openHistory();
+    await expect(markdown()).toHaveCount(0);
+    await h.page.keyboard.press("Escape");
+    await expect(markdown()).toHaveValue("# A\n");
+
+    await openHistory();
+    await h.restart();
+    await h.openNote("Alpha");
+    await expect(markdown()).toHaveValue("# A\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

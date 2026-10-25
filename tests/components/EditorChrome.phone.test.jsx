@@ -13,6 +13,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 vi.mock("../../src/context/LayoutContext", () => ({
+  useSourceView: () => [false, () => {}],
   useLayout: () => ({ sidebarVisible: false, sidebarWidth: 260, fullScreen: false }),
 }));
 vi.mock("../../src/utils/platform", () => ({
