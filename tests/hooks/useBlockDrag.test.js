@@ -43,6 +43,17 @@ function setup(overrides = {}) {
  * Mount block roots with hand-set rects: 30px rows starting at y=100, 10px
  * apart, so drop boundaries are predictable. jsdom has no layout of its own.
  */
+/** The editor the blocks stand in, as the app's `[data-editor]` root. */
+function editorOf() {
+  let editor = document.querySelector("[data-editor]");
+  if (!editor) {
+    editor = document.createElement("div");
+    editor.setAttribute("data-editor", "");
+    document.body.appendChild(editor);
+  }
+  return editor;
+}
+
 function mountBlocks(blockRefs, blocks, { rowH = 30, gap = 10, top = 100 } = {}) {
   blocks.forEach((b, i) => {
     const el = document.createElement("p");
@@ -56,7 +67,7 @@ function mountBlocks(blockRefs, blocks, { rowH = 30, gap = 10, top = 100 } = {})
       right: 550,
       width: 500,
     });
-    document.body.appendChild(el);
+    editorOf().appendChild(el);
     blockRefs.current[b.id] = el;
   });
 }

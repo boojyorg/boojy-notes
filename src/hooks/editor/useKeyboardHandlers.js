@@ -35,7 +35,8 @@ import { measureBlockPlaces, settleBlocks } from "../../utils/blockSettle";
 import { stepIndex } from "../../utils/menuKeys";
 import { editBlocks } from "../../utils/editBlocks";
 import { LINE_KIND_TYPES, LIST_TYPES } from "../../utils/blockKinds";
-import { isTodoKey, selectedTodoTargets, todoFlip } from "../../utils/todoToggle";
+import { isTodoKey, todoFlip } from "../../utils/todoToggle";
+import { selectedLines } from "../../utils/selectedLines";
 
 /**
  * Blocks a Backspace at their start turns into a plain paragraph before it
@@ -609,12 +610,11 @@ export function useKeyboardHandlers({
       !e.altKey &&
       !slashMenuRef.current
     ) {
-      const start = getBlock(range.startContainer);
-      const end = getBlock(range.endContainer) || start;
-      if (start) {
+      const lines = selectedLines(noteDataRef.current[currentNote]?.content?.blocks ?? [], range);
+      if (lines.length) {
         e.preventDefault();
         sel.collapse(range.endContainer, range.endOffset);
-        selectBlockRun(start.blockId, end.blockId);
+        selectBlockRun(lines[0], lines.at(-1));
         return;
       }
     }
@@ -632,7 +632,7 @@ export function useKeyboardHandlers({
     // ⌘Enter ticks the to-dos the selection runs through; with none, it is Enter.
     if (isTodoKey(e)) {
       const blocks = noteDataRef.current[currentNote]?.content?.blocks ?? [];
-      const flip = todoFlip(blocks, selectedTodoTargets(blocks, sel));
+      const flip = todoFlip(blocks, selectedLines(blocks, range));
       if (flip) {
         e.preventDefault();
         checkTodos(currentNote, flip.ids, flip.checked);
@@ -655,7 +655,11 @@ export function useKeyboardHandlers({
         e.preventDefault();
         if (scope.kind === "cross" && !e.metaKey && !e.ctrlKey && !e.altKey) {
           const delta = e.shiftKey ? -1 : 1;
-          indentBlockRange(currentNote, scope.start.blockIndex, scope.end.blockIndex, delta);
+          const blocks = noteDataRef.current[currentNote]?.content?.blocks ?? [];
+          const lines = selectedLines(blocks, range);
+          const from = blocks.findIndex((b) => b.id === lines[0]);
+          const to = blocks.findIndex((b) => b.id === lines.at(-1));
+          if (from >= 0) indentBlockRange(currentNote, from, to, delta);
         }
       }
       return;

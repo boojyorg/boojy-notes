@@ -5,6 +5,7 @@ import { reorderFloor } from "../utils/blockOrder";
 import { selectedIds, subtreeEnd } from "../utils/blockRun";
 import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
 import { EDGE_GAP, gapY, placeMarker } from "../utils/dropMarker";
+import { selectedLinesOf } from "../utils/selectedLines";
 
 /** Pointer travel from the grip that means "this is a drag, not a click". */
 const DRAG_THRESHOLD = 3;
@@ -113,14 +114,9 @@ export function useBlockDrag({
     const sel = window.getSelection();
     if (!run.includes(blockId) && sel.rangeCount && !sel.isCollapsed) {
       const floor = reorderFloor(blocks);
-      const range = sel.getRangeAt(0);
-      const multiIds = blocks
-        .filter((b, i) => {
-          if (i < floor) return false;
-          const bEl = blockRefs.current[b.id];
-          return bEl && range.intersectsNode(bEl);
-        })
-        .map((b) => b.id);
+      const multiIds = selectedLinesOf(blocks, sel).filter(
+        (id) => blocks.findIndex((b) => b.id === id) >= floor,
+      );
       if (multiIds.length > 1 && multiIds.includes(blockId)) {
         draggedIds = multiIds;
       }

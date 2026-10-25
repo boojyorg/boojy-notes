@@ -5,7 +5,8 @@ import { withAlignment } from "../utils/tableShape";
 import { indentRun } from "../utils/blockRun";
 import { focusSidebar } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
-import { selectedTodoTargets, todoFlip } from "../utils/todoToggle";
+import { todoFlip } from "../utils/todoToggle";
+import { selectedLinesOf } from "../utils/selectedLines";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -489,10 +490,10 @@ export function indentSpan(blocks, chosenIds, delta) {
   return indentRun(blocks, from, to, delta) ? { from, to } : null;
 }
 
-/** Check Off's blocks: those selected whole, else the text selection's (`selectedTodoTargets`). */
+/** Check Off's blocks: those selected whole, else the lines the text selection covers. */
 function todoTargets(L, blocks) {
   const chosen = L.blockSelectionIds?.() ?? [];
-  return chosen.length ? chosen : selectedTodoTargets(blocks, window.getSelection());
+  return chosen.length ? chosen : selectedBlockIds(blocks);
 }
 
 /** Whether Check Off's to-dos are all ticked, for its check; null with none (greyed). */
@@ -501,19 +502,9 @@ function todosDone(L, blocks) {
   return flip ? !flip.checked : null;
 }
 
-/** The ids of the blocks the selection runs through, first to last, in the editor. */
+/** The lines the selection covers, first to last, in the editor (`selectedLines`). */
 function selectedBlockIds(blocks) {
-  const sel = window.getSelection();
-  if (!sel?.rangeCount) return [];
-  const idOf = (node) => {
-    const el = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
-    const block = el?.closest?.("[data-editor] [data-block-id]");
-    return block?.getAttribute("data-block-id") ?? null;
-  };
-  const a = blocks.findIndex((b) => b.id === idOf(sel.anchorNode));
-  const f = blocks.findIndex((b) => b.id === idOf(sel.focusNode));
-  if (a === -1 || f === -1) return [];
-  return blocks.slice(Math.min(a, f), Math.max(a, f) + 1).map((b) => b.id);
+  return selectedLinesOf(blocks, window.getSelection());
 }
 
 /**

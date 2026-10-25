@@ -79,7 +79,8 @@ app's, made through state.**
   back. Shift+Arrow is always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
 - **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), landing as arrows do, on screen.
   `block-jump.spec.ts`.
-- **⌘Enter ticks the selected to-dos one way** (`todoFlip`); else Enter. `todo-toggle.spec.ts`.
+- **A line command takes a line only if the selection holds some of it** (`selectedLines`).
+  ⌘Enter ticks those to-dos one way (`todoFlip`), else is Enter. `selected-lines.spec.ts`.
 
 ## Backspace sheds the kind before it merges
 
