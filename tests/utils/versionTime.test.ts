@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { versionMoment, versionTime } from "../../src/utils/versionTime";
+import { editedLabel, versionMoment, versionTime } from "../../src/utils/versionTime";
 
 const now = new Date(2026, 8, 26, 16, 4).getTime(); // Sat 26 Sep 2026, 16:04
 const at = (m: number, d: number, h: number, min: number, y = 2026) =>
@@ -21,6 +21,35 @@ describe("versionTime", () => {
 
   it("never writes an all-number date", () => {
     expect(versionTime(at(8, 25, 9, 0, 2025), now, false, "en-US")).not.toMatch(/\d+\/\d+/);
+  });
+});
+
+describe("editedLabel", () => {
+  const ago = (ms: number) => editedLabel(now - ms, now, false, "en-GB");
+  it("says how recently within the hour", () => {
+    expect(ago(0)).toBe("Edited just now");
+    expect(ago(59_999)).toBe("Edited just now");
+    expect(ago(60_000)).toBe("Edited 1 min ago");
+    expect(ago(59 * 60_000 + 59_999)).toBe("Edited 59 min ago");
+  });
+
+  it("then the clock and the day, as Version History says them", () => {
+    expect(ago(60 * 60_000)).toBe("Edited at 15:04");
+    expect(editedLabel(at(9, 26, 1, 30), now, false, "en-GB")).toBe("Edited at 1:30");
+    expect(editedLabel(at(9, 25, 23, 59), now, false, "en-GB")).toBe("Edited yesterday at 23:59");
+    expect(editedLabel(at(9, 20, 10, 12), now, false, "en-GB")).toBe("Edited Sun at 10:12");
+    expect(editedLabel(at(9, 19, 10, 12), now, false, "en-GB")).toBe("Edited 19 Sept");
+    expect(editedLabel(at(12, 31, 9, 0, 2025), now, false, "en-GB")).toBe("Edited 31 Dec 2025");
+  });
+
+  it("reads a time ahead of the clock (another device's) as just now", () => {
+    expect(ago(-5 * 60_000)).toBe("Edited just now");
+  });
+
+  it("follows a 12-hour clock", () => {
+    expect(editedLabel(at(9, 25, 21, 40), now, true, "en-GB")).toMatch(
+      /^Edited yesterday at 9:40\spm$/i,
+    );
   });
 });
 

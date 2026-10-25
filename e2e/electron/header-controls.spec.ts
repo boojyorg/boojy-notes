@@ -175,7 +175,7 @@ test("Settings is in the header menu, with a note open and with none", async () 
   await expect(menu).toBeVisible();
   // The note's length closes its own menu: "Alpha starts here." is three
   // words. One muted line, never an item.
-  await expect(menu.getByTestId("note-stats")).toHaveText("3 words");
+  await expect(menu.getByTestId("note-words")).toHaveText("3 words");
   expect(await menu.getByRole("menuitem").allTextContents()).toEqual([
     "Rename",
     expect.stringMatching(/^Copy/),
@@ -202,7 +202,9 @@ test("Settings is in the header menu, with a note open and with none", async () 
   await expect(h.page.getByRole("menu").getByRole("menuitem", { name: "Settings" })).toBeVisible();
   // The desktop always has a note open (an empty library opens a draft), so
   // the counts are there and honest.
-  await expect(h.page.getByRole("menu").getByTestId("note-stats")).toHaveText("0 words");
+  await expect(h.page.getByRole("menu").getByTestId("note-words")).toHaveText("0 words");
+  // A draft has no file, so no time.
+  await expect(h.page.getByRole("menu").getByTestId("note-edited")).toHaveCount(0);
   await h.page.getByRole("menu").getByRole("menuitem", { name: "Settings" }).click();
   await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
 });

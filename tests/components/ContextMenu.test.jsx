@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render, fireEvent, cleanup, act } from "@testing-library/react";
 
 // ── Theme mock ──────────────────────────────────────────────────────────────
 vi.mock("../../src/hooks/useTheme", () => ({
@@ -73,6 +73,16 @@ describe("ContextMenu", () => {
     expect(getByText("Rename")).toBeInTheDocument();
     expect(getByText("Duplicate")).toBeInTheDocument();
     expect(getByText("Delete")).toBeInTheDocument();
+  });
+
+  it("ends a row's menu with that note's footer, but not a selection's", () => {
+    const props = baseProps();
+    props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
+    props.footer = { words: 5, editedAt: null };
+    const { getByTestId, queryByTestId, rerender } = render(<ContextMenu {...props} />);
+    expect(getByTestId("note-words")).toHaveTextContent("5 words");
+    rerender(<ContextMenu {...props} selectedNotes={new Set(["n1", "n2"])} />);
+    expect(queryByTestId("note-stats")).toBeNull();
   });
 
   it("renders folder context menu items", () => {
@@ -268,10 +278,10 @@ describe("the header menu", () => {
 
   it("ends with the note's word count, one muted line under a rule", () => {
     const props = headerProps("n1");
-    props.wordCount = 412;
+    props.footer = { words: 412, editedAt: null };
     const { getByTestId, getAllByRole, queryByRole } = render(<ContextMenu {...props} />);
     const stats = getByTestId("note-stats");
-    expect(stats).toHaveTextContent("412 words");
+    expect(getByTestId("note-words")).toHaveTextContent("412 words");
     expect(stats).not.toHaveTextContent("character");
     expect(stats.previousElementSibling).toHaveAttribute("role", "separator");
     // The three groups' rules, and the count's.
@@ -282,9 +292,44 @@ describe("the header menu", () => {
 
   it("spells one word in the singular", () => {
     const props = headerProps("n1");
-    props.wordCount = 1;
+    props.footer = { words: 1, editedAt: null };
     const { getByTestId } = render(<ContextMenu {...props} />);
-    expect(getByTestId("note-stats")).toHaveTextContent("1 word");
+    expect(getByTestId("note-words")).toHaveTextContent(/^1 word$/);
+  });
+
+  it("groups a long count's digits and says when the note was edited", () => {
+    const props = headerProps("n1");
+    props.footer = { words: 23421, editedAt: Date.now() - 12 * 60_000 };
+    const { getByTestId } = render(<ContextMenu {...props} />);
+    expect(getByTestId("note-words").textContent).toBe(
+      `${new Intl.NumberFormat().format(23421)} words`,
+    );
+    expect(getByTestId("note-edited")).toHaveTextContent("Edited 12 min ago");
+  });
+
+  it("moves Edited on while the menu stays open", () => {
+    vi.useFakeTimers();
+    try {
+      const props = headerProps("n1");
+      props.footer = { words: 3, editedAt: Date.now() };
+      const { getByTestId } = render(<ContextMenu {...props} />);
+      expect(getByTestId("note-edited")).toHaveTextContent("Edited just now");
+      act(() => vi.advanceTimersByTime(90_000));
+      expect(getByTestId("note-edited")).toHaveTextContent("Edited 1 min ago");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows only what it has: no time for a draft, no count for an offloaded note", () => {
+    const props = headerProps("n1");
+    props.footer = { words: 0, editedAt: null };
+    const { queryByTestId, rerender } = render(<ContextMenu {...props} />);
+    expect(queryByTestId("note-words")).toHaveTextContent("0 words");
+    expect(queryByTestId("note-edited")).toBeNull();
+    rerender(<ContextMenu {...props} footer={{ words: null, editedAt: Date.now() }} />);
+    expect(queryByTestId("note-words")).toBeNull();
+    expect(queryByTestId("note-edited")).toHaveTextContent("Edited just now");
   });
 
   it("opens Settings and closes itself", () => {
@@ -297,7 +342,6 @@ describe("the header menu", () => {
 
   it("holds Settings alone when no note is open", () => {
     const props = headerProps(null);
-    props.wordCount = 0;
     const { getByText, queryByText, getByRole, queryByTestId, queryByRole } = render(
       <ContextMenu {...props} />,
     );

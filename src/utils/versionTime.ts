@@ -1,8 +1,8 @@
 /**
  * When a version was, as Version History says it: precise while it is recent,
  * coarser as it gets old, never an all-number date (8/25/25 is a different day
- * in another country). The one place the app shows times, because the list is
- * about time.
+ * in another country). A list of versions is compared row by row, so it keeps
+ * clock times; the ··· menu's foot says how recently (`editedLabel`).
  *
  *   today            15:48
  *   yesterday        Yesterday 21:40
@@ -38,6 +38,31 @@ export function versionTime(at: number, now: number, hour12?: boolean, locale?: 
     month: "short",
     ...(sameYear ? {} : { year: "numeric" }),
   }).format(at);
+}
+
+/**
+ * When a note was last edited, at the foot of its ··· menu: how recently while
+ * it is fresh, then Version History's day and clock, so the two agree.
+ *
+ *   under a minute   Edited just now        (a time ahead of the clock too)
+ *   under an hour    Edited 12 min ago
+ *   today            Edited at 17:58
+ *   yesterday        Edited yesterday at 21:40
+ *   this week        Edited Tue at 10:12
+ *   older            Edited 25 Aug, Edited 25 Aug 2025
+ */
+export function editedLabel(at: number, now: number, hour12?: boolean, locale?: string): string {
+  const ago = now - at;
+  if (ago < 60_000) return "Edited just now";
+  if (ago < 3_600_000) return `Edited ${Math.floor(ago / 60_000)} min ago`;
+  const days = Math.round((startOfDay(now) - startOfDay(at)) / 86_400_000);
+  if (days <= 0) return `Edited at ${clock(at, hour12, locale)}`;
+  if (days === 1) return `Edited yesterday at ${clock(at, hour12, locale)}`;
+  if (days < 7) {
+    const day = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(at);
+    return `Edited ${day} at ${clock(at, hour12, locale)}`;
+  }
+  return `Edited ${versionTime(at, now, hour12, locale)}`;
 }
 
 /** The whole moment, for a tooltip: `Tuesday 23 September, 10:12`. */

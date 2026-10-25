@@ -1,4 +1,4 @@
-import { useRef, useMemo, memo } from "react";
+import { useRef, useMemo, memo, useState, useEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
 import {
   ClipboardIcon,
@@ -25,10 +25,45 @@ const LINK_PAGE_KEY = isMac ? "⌥⌘L" : "Ctrl+Alt+L";
 import { shortcutLabel } from "./Tooltip";
 import { useSettings } from "../context/SettingsContext";
 import Menu, { MenuRule } from "./Menu";
+import { editedLabel } from "../utils/versionTime";
 
-/** `412 words`: the number a note is measured by; nobody writes a note to a
- *  character limit. */
-const noteStatsLabel = (words) => `${words} word${words === 1 ? "" : "s"}`;
+/** `1,632 words`: the number a note is measured by (nobody writes a note to a
+ *  character limit), grouped as the system groups digits. */
+const wordsLabel = (words) =>
+  `${new Intl.NumberFormat().format(words)} word${words === 1 ? "" : "s"}`;
+
+/**
+ * The foot of a note's menu: `1,632 words · Edited 12 min ago`, one muted
+ * line, not an item. Always one line: it widens the menu a little when it
+ * must, since a line that split for one note and not the next read as random.
+ * "Edited" moves on while the menu stays open.
+ */
+function NoteFooter({ words, editedAt, hour12, color }) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (editedAt == null) return;
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, [editedAt]);
+  return (
+    <div
+      data-testid="note-stats"
+      style={{
+        padding: "5px 10px 3px",
+        fontSize: 11,
+        color,
+        whiteSpace: "nowrap",
+        userSelect: "none",
+      }}
+    >
+      {words != null && <span data-testid="note-words">{wordsLabel(words)}</span>}
+      {words != null && editedAt != null && <span aria-hidden="true"> · </span>}
+      {editedAt != null && (
+        <span data-testid="note-edited">{editedLabel(editedAt, now, hour12)}</span>
+      )}
+    </div>
+  );
+}
 
 const ContextMenu = memo(function ContextMenu({
   ctxMenu,
@@ -57,7 +92,10 @@ const ContextMenu = memo(function ContextMenu({
   viewedFile,
   // Version History (desktop): the ··· menu becomes the note's past in place.
   onVersionHistory,
-  wordCount,
+  // The note's length and when it was edited ({ words, editedAt }, either
+  // null), for a single note's menu; and the Mac's 24-hour setting.
+  footer,
+  hour12,
   // The Markdown view: whether it is on, and the one switch (EditorArea's).
   sourceView,
   onToggleSourceView,
@@ -327,26 +365,19 @@ const ContextMenu = memo(function ContextMenu({
       onClose={() => setCtxMenu(null)}
       items={items}
       footer={
-        isHeader &&
-        ctxMenu.id &&
-        wordCount != null && (
+        !isBulk &&
+        footer &&
+        (footer.words != null || footer.editedAt != null) && (
           <>
             <MenuRule />
-            {/* The note's length, at the foot of its own menu (Notion's place
-                for it): one muted line, not an item, shown only with a note
-                open. The one desktop surface that costs no pixels at rest. */}
-            <div
-              data-testid="note-stats"
-              style={{
-                padding: "5px 10px 3px",
-                fontSize: 11,
-                color: TEXT.muted,
-                whiteSpace: "nowrap",
-                userSelect: "none",
-              }}
-            >
-              {noteStatsLabel(wordCount)}
-            </div>
+            {/* At the foot of the note's own menu (Notion's place for it):
+                the one desktop surface that costs no pixels at rest. */}
+            <NoteFooter
+              words={footer.words}
+              editedAt={footer.editedAt}
+              hour12={hour12}
+              color={TEXT.muted}
+            />
           </>
         )
       }

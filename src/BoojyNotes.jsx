@@ -47,7 +47,7 @@ import { versionMoment, versionTime } from "./utils/versionTime";
 import UiScaleChip from "./components/UiScaleChip";
 import { indentSpan, useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
-import { useNoteStats } from "./hooks/useNoteStats";
+import { useNoteStats, wordsIn } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
 import { caretLength, caretOffsetAt, getCaretOffset, placeCaret } from "./utils/domHelpers";
@@ -77,6 +77,7 @@ import { fileLinkTarget, pageLink } from "./utils/fileView";
 import { blocksToMarkdown } from "./utils/markdown";
 import { wholeBlocksCopy } from "./utils/clipboardCopy";
 import { ancestorFolders, parentFolder, withinFolder, baseName } from "./utils/vaultPath";
+import { recencyOf } from "./utils/noteSort";
 
 export default function BoojyNotes() {
   const { theme } = useTheme();
@@ -1142,6 +1143,27 @@ export default function BoojyNotes() {
   multiSelectRef.current = selectedNotes;
   clearSelectionRef.current = clearSelection;
 
+  // The foot of a note's ··· menu (the header's, or one row's): its length and
+  // when it was last edited, by the sort's own clock (`recencyOf`). A note
+  // whose text is not here (offloaded, unreadable) has no count; one with no
+  // file yet (a draft) has no time.
+  const menuNote =
+    (ctxMenu?.type === "header" || (ctxMenu?.type === "note" && selectedNotes.size <= 1)) &&
+    ctxMenu.id
+      ? noteData[ctxMenu.id]
+      : null;
+  const menuFooter = menuNote
+    ? {
+        words:
+          menuNote.offloaded || menuNote.unreadable
+            ? null
+            : ctxMenu.id === activeNote
+              ? wordCount
+              : wordsIn(menuNote.content?.blocks),
+        editedAt: menuNote._draft ? null : recencyOf(ctxMenu.id, noteData, editedAt) || null,
+      }
+    : null;
+
   // Deletion asks only when it should, in words that say what happens
   // (utils/deletionPrompt owns the wording). Desktop moves a note's file to the
   // OS Trash: a single note goes at once with a quiet toast; a folder or a bulk
@@ -1743,7 +1765,8 @@ export default function BoojyNotes() {
         selectedNotes={selectedNotes}
         bulkDeleteNotes={bulkDeleteNotes}
         onMoveTo={openMovePicker}
-        wordCount={wordCount}
+        footer={menuFooter}
+        hour12={versionHistory.hour12}
         sourceView={sourceView}
         onToggleSourceView={toggleSourceView}
         openFile={openOtherFile}
