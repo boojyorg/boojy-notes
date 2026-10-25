@@ -51,7 +51,6 @@ const baseProps = () => ({
   setRenamingFolder: vi.fn(),
   onRenameNote: vi.fn(),
   selectedNotes: new Set(),
-  selectedCount: 0,
   bulkDeleteNotes: vi.fn(),
   onMoveTo: vi.fn(),
 });
@@ -316,7 +315,6 @@ describe("the header menu", () => {
   it("acts on the active note even with a sidebar multi-selection", () => {
     const props = headerProps("n1");
     props.selectedNotes = new Set(["n2", "n3"]);
-    props.selectedCount = 2;
     const { getByText, queryByText } = render(<ContextMenu {...props} />);
     expect(queryByText("Delete 2 notes")).not.toBeInTheDocument();
     fireEvent.click(getByText("Delete"));
@@ -384,7 +382,6 @@ describe("the highlight belongs to one open", () => {
     const props = baseProps();
     props.onMoveTo = vi.fn();
     props.selectedNotes = new Set(["n1", "n2"]);
-    props.selectedCount = 2;
     props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
     const { getAllByRole, getByText } = render(<ContextMenu {...props} />);
     expect(getAllByRole("menuitem").map((el) => el.textContent)).toEqual([

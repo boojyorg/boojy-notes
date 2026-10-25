@@ -28,7 +28,7 @@ import Menu, { MenuRule } from "./Menu";
 
 /** `412 words`: the number a note is measured by; nobody writes a note to a
  *  character limit. */
-export const noteStatsLabel = (words) => `${words} word${words === 1 ? "" : "s"}`;
+const noteStatsLabel = (words) => `${words} word${words === 1 ? "" : "s"}`;
 
 const ContextMenu = memo(function ContextMenu({
   ctxMenu,
@@ -44,7 +44,6 @@ const ContextMenu = memo(function ContextMenu({
   setRenamingFolder,
   onRenameNote,
   selectedNotes,
-  selectedCount,
   bulkDeleteNotes,
   // Opens the Move to… picker for `subject` ({ kind: "notes", ids } or
   // { kind: "folder", path }) at this menu's anchor; the menu closes first.
@@ -95,7 +94,14 @@ const ContextMenu = memo(function ContextMenu({
   // taken from the note on screen. It is the one menu that carries Settings,
   // and it opens with no active note at all, carrying Settings alone.
   const isHeader = ctxMenu.type === "header";
-  const isBulk = ctxMenu.type === "note" && selectedCount > 1;
+  const isBulk = ctxMenu.type === "note" && selectedNotes.size > 1;
+
+  // Every item closes the menu and then acts. Both are state updates in one
+  // event, so they render together whichever comes first.
+  const run = (fn) => () => {
+    setCtxMenu(null);
+    fn?.();
+  };
 
   // Move to… opens the picker where this menu stood: the one
   // route to a destination without dragging, and with the sidebar hidden the
@@ -104,10 +110,7 @@ const ContextMenu = memo(function ContextMenu({
   const moveItem = (subject) => ({
     label: "Move to…",
     icon: <MoveToIcon />,
-    action: () => {
-      setCtxMenu(null);
-      onMoveTo?.(subject, anchor);
-    },
+    action: run(() => onMoveTo?.(subject, anchor)),
   });
 
   // A note's menu (Copy before Duplicate, as in the grip's menu): what acts
@@ -132,10 +135,7 @@ const ContextMenu = memo(function ContextMenu({
             label: "Copy",
             icon: <ClipboardIcon />,
             hint: keys ? shortcutLabel({ key: "C", shift: true }) : undefined,
-            action: () => {
-              setCtxMenu(null);
-              copyNoteText(id);
-            },
+            action: run(() => copyNoteText(id)),
           },
         ]
       : []),
@@ -143,10 +143,7 @@ const ContextMenu = memo(function ContextMenu({
       label: "Duplicate",
       icon: <CopyIcon />,
       hint: keys ? shortcutLabel({ key: "D", shift: true }) : undefined,
-      action: () => {
-        duplicateNote(id);
-        setCtxMenu(null);
-      },
+      action: run(() => duplicateNote(id)),
     },
     moveItem({ kind: "notes", ids: [id] }),
   ];
@@ -155,10 +152,7 @@ const ContextMenu = memo(function ContextMenu({
     label: "Delete",
     icon: <TrashIcon />,
     rule: true,
-    action: () => {
-      deleteNote(id);
-      setCtxMenu(null);
-    },
+    action: run(() => deleteNote(id)),
     danger: true,
   });
 
@@ -170,10 +164,7 @@ const ContextMenu = memo(function ContextMenu({
         // The Mac's key only: Ctrl+Alt+S elsewhere is Go to Sidebar (useAppKeyboard).
         hint: isMac ? "⌥⌘S" : undefined,
         rule: true,
-        action: () => {
-          setCtxMenu(null);
-          onVersionHistory();
-        },
+        action: run(onVersionHistory),
       }
     : null;
 
@@ -183,10 +174,7 @@ const ContextMenu = memo(function ContextMenu({
     // The cog is what sets it apart from the note's own items; a rule above
     // it as well would cut a six-row menu into three compartments.
     icon: <SettingsIcon />,
-    action: () => {
-      setCtxMenu(null);
-      setSettingsOpen(true);
-    },
+    action: run(() => setSettingsOpen(true)),
   };
 
   // The view item says what it will do, as View's Hide/Show Sidebar does: a
@@ -197,10 +185,7 @@ const ContextMenu = memo(function ContextMenu({
     icon: sourceView ? <FormattedViewIcon /> : <SourceViewIcon size={16} />,
     hint: shortcutLabel({ key: "/" }),
     rule: true,
-    action: () => {
-      setCtxMenu(null);
-      onToggleSourceView?.();
-    },
+    action: run(onToggleSourceView),
   };
 
   // A file that is not a note: open it in its own app, find it, or remove it.
@@ -210,27 +195,18 @@ const ContextMenu = memo(function ContextMenu({
     {
       label: "Open in Default App",
       icon: <OpenLinkIcon />,
-      action: () => {
-        setCtxMenu(null);
-        openFile?.(path);
-      },
+      action: run(() => openFile?.(path)),
     },
     {
       label: SHOW_IN_FOLDER_LABEL,
       icon: <RevealIcon />,
-      action: () => {
-        setCtxMenu(null);
-        revealFile?.(path);
-      },
+      action: run(() => revealFile?.(path)),
     },
     {
       label: "Delete",
       icon: <TrashIcon />,
       rule: true,
-      action: () => {
-        setCtxMenu(null);
-        trashFile?.(path);
-      },
+      action: run(() => trashFile?.(path)),
       danger: true,
     },
   ];
@@ -238,10 +214,6 @@ const ContextMenu = memo(function ContextMenu({
   // ··· on a file shown in the note's place: its own app first, since that
   // is what the viewer stands in for, then where it is, then the copies (a
   // PDF's page link among them), and the Trash last, as a note's Delete is.
-  const run = (fn) => () => {
-    setCtxMenu(null);
-    fn?.();
-  };
   const viewedItems = (v) => [
     { label: "Open in Default App", icon: <OpenLinkIcon />, action: run(v.openDefault) },
     { label: SHOW_IN_FOLDER_LABEL, icon: <RevealIcon />, action: run(v.reveal) },
@@ -269,10 +241,7 @@ const ContextMenu = memo(function ContextMenu({
         {
           label: "New note",
           icon: <NewNoteIcon />,
-          action: () => {
-            setCtxMenu(null);
-            createNote(null);
-          },
+          action: run(() => createNote(null)),
         },
       ]
     : [];
@@ -296,12 +265,9 @@ const ContextMenu = memo(function ContextMenu({
           // nothing when they are spread over several.
           moveItem({ kind: "notes", ids: [...selectedNotes] }),
           {
-            label: `Delete ${selectedCount} notes`,
+            label: `Delete ${selectedNotes.size} notes`,
             icon: <TrashIcon />,
-            action: () => {
-              bulkDeleteNotes([...selectedNotes]);
-              setCtxMenu(null);
-            },
+            action: run(() => bulkDeleteNotes([...selectedNotes])),
             danger: true,
           },
         ]
@@ -320,26 +286,17 @@ const ContextMenu = memo(function ContextMenu({
                 {
                   label: "New note",
                   icon: <NewNoteIcon />,
-                  action: () => {
-                    createNote(ctxMenu.id);
-                    setCtxMenu(null);
-                  },
+                  action: run(() => createNote(ctxMenu.id)),
                 },
                 {
                   label: "New folder",
                   icon: <NewFolderIcon />,
-                  action: () => {
-                    createFolder(ctxMenu.id);
-                    setCtxMenu(null);
-                  },
+                  action: run(() => createFolder(ctxMenu.id)),
                 },
                 {
                   label: "Rename",
                   icon: <PencilIcon />,
-                  action: () => {
-                    setRenamingFolder(ctxMenu.id);
-                    setCtxMenu(null);
-                  },
+                  action: run(() => setRenamingFolder(ctxMenu.id)),
                 },
                 // The phone's vault cannot copy a folder yet: offered there, it only failed.
                 ...(isPhone
@@ -348,20 +305,14 @@ const ContextMenu = memo(function ContextMenu({
                       {
                         label: "Duplicate folder",
                         icon: <CopyIcon />,
-                        action: () => {
-                          duplicateFolder(ctxMenu.id);
-                          setCtxMenu(null);
-                        },
+                        action: run(() => duplicateFolder(ctxMenu.id)),
                       },
                     ]),
                 moveItem({ kind: "folder", path: ctxMenu.id }),
                 {
                   label: "Delete folder",
                   icon: <TrashIcon />,
-                  action: () => {
-                    deleteFolder(ctxMenu.id);
-                    setCtxMenu(null);
-                  },
+                  action: run(() => deleteFolder(ctxMenu.id)),
                   danger: true,
                 },
               ];
