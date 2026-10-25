@@ -101,7 +101,6 @@ describe("useKeyboardHandlers", () => {
         end: { blockIndex: 0, blockId: "b1" },
       })),
       executeSlashCommand: vi.fn(),
-      handleBlockInput: vi.fn(),
     };
   });
 

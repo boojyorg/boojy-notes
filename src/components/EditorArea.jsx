@@ -39,6 +39,7 @@ import {
   placeCaret,
   caretLength,
   isEditableBlock,
+  landing,
   isSelectableBlock,
   hasOwnField,
   focusOwnedField,
@@ -82,18 +83,6 @@ import { fromTouch } from "../utils/touch";
 const HOLD_IN_WEB =
   isWeb && typeof location !== "undefined" && new URLSearchParams(location.search).has("hold");
 
-/*
- * The note name is a FILE LABEL, not the document's heading.
- *
- * It reads at label rank so it can never compete with a real Markdown H1 in
- * the body. A note whose file is `boojy-notes-design-demo-v1.2.md` and whose
- * first block is `# Notes Demo v1.2` shows both, and they read as
- * file-then-document rather than as two titles. The filename and the H1 stay
- * independent: editing the heading never renames the file.
- *
- * It sits in the chrome row, centred on the pane behind its folder path
- * (NotePath).
- */
 /**
  * The column's own top padding on the desktop, under the chrome row.
  *
@@ -147,12 +136,9 @@ const COL_PAD_MAX = 56;
 const COL_PAD_FROM = 560;
 const COL_PAD_TO = 800;
 
-/** The nearest block that holds a caret, walking from `from` by `step`; -1 when none. */
-function nearestTextIndex(blocks, from, step) {
-  let i = from;
-  while (i >= 0 && i < blocks.length && !isEditableBlock(blocks[i])) i += step;
-  return i >= 0 && i < blocks.length ? i : -1;
-}
+/** The nearest block that holds a caret, walking from `from` (itself included) by `step`; -1 when none. */
+const nearestTextIndex = (blocks, from, step) =>
+  landing(blocks, from - step, step, isEditableBlock);
 
 const EditorArea = memo(
   function EditorArea({
@@ -501,13 +487,6 @@ const EditorArea = memo(
     const imageDragPress = useCallback(
       (blockId, e) => startHandleDragRef.current?.(blockId, e),
       [],
-    );
-
-    const handleBlockSelect = useCallback(
-      (blockId) => {
-        setSelectedBlockId(blockId);
-      },
-      [setSelectedBlockId],
     );
 
     // Remove blocks addressed as a whole (a selection's run; the selected
@@ -1075,6 +1054,12 @@ const EditorArea = memo(
         ? fileView.rel.slice(0, Math.max(0, fileView.rel.lastIndexOf("/")))
         : note?.folder;
     const parents = useMemo(() => parentFolders(folder), [folder]);
+    // The note name is a file label, not the document's heading: it reads at
+    // label rank so it never competes with a Markdown H1 in the body. A file
+    // `demo-v1.2.md` whose first block is `# Notes Demo v1.2` shows both, read
+    // as file then document. Editing the heading never renames the file. It
+    // sits in the chrome row, centred on the pane behind its folder path
+    // (NotePath).
     const titleField = note ? (
       <div
         ref={titleRef}
@@ -1477,7 +1462,7 @@ const EditorArea = memo(
                               isOnlyBlockSelected={
                                 !!selectedRun && i === selectedRun.from && i === selectedRun.to
                               }
-                              onBlockSelect={handleBlockSelect}
+                              onBlockSelect={setSelectedBlockId}
                               onImageDragPress={imageDragPress}
                               onImageLightbox={handleImageLightbox}
                               onImageCopyImage={handleImageCopyImage}

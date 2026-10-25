@@ -1,8 +1,7 @@
 import { type ComponentType, useMemo } from "react";
 import { listLayout } from "../utils/listStructure";
 import EditableBlock from "./EditableBlock";
-
-type Block = { id: string; type: string; text?: string; [key: string]: unknown };
+import type { Block } from "../types/notes";
 
 interface Props {
   /** The version's own id: a new one remounts every block, which paints it. */

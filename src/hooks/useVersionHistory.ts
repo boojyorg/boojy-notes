@@ -3,8 +3,8 @@ import { getAPI } from "../services/apiProvider";
 import type { HistoryVersion } from "../types/global";
 import { markdownToBlocks } from "../utils/markdown";
 import type { ToastKind, ToastOptions } from "./useToast";
+import type { Block } from "../types/notes";
 
-type Block = { id: string; type: string; text?: string; [key: string]: unknown };
 type NoteMap = Record<string, { content: { blocks: Block[] }; [key: string]: unknown }>;
 
 type HistoryAPI = NonNullable<NonNullable<Window["electronAPI"]>["history"]>;
