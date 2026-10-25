@@ -49,7 +49,8 @@ interface Options {
   commitNoteData: (updater: (prev: NoteMap) => NoteMap) => void;
   syncGeneration: MutableRefObject<number>;
   sourceView: boolean;
-  setSourceView: (on: boolean) => void;
+  /** The Markdown view's switch for one note (LayoutContext). */
+  setNoteSourceView: (noteId: string, on: boolean) => void;
   showToast: (message: string, kind?: ToastKind, options?: ToastOptions) => number;
   requestConfirm: (prompt: Record<string, unknown>) => Promise<unknown>;
 }
@@ -68,7 +69,7 @@ export function useVersionHistory({
   commitNoteData,
   syncGeneration,
   sourceView,
-  setSourceView,
+  setNoteSourceView,
   showToast,
   requestConfirm,
 }: Options) {
@@ -96,10 +97,11 @@ export function useVersionHistory({
 
   const close = useCallback(() => {
     readSeq.current++;
-    if (stateRef.current.noteId && hadSourceView.current) setSourceView(true);
+    const { noteId } = stateRef.current;
+    if (noteId && hadSourceView.current) setNoteSourceView(noteId, true);
     hadSourceView.current = false;
     setState(CLOSED);
-  }, [setSourceView]);
+  }, [setNoteSourceView]);
 
   const open = useCallback(async () => {
     const noteId = activeNote;
@@ -110,7 +112,7 @@ export function useVersionHistory({
     await flushAll();
     if (sourceView && stateRef.current.noteId === null) {
       hadSourceView.current = true;
-      setSourceView(false);
+      setNoteSourceView(noteId, false);
     }
     // The list opens with its versions in it: shown empty first, an arrow
     // pressed before they arrived landed on Now (seen under load).
@@ -122,7 +124,7 @@ export function useVersionHistory({
         ? { ...s, listOpen: true, versions, off }
         : { ...CLOSED, noteId, listOpen: true, versions, off },
     );
-  }, [activeNote, flushAll, sourceView, setSourceView, noteDataRef]);
+  }, [activeNote, flushAll, sourceView, setNoteSourceView, noteDataRef]);
 
   // Escape is Now from anywhere while a version is on screen and the list is
   // hidden (the list takes its own Escape). On the document, before the

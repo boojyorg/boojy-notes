@@ -219,14 +219,23 @@ test("a long name never runs under the lit </>, at any width, and the name's key
   }
 });
 
-test("the view is app-wide: the next note opens in it too", async () => {
+test("each note keeps its own view, through a restart", async () => {
   const h = await launchApp({ "Alpha.md": "# A\n", "Beta.md": "# B\n" });
+  const markdown = () => h.page.getByRole("textbox", { name: "Markdown" });
   try {
     await h.openNote("Alpha");
     await h.page.keyboard.press(`${MOD}+/`);
-    await expect(h.page.getByRole("textbox", { name: "Markdown" })).toHaveValue("# A\n");
+    await expect(markdown()).toHaveValue("# A\n");
     await h.openNote("Beta");
-    await expect(h.page.getByRole("textbox", { name: "Markdown" })).toHaveValue("# B\n");
+    await expect(markdown()).toHaveCount(0);
+    await h.openNote("Alpha");
+    await expect(markdown()).toHaveValue("# A\n");
+
+    await h.restart();
+    await h.openNote("Beta");
+    await expect(markdown()).toHaveCount(0);
+    await h.openNote("Alpha");
+    await expect(markdown()).toHaveValue("# A\n");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
