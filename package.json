@@ -138,5 +138,8 @@
       "vendor": "Boojy"
     }
   },
-  "homepage": "https://boojy.org/notes"
+  "homepage": "https://boojy.org/notes",
+  "dependencies": {
+    "koffi": "^3.3.4"
+  }
 }

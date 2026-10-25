@@ -32,6 +32,7 @@ import {
   registerSpellingIPC,
   watchMenuSpelling,
 } from "./spelling.js";
+import { hideFullScreenTitle, setFullScreenTitle, showFullScreenTitle } from "./fullScreenTitle.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -166,13 +167,23 @@ function createWindow() {
     mainWindow.on(event, () => mainWindow?.webContents.send("full-screen-changed", on));
   }
   // The strip macOS slides down in full screen puts the window's title beside
-  // the lights, never centred; the note's name is already centred just below
-  // it (NotePath), so there the window has no title.
-  mainWindow.on("enter-full-screen", () => mainWindow?.setTitle(""));
-  mainWindow.on("leave-full-screen", () => mainWindow?.setTitle(mainWindow.webContents.getTitle()));
-  mainWindow.on("page-title-updated", (e) => {
-    if (mainWindow?.isFullScreen()) e.preventDefault();
-  });
+  // the lights, never centred: there the window has no title and a centred
+  // label of the app's own stands in (fullScreenTitle.ts, an experiment).
+  if (isMac) {
+    mainWindow.on("enter-full-screen", () => {
+      mainWindow?.setTitle("");
+      if (mainWindow) showFullScreenTitle(mainWindow, mainWindow.webContents.getTitle());
+    });
+    mainWindow.on("leave-full-screen", () => {
+      hideFullScreenTitle();
+      mainWindow?.setTitle(mainWindow.webContents.getTitle());
+    });
+    mainWindow.on("page-title-updated", (e, title) => {
+      if (!mainWindow?.isFullScreen()) return;
+      e.preventDefault();
+      setFullScreenTitle(title);
+    });
+  }
 
   // The renderer never opens windows and never navigates. An `http(s)` link
   // (the footer's boojy.org, a link block) goes to the system browser; a

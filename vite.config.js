@@ -30,7 +30,12 @@ export default defineConfig(({ mode }) => {
         ? []
         : [
             electron([
-              { entry: "electron/main.js" },
+              {
+                entry: "electron/main.js",
+                // A native module loads its binary at run time; bundled, it
+                // can't find it.
+                vite: { build: { rolldownOptions: { external: ["koffi"] } } },
+              },
               {
                 entry: "electron/preload.js",
                 onstart(args) {
