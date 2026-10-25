@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { SettingsProvider, useSettings } from "../../src/context/SettingsContext";
 
@@ -16,6 +16,7 @@ describe("SettingsContext — UI scale", () => {
     expect(result.current.uiScale).toBe(110);
     expect(localStorage.getItem("boojy-ui-scale")).toBe("110");
     expect(document.documentElement.style.zoom).toBe("110%");
+    expect(document.documentElement.style.getPropertyValue("--ui-scale")).toBe("1.1");
   });
 
   it("restores the saved scale on the next launch", () => {
@@ -37,5 +38,16 @@ describe("SettingsContext — settings pane", () => {
     expect(result.current.settingsOpen).toBe(false);
     act(() => result.current.setSettingsOpen(true));
     expect(result.current.settingsOpen).toBe(true);
+  });
+});
+
+describe("SettingsContext — automatic updates", () => {
+  it("changes the setting in main and in state together", () => {
+    const setAutoUpdate = vi.fn();
+    window.electronAPI = { ...window.electronAPI, setAutoUpdate };
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => result.current.changeAutoUpdate(false));
+    expect(setAutoUpdate).toHaveBeenCalledWith(false);
+    expect(result.current.autoUpdateEnabled).toBe(false);
   });
 });

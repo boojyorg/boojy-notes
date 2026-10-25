@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, useContext, useMemo, useCallback } from "react";
-import { isElectron, isPhone } from "../utils/platform";
-import { PHONE_UI_SCALE } from "../constants/layout";
+import { isElectron } from "../utils/platform";
+import { applyUiScale, initialUiScale } from "../utils/uiScale";
 
 const SettingsContext = createContext(null);
 
@@ -9,19 +9,10 @@ export function SettingsProvider({ children }) {
 
   // UI Scale state, driven by Settings and the Cmd+Plus/Minus/0 shortcuts.
   // It is the one size control; a stored `boojy-font-size` is never read.
-  const [uiScale, setUiScale] = useState(() => {
-    const saved = localStorage.getItem("boojy-ui-scale");
-    return saved ? Number(saved) : isPhone ? PHONE_UI_SCALE : 100;
-  });
+  const [uiScale, setUiScale] = useState(initialUiScale);
 
-  // Apply zoom and persist when scale changes. `--ui-scale` goes on the same
-  // element: `vw` and `vh` are *not* divided by `zoom` (a `100vh` box is twice
-  // the window at 200%), so anything sized against the viewport has to divide
-  // by the scale itself — `atScale()` in `utils/uiScale`.
   useEffect(() => {
-    document.documentElement.style.zoom = `${uiScale}%`;
-    document.documentElement.style.setProperty("--ui-scale", String(uiScale / 100));
-    document.documentElement.style.minHeight = uiScale !== 100 ? `${10000 / uiScale}vh` : "";
+    applyUiScale(uiScale);
     localStorage.setItem("boojy-ui-scale", String(uiScale));
   }, [uiScale]);
 
@@ -40,6 +31,11 @@ export function SettingsProvider({ children }) {
   // Auto-update state (desktop only)
   const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
   const [updateStatus, setUpdateStatus] = useState({ state: "idle" });
+  // The switch's one owner, as `changeSpelling` is: main's setting and this state together.
+  const changeAutoUpdate = useCallback((enabled) => {
+    setAutoUpdateEnabled(enabled);
+    window.electronAPI?.setAutoUpdate?.(enabled);
+  }, []);
 
   // Load auto-update settings and listen for update status events (desktop only)
   useEffect(() => {
@@ -56,12 +52,20 @@ export function SettingsProvider({ children }) {
       uiScale,
       setUiScale,
       autoUpdateEnabled,
-      setAutoUpdateEnabled,
+      changeAutoUpdate,
       updateStatus,
       spelling,
       changeSpelling,
     }),
-    [settingsOpen, uiScale, autoUpdateEnabled, updateStatus, spelling, changeSpelling],
+    [
+      settingsOpen,
+      uiScale,
+      autoUpdateEnabled,
+      changeAutoUpdate,
+      updateStatus,
+      spelling,
+      changeSpelling,
+    ],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
