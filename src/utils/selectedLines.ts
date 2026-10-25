@@ -25,15 +25,16 @@ export function selectedLines(blocks: Block[], range: Range | null): string[] {
   const from = indexOf(at(range.startContainer, range.startOffset, "start"));
   let to = indexOf(endEl);
   if (from < 0 || to < from) return [];
-  // Only an end inside a text block can fall before its first character; the
-  // app's own caret anchors (U+200B at a link's edge) are not its text.
+  // Only an end inside a text block can fall before its first character. A
+  // row's marker (a list number, a task's box: not editable) and the app's own
+  // caret anchors (U+200B at a link's edge) are not its text.
   const endInside = !!endEl && endEl.contains(range.endContainer);
   if (to > from && endInside && typeof (blocks[to] as { text?: unknown }).text === "string") {
     const before = document.createRange();
     before.selectNodeContents(endEl);
     before.setEnd(range.endContainer, range.endOffset);
     const held = before.cloneContents();
-    for (const anchor of held.querySelectorAll(".caret-anchor")) anchor.remove();
+    for (const el of held.querySelectorAll('.caret-anchor, [contenteditable="false"]')) el.remove();
     if (held.textContent === "") to--;
   }
   return blocks.slice(from, to + 1).map((b) => b.id);

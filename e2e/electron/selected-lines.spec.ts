@@ -10,7 +10,8 @@ import { launchApp, menuClick, sleep, START_OF_LINE, waitForFile, type AppHandle
  */
 
 const line = (h: AppHandle, text: string) =>
-  h.page.locator("[data-block-id]", { hasText: new RegExp(`^${text}$`) });
+  // A list row's text starts with its marker ("1.One"), which no word here ends in.
+  h.page.locator("[data-block-id]", { hasText: new RegExp(`(^|[^A-Za-z])${text}$`) }).last();
 
 /** From the start of `text`'s line, Shift+↓ once: the selection ends at the next line's start. */
 async function selectLineFrom(h: AppHandle, text: string) {
@@ -109,6 +110,31 @@ test("a grip drag carries the lines selected, not the one the selection stops be
 
     await waitForFile(h.vault.file("Note.md"), (t) => t === "Beta\n\nGamma\n\nDelta\n\nAlpha\n", {
       label: "Alpha alone moved under Delta",
+    });
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a numbered item's marker is not text the selection holds", async () => {
+  const h = await launchApp({ "List.md": "1. One\n2. Two\n3. Three\n" });
+  const file = h.vault.file("List.md");
+  try {
+    await h.openNote("List");
+    await selectLineFrom(h, "One");
+    await menuClick(h, "h1");
+    await waitForFile(file, (t) => t === "# One\n\n1. Two\n2. Three\n", {
+      label: "only One a heading",
+    });
+
+    await menuClick(h, "undo");
+    await waitForFile(file, (t) => t === "1. One\n2. Two\n3. Three\n", { label: "back" });
+    await selectLineFrom(h, "One");
+    await h.page.keyboard.press("Escape");
+    await h.page.keyboard.press("Backspace");
+    await waitForFile(file, (t) => !t.includes("One") && t.includes("Two"), {
+      label: "only One removed",
     });
     expect(h.pageErrors).toEqual([]);
   } finally {

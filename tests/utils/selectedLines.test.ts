@@ -58,6 +58,14 @@ describe("selectedLines", () => {
     expect(selectedLinesOf(blocks, sel)).toEqual(["a", "b"]);
   });
 
+  it("reads a list row's marker as no text", () => {
+    const sel = select(["a", 0], ["b", 0]);
+    const b = document.querySelector('[data-block-id="b"]') as Element;
+    b.innerHTML = '<span contenteditable="false">2.</span><span>Second</span>';
+    sel.getRangeAt(0).setEnd(b.lastChild?.firstChild as Node, 0); // before "Second"
+    expect(selectedLinesOf(blocks, sel)).toEqual(["a"]);
+  });
+
   it("is empty outside the editor", () => {
     expect(selectedLinesOf(blocks, null)).toEqual([]);
   });
