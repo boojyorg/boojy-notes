@@ -41,6 +41,7 @@ import EditorChrome from "./components/EditorChrome";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { toastPersists, useToast } from "./hooks/useToast";
 import { useSavePoint } from "./hooks/useSavePoint";
+import { useUpdateReadyToast } from "./hooks/useUpdateReadyToast";
 import { useVersionHistory } from "./hooks/useVersionHistory";
 import VersionHistoryList from "./components/VersionHistoryList";
 import { versionMoment, versionTime } from "./utils/versionTime";
@@ -272,6 +273,7 @@ export default function BoojyNotes() {
     remapNoteFolders,
   });
   useQuitFlush(flushAll);
+  useUpdateReadyToast({ showToast, flushAll });
   const savePoint = useSavePoint({
     activeNote,
     activeNoteRef,

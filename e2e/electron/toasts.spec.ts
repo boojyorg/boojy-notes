@@ -10,7 +10,7 @@
  */
 import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { MOD, SETTLE_MS, launchApp, sleep } from "./harness";
+import { MOD, SETTLE_MS, launchApp, sleep, typeAtEnd } from "./harness";
 
 const seed = { "Note one.md": "One.\n", "Note two.md": "Two.\n" };
 
@@ -139,6 +139,49 @@ test("a save that cannot land waits to be dismissed, and the receipt of its reco
     await expect(h.page.locator("[data-toast-kind]")).toHaveCount(0, { timeout: 6_000 });
     // The refusals the test caused are the only errors it may log.
     for (const err of h.pageErrors) expect(err).toMatch(/write failed .* EACCES/);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a downloaded update says so once, and Restart writes pending edits before it installs", async () => {
+  const h = await launchApp({ "Note one.md": "One.\n" });
+  try {
+    // Stand in for the updater: record the install instead of quitting.
+    await h.app.evaluate(({ ipcMain }) => {
+      const g = globalThis as unknown as { installed: number };
+      g.installed = 0;
+      ipcMain.removeHandler("install-update");
+      ipcMain.handle("install-update", () => {
+        g.installed++;
+      });
+    });
+    const announce = () =>
+      h.app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].webContents.send("update-status", {
+          state: "downloaded",
+          version: "9.9.9",
+        }),
+      );
+    await h.openNote("Note one");
+
+    await announce();
+    const toast = h.page.locator("[data-toast-kind]");
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toHaveAttribute("data-toast-kind", "notice");
+    await expect(toast).toContainText("Version 9.9.9 is ready");
+    // The same news again is not a second toast.
+    await announce();
+    await sleep(SETTLE_MS);
+    await expect(toast).toHaveCount(1);
+
+    // Typed just before: still pending when Restart is pressed.
+    await typeAtEnd(h.page, " More");
+    await toast.getByRole("button", { name: "Restart" }).click();
+    await expect
+      .poll(() => h.app.evaluate(() => (globalThis as unknown as { installed: number }).installed))
+      .toBe(1);
+    expect(h.vault.read("Note one.md")).toBe("One. More\n");
   } finally {
     await h.close();
   }
