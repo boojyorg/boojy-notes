@@ -516,9 +516,12 @@ ${tagPillCss(theme)}
             text-decoration-color: ${theme.wikilink.color};
           }
         }
-        /* Selected text in the note wears the selection's one colour, the
-           band a selected block wears (utils/selectionBand). */
-        [data-editor] ::selection {
+        /* Selected text in the note, and in every field (Search, a rename),
+           wears the selection's one colour, the band a selected block wears
+           (utils/selectionBand); a code field keeps its own, below. */
+        [data-editor] ::selection,
+        input::selection,
+        textarea::selection {
           background: ${bandFill(theme.ACCENT.primary, theme.name)};
         }
         /* The words a search matched, as the note opens from Search: a

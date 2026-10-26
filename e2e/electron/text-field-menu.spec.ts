@@ -19,8 +19,28 @@ test("a right-click in Search's field gives Cut, Copy and Paste, run on the fiel
     await field.fill("brave words");
 
     await field.selectText();
-    await field.click({ button: "right" });
+    // Right-clicked at the words' far end, the menu still hangs under the
+    // line from where the selection starts, as the note's does.
+    const box = (await field.boundingBox())!;
+    const textStart = await field.evaluate((f) => {
+      const css = getComputedStyle(f);
+      const r = f.getBoundingClientRect();
+      return r.left + Number.parseFloat(css.borderLeftWidth) + Number.parseFloat(css.paddingLeft);
+    });
+    await h.page.mouse.click(textStart + 60, box.y + box.height / 2, { button: "right" });
     await expect(menu).toBeVisible();
+    const placed = (await menu.boundingBox())!;
+    expect(Math.abs(placed.x - textStart)).toBeLessThan(6);
+    expect(placed.y).toBeGreaterThan(box.y + box.height / 2);
+    // Selected words wear the note's one selection colour, not the system's blue.
+    const tint = (sel: string) =>
+      h.page.evaluate(
+        (sel) => getComputedStyle(document.querySelector(sel)!, "::selection").backgroundColor,
+        sel,
+      );
+    expect(await tint("input[aria-label='Search notes']")).toBe(
+      await tint("[data-editor] [data-block-id]"),
+    );
     // The field keeps focus, so its selection is what the menu acts on.
     await expect(field).toBeFocused();
     await menu.getByRole("menuitem", { name: /^Cut/ }).click();
