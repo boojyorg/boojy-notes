@@ -268,3 +268,42 @@ test("Version History hides the view for a while, and a quit meanwhile keeps it"
     await h.close();
   }
 });
+
+test("a right-click in the Markdown view gives Cut, Copy and Paste, run on the field", async () => {
+  const h = await launchApp({ "Alpha.md": "Hello brave world\n" });
+  const field = () => h.page.getByRole("textbox", { name: "Markdown" });
+  const menu = h.page.locator(".editor-context-menu");
+  try {
+    await h.openNote("Alpha");
+    await h.page.keyboard.press(`${MOD}+/`);
+    await expect(field()).toBeFocused();
+    const box = await field().boundingBox();
+    if (!box) throw new Error("no field");
+    const at = { x: box.x + 20, y: box.y + 10 };
+
+    await field().evaluate((f: HTMLTextAreaElement) => f.setSelectionRange(0, f.value.length));
+    await h.page.mouse.click(at.x, at.y, { button: "right" });
+    await menu.getByRole("menuitem", { name: /^Cut/ }).click();
+    await expect(menu).toHaveCount(0);
+    await waitForFile(h.vault.file("Alpha.md"), (t) => !t.includes("brave"));
+    // Windows' clipboard holds a newline as \r\n.
+    expect(
+      (await h.app.evaluate(({ clipboard }) => clipboard.readText())).replace(/\r\n/g, "\n"),
+    ).toBe("Hello brave world\n");
+
+    await h.app.evaluate(({ clipboard }) => clipboard.writeText("Pasted back\n"));
+    await h.page.mouse.click(at.x, at.y, { button: "right" });
+    await expect(menu.getByRole("menuitem", { name: /^Copy/ })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await menu.getByRole("menuitem", { name: /^Paste/ }).click();
+    await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("Pasted back"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Pasted back\n");
+    await expect(field()).toHaveValue("Pasted back\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

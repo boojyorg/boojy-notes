@@ -100,6 +100,9 @@ const currentMs = (name, fallback) => {
   return Number.isFinite(ms) && ms > 0 ? ms : fallback;
 };
 
+/** How long an arrival takes, and a reveal's shrinking away. */
+export const currentEnterMs = () => currentMs("--motion-enter", MOTION_ENTER_MS);
+
 /** How long a leaving copy lives. */
 export const currentExitMs = () => currentMs("--motion-exit", MOTION_EXIT_MS);
 

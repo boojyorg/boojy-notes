@@ -1009,6 +1009,17 @@ ${tagPillCss(theme)}
         @media (hover: hover) {
           .frontmatter-header:hover { color: ${theme.TEXT.secondary}; }
         }
+        /* Grows in when mounted open and shrinks away before it unmounts, on the
+           small clock, as a diagram's code does. */
+        .frontmatter-reveal {
+          display: grid;
+          grid-template-rows: 0fr;
+          transition: grid-template-rows var(--motion-enter) var(--ease-enter);
+        }
+        .frontmatter-reveal[data-open] { grid-template-rows: 1fr; }
+        @starting-style { .frontmatter-reveal[data-open] { grid-template-rows: 0fr; } }
+        .frontmatter-clip { min-height: 0; overflow: hidden; }
+        @media (prefers-reduced-motion: reduce) { .frontmatter-reveal { transition: none; } }
         .frontmatter-body {
           padding: 8px 12px;
           border-top: 1px solid ${theme.BG.divider};

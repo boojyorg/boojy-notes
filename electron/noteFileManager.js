@@ -6,6 +6,8 @@ import crypto from "node:crypto";
 import { renameWithRetry, writeFileAtomic } from "./atomicWrite.js";
 import { recoverLeftoverTemps } from "./leftoverTemps.js";
 import * as history from "./history.js";
+import { attachmentRef } from "../src/utils/attachmentPath.js";
+import { attachmentAdded, locateAttachment, nameTaken } from "./attachmentIndex.js";
 import { isOffloaded, offloadedAmong, readDownloading } from "./offloaded.js";
 import { isSameEntry, isSkippedName, vaultKey } from "./vaultFs.js";
 import { applyEol, blocksToMarkdown, detectEol, markdownToBlocks } from "../src/utils/markdown.js";
@@ -146,18 +148,39 @@ function insideVault(notesDir, candidate) {
 }
 
 /**
- * The file an attachment name stands for: the vault-relative path as written,
- * then the same name under attachments/, a file inside the vault or null. The
- * one order every handler uses, so Copy, Open and Show in Finder reach the
- * file the note shows (the `boojy-att` protocol draws it).
+ * The file an attachment name stands for, found as Obsidian finds it
+ * (`locateAttachment`): a file inside the vault or null. The renderer passes
+ * the vault path an embed resolved to, which is taken literally; every
+ * handler asks here, so Copy, Open and Show in Finder reach the file the note
+ * shows (the `boojy-att` protocol draws it).
  */
 function vaultAttachment(notesDir, name) {
   if (typeof name !== "string") return null;
-  for (const candidate of [name, path.join("attachments", name)]) {
-    const abs = insideVault(notesDir, candidate);
-    if (abs && fs.statSync(abs, { throwIfNoEntry: false })?.isFile()) return abs;
+  // A found path is taken as it is: read again as an address, `diagram#one.svg`
+  // would lose its `#one.svg` as a subpath.
+  const literal = insideVault(notesDir, name);
+  if (literal && fs.statSync(literal, { throwIfNoEntry: false })?.isFile()) return literal;
+  const rel = locateAttachment(notesDir, name);
+  return rel ? insideVault(notesDir, rel) : null;
+}
+
+/**
+ * Where a file added in the app goes: `attachments/` under a name no file in
+ * the vault has, ignoring case. A picture is found by its name anywhere,
+ * shortest path first (`pickAttachment`), so a paste named as an older file
+ * elsewhere would show that one instead; Obsidian avoids it the same way.
+ */
+function newAttachmentPath(notesDir, fileName) {
+  const attDir = path.join(notesDir, "attachments");
+  fs.mkdirSync(attDir, { recursive: true });
+  const name = attachmentName(fileName);
+  const ext = path.extname(name);
+  const base = path.basename(name, ext);
+  for (let i = 1; ; i++) {
+    const candidate = i === 1 ? name : `${base}-${i}${ext}`;
+    const abs = path.join(attDir, candidate);
+    if (!fs.existsSync(abs) && !nameTaken(notesDir, candidate)) return abs;
   }
-  return null;
 }
 
 /**
@@ -840,26 +863,36 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   ipcMain.handle("save-image", (_event, { fileName, dataBase64 }) => {
     const notesDir = getNotesDir();
     assertVaultPresent(notesDir);
-    const attDir = path.join(notesDir, "attachments");
-    fs.mkdirSync(attDir, { recursive: true });
-    const finalPath = ensureUniqueFilePath(path.join(attDir, attachmentName(fileName)));
+    const finalPath = newAttachmentPath(notesDir, fileName);
     fs.writeFileSync(finalPath, Buffer.from(dataBase64, "base64"));
+    attachmentAdded(notesDir, finalPath);
     return path.basename(finalPath);
   });
 
   ipcMain.handle("save-attachment", (_event, { fileName, dataBase64 }) => {
     const notesDir = getNotesDir();
     assertVaultPresent(notesDir);
-    const attDir = path.join(notesDir, "attachments");
-    fs.mkdirSync(attDir, { recursive: true });
-    const finalPath = ensureUniqueFilePath(path.join(attDir, attachmentName(fileName)));
+    const finalPath = newAttachmentPath(notesDir, fileName);
     fs.writeFileSync(finalPath, Buffer.from(dataBase64, "base64"));
+    attachmentAdded(notesDir, finalPath);
     const size = fs.statSync(finalPath).size;
     return { filename: path.basename(finalPath), size };
   });
 
   ipcMain.handle("resolve-attachment", (_event, filename) =>
     vaultAttachment(getNotesDir(), filename),
+  );
+
+  // The vault path of the file an embed names, read from its note's folder.
+  ipcMain.handle("locate-attachment", (_event, src, noteFolder, markdown) =>
+    typeof src === "string"
+      ? locateAttachment(
+          getNotesDir(),
+          src,
+          typeof noteFolder === "string" ? noteFolder : null,
+          markdown === true,
+        )
+      : null,
   );
 
   // The two `shell` handlers take absolute paths (a resolved attachment, a
@@ -901,9 +934,12 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   // the file wherever it went, and it is copied in under the name the note
   // already links to, so the link resolves and the note changes no byte.
   // True once the file is there (already, or copied); false when cancelled.
-  ipcMain.handle("find-attachment", async (_event, filename) => {
+  // Copied in under the name the lookup reads from the embed (`attachmentRef`):
+  // `my%20picture.svg` decoded, a `#page=2` dropped, so the card finds it.
+  ipcMain.handle("find-attachment", async (_event, src, markdown = false) => {
     const notesDir = getNotesDir();
-    if (typeof filename !== "string" || !filename) return false;
+    const filename = typeof src === "string" ? attachmentRef(src, markdown === true) : null;
+    if (!filename) return false;
     const dest = insideVault(notesDir, path.join("attachments", filename));
     if (!dest) return false;
     if (fs.existsSync(dest)) return true;
@@ -916,6 +952,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     _lastPickDir = path.dirname(result.filePaths[0]);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.copyFileSync(result.filePaths[0], dest, fs.constants.COPYFILE_EXCL);
+    attachmentAdded(notesDir, dest);
     return true;
   });
 

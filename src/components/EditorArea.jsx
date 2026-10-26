@@ -1318,6 +1318,7 @@ const EditorArea = memo(
                 scrollerRef={editorScrollRef}
                 entryRef={sourceEntryRef}
                 apiRef={sourceApiRef}
+                onContextMenu={isPhone ? undefined : handleEditorContextMenu}
               />
             ) : (
               <>

@@ -1,10 +1,9 @@
 import { atScale } from "../utils/uiScale";
-import { useAttachmentSrc } from "../hooks/useAttachmentSrc";
 import Lightbox, { LIGHTBOX_HEADER } from "./Lightbox";
 
 interface ImageLightboxProps {
-  /** As the note holds it; resolved here. */
-  src: string;
+  /** The address the block drew the picture from (`useAttachment`). */
+  url: string;
   alt?: string;
   /** The file's name, shown above the picture; none for inline data. */
   name?: string;
@@ -12,15 +11,12 @@ interface ImageLightboxProps {
 }
 
 /** An image at full size: fitted inside the window and never enlarged. */
-export default function ImageLightbox({ src, alt, name, onClose }: ImageLightboxProps) {
-  const { url, next, loaded } = useAttachmentSrc(src);
-  if (!src) return null;
+export default function ImageLightbox({ url, alt, name, onClose }: ImageLightboxProps) {
+  if (!url) return null;
   return (
     <Lightbox label={name ? `Image: ${name}` : "Image"} name={name} onClose={onClose}>
       <img
         src={url}
-        onError={next}
-        onLoad={loaded}
         alt={alt || ""}
         onClick={(e) => e.stopPropagation()}
         style={{

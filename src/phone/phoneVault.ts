@@ -1,6 +1,7 @@
 import { contentHash } from "../sync/contentHash";
 import type { LocalStore } from "../sync/types";
 import type { Note, NoteData } from "../types/notes";
+import { attachmentRef, pickAttachment } from "../utils/attachmentPath";
 import { applyEol, blocksToMarkdown, detectEol, markdownToBlocks } from "../utils/markdown";
 import { genNoteId } from "../utils/storage";
 import type { FileOps } from "./files";
@@ -62,6 +63,12 @@ export interface PhoneVaultAPI {
   trashNote(id: string): Promise<{ trashed?: true; missing?: true }>;
   readFolders(): Promise<string[]>;
   readOtherFiles(): Promise<never[]>;
+  /** The vault path of the file an embed names, as the desktop finds it (`attachmentPath.ts`). */
+  locateAttachment(
+    src: string,
+    noteFolder: string | null,
+    markdown?: boolean,
+  ): Promise<string | null>;
   createFolder(rel: string): Promise<{ path: string }>;
   renameFolder(from: string, to: string): Promise<{ path: string }>;
   deleteFolder(rel: string): Promise<{ removed: boolean }>;
@@ -77,6 +84,7 @@ export interface PhoneVaultAPI {
   onFileMoved(cb: Listener<PhoneNote>): () => void;
   onFileDeleted(cb: Listener<void>): () => void;
   onFoldersChanged(cb: Listener<void>): () => void;
+  onAttachmentsChanged(cb: Listener<void>): () => void;
 }
 
 // ─── Names (the desktop's rules, electron/noteFileManager.js) ───
@@ -119,6 +127,8 @@ const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).
 const parentOf = (rel: string) => rel.split("/").slice(0, -1).join("/") || null;
 const baseName = (rel: string) => (rel.split("/").pop() ?? "").replace(/\.md$/, "");
 const hidden = (name: string) => name.startsWith(".");
+/** How long the editor's notice of new or gone attachments waits for the rest of a run. */
+const ATTACHMENT_NOTICE_MS = 100;
 const isNote = (rel: string) => rel.toLowerCase().endsWith(".md");
 /** Under the attachment store, which the desktop lists neither as a folder nor for its notes. */
 const inAttachments = (rel: string) => rel.split("/").includes("attachments");
@@ -204,6 +214,7 @@ export function createPhoneVault(
       } finally {
         forget(path);
       }
+      attachmentMoved(null, path);
     },
     async rename(from, to) {
       try {
@@ -212,6 +223,7 @@ export function createPhoneVault(
         forget(from, true);
         forget(to, true);
       }
+      attachmentMoved(from, to);
     },
     async remove(path) {
       try {
@@ -219,6 +231,7 @@ export function createPhoneVault(
       } finally {
         forget(path);
       }
+      attachmentMoved(path, null);
     },
   };
 
@@ -240,6 +253,7 @@ export function createPhoneVault(
     deleted: new Set<Listener<void>>(),
     folders: new Set<Listener<void>>(),
     bin: new Set<Listener<void>>(),
+    attachments: new Set<Listener<void>>(),
   };
   const emit = <T>(set: Set<Listener<T>>, payload: T) => {
     for (const cb of set) cb(payload);
@@ -363,7 +377,51 @@ export function createPhoneVault(
     }
     found.files.sort();
     found.folders.sort();
+    keepAttachments(found.files);
     return found;
+  };
+
+  // The files that are not notes, as the latest walk listed them (it runs on
+  // every load and sync pass): what an embed is looked up in, so the phone
+  // finds a picture where the desktop does without a walk of its own. A
+  // change tells the editor to ask again.
+  let attachmentFiles = new Set<string>();
+  const attachmentsByName = new Map<string, string[]>();
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  const keepAttachments = (paths: string[], later = false) => {
+    const next = new Set(paths.filter((rel) => !isNote(rel)));
+    const same =
+      next.size === attachmentFiles.size && [...next].every((p) => attachmentFiles.has(p));
+    if (same) return;
+    attachmentFiles = next;
+    attachmentsByName.clear();
+    for (const rel of next) {
+      const name = rel.slice(rel.lastIndexOf("/") + 1).toLowerCase();
+      attachmentsByName.set(name, [...(attachmentsByName.get(name) ?? []), rel]);
+    }
+    clearTimeout(noticeTimer);
+    if (!later) return emit(listeners.attachments, undefined);
+    // A pass downloads one file after another: one notice for the run.
+    noticeTimer = setTimeout(() => emit(listeners.attachments, undefined), ATTACHMENT_NOTICE_MS);
+  };
+  /**
+   * A write, rename or removal under the vault, kept in the list at once: a
+   * picture a sync pass downloads is found without waiting for the next walk.
+   * `from` and `to` are absolute; null when a file arrives or goes.
+   */
+  const attachmentMoved = (from: string | null, to: string | null) => {
+    const inVault = (p: string | null) =>
+      p?.startsWith(`${VAULT}/`) && !p.split("/").some(hidden) ? p.slice(VAULT.length + 1) : null;
+    const was = inVault(from);
+    const now = inVault(to);
+    let moved = false;
+    const next = [...attachmentFiles].flatMap((p) => {
+      if (was === null || (p !== was && !p.startsWith(`${was}/`))) return [p];
+      moved = true;
+      return now === null ? [] : [now + p.slice(was.length)];
+    });
+    if (!moved && now !== null) next.push(now);
+    keepAttachments(next, true);
   };
 
   /**
@@ -589,6 +647,17 @@ export function createPhoneVault(
       lock(async () => (await walk()).folders.filter((f) => !inAttachments(f)).sort()),
     readOtherFiles: async () => [],
 
+    locateAttachment: async (src, noteFolder, markdown = false) => {
+      const ref = attachmentRef(src, markdown);
+      if (!ref) return null;
+      return pickAttachment(
+        ref,
+        noteFolder,
+        (rel) => attachmentFiles.has(rel),
+        (name) => attachmentsByName.get(name) ?? [],
+      );
+    },
+
     createFolder: (rel) =>
       lock(async () => {
         const name = sanitizeFolderName(rel.split("/").pop() ?? "");
@@ -718,6 +787,7 @@ export function createPhoneVault(
     onFileMoved: subscribe(listeners.moved),
     onFileDeleted: subscribe(listeners.deleted),
     onFoldersChanged: subscribe(listeners.folders),
+    onAttachmentsChanged: subscribe(listeners.attachments),
     onDeletedNotesChanged: subscribe(listeners.bin),
   };
 

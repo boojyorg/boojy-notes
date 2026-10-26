@@ -126,9 +126,6 @@ the test its rule names when it is built.
 
 **Compatibility**
 
-- **Attachments resolve as Obsidian resolves them**: by name anywhere in the vault, and by a
-  path relative to the note. Only the root and `attachments/` are tried today
-  (`electron/main.js:314-327`): 18 of 23 file embeds in `~/Documents/Vault` show Not found.
 - **Relative `.md` links open the note; link titles leave the address; code spans, `_`/`__`
   emphasis and the other divider forms draw as they mean**, each keeping its spelling (Markdown
   compatibility, below).
@@ -337,7 +334,7 @@ Re-verified on 2026-10-24 (v0.18.0) with converter probes; the first four are Pu
 requirements (reference-style links aside, which stay preserved only). Missing support is distinct from a correctness defect; each keeps the file's
 bytes on load and save. **Two-way use with Obsidian is not yet a general guarantee**: the
 bytes the app understands are safe and the rest is preserved, but a rename leaves dangling
-references and attachments are found only in two places (Public Beta).
+references (Public Beta).
 
 - **Links.** A link title joins the address (`[a](b "t")` → `href="b "t""`); reference-style
   links show as text; a relative `.md` link does nothing when clicked.
@@ -349,8 +346,10 @@ references and attachments are found only in two places (Public Beta).
   as a bullet holding an empty emphasis.
 - **Delimiters interleaved** (`**a==b**c==`, an escaped one beside live ones) pair differently
   than written; `tests/utils/knownRewrites.js` holds them, an entry deleted with each fix.
-- **Embeds.** `![[x.png|alt|300]]` and an embed mid-line show as `!` and a link; `![[Note]]`
-  embeds the first note of that name, ignoring a folder path (`EmbedBlock.jsx`).
+- **Embeds.** `![[x.png|alt|300]]` and an embed mid-line or in a list item show as `!` and a
+  link, so a picture under a bullet is never drawn (`Personal/Budget/Jan 2026` in
+  `~/Documents/Vault`; Obsidian draws it in the item); `![[Note]]` embeds the first note of that
+  name, ignoring a folder path (`EmbedBlock.jsx`).
 - **`=====`** (a setext underline) draws as a highlight.
 
 ### Found by the Windows and macOS CI (2026-10-05)
