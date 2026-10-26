@@ -4,13 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const platform = vi.hoisted(() => ({ isElectron: true, isPhone: false }));
 vi.mock("../../src/utils/platform", () => platform);
 
-import {
-  attachmentName,
-  attachmentUrls,
-  resolveAttachmentUrl,
-} from "../../src/utils/attachmentUrl";
+import { attachmentName, resolveAttachmentUrl } from "../../src/utils/attachmentUrl";
 
-describe("attachmentUrls on the phone", () => {
+describe("resolveAttachmentUrl on the phone", () => {
   const base = "https://localhost/_capacitor_file_/data/user/0/org.boojy.notes/files/vault";
   beforeEach(() => {
     platform.isElectron = false;
@@ -23,21 +19,15 @@ describe("attachmentUrls on the phone", () => {
     delete window.boojyPhoneAPI;
   });
 
-  it("tries the desktop's order, as written then under attachments/, each encoded in the path", () => {
-    expect(attachmentUrls("Captura de pantalla #2.png")).toEqual([
+  it("is the vault's address with the path encoded, segment by segment", () => {
+    expect(resolveAttachmentUrl("Captura de pantalla #2.png")).toBe(
       `${base}/Captura%20de%20pantalla%20%232.png`,
-      `${base}/attachments/Captura%20de%20pantalla%20%232.png`,
-    ]);
-    expect(attachmentUrls("photos/Beach day.jpg")).toEqual([
-      `${base}/photos/Beach%20day.jpg`,
-      `${base}/attachments/photos/Beach%20day.jpg`,
-    ]);
+    );
+    expect(resolveAttachmentUrl("photos/Beach day.jpg")).toBe(`${base}/photos/Beach%20day.jpg`);
   });
 
-  it("leaves a web address and inline data alone", () => {
-    expect(attachmentUrls("https://example.com/a.png")).toEqual(["https://example.com/a.png"]);
-    expect(attachmentUrls("//example.com/a.png")).toEqual(["//example.com/a.png"]);
-    expect(attachmentUrls("data:image/png;base64,AAAA")).toEqual(["data:image/png;base64,AAAA"]);
+  it("leaves inline data alone", () => {
+    expect(resolveAttachmentUrl("data:image/png;base64,AAAA")).toBe("data:image/png;base64,AAAA");
   });
 });
 

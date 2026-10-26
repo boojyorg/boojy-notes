@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { watchTree } from "./treeWatcher.js";
 import { hashOf, parseNoteFile, relocateNote, saveIndex } from "./noteFileManager.js";
+import { attachmentAdded, attachmentRemoved, resetAttachmentIndex } from "./attachmentIndex.js";
 import { isOffloaded } from "./offloaded.js";
 import { trace, traceEnabled } from "./trace.js";
 import { isSkippedName } from "./vaultFs.js";
@@ -43,6 +44,10 @@ const lastClaimAt = new Map();
 // folder pasted in Finder with twenty subfolders triggers one re-read.
 const FOLDERS_CHANGED_DEBOUNCE_MS = 300;
 let foldersChangedTimer = null;
+// A file that is not a note arriving or going (a picture synced in, a PDF
+// moved in Finder) is coalesced into one `attachments-changed`, on which the
+// renderer asks again where each embed's file is (`useAttachment`).
+let attachmentsChangedTimer = null;
 
 /**
  * Start (or restart) the file watcher on the notes directory.
@@ -59,6 +64,20 @@ function startWatcher(getNotesDir, getMainWindow) {
   for (const timer of ownTrees.values()) clearTimeout(timer);
   ownTrees.clear();
   ownBytes.clear();
+  // What happened while nothing watched is unknown, and the vault may be
+  // another: the attachment index is walked afresh, and every embed asks
+  // again, told at once, before a switch's answer brings the new vault's
+  // notes, so none draws an answer from the old vault.
+  resetAttachmentIndex();
+  clearTimeout(attachmentsChangedTimer);
+  getMainWindow()?.webContents.send("attachments-changed");
+  const attachmentsChanged = () => {
+    clearTimeout(attachmentsChangedTimer);
+    attachmentsChangedTimer = setTimeout(() => {
+      attachmentsChangedTimer = null;
+      getMainWindow()?.webContents.send("attachments-changed");
+    }, FOLDERS_CHANGED_DEBOUNCE_MS);
+  };
 
   // One watch for the whole vault (treeWatcher: one FSEvents stream), never
   // one open file per note. A file is reported once it has held still for
@@ -97,6 +116,23 @@ function startWatcher(getNotesDir, getMainWindow) {
       );
     });
   }
+
+  // Files that are not notes only keep the attachment index and tell the
+  // renderer; nothing else in the app watches them.
+  watcher.on("add", (filePath) => {
+    if (filePath.endsWith(".md")) return;
+    attachmentAdded(notesDir, filePath);
+    attachmentsChanged();
+  });
+  watcher.on("unlink", (filePath) => {
+    if (filePath.endsWith(".md")) return;
+    attachmentRemoved(notesDir, filePath);
+    attachmentsChanged();
+  });
+  watcher.on("unlinkDir", (dirPath) => {
+    attachmentRemoved(notesDir, dirPath, true);
+    attachmentsChanged();
+  });
 
   const onWriteEvent = (filePath) => {
     if (!filePath.endsWith(".md")) return;
@@ -158,7 +194,7 @@ function startWatcher(getNotesDir, getMainWindow) {
   // Folders are directories: one made or removed outside the app changes the
   // sidebar. The renderer re-reads the folder list; it carries no payload.
   const onDirEvent = (dirPath) => {
-    if (isUnderOwnTree(dirPath)) return;
+    if (isUnderOwnTree(dirPath) || isInAttachmentStore(notesDir, dirPath)) return;
     clearTimeout(foldersChangedTimer);
     foldersChangedTimer = setTimeout(() => {
       foldersChangedTimer = null;
@@ -171,16 +207,24 @@ function startWatcher(getNotesDir, getMainWindow) {
 
 /**
  * What the watcher never reports, judged on the path *inside* the vault:
- * dot-entries at any depth, the attachment store, and the pre-v0.5.0 in-vault
- * index: the note walk's own rule (`isSkippedName`). The vault root itself is
- * never a match, so a vault under a dot-directory (`~/.notes`) is watched like
- * any other.
+ * dot-entries at any depth (the pre-v0.5.0 in-vault index among them), and a
+ * note in the attachment store, which the note walk skips (`isSkippedName`).
+ * The store's other files are reported, for the attachment index alone. The
+ * vault root itself is never a match, so a vault under a dot-directory
+ * (`~/.notes`) is watched like any other.
  */
 function isIgnoredPath(notesDir, filePath) {
   const rel = path.relative(notesDir, filePath);
   if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) return false;
   const segments = rel.split(/[/\\]/);
-  return segments.some(isSkippedName);
+  if (segments.some((s) => s.startsWith("."))) return true;
+  return segments.some(isSkippedName) && filePath.endsWith(".md");
+}
+
+/** A path inside the attachment store (`attachments/` at any depth). */
+function isInAttachmentStore(notesDir, filePath) {
+  const rel = path.relative(notesDir, filePath);
+  return rel.split(/[/\\]/).some((s) => s === "attachments");
 }
 
 /**

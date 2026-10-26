@@ -504,11 +504,11 @@ describe("IPC handlers — folders, a missing vault, and path containment", () =
   });
 
   // Every handler finds an attachment as the note draws it (the boojy-att
-  // protocol): the name as written, then attachments/. Copy image looked only
-  // in attachments/, and Show in Finder tried it first, so a picture stored
-  // elsewhere drew but could not be copied, and a namesake in attachments/
-  // was revealed in its place.
-  it("finds an attachment as the note draws it: the name as written, then attachments/", () => {
+  // protocol), in Obsidian's order (`attachmentPath.ts`). Copy image looked
+  // only in attachments/, and Show in Finder tried it first, so a picture
+  // stored elsewhere drew but could not be copied, and a namesake in
+  // attachments/ was revealed in its place.
+  it("finds an attachment as the note draws it: the path as written, then by name", () => {
     fs.mkdirSync(path.join(notesDir, "Images"));
     fs.writeFileSync(path.join(notesDir, "Images", "photo.png"), "xx");
     fs.mkdirSync(path.join(notesDir, "attachments"));
@@ -527,6 +527,88 @@ describe("IPC handlers — folders, a missing vault, and path containment", () =
     );
     // A folder is no attachment.
     expect(handlers["resolve-attachment"](null, "Images")).toBeNull();
+  });
+
+  // 18 of 23 embeds in an Obsidian vault named a file in another folder
+  // (`….assets/`), and only the root and attachments/ were tried.
+  it("locates an embed's file from its note's folder, as Obsidian does", () => {
+    fs.mkdirSync(path.join(notesDir, "Uni", "Mock.assets"), { recursive: true });
+    fs.writeFileSync(path.join(notesDir, "Uni", "Mock.assets", "q08.png"), "x");
+    fs.writeFileSync(path.join(notesDir, "Uni", "beside.png"), "x");
+
+    expect(handlers["locate-attachment"](null, "q08.png", "Uni")).toBe("Uni/Mock.assets/q08.png");
+    expect(handlers["locate-attachment"](null, "beside.png", "Uni")).toBe("Uni/beside.png");
+    expect(handlers["locate-attachment"](null, "Mock.assets/q08.png#x", null)).toBe(
+      "Uni/Mock.assets/q08.png",
+    );
+    expect(handlers["locate-attachment"](null, "nowhere.png", "Uni")).toBeNull();
+    // Each action is then handed the path found, and reaches that file.
+    expect(handlers["resolve-attachment"](null, "Uni/Mock.assets/q08.png")).toBe(
+      path.join(notesDir, "Uni", "Mock.assets", "q08.png"),
+    );
+  });
+
+  // `![](diagram%23one.svg)` finds `diagram#one.svg`; the path found is then
+  // taken as it is, never read again as an address with a `#one.svg` subpath.
+  it("reaches a found file whose name holds a #", () => {
+    fs.mkdirSync(path.join(notesDir, "Figs"));
+    fs.writeFileSync(path.join(notesDir, "Figs", "diagram#one.svg"), "x");
+
+    const rel = handlers["locate-attachment"](null, "diagram%23one.svg", null, true);
+    expect(rel).toBe("Figs/diagram#one.svg");
+    expect(handlers["resolve-attachment"](null, rel)).toBe(
+      path.join(notesDir, "Figs", "diagram#one.svg"),
+    );
+  });
+
+  // Find it… copies the picked file in under the name the lookup reads:
+  // `my%20picture.svg` was copied as itself and the card stayed Not found.
+  it("copies a found file in under the name the embed is looked up by", async () => {
+    const { dialog } = await import("electron");
+    const picked = path.join(os.tmpdir(), `boojy-pick-${Date.now()}.svg`);
+    fs.writeFileSync(picked, "x");
+    dialog.showOpenDialog = vi.fn(async () => ({ canceled: false, filePaths: [picked] }));
+    try {
+      expect(await handlers["find-attachment"](null, "my%20picture.svg", true)).toBe(true);
+      expect(await handlers["find-attachment"](null, "Slides.pdf#page=2")).toBe(true);
+    } finally {
+      fs.rmSync(picked);
+    }
+
+    expect(handlers["locate-attachment"](null, "my%20picture.svg", "Notes", true)).toBe(
+      "attachments/my picture.svg",
+    );
+    expect(handlers["locate-attachment"](null, "Slides.pdf#page=2", null)).toBe(
+      "attachments/Slides.pdf",
+    );
+  });
+
+  // Found by name, shortest path first: a paste named as an older file
+  // elsewhere would be shadowed by it, so it takes a name no file has.
+  it("names a pasted file apart from every file in the vault", () => {
+    fs.mkdirSync(path.join(notesDir, "Old"));
+    fs.writeFileSync(path.join(notesDir, "Old", "photo.png"), "old");
+
+    const saved = handlers["save-attachment"](null, { fileName: "photo.png", dataBase64: "AA==" });
+
+    expect(saved.filename).toBe("photo-2.png");
+    expect(handlers["locate-attachment"](null, "photo-2.png", null)).toBe(
+      "attachments/photo-2.png",
+    );
+    expect(handlers["locate-attachment"](null, "photo.png", null)).toBe("Old/photo.png");
+    // The next paste of the same name sees the one just written.
+    expect(handlers["save-image"](null, { fileName: "photo.png", dataBase64: "AA==" })).toBe(
+      "photo-3.png",
+    );
+  });
+
+  // The sidebar's list stops at 5,000 files; finding a picture must not.
+  it("finds a file by name in a vault of more than 5,000 files", () => {
+    const dir = path.join(notesDir, "Scans");
+    fs.mkdirSync(dir);
+    for (let i = 0; i < 6000; i++) fs.writeFileSync(path.join(dir, `scan-${i}.png`), "");
+
+    expect(handlers["locate-attachment"](null, "scan-5999.png", null)).toBe("Scans/scan-5999.png");
   });
 
   it("opens and reveals only paths inside the vault, the vault root included", async () => {

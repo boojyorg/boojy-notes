@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import { recheckAttachments, useAttachment } from "../../hooks/useAttachment";
 import { getAPI } from "../../services/apiProvider";
 import { isMac } from "../../utils/platform";
 import { CopyIcon, FolderIcon, OpenLinkIcon, TrashIcon } from "../Icons";
@@ -45,31 +46,26 @@ function FileBlock({
   const [hovered, setHovered] = useState(false);
   const [fileSize, setFileSize] = useState(size);
   const [ctxMenu, setCtxMenu] = useState(null);
-  // A file the vault does not hold (moved, renamed, never synced): shown as
-  // missing, never as a card that opens nothing. Asked again after Find it….
-  const [missing, setMissing] = useState(false);
-  const [found, setFound] = useState(0);
-  useEffect(() => {
-    if (!findable(src)) return;
-    let live = true;
-    window.electronAPI.resolveAttachment(src).then((abs) => live && setMissing(!abs));
-    return () => {
-      live = false;
-    };
-  }, [src, found]);
+  // The file the card names, found from the note's folder; a file the vault
+  // does not hold (moved, renamed, never synced) is shown as missing, never
+  // as a card that opens nothing. Every action takes the file found, and
+  // opening keeps the embed's `#page=`.
+  const { rel, missing } = useAttachment(src);
+  const subpath = src?.includes("#") ? src.slice(src.indexOf("#")) : "";
+  const file = rel ?? src;
 
   useEffect(() => {
-    if (fileSize == null && src && getAPI()?.getFileSize) {
+    if (fileSize == null && rel && getAPI()?.getFileSize) {
       getAPI()
-        .getFileSize(src)
+        .getFileSize(rel)
         .then((s) => {
           if (s != null) setFileSize(s);
         });
     }
-  }, [src, fileSize]);
+  }, [rel, fileSize]);
 
   const handleClick = () => {
-    if (onOpen) onOpen();
+    if (onOpen) onOpen(`${file}${subpath}`);
   };
 
   const handleContextMenu = (e) => {
@@ -87,9 +83,13 @@ function FileBlock({
     return (
       <MissingAttachment
         src={src}
-        onFind={async () => {
-          if (await window.electronAPI.findAttachment(src)) setFound((n) => n + 1);
-        }}
+        onFind={
+          findable(src)
+            ? async () => {
+                if (await window.electronAPI.findAttachment(src)) recheckAttachments();
+              }
+            : undefined
+        }
         onRemove={onDelete}
       />
     );
@@ -163,12 +163,16 @@ function FileBlock({
           minWidth={180}
           onClose={() => setCtxMenu(null)}
           items={[
-            { label: "Open file", icon: <OpenLinkIcon />, action: act(onOpen) },
-            { label: "Open in Default App", icon: <OpenLinkIcon />, action: act(onOpenDefault) },
+            { label: "Open file", icon: <OpenLinkIcon />, action: act(handleClick) },
+            {
+              label: "Open in Default App",
+              icon: <OpenLinkIcon />,
+              action: act(() => onOpenDefault?.(file)),
+            },
             {
               label: isMac ? "Show in Finder" : "Show in folder",
               icon: <FolderIcon />,
-              action: act(onShowInFolder),
+              action: act(() => onShowInFolder?.(file)),
             },
             {
               label: "Copy file path",

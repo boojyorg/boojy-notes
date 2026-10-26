@@ -24,7 +24,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   completeSetup: () => ipcRenderer.invoke("complete-setup"),
   readAllNotes: () => ipcRenderer.invoke("read-all-notes"),
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
-  findAttachment: (filename) => ipcRenderer.invoke("find-attachment", filename),
+  findAttachment: (src, markdown) => ipcRenderer.invoke("find-attachment", src, markdown),
   downloadNote: (id) => ipcRenderer.invoke("download-note", id),
   saveImage: (data) => ipcRenderer.invoke("save-image", data),
   saveAttachment: (data) => ipcRenderer.invoke("save-attachment", data),
@@ -34,6 +34,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openPath: (absolutePath) => ipcRenderer.invoke("open-path", absolutePath),
   showItemInFolder: (absolutePath) => ipcRenderer.invoke("show-item-in-folder", absolutePath),
   resolveAttachment: (filename) => ipcRenderer.invoke("resolve-attachment", filename),
+  locateAttachment: (src, noteFolder, markdown) =>
+    ipcRenderer.invoke("locate-attachment", src, noteFolder, markdown),
   getFileSize: (filename) => ipcRenderer.invoke("get-file-size", filename),
   copyImageToClipboard: (filename) => ipcRenderer.invoke("copy-image-to-clipboard", filename),
   copyTextToClipboard: (payload) => ipcRenderer.invoke("copy-text-to-clipboard", payload),
@@ -134,6 +136,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // its folders and its notes read from disk.
   duplicateFolder: (relPath) => ipcRenderer.invoke("duplicate-folder", relPath),
   onFoldersChanged: subscribe("folders-changed"),
+  onAttachmentsChanged: subscribe("attachments-changed"),
 
   onFileChanged: subscribe("file-changed"),
 
