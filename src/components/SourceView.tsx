@@ -27,6 +27,8 @@ interface SourceViewProps {
   /** Where to put the caret on the way in (from the formatted view), consumed once. */
   entryRef: MutableRefObject<SourcePlace | null>;
   apiRef: MutableRefObject<SourceViewApi | null>;
+  /** The editor's right-click menu: Cut, Copy and Paste, run on the field. */
+  onContextMenu?: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
 }
 
 /**
@@ -54,6 +56,7 @@ export default function SourceView({
   scrollerRef,
   entryRef,
   apiRef,
+  onContextMenu,
 }: SourceViewProps) {
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const layerRef = useRef<HTMLPreElement>(null);
@@ -193,6 +196,7 @@ export default function SourceView({
         autoCorrect="off"
         onInput={onInput}
         onKeyDown={onKeyDown}
+        onContextMenu={onContextMenu}
       />
     </div>
   );

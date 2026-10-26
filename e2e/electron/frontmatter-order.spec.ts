@@ -158,3 +158,26 @@ test("a block dropped at the very top lands under the frontmatter, and the front
     await h.close();
   }
 });
+
+test("the frontmatter opens and closes in place, and closed its text is not the note's", async () => {
+  const h = await launchApp({ "Alpha.md": TIGHT });
+  try {
+    await h.openNote("Alpha");
+    const header = h.page.locator(".frontmatter-header");
+    const body = h.page.locator(".frontmatter-body");
+    await expect(body).toHaveCount(0);
+
+    await header.click();
+    await expect(body).toBeVisible();
+    await expect(body).toContainText("research");
+
+    await header.click();
+    // Gone once it has shrunk away, so Find never meets it.
+    await expect(body).toHaveCount(0);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe(TIGHT);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
