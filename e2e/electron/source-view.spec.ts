@@ -286,9 +286,10 @@ test("a right-click in the Markdown view gives Cut, Copy and Paste, run on the f
     await menu.getByRole("menuitem", { name: /^Cut/ }).click();
     await expect(menu).toHaveCount(0);
     await waitForFile(h.vault.file("Alpha.md"), (t) => !t.includes("brave"));
-    expect(await h.app.evaluate(({ clipboard }) => clipboard.readText())).toBe(
-      "Hello brave world\n",
-    );
+    // Windows' clipboard holds a newline as \r\n.
+    expect(
+      (await h.app.evaluate(({ clipboard }) => clipboard.readText())).replace(/\r\n/g, "\n"),
+    ).toBe("Hello brave world\n");
 
     await h.app.evaluate(({ clipboard }) => clipboard.writeText("Pasted back\n"));
     await h.page.mouse.click(at.x, at.y, { button: "right" });
