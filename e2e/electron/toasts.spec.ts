@@ -186,3 +186,41 @@ test("a downloaded update says so once, and Restart writes pending edits before 
     await h.close();
   }
 });
+
+test("Restart waits while an edit cannot be saved, and never installs over it", async () => {
+  test.skip(process.platform === "win32", "a directory's mode bits do not stop writes on Windows");
+  const h = await launchApp({ "Note one.md": "One.\n" });
+  try {
+    await h.app.evaluate(({ ipcMain, BrowserWindow }) => {
+      const g = globalThis as unknown as { installed: number };
+      g.installed = 0;
+      ipcMain.removeHandler("install-update");
+      ipcMain.handle("install-update", () => {
+        g.installed++;
+      });
+      BrowserWindow.getAllWindows()[0].webContents.send("update-status", {
+        state: "downloaded",
+        version: "9.9.9",
+      });
+    });
+    await h.openNote("Note one");
+    const ready = h.page.locator("[data-toast-kind='notice']");
+    await expect(ready).toContainText("Version 9.9.9 is ready");
+
+    const mode = fs.statSync(h.vault.dir).mode;
+    fs.chmodSync(h.vault.dir, 0o500);
+    try {
+      await typeAtEnd(h.page, " More");
+      await ready.getByRole("button", { name: "Restart" }).click();
+      await expect(h.page.locator("[data-toast-kind='warning']")).toContainText("Restart waited");
+      await sleep(SETTLE_MS);
+      expect(
+        await h.app.evaluate(() => (globalThis as unknown as { installed: number }).installed),
+      ).toBe(0);
+    } finally {
+      fs.chmodSync(h.vault.dir, mode);
+    }
+  } finally {
+    await h.close();
+  }
+});
