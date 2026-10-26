@@ -250,6 +250,7 @@ const EditableBlock = memo(
       return wholeRoot(
         <ImageBlock
           src={block.src}
+          markdown={block.format === "md"}
           alt={block.alt}
           displayWidth={imageDisplayWidth(block)}
           isSelected={isBlockSelected}
@@ -258,10 +259,10 @@ const EditableBlock = memo(
           accentColor={accentColor}
           onSelect={() => onBlockSelect(block.id)}
           onDelete={() => onDeleteBlock(noteId, blockIndex)}
-          onCopyImage={() => onImageCopyImage(block.src)}
+          onCopyImage={onImageCopyImage}
           onShowInFolder={
             isElectron && !/^(https?:|data:)/i.test(block.src || "")
-              ? () => onFileShowInFolder(block.src)
+              ? onFileShowInFolder
               : undefined
           }
           onUpdateWidth={(px) =>
@@ -285,9 +286,9 @@ const EditableBlock = memo(
           size={block.size}
           accentColor={accentColor}
           onDelete={() => onDeleteBlock(noteId, blockIndex)}
-          onOpen={() => onFileOpen(block.src)}
-          onOpenDefault={() => onFileOpenDefault(block.src)}
-          onShowInFolder={() => onFileShowInFolder(block.src)}
+          onOpen={onFileOpen}
+          onOpenDefault={onFileOpenDefault}
+          onShowInFolder={onFileShowInFolder}
         />,
         { padding: "8px 0" },
         wholeRef,

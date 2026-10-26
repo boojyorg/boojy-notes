@@ -542,3 +542,43 @@ describe("reading the vault at start", () => {
     expect(failing.calls).toEqual([]);
   });
 });
+
+// The phone finds an embed's file as the desktop does (the same
+// `pickAttachment`), from the file list its own walk already makes: no walk
+// of its own.
+describe("attachments on the phone", () => {
+  const put = async (rel: string) => {
+    const abs = path.join(root, "vault", ...rel.split("/"));
+    await fs.mkdir(path.dirname(abs), { recursive: true });
+    await fs.writeFile(abs, "x");
+  };
+
+  it("picks the copy the desktop picks, ties included", async () => {
+    for (const rel of ["Notes/Sub/Trip.md", "Notes/pic4.svg", "Other/pic4.svg", "Zeta/p.svg"])
+      await put(rel);
+    await put("Alpha/Deep/p.svg");
+    await vault.api.readAllNotes();
+
+    expect(await vault.api.locateAttachment("pic4.svg", "Notes/Sub")).toBe("Notes/pic4.svg");
+    expect(await vault.api.locateAttachment("p.svg", "Notes/Sub")).toBe("Zeta/p.svg");
+    expect(await vault.api.locateAttachment("Trip.md", null)).toBeNull();
+    expect(await vault.api.locateAttachment("https://example.com/a.png", null)).toBeNull();
+  });
+
+  it("finds a picture a sync pass brought, and says so", async () => {
+    await put("Trip.md");
+    await vault.api.readAllNotes();
+    const changed = vi.fn();
+    vault.api.onAttachmentsChanged(changed);
+    expect(await vault.api.locateAttachment("late.png", null)).toBeNull();
+
+    await put("Inbox/late.png");
+    await vault.store.list();
+
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(await vault.api.locateAttachment("late.png", null)).toBe("Inbox/late.png");
+    // A pass that finds the same files says nothing.
+    await vault.store.list();
+    expect(changed).toHaveBeenCalledTimes(1);
+  });
+});

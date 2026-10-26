@@ -1,6 +1,6 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
-import { useAttachmentSrc } from "../../hooks/useAttachmentSrc";
+import { recheckAttachments, useAttachment } from "../../hooks/useAttachment";
 import { cssZoom } from "../../utils/domHelpers";
 import { imageWashFill } from "../../utils/selectionBand";
 import { ExpandIcon, MoreHorizontalIcon } from "../Icons";
@@ -14,6 +14,8 @@ import { pointAnchor } from "../Menu";
 
 interface ImageBlockProps {
   src: string;
+  /** Written `![](…)`: the address is a URL (`attachmentRef`). */
+  markdown?: boolean;
   alt?: string;
   /** The width drawn, in CSS pixels, or null for the picture's own size. */
   displayWidth: number | null;
@@ -24,9 +26,10 @@ interface ImageBlockProps {
   selectedAlone?: boolean;
   onSelect: () => void;
   onDelete: () => void;
-  onCopyImage: () => void;
+  /** Each is given the vault path of the file drawn, or `src` for a web address. */
+  onCopyImage: (rel: string) => void;
   /** Desktop only. */
-  onShowInFolder?: () => void;
+  onShowInFolder?: (rel: string) => void;
   /** A width in CSS pixels, or null to take the width off and draw the picture's own size. */
   onUpdateWidth: (px: number | null) => void;
   accentColor: string;
@@ -148,6 +151,7 @@ function ImageBlock({
   selectedAlone = false,
   onSelect,
   onDelete,
+  markdown = false,
   onCopyImage,
   onShowInFolder,
   onUpdateWidth,
@@ -162,34 +166,37 @@ function ImageBlock({
   const view = () => setViewing(true);
   const [errored, setErrored] = useState(false);
   const [loading, setLoading] = useState(true);
-  // A new picture is a new load (an outside edit, an undo), so a source that
-  // changes after an error is not left drawing "Image not found" (state
-  // adjusted in render, React's own pattern).
-  const [loadSrc, setLoadSrc] = useState(src);
-  if (src !== loadSrc) {
-    setLoadSrc(src);
+  // The file the embed names, from the note's folder; asked again when files
+  // arrive or go, so a picture synced in after "Not found" shows.
+  const { url: resolvedSrc, rel, missing } = useAttachment(src, markdown);
+  // A new address is a new load (an outside edit, an undo, the file found
+  // elsewhere), so one that changes after an error is not left drawing
+  // "Image not found" (state adjusted in render, React's own pattern).
+  const [loadSrc, setLoadSrc] = useState(resolvedSrc);
+  if (resolvedSrc !== loadSrc) {
+    setLoadSrc(resolvedSrc);
     setErrored(false);
     setLoading(true);
   }
+  const fileOf = () => rel ?? src;
   const [menu, setMenu] = useState<{ anchor: MenuAnchor; fromBar: boolean } | null>(null);
   const [dragging, setDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const { url: resolvedSrc, next: tryNextPlace, loaded } = useAttachmentSrc(src);
   // A picture the browser already holds (a note opened again) is drawn in the
   // first paint: its load event comes a frame later, after the placeholder
   // has shown and the text below has jumped.
   useLayoutEffect(() => {
     const img = imgRef.current;
     if (!loading || !img?.complete || !img.naturalWidth) return;
-    loaded();
     setLoading(false);
   });
   // Found again (Find it…): a new load, remounted so no failed load is reused.
   const [attempt, setAttempt] = useState(0);
   const findMissing = async () => {
     if (!(await window.electronAPI?.findAttachment(src))) return;
+    recheckAttachments();
     setErrored(false);
     setLoading(true);
     setAttempt((a) => a + 1);
@@ -244,7 +251,7 @@ function ImageBlock({
     document.addEventListener("mouseup", onUp);
   };
 
-  if (errored || !src) {
+  if (errored || missing || !src) {
     return (
       <MissingAttachment
         src={src}
@@ -314,32 +321,31 @@ function ImageBlock({
           />
         )}
         <style>{`@keyframes img-wait { from, to { opacity: 0; } } @keyframes img-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }`}</style>
-        <img
-          key={attempt}
-          ref={imgRef}
-          src={resolvedSrc}
-          alt={alt || ""}
-          draggable="false"
-          loading={resolvedSrc?.startsWith("data:") ? undefined : "lazy"}
-          onLoad={() => {
-            loaded();
-            setLoading(false);
-          }}
-          onError={() => {
-            if (tryNextPlace()) return;
-            setErrored(true);
-            setLoading(false);
-          }}
-          style={{
-            display: "block",
-            // A width in the file is the picture's, in CSS pixels; none is its
-            // own size. Never wider than the column, never enlarged to fill it.
-            width: displayWidth ? `${displayWidth}px` : "auto",
-            maxWidth: "100%",
-            borderRadius: 6,
-            ...(loading ? { position: "absolute", opacity: 0, pointerEvents: "none" } : {}),
-          }}
-        />
+        {/* No address until the vault has answered; the placeholder holds the room. */}
+        {resolvedSrc && (
+          <img
+            key={attempt}
+            ref={imgRef}
+            src={resolvedSrc}
+            alt={alt || ""}
+            draggable="false"
+            loading={resolvedSrc.startsWith("data:") ? undefined : "lazy"}
+            onLoad={() => setLoading(false)}
+            onError={() => {
+              setErrored(true);
+              setLoading(false);
+            }}
+            style={{
+              display: "block",
+              // A width in the file is the picture's, in CSS pixels; none is its
+              // own size. Never wider than the column, never enlarged to fill it.
+              width: displayWidth ? `${displayWidth}px` : "auto",
+              maxWidth: "100%",
+              borderRadius: 6,
+              ...(loading ? { position: "absolute", opacity: 0, pointerEvents: "none" } : {}),
+            }}
+          />
+        )}
         {(isSelected || !!menu) && !selectedAlone && !loading && (
           <div
             data-testid="image-selection-wash"
@@ -456,8 +462,8 @@ function ImageBlock({
           anchor={menu.anchor}
           fromBar={menu.fromBar}
           onView={view}
-          onCopy={onCopyImage}
-          onShowInFolder={onShowInFolder}
+          onCopy={() => onCopyImage(fileOf())}
+          onShowInFolder={onShowInFolder && (() => onShowInFolder(fileOf()))}
           onOriginalSize={displayWidth != null ? () => onUpdateWidth(null) : undefined}
           onDelete={onDelete}
           onClose={() => setMenu(null)}
@@ -465,7 +471,7 @@ function ImageBlock({
       )}
       {viewing && (
         <ImageLightbox
-          src={src}
+          url={resolvedSrc}
           alt={alt}
           name={attachmentName(src)}
           onClose={() => setViewing(false)}

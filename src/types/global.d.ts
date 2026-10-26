@@ -82,6 +82,12 @@ declare global {
       openPath: (absolutePath: string) => Promise<void>;
       showItemInFolder: (absolutePath: string) => Promise<void>;
       resolveAttachment: (filename: string) => Promise<string | null>;
+      /** The vault path of the file an embed names, read from its note's folder (`attachmentPath.ts`). */
+      locateAttachment: (
+        src: string,
+        noteFolder: string | null,
+        markdown?: boolean,
+      ) => Promise<string | null>;
       /** Picks a missing attachment and copies it in under `filename`; false when cancelled. */
       findAttachment: (filename: string) => Promise<boolean>;
       getFileSize: (filename: string) => Promise<number | null>;
@@ -173,6 +179,7 @@ declare global {
       ) => Promise<{ path: string; folders: string[]; notes: Note[] }>;
       /** A directory appeared or vanished outside the app; re-read the folder list. */
       onFoldersChanged: (callback: () => void) => Unsubscribe;
+      onAttachmentsChanged: (callback: () => void) => Unsubscribe;
 
       // File watcher events
       onFileChanged: (callback: (note: Note) => void) => Unsubscribe;

@@ -14,9 +14,8 @@
 
 ## The watcher drops only an event it can trace to the app's own operation
 
-`electron/fileWatcher.js`. **One watch for the whole vault**
-(`treeWatcher.ts`, a recursive `fs.watch`), never a file open per note (it blocked iCloud
-eviction). `watcher-scale.spec.ts`.
+**One watch for the whole vault** (`treeWatcher.ts`), never a file open per note (it blocked
+iCloud eviction). `watcher-scale.spec.ts`.
 
 - **`write-note` claims the bytes it wrote**: a later event whose file holds exactly those bytes
   is the echo, however late; the claim ends at the first other bytes or the file gone.
@@ -96,11 +95,11 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 
 ## Attachments
 
-Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, name in the
-**path, never the host** (Chromium refuses spaces and brackets there), served only through
-`insideVault`. `attachment-names.spec.ts`.
-**The phone loads from Capacitor's vault address**, which can't say whether a file exists, so
-a picture tries the desktop's two places in turn (`useAttachmentSrc`). `attachmentUrl.test.js`.
+**Found as Obsidian finds it** (`pickAttachment`, desktop and phone): the path as written,
+the note's folder, then by name, shortest path first, ties A–Z. Only by name reads an index,
+uncapped. Every action takes the path the block found; a paste takes a name no file has.
+`attachment-resolution.spec.ts`. Loaded as `boojy-att://vault/<path>`, encoded in the **path,
+never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 
 ## Version history keeps what the file held
 

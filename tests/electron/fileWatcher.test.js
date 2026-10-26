@@ -304,13 +304,19 @@ describe("isIgnoredPath", () => {
     expect(isIgnoredPath(vault, path.join(vault, "Work", "Plan.md"))).toBe(false);
   });
 
-  it("skips dot-entries, the attachment store and the legacy index, at any depth", () => {
+  it("skips dot-entries, notes in the attachment store and the legacy index, at any depth", () => {
     expect(isIgnoredPath(vault, path.join(vault, ".git", "HEAD"))).toBe(true);
     expect(isIgnoredPath(vault, path.join(vault, ".Note.md.tmp"))).toBe(true);
     expect(isIgnoredPath(vault, path.join(vault, "Work", ".hidden", "x.md"))).toBe(true);
-    expect(isIgnoredPath(vault, path.join(vault, "attachments"))).toBe(true);
-    expect(isIgnoredPath(vault, path.join(vault, "Work", "attachments", "a.png"))).toBe(true);
+    expect(isIgnoredPath(vault, path.join(vault, "attachments", "Stray.md"))).toBe(true);
     expect(isIgnoredPath(vault, path.join(vault, ".boojy-index.json"))).toBe(true);
+  });
+
+  // The attachment index keeps the store's files current, so a picture synced
+  // into it is found without a reopen.
+  it("reports the attachment store's other files", () => {
+    expect(isIgnoredPath(vault, path.join(vault, "attachments"))).toBe(false);
+    expect(isIgnoredPath(vault, path.join(vault, "Work", "attachments", "a.png"))).toBe(false);
   });
 
   it("does not judge a path outside the vault as hidden", () => {

@@ -73,6 +73,7 @@ import { SLASH_COMMANDS } from "./constants/data";
 import { getAPI } from "./services/apiProvider";
 import { fileFromHistoryKey, fileHistoryKey, useNoteHistory } from "./hooks/useNoteHistory";
 import { useFileView } from "./hooks/useFileView";
+import { AttachmentFolder } from "./hooks/useAttachment";
 import { fileLinkTarget, pageLink } from "./utils/fileView";
 import { blocksToMarkdown } from "./utils/markdown";
 import { wholeBlocksCopy } from "./utils/clipboardCopy";
@@ -1681,45 +1682,48 @@ export default function BoojyNotes() {
               reReadBlockFromDom,
             }}
           >
-            <EditorArea
-              openFindRef={openFindRef}
-              switchViewRef={switchViewRef}
-              blockActionsRef={blockActionsRef}
-              onEditorClick={clearSelection}
-              textOnlyEditForEditor={textOnlyEditForEditor}
-              syncGen={syncGeneration.current}
-              note={note}
-              activeNote={activeNote}
-              editorFadeIn={editorFadeIn}
-              onWikilinkClick={handleWikilinkClick}
-              onFileOpenInPlace={openFileInPlace}
-              onTagClick={handleTagClick}
-              toolbarState={toolbarState}
-              noteTitleSet={noteTitleSet}
-              onEditLink={linkPicker.openForLink}
-              onRemoveLink={removeLink}
-              describeLink={describeLink}
-              blockSelection={blockSelection}
-              setBlockSelection={setBlockSelection}
-              openNote={setActiveNote}
-              onPathRowPointerDown={handleSidebarPointerDown}
-              onShowFolder={isPhone ? showFolder : undefined}
-              onTitleBlur={settleTitle}
-              pastVersion={versionHistory.state.past}
-              deletedNote={deletedPreview}
-              onTypeIntoDeleted={() => {
-                setBinOpen(false);
-                recentlyDeleted.setAsk(true);
-              }}
-              offloaded={offloaded}
-              unreadable={unreadable}
-              fileView={fileView}
-              onOpenFileDefault={viewedFileMenu?.openDefault}
-              onRevealFile={viewedFileMenu?.reveal}
-              fileActions={viewedFileMenu}
-              onTypeIntoPast={() => versionHistory.setAsk(true)}
-              showToast={showToast}
-            />
+            {/* Embeds are read from the open note's folder (`useAttachment`). */}
+            <AttachmentFolder.Provider value={note?.folder ?? null}>
+              <EditorArea
+                openFindRef={openFindRef}
+                switchViewRef={switchViewRef}
+                blockActionsRef={blockActionsRef}
+                onEditorClick={clearSelection}
+                textOnlyEditForEditor={textOnlyEditForEditor}
+                syncGen={syncGeneration.current}
+                note={note}
+                activeNote={activeNote}
+                editorFadeIn={editorFadeIn}
+                onWikilinkClick={handleWikilinkClick}
+                onFileOpenInPlace={openFileInPlace}
+                onTagClick={handleTagClick}
+                toolbarState={toolbarState}
+                noteTitleSet={noteTitleSet}
+                onEditLink={linkPicker.openForLink}
+                onRemoveLink={removeLink}
+                describeLink={describeLink}
+                blockSelection={blockSelection}
+                setBlockSelection={setBlockSelection}
+                openNote={setActiveNote}
+                onPathRowPointerDown={handleSidebarPointerDown}
+                onShowFolder={isPhone ? showFolder : undefined}
+                onTitleBlur={settleTitle}
+                pastVersion={versionHistory.state.past}
+                deletedNote={deletedPreview}
+                onTypeIntoDeleted={() => {
+                  setBinOpen(false);
+                  recentlyDeleted.setAsk(true);
+                }}
+                offloaded={offloaded}
+                unreadable={unreadable}
+                fileView={fileView}
+                onOpenFileDefault={viewedFileMenu?.openDefault}
+                onRevealFile={viewedFileMenu?.reveal}
+                fileActions={viewedFileMenu}
+                onTypeIntoPast={() => versionHistory.setAsk(true)}
+                showToast={showToast}
+              />
+            </AttachmentFolder.Provider>
           </EditorProvider>
           {(isPhone || keyBarInWeb) && (
             <PhoneKeyBar
