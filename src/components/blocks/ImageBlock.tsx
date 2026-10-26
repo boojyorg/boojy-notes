@@ -195,7 +195,7 @@ function ImageBlock({
   // Found again (Find it…): a new load, remounted so no failed load is reused.
   const [attempt, setAttempt] = useState(0);
   const findMissing = async () => {
-    if (!(await window.electronAPI?.findAttachment(src))) return;
+    if (!(await window.electronAPI?.findAttachment(src, markdown))) return;
     recheckAttachments();
     setErrored(false);
     setLoading(true);

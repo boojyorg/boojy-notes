@@ -89,7 +89,7 @@ declare global {
         markdown?: boolean,
       ) => Promise<string | null>;
       /** Picks a missing attachment and copies it in under `filename`; false when cancelled. */
-      findAttachment: (filename: string) => Promise<boolean>;
+      findAttachment: (src: string, markdown?: boolean) => Promise<boolean>;
       getFileSize: (filename: string) => Promise<number | null>;
       copyImageToClipboard: (filename: string) => Promise<boolean>;
       /** A note's Markdown as plain text, with HTML for apps that take formatting. */

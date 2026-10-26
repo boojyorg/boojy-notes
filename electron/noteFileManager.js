@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { renameWithRetry, writeFileAtomic } from "./atomicWrite.js";
 import { recoverLeftoverTemps } from "./leftoverTemps.js";
 import * as history from "./history.js";
+import { attachmentRef } from "../src/utils/attachmentPath.js";
 import { attachmentAdded, locateAttachment, nameTaken } from "./attachmentIndex.js";
 import { isOffloaded, offloadedAmong, readDownloading } from "./offloaded.js";
 import { isSameEntry, isSkippedName, vaultKey } from "./vaultFs.js";
@@ -149,12 +150,16 @@ function insideVault(notesDir, candidate) {
 /**
  * The file an attachment name stands for, found as Obsidian finds it
  * (`locateAttachment`): a file inside the vault or null. The renderer passes
- * the vault path an embed resolved to, which is found as written; every
+ * the vault path an embed resolved to, which is taken literally; every
  * handler asks here, so Copy, Open and Show in Finder reach the file the note
  * shows (the `boojy-att` protocol draws it).
  */
 function vaultAttachment(notesDir, name) {
   if (typeof name !== "string") return null;
+  // A found path is taken as it is: read again as an address, `diagram#one.svg`
+  // would lose its `#one.svg` as a subpath.
+  const literal = insideVault(notesDir, name);
+  if (literal && fs.statSync(literal, { throwIfNoEntry: false })?.isFile()) return literal;
   const rel = locateAttachment(notesDir, name);
   return rel ? insideVault(notesDir, rel) : null;
 }
@@ -929,9 +934,12 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   // the file wherever it went, and it is copied in under the name the note
   // already links to, so the link resolves and the note changes no byte.
   // True once the file is there (already, or copied); false when cancelled.
-  ipcMain.handle("find-attachment", async (_event, filename) => {
+  // Copied in under the name the lookup reads from the embed (`attachmentRef`):
+  // `my%20picture.svg` decoded, a `#page=2` dropped, so the card finds it.
+  ipcMain.handle("find-attachment", async (_event, src, markdown = false) => {
     const notesDir = getNotesDir();
-    if (typeof filename !== "string" || !filename) return false;
+    const filename = typeof src === "string" ? attachmentRef(src, markdown === true) : null;
+    if (!filename) return false;
     const dest = insideVault(notesDir, path.join("attachments", filename));
     if (!dest) return false;
     if (fs.existsSync(dest)) return true;

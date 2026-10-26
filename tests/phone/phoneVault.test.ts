@@ -581,4 +581,22 @@ describe("attachments on the phone", () => {
     await vault.store.list();
     expect(changed).toHaveBeenCalledTimes(1);
   });
+
+  // A download lands through the store, between walks: found at once.
+  it("finds a picture the moment sync writes it, and forgets one it removes", async () => {
+    await put("Trip.md");
+    await put("Old/gone.png");
+    await vault.api.readAllNotes();
+    const changed = vi.fn();
+    vault.api.onAttachmentsChanged(changed);
+
+    await vault.store.writeIfUnchanged("Inbox/late.png", new TextEncoder().encode("png"), null);
+    expect(await vault.api.locateAttachment("late.png", null)).toBe("Inbox/late.png");
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
+
+    const hash = await vault.store.hash("Old/gone.png");
+    expect(await vault.store.removeIfUnchanged("Old/gone.png", hash)).toBe(true);
+    expect(await vault.api.locateAttachment("gone.png", null)).toBeNull();
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledTimes(2));
+  });
 });

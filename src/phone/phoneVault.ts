@@ -127,6 +127,8 @@ const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).
 const parentOf = (rel: string) => rel.split("/").slice(0, -1).join("/") || null;
 const baseName = (rel: string) => (rel.split("/").pop() ?? "").replace(/\.md$/, "");
 const hidden = (name: string) => name.startsWith(".");
+/** How long the editor's notice of new or gone attachments waits for the rest of a run. */
+const ATTACHMENT_NOTICE_MS = 100;
 const isNote = (rel: string) => rel.toLowerCase().endsWith(".md");
 /** Under the attachment store, which the desktop lists neither as a folder nor for its notes. */
 const inAttachments = (rel: string) => rel.split("/").includes("attachments");
@@ -212,6 +214,7 @@ export function createPhoneVault(
       } finally {
         forget(path);
       }
+      attachmentMoved(null, path);
     },
     async rename(from, to) {
       try {
@@ -220,6 +223,7 @@ export function createPhoneVault(
         forget(from, true);
         forget(to, true);
       }
+      attachmentMoved(from, to);
     },
     async remove(path) {
       try {
@@ -227,6 +231,7 @@ export function createPhoneVault(
       } finally {
         forget(path);
       }
+      attachmentMoved(path, null);
     },
   };
 
@@ -382,7 +387,8 @@ export function createPhoneVault(
   // change tells the editor to ask again.
   let attachmentFiles = new Set<string>();
   const attachmentsByName = new Map<string, string[]>();
-  const keepAttachments = (paths: string[]) => {
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  const keepAttachments = (paths: string[], later = false) => {
     const next = new Set(paths.filter((rel) => !isNote(rel)));
     const same =
       next.size === attachmentFiles.size && [...next].every((p) => attachmentFiles.has(p));
@@ -393,7 +399,29 @@ export function createPhoneVault(
       const name = rel.slice(rel.lastIndexOf("/") + 1).toLowerCase();
       attachmentsByName.set(name, [...(attachmentsByName.get(name) ?? []), rel]);
     }
-    emit(listeners.attachments, undefined);
+    clearTimeout(noticeTimer);
+    if (!later) return emit(listeners.attachments, undefined);
+    // A pass downloads one file after another: one notice for the run.
+    noticeTimer = setTimeout(() => emit(listeners.attachments, undefined), ATTACHMENT_NOTICE_MS);
+  };
+  /**
+   * A write, rename or removal under the vault, kept in the list at once: a
+   * picture a sync pass downloads is found without waiting for the next walk.
+   * `from` and `to` are absolute; null when a file arrives or goes.
+   */
+  const attachmentMoved = (from: string | null, to: string | null) => {
+    const inVault = (p: string | null) =>
+      p?.startsWith(`${VAULT}/`) && !p.split("/").some(hidden) ? p.slice(VAULT.length + 1) : null;
+    const was = inVault(from);
+    const now = inVault(to);
+    let moved = false;
+    const next = [...attachmentFiles].flatMap((p) => {
+      if (was === null || (p !== was && !p.startsWith(`${was}/`))) return [p];
+      moved = true;
+      return now === null ? [] : [now + p.slice(was.length)];
+    });
+    if (!moved && now !== null) next.push(now);
+    keepAttachments(next, true);
   };
 
   /**

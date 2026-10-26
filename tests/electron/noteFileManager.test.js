@@ -548,6 +548,41 @@ describe("IPC handlers — folders, a missing vault, and path containment", () =
     );
   });
 
+  // `![](diagram%23one.svg)` finds `diagram#one.svg`; the path found is then
+  // taken as it is, never read again as an address with a `#one.svg` subpath.
+  it("reaches a found file whose name holds a #", () => {
+    fs.mkdirSync(path.join(notesDir, "Figs"));
+    fs.writeFileSync(path.join(notesDir, "Figs", "diagram#one.svg"), "x");
+
+    const rel = handlers["locate-attachment"](null, "diagram%23one.svg", null, true);
+    expect(rel).toBe("Figs/diagram#one.svg");
+    expect(handlers["resolve-attachment"](null, rel)).toBe(
+      path.join(notesDir, "Figs", "diagram#one.svg"),
+    );
+  });
+
+  // Find it… copies the picked file in under the name the lookup reads:
+  // `my%20picture.svg` was copied as itself and the card stayed Not found.
+  it("copies a found file in under the name the embed is looked up by", async () => {
+    const { dialog } = await import("electron");
+    const picked = path.join(os.tmpdir(), `boojy-pick-${Date.now()}.svg`);
+    fs.writeFileSync(picked, "x");
+    dialog.showOpenDialog = vi.fn(async () => ({ canceled: false, filePaths: [picked] }));
+    try {
+      expect(await handlers["find-attachment"](null, "my%20picture.svg", true)).toBe(true);
+      expect(await handlers["find-attachment"](null, "Slides.pdf#page=2")).toBe(true);
+    } finally {
+      fs.rmSync(picked);
+    }
+
+    expect(handlers["locate-attachment"](null, "my%20picture.svg", "Notes", true)).toBe(
+      "attachments/my picture.svg",
+    );
+    expect(handlers["locate-attachment"](null, "Slides.pdf#page=2", null)).toBe(
+      "attachments/Slides.pdf",
+    );
+  });
+
   // Found by name, shortest path first: a paste named as an older file
   // elsewhere would be shadowed by it, so it takes a name no file has.
   it("names a pasted file apart from every file in the vault", () => {
