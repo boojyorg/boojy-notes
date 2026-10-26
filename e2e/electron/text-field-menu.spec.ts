@@ -67,3 +67,36 @@ test("a right-click in Search's field gives Cut, Copy and Paste, run on the fiel
     await h.close();
   }
 });
+
+test("a sidebar rename's field and the note's name get the text menu, not the row's", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  const menu = h.page.locator(".editor-context-menu");
+  try {
+    await h.openNote("Alpha");
+
+    // The note's name in the chrome row: an editable element, not an input.
+    const title = h.page.getByRole("textbox", { name: "Note title" });
+    await title.click();
+    await h.page.keyboard.press(`${MOD}+a`);
+    await title.click({ button: "right" });
+    await expect(menu).toBeVisible();
+    await menu.getByRole("menuitem", { name: /^Copy/ }).click();
+    expect(await h.app.evaluate(({ clipboard }) => clipboard.readText())).toBe("Alpha");
+    await expect(title).toHaveText("Alpha");
+
+    // A rename's field sits inside the row, whose own menu took the click.
+    await h.page.locator('[role="treeitem"]').filter({ hasText: "Alpha" }).first().dblclick();
+    const field = h.page.locator("input:focus");
+    await field.waitFor();
+    await field.selectText();
+    await field.click({ button: "right" });
+    await expect(menu).toBeVisible();
+    await expect(h.page.getByRole("menuitem", { name: "Rename" })).toHaveCount(0);
+    await menu.getByRole("menuitem", { name: /^Cut/ }).click();
+    await expect(field).toHaveValue("");
+    await h.page.keyboard.press("Escape");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
