@@ -10,7 +10,7 @@
  */
 import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { MOD, SETTLE_MS, launchApp, sleep } from "./harness";
+import { MOD, SETTLE_MS, launchApp, sleep, typeAtEnd } from "./harness";
 
 const seed = { "Note one.md": "One.\n", "Note two.md": "Two.\n" };
 
@@ -139,6 +139,87 @@ test("a save that cannot land waits to be dismissed, and the receipt of its reco
     await expect(h.page.locator("[data-toast-kind]")).toHaveCount(0, { timeout: 6_000 });
     // The refusals the test caused are the only errors it may log.
     for (const err of h.pageErrors) expect(err).toMatch(/write failed .* EACCES/);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a downloaded update says so once, and Restart writes pending edits before it installs", async () => {
+  const h = await launchApp({ "Note one.md": "One.\n" });
+  try {
+    // Stand in for the updater: record the install instead of quitting.
+    await h.app.evaluate(({ ipcMain }) => {
+      const g = globalThis as unknown as { installed: number };
+      g.installed = 0;
+      ipcMain.removeHandler("install-update");
+      ipcMain.handle("install-update", () => {
+        g.installed++;
+      });
+    });
+    const announce = () =>
+      h.app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].webContents.send("update-status", {
+          state: "downloaded",
+          version: "9.9.9",
+        }),
+      );
+    await h.openNote("Note one");
+
+    await announce();
+    const toast = h.page.locator("[data-toast-kind]");
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toHaveAttribute("data-toast-kind", "notice");
+    await expect(toast).toContainText("Version 9.9.9 is ready");
+    // The same news again is not a second toast.
+    await announce();
+    await sleep(SETTLE_MS);
+    await expect(toast).toHaveCount(1);
+
+    // Typed just before: still pending when Restart is pressed.
+    await typeAtEnd(h.page, " More");
+    await toast.getByRole("button", { name: "Restart" }).click();
+    await expect
+      .poll(() => h.app.evaluate(() => (globalThis as unknown as { installed: number }).installed))
+      .toBe(1);
+    expect(h.vault.read("Note one.md")).toBe("One. More\n");
+  } finally {
+    await h.close();
+  }
+});
+
+test("Restart waits while an edit cannot be saved, and never installs over it", async () => {
+  test.skip(process.platform === "win32", "a directory's mode bits do not stop writes on Windows");
+  const h = await launchApp({ "Note one.md": "One.\n" });
+  try {
+    await h.app.evaluate(({ ipcMain, BrowserWindow }) => {
+      const g = globalThis as unknown as { installed: number };
+      g.installed = 0;
+      ipcMain.removeHandler("install-update");
+      ipcMain.handle("install-update", () => {
+        g.installed++;
+      });
+      BrowserWindow.getAllWindows()[0].webContents.send("update-status", {
+        state: "downloaded",
+        version: "9.9.9",
+      });
+    });
+    await h.openNote("Note one");
+    const ready = h.page.locator("[data-toast-kind='notice']");
+    await expect(ready).toContainText("Version 9.9.9 is ready");
+
+    const mode = fs.statSync(h.vault.dir).mode;
+    fs.chmodSync(h.vault.dir, 0o500);
+    try {
+      await typeAtEnd(h.page, " More");
+      await ready.getByRole("button", { name: "Restart" }).click();
+      await expect(h.page.locator("[data-toast-kind='warning']")).toContainText("Restart waited");
+      await sleep(SETTLE_MS);
+      expect(
+        await h.app.evaluate(() => (globalThis as unknown as { installed: number }).installed),
+      ).toBe(0);
+    } finally {
+      fs.chmodSync(h.vault.dir, mode);
+    }
   } finally {
     await h.close();
   }

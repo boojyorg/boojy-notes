@@ -3,6 +3,7 @@ import { TOUCH } from "../constants/layout";
 import { useTheme } from "../hooks/useTheme";
 import type { PhoneSync } from "../phone/useSyncStatus";
 import { describeProblem, type SyncState } from "../sync/syncStatus";
+import { clock } from "../utils/versionTime";
 import { SyncedIcon, SyncingIcon, SyncOfflineIcon, SyncProblemIcon } from "./Icons";
 import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
 
@@ -20,11 +21,11 @@ const NAME: Record<SyncState, string> = {
   problem: "Needs attention",
 };
 
-/** `10:42` (or `10:42 AM`, by the phone's language) today, `16 Oct` before. */
+/** `09:42` (or `9:42 AM`, by the phone's language) today, `16 Oct` before. */
 export function syncedAt(ms: number, now = new Date()) {
   const at = new Date(ms);
   return at.toDateString() === now.toDateString()
-    ? at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    ? clock(ms)
     : at.toLocaleDateString([], { day: "numeric", month: "short" });
 }
 

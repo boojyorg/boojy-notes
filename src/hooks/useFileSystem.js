@@ -458,7 +458,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // pending text commit hasn't reached state yet, so it was never marked dirty.
   const flush = useCallback(
     async (latestData, extraDirtyIds) => {
-      if (!isNative) return;
+      if (!isNative) return true;
       const api = getAPI();
 
       // This flush supersedes the debounced one. Cancel it so it cannot fire
@@ -549,6 +549,8 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         }
       }
 
+      // Whether every note's edits reached disk: a failed write stays dirty.
+      const saved = dirtyNotes.current.size === 0;
       if (dirtyNotes.current.size > 0) {
         scheduleRetry();
       } else if (dirtyNotes.current.size === 0 && retryTimer.current !== null) {
@@ -580,6 +582,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
           console.error("useFileSystem: after-flush work failed", err);
         }
       }
+      return saved;
       // Deps deliberately not exhaustive: onError is not stable
     },
     [keepBothVersions, takeOutsideVersion, applyExternal],

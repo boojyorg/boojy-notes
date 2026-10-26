@@ -41,10 +41,12 @@ import EditorChrome from "./components/EditorChrome";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { toastPersists, useToast } from "./hooks/useToast";
 import { useSavePoint } from "./hooks/useSavePoint";
+import { useUpdateReadyToast } from "./hooks/useUpdateReadyToast";
 import { useVersionHistory } from "./hooks/useVersionHistory";
 import VersionHistoryList from "./components/VersionHistoryList";
 import { versionMoment, versionTime } from "./utils/versionTime";
 import UiScaleChip from "./components/UiScaleChip";
+import TextFieldMenu from "./components/TextFieldMenu";
 import { indentSpan, useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats, wordsIn } from "./hooks/useNoteStats";
@@ -272,6 +274,7 @@ export default function BoojyNotes() {
     remapNoteFolders,
   });
   useQuitFlush(flushAll);
+  useUpdateReadyToast({ showToast, flushAll });
   const savePoint = useSavePoint({
     activeNote,
     activeNoteRef,
@@ -1896,6 +1899,8 @@ export default function BoojyNotes() {
         onCancel={() => resolveConfirm(false)}
         onAlt={() => resolveConfirm("alt")}
       />
+
+      <TextFieldMenu />
 
       <UiScaleChip
         // Settings says the figure itself, so the chip stands down while it is

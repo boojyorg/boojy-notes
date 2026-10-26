@@ -349,6 +349,13 @@ export default function GlobalStyles() {
           background-color: ${theme.BG.hover} !important;
           transition: none !important;
         }
+        /* A hold on a row is its menu: Android's long-press also selected the
+           row's words, handles and all. A rename's field still selects. */
+        html.is-phone :is(.sidebar-row, .sidebar-action-row, [role="treeitem"]) {
+          -webkit-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none;
+        }
         /* The press comes at once and leaves slowly: a quick tap holds :active
            for a few frames, too short to see, so the grey fades out after it. */
         ${PHONE_PRESSABLE} {
@@ -509,9 +516,12 @@ ${tagPillCss(theme)}
             text-decoration-color: ${theme.wikilink.color};
           }
         }
-        /* Selected text in the note wears the selection's one colour, the
-           band a selected block wears (utils/selectionBand). */
-        [data-editor] ::selection {
+        /* Selected text in the note, and in every field (Search, a rename),
+           wears the selection's one colour, the band a selected block wears
+           (utils/selectionBand); a code field keeps its own, below. */
+        [data-editor] ::selection,
+        input::selection,
+        textarea::selection {
           background: ${bandFill(theme.ACCENT.primary, theme.name)};
         }
         /* The words a search matched, as the note opens from Search: a

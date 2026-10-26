@@ -51,6 +51,8 @@ interface EditorContextMenuProps {
   /** Given in a table cell: the table's own last item, under a rule. */
   onDeleteTable?: () => void;
   onClose: () => void;
+  /** Opened from a text field outside the note, which may sit on any surface. */
+  onTop?: boolean;
 }
 
 /**
@@ -85,6 +87,7 @@ export default function EditorContextMenu({
   onTidyTable,
   onDeleteTable,
   onClose,
+  onTop,
 }: EditorContextMenuProps) {
   const items: MenuItem[] = [];
   // Three groups, as a Mac's text menu: replace the word, teach it, edit.
@@ -170,6 +173,7 @@ export default function EditorContextMenu({
       minWidth={200}
       className="editor-context-menu"
       takesFocus={false}
+      onTop={onTop}
     />
   );
 }
