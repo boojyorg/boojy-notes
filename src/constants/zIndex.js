@@ -7,7 +7,7 @@
  *   → TOOLBAR → WIKILINK_MENU → MENU_BACKDROP
  *   → DROPDOWN → CONTEXT_BACKDROP → CONTEXT_MENU → SETTINGS → SETTINGS_MENU → LIGHTBOX
  *   → OVERLAY → CALLOUT_BACKDROP
- *   → TOAST → CONFIRM → TOOLTIP → ERROR_BOUNDARY
+ *   → TOAST → CONFIRM → FIELD_MENU → TOOLTIP → ERROR_BOUNDARY
  */
 
 export const Z = {
@@ -43,8 +43,12 @@ export const Z = {
   CALLOUT_BACKDROP: 9998,
   TOAST: 9999,
   CONFIRM: 10001,
+  /** A text field's Cut, Copy and Paste (`TextFieldMenu`): over every
+   *  surface a field can sit on, the confirm dialog's included. */
+  FIELD_MENU_BACKDROP: 10002,
+  FIELD_MENU: 10003,
   /** A control's chip: over whatever surface holds the control under the pointer
    *  (a popover, Settings), and inert to the pointer. */
-  TOOLTIP: 10002,
+  TOOLTIP: 10004,
   ERROR_BOUNDARY: 99999,
 };

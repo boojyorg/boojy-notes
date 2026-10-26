@@ -45,6 +45,7 @@ import { useVersionHistory } from "./hooks/useVersionHistory";
 import VersionHistoryList from "./components/VersionHistoryList";
 import { versionMoment, versionTime } from "./utils/versionTime";
 import UiScaleChip from "./components/UiScaleChip";
+import TextFieldMenu from "./components/TextFieldMenu";
 import { indentSpan, useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats, wordsIn } from "./hooks/useNoteStats";
@@ -1892,6 +1893,8 @@ export default function BoojyNotes() {
         onCancel={() => resolveConfirm(false)}
         onAlt={() => resolveConfirm("alt")}
       />
+
+      <TextFieldMenu />
 
       <UiScaleChip
         // Settings says the figure itself, so the chip stands down while it is

@@ -134,6 +134,8 @@ interface MenuProps {
   selectionSurface?: boolean;
   /** Opened from inside Settings: stacked above the pane, not under it. */
   overSettings?: boolean;
+  /** A text field's menu: above every surface, since a field can sit on any. */
+  onTop?: boolean;
 }
 
 /**
@@ -182,8 +184,10 @@ export default function Menu({
   onKey,
   selectionSurface,
   overSettings = false,
+  onTop = false,
 }: MenuProps) {
   const { theme } = useTheme();
+  const surfaceZ = onTop ? Z.FIELD_MENU : overSettings ? Z.SETTINGS_MENU : undefined;
   const { BG, TEXT, ACCENT, SEMANTIC } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const subRef = useRef<HTMLDivElement>(null);
@@ -410,7 +414,11 @@ export default function Menu({
         style={{
           position: "fixed",
           inset: 0,
-          zIndex: overSettings ? Z.SETTINGS_MENU_BACKDROP : Z.CONTEXT_BACKDROP,
+          zIndex: onTop
+            ? Z.FIELD_MENU_BACKDROP
+            : overSettings
+              ? Z.SETTINGS_MENU_BACKDROP
+              : Z.CONTEXT_BACKDROP,
         }}
       />
       <div
@@ -433,7 +441,7 @@ export default function Menu({
         }}
         style={{
           ...menuSurface(theme),
-          ...(overSettings && { zIndex: Z.SETTINGS_MENU }),
+          ...(surfaceZ && { zIndex: surfaceZ }),
           top: pos?.top,
           left: pos?.left,
           minWidth,
@@ -458,7 +466,7 @@ export default function Menu({
           onContextMenu={(e) => e.preventDefault()}
           style={{
             ...menuSurface(theme),
-            ...(overSettings && { zIndex: Z.SETTINGS_MENU }),
+            ...(surfaceZ && { zIndex: surfaceZ }),
             top: (subPos?.top ?? 0) / zoom,
             left: (subPos?.left ?? 0) / zoom,
             visibility: subPos ? "visible" : "hidden",
