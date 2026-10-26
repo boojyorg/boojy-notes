@@ -143,7 +143,7 @@ app's, made through state.**
 
 - `EditorContextMenu`: a misspelled word's guesses and Add to dictionary, or a
   link's actions; then Cut, Copy, Paste; in a cell Delete table last. Media and code
-  keep theirs.
+  keep theirs; a field outside the note gets the same (`TextFieldMenu`).
 - **Items run the keys' own path** (a guess as `insertText`, Paste by IPC).
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is
   late) on a layer (a highlight clips a leaning glyph): whole note on open; not code, tags,
