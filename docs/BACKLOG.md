@@ -346,8 +346,10 @@ references (Public Beta).
   as a bullet holding an empty emphasis.
 - **Delimiters interleaved** (`**a==b**c==`, an escaped one beside live ones) pair differently
   than written; `tests/utils/knownRewrites.js` holds them, an entry deleted with each fix.
-- **Embeds.** `![[x.png|alt|300]]` and an embed mid-line show as `!` and a link; `![[Note]]`
-  embeds the first note of that name, ignoring a folder path (`EmbedBlock.jsx`).
+- **Embeds.** `![[x.png|alt|300]]` and an embed mid-line or in a list item show as `!` and a
+  link, so a picture under a bullet is never drawn (`Personal/Budget/Jan 2026` in
+  `~/Documents/Vault`; Obsidian draws it in the item); `![[Note]]` embeds the first note of that
+  name, ignoring a folder path (`EmbedBlock.jsx`).
 - **`=====`** (a setext underline) draws as a highlight.
 
 ### Found by the Windows and macOS CI (2026-10-05)
