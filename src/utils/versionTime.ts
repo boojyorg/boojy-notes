@@ -20,8 +20,12 @@ const startOfDay = (t: number) => {
   return d.getTime();
 };
 
-function clock(at: number, hour12?: boolean, locale?: string): string {
-  return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", hour12 }).format(at);
+/** A 24-hour clock writes its hour in two digits (09:05, as the Mac does), a 12-hour one not (9:05 am). */
+export function clock(at: number, hour12?: boolean, locale?: string): string {
+  const numeric = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", hour12 });
+  const { hourCycle } = numeric.resolvedOptions();
+  if (hourCycle !== "h23" && hourCycle !== "h24") return numeric.format(at);
+  return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hour12 }).format(at);
 }
 
 export function versionTime(at: number, now: number, hour12?: boolean, locale?: string): string {

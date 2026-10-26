@@ -14,6 +14,14 @@ describe("versionTime", () => {
     expect(versionTime(at(8, 25, 9, 0, 2025), now, false, "en-GB")).toBe("25 Aug 2025");
   });
 
+  // A 24-hour clock pads its hour, as the Mac's does; a 12-hour one never.
+  it("writes a 24-hour clock's hour in two digits", () => {
+    expect(versionTime(at(9, 26, 9, 5), now, false, "en-GB")).toBe("09:05");
+    expect(versionTime(at(9, 26, 0, 1), now, false, "es-ES")).toBe("00:01");
+    expect(versionTime(at(9, 26, 9, 5), now, undefined, "en-GB")).toBe("09:05");
+    expect(versionTime(at(9, 26, 9, 5), now, true, "en-GB")).toBe("9:05 am");
+  });
+
   it("follows a 12-hour clock and the locale's own order", () => {
     expect(versionTime(at(9, 26, 15, 48), now, true, "en-US")).toBe("3:48 PM");
     expect(versionTime(at(8, 25, 9, 0), now, false, "en-US")).toBe("Aug 25");
@@ -35,7 +43,7 @@ describe("editedLabel", () => {
 
   it("then the clock and the day, as Version History says them", () => {
     expect(ago(60 * 60_000)).toBe("Edited at 15:04");
-    expect(editedLabel(at(9, 26, 1, 30), now, false, "en-GB")).toBe("Edited at 1:30");
+    expect(editedLabel(at(9, 26, 1, 30), now, false, "en-GB")).toBe("Edited at 01:30");
     expect(editedLabel(at(9, 25, 23, 59), now, false, "en-GB")).toBe("Edited yesterday at 23:59");
     expect(editedLabel(at(9, 20, 10, 12), now, false, "en-GB")).toBe("Edited Sun at 10:12");
     expect(editedLabel(at(9, 19, 10, 12), now, false, "en-GB")).toBe("Edited 19 Sept");
