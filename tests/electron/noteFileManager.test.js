@@ -603,13 +603,14 @@ describe("IPC handlers — folders, a missing vault, and path containment", () =
   });
 
   // The sidebar's list stops at 5,000 files; finding a picture must not.
+  // Making the files is the slow part (9 s on Windows CI), not the lookup.
   it("finds a file by name in a vault of more than 5,000 files", () => {
     const dir = path.join(notesDir, "Scans");
     fs.mkdirSync(dir);
-    for (let i = 0; i < 6000; i++) fs.writeFileSync(path.join(dir, `scan-${i}.png`), "");
+    for (let i = 0; i < 5001; i++) fs.writeFileSync(path.join(dir, `scan-${i}.png`), "");
 
-    expect(handlers["locate-attachment"](null, "scan-5999.png", null)).toBe("Scans/scan-5999.png");
-  });
+    expect(handlers["locate-attachment"](null, "scan-5000.png", null)).toBe("Scans/scan-5000.png");
+  }, 30_000);
 
   it("opens and reveals only paths inside the vault, the vault root included", async () => {
     shell.openPath = vi.fn(async () => "");
