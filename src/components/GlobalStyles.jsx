@@ -349,6 +349,13 @@ export default function GlobalStyles() {
           background-color: ${theme.BG.hover} !important;
           transition: none !important;
         }
+        /* A hold on a row is its menu: Android's long-press also selected the
+           row's words, handles and all. A rename's field still selects. */
+        html.is-phone :is(.sidebar-row, .sidebar-action-row, [role="treeitem"]) {
+          -webkit-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none;
+        }
         /* The press comes at once and leaves slowly: a quick tap holds :active
            for a few frames, too short to see, so the grey fades out after it. */
         ${PHONE_PRESSABLE} {

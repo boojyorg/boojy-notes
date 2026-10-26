@@ -88,3 +88,13 @@ test("a tap on a code block still brings up its toolbar", async ({ page }) => {
   await page.touchscreen.tap(block.x + 40, block.y + block.height / 2);
   await expect(copy).toHaveCSS("opacity", "1");
 });
+
+// Android's long-press selected a row's words as well as opening its menu.
+test("a row's words are never selected by a hold", async ({ page }) => {
+  await asPhone(page);
+  const row = page.locator(".sidebar-action-row").first();
+  await expect(row).toHaveCSS("user-select", "none");
+  // Off the phone, nothing changes.
+  await page.evaluate(() => document.documentElement.classList.remove("is-phone"));
+  await expect(row).not.toHaveCSS("user-select", "none");
+});
