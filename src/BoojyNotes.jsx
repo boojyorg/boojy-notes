@@ -214,6 +214,11 @@ export default function BoojyNotes() {
     adoptNoteData,
   });
 
+  // The open note's file was deleted outside the app (useFileSystem). Handled
+  // below, once Recently Deleted is wired up and the editor has moved off it.
+  const [deletedOutside, setDeletedOutside] = useState(null);
+  const onOpenNoteDeleted = useCallback((deleted) => setDeletedOutside(deleted), []);
+
   // EditorArea's answer to the open note taking a version from disk: it
   // closes what was aimed at text that changed (useRef, filled by EditorArea).
   const outsideChangeRef = useRef(null);
@@ -302,6 +307,7 @@ export default function BoojyNotes() {
     replaceNoteData,
     onExternalConflict,
     onOpenNoteFromDisk,
+    onOpenNoteDeleted,
     onNotesEdited: markEdited,
     onTitleResolved,
     remapNoteFolders,
@@ -365,6 +371,10 @@ export default function BoojyNotes() {
     },
     [deletedPreview, deletedReturn.restoring, recentlyDeleted.restore, setActiveNote],
   );
+  // For a notice's Restore, which runs long after it was made: the preview
+  // it finds then decides whether the note opens.
+  const restoreDeletedRef = useRef(restoreDeleted);
+  restoreDeletedRef.current = restoreDeleted;
   const viewDeleted = useCallback(
     (item) => {
       versionHistory.close();
@@ -377,6 +387,41 @@ export default function BoojyNotes() {
   useEffect(() => {
     if (!sidebarVisible) setBinOpen(false);
   }, [sidebarVisible]);
+  // The open note deleted outside the app. With pending edits it is being
+  // written back, and the notice says so. Otherwise its last text, kept in
+  // Recently Deleted, stands read-only in its place with a notice whose
+  // Restore puts it back (never over a file that has taken its name). The
+  // preview waits for the editor to move off the note: a note opening ends a
+  // preview, and the draft that takes the note's place is one.
+  useEffect(() => {
+    const deleted = deletedOutside;
+    if (!deleted) return;
+    const title = deleted.title || "Untitled";
+    if (deleted.writtenBack) {
+      setDeletedOutside(null);
+      showToast(
+        `"${title}" was deleted outside Boojy Notes while you were editing it. Your version was saved again.`,
+        "notice",
+      );
+      return;
+    }
+    if (!activeNote || activeNote === deleted.id) return;
+    setDeletedOutside(null);
+    (async () => {
+      const text = await getAPI()?.readDeletedNote?.(deleted.id);
+      if (text == null) {
+        showToast(`"${title}" was deleted outside Boojy Notes.`, "notice");
+        return;
+      }
+      viewDeleted({ id: deleted.id, name: title, folder: deleted.folder ?? "", at: Date.now() });
+      showToast(
+        `"${title}" was deleted outside Boojy Notes. It's kept in Recently Deleted.`,
+        "notice",
+        { action: { label: "Restore", run: () => restoreDeletedRef.current(deleted.id) } },
+      );
+    })();
+  }, [deletedOutside, activeNote, showToast, viewDeleted]);
+
   const openRecentlyDeleted = useCallback(() => {
     if (sidebarVisible) setBinOpen(true);
     else {

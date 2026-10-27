@@ -207,6 +207,14 @@ describe("Recently Deleted", () => {
     expect(history.purgeDeleted("n1")).toBe(false);
   });
 
+  it("takes a note out of the bin when the app writes it again", () => {
+    history.observe("n1", "Mine");
+    history.noteDeleted("n1", "Mine.md");
+    expect(history.listDeleted()).toHaveLength(1);
+    history.recordWrite("n1", "Mine, edited");
+    expect(history.listDeleted()).toEqual([]);
+  });
+
   it("stops listing a note after its 30 days", () => {
     history.observe("n1", "Old");
     history.noteDeleted("n1", "Old.md");
