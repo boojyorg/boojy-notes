@@ -128,3 +128,29 @@ test("another note deleted outside goes to Recently Deleted quietly, and the ope
     await h.close();
   }
 });
+
+test("notes deleted outside close together all wait in Recently Deleted", async () => {
+  const h = await launchApp({
+    "Essay.md": "The essay.\n",
+    "A.md": "Note A.\n",
+    "B.md": "Note B.\n",
+    "C.md": "Note C.\n",
+  });
+  try {
+    await settledIn(h, "Essay");
+    // The first delete's rebuild of the vault runs before the next ones' events.
+    for (const name of ["A", "B", "C"]) {
+      fs.unlinkSync(h.vault.file(`${name}.md`));
+      await sleep(100);
+    }
+    await expect(h.page.locator('[role="treeitem"]').filter({ hasText: /^[ABC]$/ })).toHaveCount(
+      0,
+      { timeout: 5_000 },
+    );
+    await sleep(SETTLE_MS);
+    await binRow(h).click();
+    await expect(bin(h).getByRole("option")).toHaveCount(3);
+  } finally {
+    await h.close();
+  }
+});

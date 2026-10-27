@@ -1,7 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { watchTree } from "./treeWatcher.js";
-import { getIdIndex, hashOf, parseNoteFile, relocateNote, saveIndex } from "./noteFileManager.js";
+import {
+  getIdIndex,
+  goneNoteAt,
+  hashOf,
+  parseNoteFile,
+  relocateNote,
+  saveIndex,
+} from "./noteFileManager.js";
 import { noteDeleted } from "./history.js";
 import { attachmentAdded, attachmentRemoved, resetAttachmentIndex } from "./attachmentIndex.js";
 import { isOffloaded } from "./offloaded.js";
@@ -178,10 +185,12 @@ function startWatcher(getNotesDir, getMainWindow) {
     const moved = relocateNote(filePath, notesDir);
     if (!moved) {
       const rel = path.relative(notesDir, filePath).split(path.sep).join("/");
-      const id =
+      const indexed =
         Object.entries(getIdIndex()).find(([, p]) => p.split(path.sep).join("/") === rel)?.[0] ??
         null;
-      if (id) noteDeleted(id, rel);
+      if (indexed) noteDeleted(indexed, rel);
+      // A rebuild for an earlier delete may have found this one first and kept it.
+      const id = indexed ?? goneNoteAt(rel);
       trace("M", "send file-deleted", rel, id ?? "no id");
       win?.webContents.send("file-deleted", { filePath, id });
       return;
