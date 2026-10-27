@@ -119,10 +119,9 @@ the test its rule names when it is built.
   revoked folder access and a disconnected Dropbox stated and tested, local notes usable
   throughout. The crash screen promises a backup whose write can fail silently and that
   nothing reads back (`ErrorBoundary.jsx:18`): fix the path and the wording.
-- **An outside edit to the open note**: with no unsaved typing it updates in place, caret kept
-  and that note's undo cleared; with unsaved typing both versions are kept and the editor stays
-  on the user's. Content-stable block ids are part of it, not all: `applyExternalNote` drops the
-  undo entries (`useHistory.js:190`) and the clash path opens the copy (`useFileSystem.js:353`).
+- **The open note deleted outside the app** vanishes with no notice; with unsaved typing it is
+  quietly written back. Keep it on screen, read-only, with a notice and a Restore that never
+  replaces a file at that path.
 
 **Compatibility**
 
@@ -438,9 +437,6 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   straight from `lucide-react` at 15 and 17px, stroke 1.8, off both tiers; no font token
   (`Inter` is named first and never shipped, so every geometry judgement in the rules was made
   in SF Pro), four mono stacks, no `tabular-nums` where counts change width.
-- **Block IDs are minted on every re-parse** — `markdownToBlocks` uses a module-global counter,
-  so a re-sync remounts every block and loses the caret; part of Public Beta's outside-edit
-  requirement.
 - **Updater behaviour** — `autoDownload` is on and every launch checks. A failed check reaches
   Settings → Updates ("Couldn't check for updates", Try again; `settingsManager.js:136`,
   `UpdatesTab.tsx`) and nowhere else; the promise's own `catch(() => {})` is harmless.

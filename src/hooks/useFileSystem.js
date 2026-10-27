@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { isElectron, isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 import { blocksToMarkdown } from "../utils/markdown";
+import { withKeptBlockIds } from "../utils/blockIds";
 import { genNoteId } from "../utils/storage";
 import { localDay } from "../utils/localDay";
 import { trace } from "../utils/trace";
@@ -37,7 +38,7 @@ export function conflictCopyTitle(title, date = new Date()) {
 /**
  * @param editorLinks `{ unflushedNotes, latestNoteDataRef, activeNoteRef,
  *   applyExternalNote, adoptNoteData, replaceNoteData, remapNoteFolders,
- *   onExternalConflict, onNotesEdited, onTitleResolved }`. This hook never
+ *   onExternalConflict, onOpenNoteFromDisk, onNotesEdited, onTitleResolved }`. This hook never
  *   sets note state itself: every change of record from disk goes through
  *   useHistory, which keeps its keystroke ref and React state together.
  *   `applyExternalNote(note)` is the path for one note as the disk now holds
@@ -58,6 +59,9 @@ export function conflictCopyTitle(title, date = new Date()) {
  *   and the note is remembered as conflicted so that every later flush (the
  *   debounce, the retry, blur, quit) writes it as the copy and never under its
  *   own name.
+ *   `onOpenNoteFromDisk(before, after)` is called just before the open note
+ *   takes a version from disk, its blocks already keeping their ids, so the
+ *   editor can move a caret whose block is gone.
  *   `onTitleResolved(id, written, title)` is called when the write landed the
  *   note under a basename other than the title it was written with: a
  *   namesake forced a suffix, characters a filename cannot hold were replaced,
@@ -128,9 +132,15 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // render's dirty scan is skipped, so nothing taken from disk is written
   // back; a caller that folds in local work (the delete rebuild) marks that
   // work dirty itself.
+  // A note already here keeps its block ids (`withKeptBlockIds`), so the open
+  // note's unchanged blocks are not remounted and its caret stays.
   const takeFromDisk = useCallback((next) => {
     isExternalUpdate.current = true;
-    editorLinksRef.current.replaceNoteData(next);
+    const links = editorLinksRef.current;
+    const here = links.latestNoteDataRef?.current ?? noteDataRef.current;
+    const kept = {};
+    for (const [id, n] of Object.entries(next)) kept[id] = withKeptBlockIds(here[id], n);
+    links.replaceNoteData(kept);
   }, []);
   // Work to run once the next flush has finished: after pending writes and
   // Trash moves. Removing a folder's directory waits on this, so it can only
@@ -370,14 +380,22 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // Take the disk's version of a note. The editor repaints from state only
   // when it is the open note: a repaint while typing in another note would
   // paint that note's state, which lags the keystrokes still inside the
-  // text-commit debounce, over the live DOM.
+  // text-commit debounce, over the live DOM. Its blocks keep the ids they
+  // had here, so only what changed is remounted and the caret is painted
+  // back where it was; `onOpenNoteFromDisk` is told first, while the DOM
+  // still holds the caret's block, in case that block is gone.
   const applyExternal = useCallback(
-    (external) => {
+    (fromDisk) => {
       const links = editorLinksRef.current;
+      const active = links.activeNoteRef.current === fromDisk.id;
+      const here =
+        links.latestNoteDataRef?.current?.[fromDisk.id] ?? noteDataRef.current[fromDisk.id];
+      const external = withKeptBlockIds(here, fromDisk);
+      if (active) links.onOpenNoteFromDisk?.(here, external);
       dirtyNotes.current.delete(external.id);
       externalIds.current.add(external.id);
       links.applyExternalNote(external);
-      if (syncGeneration && links.activeNoteRef.current === external.id) syncGeneration.current++;
+      if (syncGeneration && active) syncGeneration.current++;
       ensureFolder(external.folder);
     },
     // Deps deliberately not exhaustive: syncGeneration is a stable ref

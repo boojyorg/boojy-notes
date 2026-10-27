@@ -747,7 +747,16 @@ describe("useFileSystem — outside edits", () => {
   it("takes an outside change to another note through the one external path, without repainting the editor", async () => {
     const { links, setNoteData, syncGeneration, generationBefore } = await renderWith();
     await act(async () => fileChanged(betaOutside));
-    const { _filePath, ...expected } = betaOutside;
+    const { _filePath, ...outside } = betaOutside;
+    // The edited paragraph keeps the id it had here, so it is repainted in
+    // place rather than remounted.
+    const expected = {
+      ...outside,
+      content: {
+        ...outside.content,
+        blocks: [{ ...outside.content.blocks[0], id: beta.content.blocks[0].id }],
+      },
+    };
     expect(links.applyExternalNote).toHaveBeenCalledExactlyOnceWith(expected);
     expect(setNoteData).not.toHaveBeenCalled();
     // Not the open note: a repaint would paint state, which lags the keystrokes
