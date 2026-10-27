@@ -43,6 +43,9 @@ stays a delete. Never compare bytes to decide identity. `external-rename.spec.ts
 
 - Everything from disk goes through `applyExternalNote`; "same" is judged by the writer
   (`persistedEquals`). No pending edits: take it at once.
+- **A note from disk keeps the block ids it had here** (`keepBlockIds`): only what changed
+  remounts, the caret is painted back (a removed block's goes to the one in its place); what
+  names text by place in a changed block (a formula's source) closes. `outside-edit-view.spec.ts`.
 - **Pending edits: keep both.** The local version is written first as `Title (conflicted copy
   YYYY-MM-DD)`; the disk version is adopted only once that succeeds, so a failed copy replaces
   nothing.

@@ -62,11 +62,9 @@ test("an outside edit to the open note just after the app's own save is shown, a
     await sleep(SETTLE_MS);
     expect(h.vault.read("Alpha.md")).toBe("Alpha body. one\nAdded outside.\n");
 
-    // Typing on after it is an edit of the outside version, not of the stale
-    // one: the outside line is still there after the save. (The two lines are
-    // one paragraph, so the caret sits on its first line.)
-    await h.page.locator("[data-block-id]").first().click();
-    await h.page.keyboard.press(END_OF_LINE);
+    // Typing on, without a click, is an edit of the outside version where
+    // the caret was: the outside line is still there after the save. (The
+    // two lines are one paragraph; the caret kept its place on the first.)
     await h.page.keyboard.type(" more");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes(" more"));
     await sleep(SETTLE_MS);

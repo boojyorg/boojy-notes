@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMe
 import WindowStrip from "./components/WindowStrip";
 import { useWindowResizing } from "./hooks/useWindowResizing";
 import { belowItem, selectedIds } from "./utils/blockRun";
+import { changedBlockIds } from "./utils/blockIds";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
@@ -213,6 +214,41 @@ export default function BoojyNotes() {
     adoptNoteData,
   });
 
+  // EditorArea's answer to the open note taking a version from disk: it
+  // closes what was aimed at text that changed (useRef, filled by EditorArea).
+  const outsideChangeRef = useRef(null);
+
+  // The block the editor's caret is in, if the editor holds it.
+  const caretBlockId = useCallback(() => {
+    const sel = window.getSelection();
+    const node = sel?.rangeCount ? sel.anchorNode : null;
+    const blockEl = (node?.nodeType === 1 ? node : node?.parentElement)?.closest?.(
+      "[data-block-id]",
+    );
+    const blockId = blockEl?.getAttribute("data-block-id");
+    const el = blockId ? blockRefs.current[blockId] : null;
+    return el && editorRef.current?.contains(el) ? blockId : null;
+  }, []);
+
+  // The open note is about to take a version from disk. Blocks that are still
+  // there keep their ids and the caret is painted back in its own; a caret
+  // whose block is gone moves to the start of the block now in its place,
+  // else the next keystroke would open a paragraph at the note's end. Only
+  // while the editor holds the caret: a rescue never takes focus.
+  const onOpenNoteFromDisk = useCallback(
+    (before, after) => {
+      outsideChangeRef.current?.(changedBlockIds(before?.content?.blocks, after?.content?.blocks));
+      const blockId = caretBlockId();
+      const blocks = after?.content?.blocks;
+      if (!blockId || !blocks?.length || blocks.some((b) => b.id === blockId)) return;
+      const index = before?.content?.blocks?.findIndex((b) => b.id === blockId) ?? -1;
+      if (index < 0) return;
+      focusBlockId.current = blocks[Math.min(index, blocks.length - 1)].id;
+      focusCursorPos.current = 0;
+    },
+    [caretBlockId],
+  );
+
   // The open note changed on disk while edits were pending, and the local
   // version has just been saved as a conflict copy. Continue in the copy: it
   // keeps the note's block ids, so the caret's block and offset carry over
@@ -223,25 +259,21 @@ export default function BoojyNotes() {
       // the user has left keeps its copy as a sidebar row: the toast says so,
       // and nothing jumps away from what they are reading.
       if (active) {
-        const sel = window.getSelection();
-        const node = sel?.rangeCount ? sel.anchorNode : null;
-        const blockEl = (node?.nodeType === 1 ? node : node?.parentElement)?.closest?.(
-          "[data-block-id]",
-        );
-        const blockId = blockEl?.getAttribute("data-block-id");
-        const el = blockId ? blockRefs.current[blockId] : null;
-        if (el && editorRef.current?.contains(el)) {
+        const blockId = caretBlockId();
+        if (blockId) {
           focusBlockId.current = blockId;
-          focusCursorPos.current = Math.max(0, getCaretOffset(el));
+          focusCursorPos.current = Math.max(0, getCaretOffset(blockRefs.current[blockId]));
         }
         setActiveNote(copyId);
       }
       showToast(
-        `"${title}" changed outside Boojy Notes. Your edits were kept in "${copyTitle}".`,
+        active
+          ? `"${title}" changed outside Boojy Notes. You're editing your version in "${copyTitle}"; the outside version is in "${title}".`
+          : `"${title}" changed outside Boojy Notes. Your edits were kept in "${copyTitle}"; the outside version is in "${title}".`,
         "notice",
       );
     },
-    [setActiveNote, showToast],
+    [setActiveNote, showToast, caretBlockId],
   );
 
   // ── External hooks ──────────────────────────────────────────────────
@@ -269,6 +301,7 @@ export default function BoojyNotes() {
     adoptNoteData,
     replaceNoteData,
     onExternalConflict,
+    onOpenNoteFromDisk,
     onNotesEdited: markEdited,
     onTitleResolved,
     remapNoteFolders,
@@ -1691,6 +1724,7 @@ export default function BoojyNotes() {
                 openFindRef={openFindRef}
                 switchViewRef={switchViewRef}
                 blockActionsRef={blockActionsRef}
+                outsideChangeRef={outsideChangeRef}
                 onEditorClick={clearSelection}
                 textOnlyEditForEditor={textOnlyEditForEditor}
                 syncGen={syncGeneration.current}
