@@ -697,8 +697,12 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
           const id = external.id;
           const links = editorLinksRef.current;
           const local = links?.latestNoteDataRef?.current?.[id] ?? noteDataRef.current[id];
+          // Told back once taken up: a save after this that carries an old
+          // name is the user renaming the note, not one sent before the move.
+          const taken = () => api.outsideMoveTaken?.(id);
           if (!local) {
             applyExternal(external);
+            taken();
             return;
           }
           const pending = dirtyNotes.current.has(id) || !!links?.unflushedNotes?.current?.has(id);
@@ -723,6 +727,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
               },
             };
           });
+          taken();
           ensureFolder(external.folder);
         })
       : () => {};

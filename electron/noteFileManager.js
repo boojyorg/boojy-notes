@@ -377,6 +377,12 @@ function relocateNote(filePath, notesDir) {
   _idIndex[id] = newRelPath;
   const note = parseNoteFile(newPath, notesDir, offloaded);
   if (!note) return null;
+  // Moved and changed: a save is still checked against the bytes the app last
+  // saw, so it is refused as the outside change it is, never written over it.
+  if (!sameBytes) {
+    const seen = _identity.get(id);
+    if (seen) _identity.set(id, { ...seen, hash: identity.hash });
+  }
   saveIndex(notesDir);
   return { note, raw, sameBytes, displaced };
 }
@@ -391,7 +397,8 @@ function nameOf(relPath) {
 }
 
 // A note moved or renamed outside the app, by the names it had before, until
-// the window has taken up the new one (`write-note`).
+// the window says it has taken up the new one (`outside-move-taken`): a save
+// it sent before then carries an old name (`write-note`).
 const _outsideMoves = new Map(); // noteId → [{ title, folder }]
 
 // ─── Parse a single note file ───
@@ -663,6 +670,10 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   // have changed: its file is downloaded first (off the main thread) and its
   // own text is what it writes. Every other save is synchronous, so from the
   // write on no watcher event can arrive before the claim.
+  ipcMain.handle("outside-move-taken", (_event, id) => {
+    if (typeof id === "string") _outsideMoves.delete(id);
+  });
+
   ipcMain.handle("write-note", (_event, note) => {
     const notesDir = getNotesDir();
     assertVaultPresent(notesDir);
@@ -708,8 +719,9 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // A save sent before the window took up an outside move carries the name
     // the note had before it. That is not the user renaming the note back:
     // written as a rename, it moved the file back to the old name under the
-    // other app's feet. It is written under the name the file has now. A save
-    // under the new name, or any other, means the window has caught up.
+    // other app's feet. It is written under the name the file has now. The
+    // window's word that it has the new name ends this (messages from it
+    // arrive in order), so a rename the user makes after is the rename it is.
     const before = _outsideMoves.get(note.id);
     if (before && existingRelPath) {
       const stale = before.some(
@@ -723,7 +735,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
           folder: now.folder,
           content: { ...note.content, title: now.title },
         };
-      } else _outsideMoves.delete(note.id);
+      }
     }
 
     // A save never lands over bytes the app has not seen. The note's file can

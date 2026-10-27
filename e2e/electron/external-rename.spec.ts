@@ -32,6 +32,7 @@ import {
   sleep,
   waitForFile,
   mdFiles,
+  renameRow,
   typeAtEnd,
 } from "./harness";
 
@@ -175,6 +176,45 @@ test("a save that lands before the watcher has seen an outside rename follows th
     expect(await editorTitle(h.page)).toBe(name);
     expect(await sidebarNoteTitles(h.page)).toEqual([name]);
     expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a note renamed outside, then renamed back in the app, takes the name asked for", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha body.\n" });
+  try {
+    await h.openNote("Alpha");
+    await sleep(SETTLE_MS);
+    fs.renameSync(h.vault.file("Alpha.md"), h.vault.file("Renamed.md"));
+    await expect.poll(() => editorTitle(h.page), { timeout: 5_000 }).toBe("Renamed");
+    await renameRow(h.page, "Renamed", "Alpha");
+    await expect.poll(() => mdFiles(h.vault), { timeout: 5_000 }).toEqual(["Alpha.md"]);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Alpha body.\n");
+    expect(await editorTitle(h.page)).toBe("Alpha");
+  } finally {
+    await h.close();
+  }
+});
+
+test("a note renamed and edited outside just before a save keeps the outside text, and the local one as a copy", async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const h = await launchApp({ "Alpha.md": "Start." });
+  try {
+    await h.openNote("Alpha");
+    await typeAtEnd(h.page, " w0");
+    await sleep(SETTLE_MS);
+    await h.page.keyboard.type(" mine");
+    // Inside the save's debounce, and the watcher's settling.
+    await sleep(700);
+    fs.renameSync(h.vault.file("Alpha.md"), h.vault.file("Moved.md"));
+    fs.writeFileSync(h.vault.file("Moved.md"), "Theirs, edited.");
+    await sleep(SETTLE_MS * 2);
+    expect(h.vault.read("Moved.md")).toBe("Theirs, edited.");
+    const copy = `Moved (conflicted copy ${today}).md`;
+    expect(mdFiles(h.vault).sort()).toEqual([copy, "Moved.md"].sort());
+    expect(h.vault.read(copy)).toBe("Start. w0 mine");
   } finally {
     await h.close();
   }

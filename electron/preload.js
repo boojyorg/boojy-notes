@@ -141,6 +141,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onFileChanged: subscribe("file-changed"),
 
   onFileDeleted: subscribe("file-deleted"),
+  outsideMoveTaken: (noteId) => ipcRenderer.invoke("outside-move-taken", noteId),
 
   // A note renamed or moved outside the app: the same note, as the disk now
   // holds it (its new title and folder).
