@@ -176,6 +176,7 @@ const EditorArea = memo(
     switchViewRef,
     // Edit → Duplicate reaches the editor's ⌘D through this.
     blockActionsRef,
+    outsideChangeRef,
     // Version History: a version on screen instead of the note, read-only.
     pastVersion,
     onTypeIntoPast,
@@ -1027,6 +1028,18 @@ const EditorArea = memo(
     );
 
     const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
+
+    // The open note took a version from disk (an edit in another app), its
+    // blocks keeping their ids. A formula's source names its formula by place
+    // in its block, so one in a block that changed may now name another: it
+    // closes. The right-click menu acts on a range taken before the change:
+    // it closes too.
+    if (outsideChangeRef) {
+      outsideChangeRef.current = (changed) => {
+        setMathTarget((t) => (t && changed.has(t.blockId) ? null : t));
+        setLinkCtxMenu(null);
+      };
+    }
 
     // A table written compact or by hand, whose columns Tidy table would
     // line up; one the app writes, or one already lined up, needs none.

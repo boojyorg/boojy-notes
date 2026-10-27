@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMe
 import WindowStrip from "./components/WindowStrip";
 import { useWindowResizing } from "./hooks/useWindowResizing";
 import { belowItem, selectedIds } from "./utils/blockRun";
+import { changedBlockIds } from "./utils/blockIds";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
@@ -213,6 +214,10 @@ export default function BoojyNotes() {
     adoptNoteData,
   });
 
+  // EditorArea's answer to the open note taking a version from disk: it
+  // closes what was aimed at text that changed (useRef, filled by EditorArea).
+  const outsideChangeRef = useRef(null);
+
   // The block the editor's caret is in, if the editor holds it.
   const caretBlockId = useCallback(() => {
     const sel = window.getSelection();
@@ -232,6 +237,7 @@ export default function BoojyNotes() {
   // while the editor holds the caret: a rescue never takes focus.
   const onOpenNoteFromDisk = useCallback(
     (before, after) => {
+      outsideChangeRef.current?.(changedBlockIds(before?.content?.blocks, after?.content?.blocks));
       const blockId = caretBlockId();
       const blocks = after?.content?.blocks;
       if (!blockId || !blocks?.length || blocks.some((b) => b.id === blockId)) return;
@@ -1718,6 +1724,7 @@ export default function BoojyNotes() {
                 openFindRef={openFindRef}
                 switchViewRef={switchViewRef}
                 blockActionsRef={blockActionsRef}
+                outsideChangeRef={outsideChangeRef}
                 onEditorClick={clearSelection}
                 textOnlyEditForEditor={textOnlyEditForEditor}
                 syncGen={syncGeneration.current}

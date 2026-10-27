@@ -347,3 +347,65 @@ test("an outside edit to a code block, a table and a callout shows in their fiel
     await h.close();
   }
 });
+
+test("an outside edit to a paragraph whose formula is open closes the formula's source, and typing changes nothing", async () => {
+  // The panel names its formula by place in the paragraph: kept open across
+  // an outside edit that added a formula before it, it showed another
+  // formula and its typing went into the prose.
+  const h = await launchApp({ "Maths.md": "Before $a$ and $b$.\n" });
+  try {
+    await h.openNote("Maths");
+    await h.page.locator("[data-block-type='p'] .inline-math").nth(1).click();
+    const source = h.page.getByRole("textbox", { name: "Formula source" });
+    await expect(source).toHaveValue("b");
+    await sleep(SETTLE_MS);
+    h.vault.write("Maths.md", "New $x$ before $a$ and $b$.\n");
+    await expect(h.page.locator("[data-block-type='p'] .inline-math")).toHaveCount(3, {
+      timeout: 5_000,
+    });
+    await expect(source).toHaveCount(0);
+    await h.page.keyboard.type("+1");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Maths.md")).toBe("New $x$ before $a$ and $b$.\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("an outside edit to another paragraph leaves an open formula's source open on its formula", async () => {
+  const h = await launchApp({ "Maths.md": "Intro.\n\nBefore $a$ and $b$.\n" });
+  try {
+    await h.openNote("Maths");
+    await h.page.locator("[data-block-type='p'] .inline-math").nth(1).click();
+    const source = h.page.getByRole("textbox", { name: "Formula source" });
+    await expect(source).toHaveValue("b");
+    await sleep(SETTLE_MS);
+    await outsideWrite(h, "Maths.md", "Intro, edited.\n\nBefore $a$ and $b$.\n", "edited");
+    await expect(source).toHaveValue("b");
+    await expect(source).toBeFocused();
+  } finally {
+    await h.close();
+  }
+});
+
+test("an outside edit to an open $$ formula shows in its source, and typing edits the new formula", async () => {
+  const h = await launchApp({ "Block.md": "Intro.\n\n$$\nE = mc^2\n$$\n" });
+  try {
+    await h.openNote("Block");
+    const formula = h.page.locator("[data-block-type='math']");
+    await formula.getByRole("button", { name: "Edit formula" }).click();
+    const source = h.page.getByRole("textbox", { name: "Formula source" });
+    await expect(source).toBeFocused();
+    await sleep(SETTLE_MS);
+    h.vault.write("Block.md", "Intro.\n\n$$\na + b\n$$\n");
+    await expect(formula.locator(".katex annotation")).toHaveText("a + b", { timeout: 5_000 });
+    await expect(source).toHaveValue("a + b");
+    await h.page.keyboard.type(" + c");
+    await waitForFile(h.vault.file("Block.md"), (t) => t.includes("+ c"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Block.md")).toBe("Intro.\n\n$$\na + b + c\n$$\n");
+  } finally {
+    await h.close();
+  }
+});

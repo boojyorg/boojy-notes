@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { keepBlockIds, withKeptBlockIds } from "../../src/utils/blockIds";
+import { changedBlockIds, keepBlockIds, withKeptBlockIds } from "../../src/utils/blockIds";
 import { markdownToBlocks } from "../../src/utils/markdown";
 import type { Block } from "../../src/types/notes";
 
@@ -101,5 +101,14 @@ describe("withKeptBlockIds", () => {
     const kept = withKeptBlockIds(previous, note);
     expect(ids(kept.content.blocks)).toEqual(ids(previous.content.blocks));
     expect(kept.title).toBe("T");
+  });
+});
+
+describe("changedBlockIds", () => {
+  it("names the blocks whose content changed or that are gone, not the ones kept as they were", () => {
+    const before = read("One.\n\nTwo.\n\nThree.\n");
+    const after = keepBlockIds(before, read("One.\n\nTwo, edited.\n"));
+    expect(changedBlockIds(before, after)).toEqual(new Set([before[1].id, before[2].id]));
+    expect(changedBlockIds(before, before)).toEqual(new Set());
   });
 });

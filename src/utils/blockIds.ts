@@ -115,3 +115,14 @@ export function withKeptBlockIds<
   const kept = keepBlockIds(before, blocks);
   return kept === blocks ? note : ({ ...note, content: { ...note.content, blocks: kept } } as N);
 }
+
+/** The ids of `before`'s blocks that `after` no longer holds as they were: changed or gone. */
+export function changedBlockIds(
+  before: readonly Block[] | undefined,
+  after: readonly Block[] | undefined,
+): Set<string> {
+  const now = new Map((after ?? []).map((b) => [b.id, contentKey(b)]));
+  const changed = new Set<string>();
+  for (const b of before ?? []) if (now.get(b.id) !== contentKey(b)) changed.add(b.id);
+  return changed;
+}
