@@ -119,9 +119,6 @@ the test its rule names when it is built.
   revoked folder access and a disconnected Dropbox stated and tested, local notes usable
   throughout. The crash screen promises a backup whose write can fail silently and that
   nothing reads back (`ErrorBoundary.jsx:18`): fix the path and the wording.
-- **The open note deleted outside the app** vanishes with no notice; with unsaved typing it is
-  quietly written back. Keep it on screen, read-only, with a notice and a Restore that never
-  replaces a file at that path.
 
 **Compatibility**
 

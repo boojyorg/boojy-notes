@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { watchTree } from "./treeWatcher.js";
-import { hashOf, parseNoteFile, relocateNote, saveIndex } from "./noteFileManager.js";
+import { getIdIndex, hashOf, parseNoteFile, relocateNote, saveIndex } from "./noteFileManager.js";
+import { noteDeleted } from "./history.js";
 import { attachmentAdded, attachmentRemoved, resetAttachmentIndex } from "./attachmentIndex.js";
 import { isOffloaded } from "./offloaded.js";
 import { trace, traceEnabled } from "./trace.js";
@@ -166,7 +167,9 @@ function startWatcher(getNotesDir, getMainWindow) {
   // still holds the bytes the app last read or wrote there: it is claimed as
   // those bytes are, so it is dropped as an echo; a file that also changed
   // is delivered as the change it is. A note that lost its file to the move
-  // (`mv -f` over it) is reported deleted.
+  // (`mv -f` over it) is reported deleted. A delete is kept in Recently
+  // Deleted, as one made in the app is, before the window hears of it: its
+  // re-read of the vault ends what the history store holds of the note.
   watcher.on("unlink", (filePath) => {
     if (!filePath.endsWith(".md")) return;
     if (isOwnUnlinkEvent(filePath)) return;
@@ -174,7 +177,13 @@ function startWatcher(getNotesDir, getMainWindow) {
     const notesDir = getNotesDir();
     const moved = relocateNote(filePath, notesDir);
     if (!moved) {
-      win?.webContents.send("file-deleted", { filePath });
+      const rel = path.relative(notesDir, filePath).split(path.sep).join("/");
+      const id =
+        Object.entries(getIdIndex()).find(([, p]) => p.split(path.sep).join("/") === rel)?.[0] ??
+        null;
+      if (id) noteDeleted(id, rel);
+      trace("M", "send file-deleted", rel, id ?? "no id");
+      win?.webContents.send("file-deleted", { filePath, id });
       return;
     }
     if (moved.sameBytes && moved.raw !== null) claimWrite(moved.note._filePath, moved.raw);

@@ -300,8 +300,9 @@ export function observe(id: string, text: string): void {
   if (!head) _heads.set(id, { text, hash, session: false, timer: null });
 }
 
-/** The app wrote `text` to the note's file. */
+/** The app wrote `text` to the note's file: a note in the bin is back on disk. */
 export function recordWrite(id: string, text: string): void {
+  if (readLog(id).deletedAt !== null) noteRestored(id);
   const hash = hashText(text);
   let head = _heads.get(id);
   if (!head) {
