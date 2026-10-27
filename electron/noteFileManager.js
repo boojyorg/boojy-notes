@@ -587,10 +587,43 @@ function parseNoteFile(filePath, notesDir, offloaded = false) {
 
 // ─── Read all notes from vault ───
 
+// The vault the last full read was of: a read of it again is a rebuild.
+let _readVault = null;
+// Notes a rebuild found gone, by their path, for the unlink the watcher has
+// still to report (`goneNoteAt`).
+const _gone = new Map(); // relative path ("/"-separated) → noteId
+
+/**
+ * A rebuild of the vault after one note's delete can come before the watcher
+ * has reported another's (deleted a moment later): the walk below drops the
+ * other's index entry and the history store's hold on its text, and that
+ * delete was then never kept in Recently Deleted. So each note whose file is
+ * gone, and not moved elsewhere, is kept there first.
+ */
+function keepGoneNotes(notesDir) {
+  for (const [id, relPath] of Object.entries(_idIndex)) {
+    const filePath = path.join(notesDir, relPath);
+    if (fs.existsSync(filePath) || relocateNote(filePath, notesDir)) continue;
+    const rel = relPath.split(path.sep).join("/");
+    history.noteDeleted(id, rel);
+    _gone.set(rel, id);
+  }
+}
+
+/** The note a rebuild found gone from `rel`, once, for the watcher's unlink. */
+function goneNoteAt(rel) {
+  const id = _gone.get(rel) ?? null;
+  _gone.delete(rel);
+  return id;
+}
+
 function readAllNotes(notesDir) {
   const notes = {};
   if (!fs.existsSync(notesDir)) return notes;
 
+  if (_readVault === notesDir) keepGoneNotes(notesDir);
+  else _gone.clear();
+  _readVault = notesDir;
   loadIndex(notesDir);
   _outsideMoves.clear();
   history.openVault(notesDir);
@@ -1107,6 +1140,7 @@ export {
   hashOf,
   relocateNote,
   getIdIndex,
+  goneNoteAt,
   setIndexDir,
   indexPath,
   loadIndex,

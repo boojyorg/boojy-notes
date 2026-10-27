@@ -38,7 +38,8 @@ export function conflictCopyTitle(title, date = new Date()) {
 /**
  * @param editorLinks `{ unflushedNotes, latestNoteDataRef, activeNoteRef,
  *   applyExternalNote, adoptNoteData, replaceNoteData, remapNoteFolders,
- *   onExternalConflict, onOpenNoteFromDisk, onNotesEdited, onTitleResolved }`. This hook never
+ *   onExternalConflict, onOpenNoteFromDisk, onOpenNoteDeleted, onNotesEdited,
+ *   onTitleResolved }`. This hook never
  *   sets note state itself: every change of record from disk goes through
  *   useHistory, which keeps its keystroke ref and React state together.
  *   `applyExternalNote(note)` is the path for one note as the disk now holds
@@ -59,6 +60,10 @@ export function conflictCopyTitle(title, date = new Date()) {
  *   and the note is remembered as conflicted so that every later flush (the
  *   debounce, the retry, blur, quit) writes it as the copy and never under its
  *   own name.
+ *   `onOpenNoteDeleted({ id, title, folder, writtenBack })` is called when
+ *   the open note's file was deleted outside the app: `writtenBack` when
+ *   pending edits are being written back, else the note has left the notes
+ *   (its last text waits in Recently Deleted).
  *   `onOpenNoteFromDisk(before, after)` is called just before the open note
  *   takes a version from disk, its blocks already keeping their ids, so the
  *   editor can move a caret whose block is gone.
@@ -749,7 +754,14 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         })
       : () => {};
 
-    const unsubDelete = api.onFileDeleted(() => {
+    const unsubDelete = api.onFileDeleted((deleted) => {
+      // The open note's file gone: the editor is told once the rebuild has
+      // taken it out of the notes, or written it back with pending edits.
+      const links0 = editorLinksRef.current;
+      const openId = deleted?.id && links0.activeNoteRef.current === deleted.id ? deleted.id : null;
+      const openNote = openId
+        ? (links0.latestNoteDataRef.current[openId] ?? noteDataRef.current[openId])
+        : null;
       // Re-read all notes and sync folders to remove stale entries
       (async () => {
         try {
@@ -780,6 +792,13 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
             clearTimeout(writeTimer.current);
             writeTimer.current = setTimeout(() => flushRef.current(), WRITE_DEBOUNCE_MS);
           }
+          if (openNote && !(openId in diskNotes))
+            links.onOpenNoteDeleted?.({
+              id: openId,
+              title: openNote.title,
+              folder: openNote.folder ?? null,
+              writtenBack: kept.includes(openId),
+            });
           await syncFoldersFromDisk();
         } catch (err) {
           console.error("useFileSystem: re-read after delete failed", err);

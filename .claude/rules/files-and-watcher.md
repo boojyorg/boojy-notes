@@ -6,6 +6,8 @@
   note's last text and history kept 30 days, shown read-only; restored where it was (folder
   remade, `-2` on a clash, same id). `recently-deleted.spec.ts`. A folder's directory goes only
   once just OS cruft is left; non-note files are never touched.
+- **So does a note deleted outside**; the open one stays, read-only, Restore never over a newer
+  file; pending edits go back. `outside-delete.spec.ts`.
 - **The phone's bin**: `deleted/<when>/<path>`; a crash between steps leaves the note in one
   place; a restore is handed to sync (`restored`). `recentlyDeleted.test.ts`.
 - **The phone's copy is one account's folder**: a change sets it aside (`old-folders/`)
@@ -20,13 +22,12 @@ iCloud eviction). `watcher-scale.spec.ts`.
 - **`write-note` claims the bytes it wrote**: a later event whose file holds exactly those bytes
   is the echo, however late; the claim ends at the first other bytes or the file gone.
 - **An unlink the app causes** (Trash, a rename's old path) is claimed once and consumed. A
-  Trash move's end forgets the file and looks again (`unlinkDone`; a quick Put Back was lost).
+  Trash move's end forgets the file and looks again (`unlinkDone`; Put Back was lost).
   An unclaimed unlink is real, however soon.
 - A folder rename, removal or copy is the one timed suppression (`claimTree`).
   `watcher-ownership.spec.ts`.
-- **A sync folder**: a version renamed over a note is an outside edit, a conflicted copy is
-  its own note, `Icon\r` is clutter, the temp file is `.~name.tmp` (never synced).
-  `cloud-sync.spec.ts`.
+- **A sync folder**: a version renamed over a note is an outside edit, a conflicted copy its
+  own note, `Icon\r` clutter, the temp file `.~name.tmp` (never synced). `cloud-sync.spec.ts`.
 - **An offloaded (dataless) note is never read unasked** (reading downloads it): greyed by
   name, downloaded on open; a save fetches its text first. `offloaded-notes.spec.ts`.
 - **A file that can't be edited as text is listed, never hidden or written** (`unreadable`):
@@ -44,9 +45,9 @@ decide identity. `external-rename.spec.ts`.
 
 - Everything from disk goes through `applyExternalNote`; "same" is judged by the writer
   (`persistedEquals`). No pending edits: take it at once.
-- **A note from disk keeps the block ids it had here** (`keepBlockIds`): only what changed
-  remounts, the caret is painted back (a removed block's goes to the one in its place); what
-  names text by place in a changed block (a formula's source) closes. `outside-edit-view.spec.ts`.
+- **A note from disk keeps its block ids** (`keepBlockIds`): only what changed remounts, the
+  caret is painted back (a removed block's to the one in its place); what names text by place
+  in a changed block (a formula's source) closes. `outside-edit-view.spec.ts`.
 - **Pending edits: keep both.** The local version is written first as `Title (conflicted copy
   YYYY-MM-DD)`; the disk version is adopted only once that succeeds, so a failed copy replaces
   nothing.
@@ -122,5 +123,5 @@ never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 
 ## Tracing
 
-`BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (after `pnpm build`, app quit) logs
-both processes on one clock. `syncGeneration` is editor plumbing, not sync.
+`BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (built, app quit) logs both processes
+on one clock. `syncGeneration` is editor plumbing, not sync.
