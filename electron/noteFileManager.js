@@ -338,6 +338,17 @@ function relocateNote(filePath, notesDir) {
     }
   }
   const identity = id ? _identity.get(id) : undefined;
+  trace(
+    "M",
+    "DBG relocate start",
+    relPath,
+    "id",
+    id,
+    "identity",
+    !!identity,
+    "exists",
+    fs.existsSync(filePath),
+  );
   if (!identity || fs.existsSync(filePath)) return null;
 
   let newPath = null;
@@ -345,6 +356,16 @@ function relocateNote(filePath, notesDir) {
     if (newPath) return;
     try {
       const s = fs.statSync(candidate);
+      trace(
+        "M",
+        "DBG candidate",
+        path.relative(notesDir, candidate),
+        s.dev,
+        String(s.ino),
+        "want",
+        identity.dev,
+        String(identity.ino),
+      );
       if (s.dev === identity.dev && s.ino === identity.ino) newPath = candidate;
     } catch {
       /* gone between readdir and stat */
@@ -677,8 +698,20 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // read as a new note while typing went on into the old name. The save
     // follows the file by its inode, as the watcher would, takes the name the
     // file has now, tells the window, and claims the unlink still to come.
+    trace(
+      "M",
+      "DBG write check",
+      existingRelPath,
+      existingPath ? fs.existsSync(existingPath) : "no-path",
+      JSON.stringify(
+        _identity.get(note.id)
+          ? { dev: _identity.get(note.id).dev, ino: String(_identity.get(note.id).ino) }
+          : null,
+      ),
+    );
     if (existingPath && !fs.existsSync(existingPath)) {
       const moved = relocateNote(existingPath, notesDir);
+      trace("M", "DBG relocate", moved ? path.relative(notesDir, moved.note._filePath) : "NONE");
       if (moved) {
         watcher.claimUnlink(existingPath);
         trace("M", "write-note follows outside move", existingRelPath, "→", _idIndex[note.id]);
