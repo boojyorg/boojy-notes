@@ -663,12 +663,39 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   });
 
   /** `diskBody`: the file's text when a download has just read it. */
-  function writeNote(note, diskBody) {
+  function writeNote(written, diskBody) {
     const notesDir = getNotesDir();
     assertVaultPresent(notesDir);
+    let note = written;
     // The note's own file, if it has one (a title or folder change is a rename away from it).
-    const existingRelPath = _idIndex[note.id];
-    const existingPath = existingRelPath ? path.join(notesDir, existingRelPath) : null;
+    let existingRelPath = _idIndex[note.id];
+    let existingPath = existingRelPath ? path.join(notesDir, existingRelPath) : null;
+
+    // The file renamed or moved outside the app, and the watcher not told yet
+    // (it waits for a file to settle): written at the old path, the save made
+    // the file there again, the watcher then saw no move, and the moved file
+    // read as a new note while typing went on into the old name. The save
+    // follows the file by its inode, as the watcher would, takes the name the
+    // file has now, tells the window, and claims the unlink still to come.
+    if (existingPath && !fs.existsSync(existingPath)) {
+      const moved = relocateNote(existingPath, notesDir);
+      if (moved) {
+        watcher.claimUnlink(existingPath);
+        trace("M", "write-note follows outside move", existingRelPath, "→", _idIndex[note.id]);
+        const win = getMainWindow();
+        win?.webContents.send("file-moved", moved.note);
+        if (moved.displaced)
+          win?.webContents.send("file-deleted", { filePath: moved.note._filePath });
+        note = {
+          ...note,
+          title: moved.note.title,
+          folder: moved.note.folder ?? null,
+          content: { ...note.content, title: moved.note.title },
+        };
+        existingRelPath = _idIndex[note.id];
+        existingPath = path.join(notesDir, existingRelPath);
+      }
+    }
 
     // A save never lands over bytes the app has not seen. The note's file can
     // change under it between the last read or write and this save: an edit
