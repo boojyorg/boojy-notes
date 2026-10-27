@@ -187,9 +187,19 @@ jobs:
         run: |
           Add-Type -AssemblyName System.Windows.Forms
           [System.Windows.Forms.Cursor]::Position = [System.Drawing.Point]::new(0, 0)
+      # DIAGNOSTIC BRANCH, never merged: the outside-rename test, repeated,
+      # each run traced (BOOJY_TRACE_DIR), every trace kept.
       - name: Electron core-journey tests
         timeout-minutes: 20
-        run: pnpm exec playwright test -c playwright.electron.config.ts --shard=${{ matrix.shard }}/${{ matrix.shards }}
+        env:
+          BOOJY_TRACE_DIR: ${{ github.workspace }}/rename-traces
+        run: pnpm exec playwright test -c playwright.electron.config.ts repaint-spaces -g "outside rename" --repeat-each 40 --retries 0
+      - name: Keep the traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rename-traces-${{ matrix.os }}-${{ matrix.shard }}
+          path: rename-traces
       - name: Keep the report of a failed shard
         if: failure()
         uses: actions/upload-artifact@v7

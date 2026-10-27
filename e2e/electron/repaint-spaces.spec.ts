@@ -14,6 +14,17 @@ import { expect, test } from "@playwright/test";
 import { launchApp, noteText, sleep, SETTLE_MS, typeAtEnd, waitForFile } from "./harness";
 
 test("typing through an outside rename loses no space", async () => {
+  // DIAGNOSTIC: one trace per run, named by run and pass or fail.
+  const testInfo = test.info();
+  const traceDir = process.env.BOOJY_TRACE_DIR;
+  const trace = traceDir ? `${traceDir}/run-${testInfo.repeatEachIndex}.log` : null;
+  if (trace) {
+    fs.mkdirSync(traceDir!, { recursive: true });
+    process.env.BOOJY_TRACE = trace;
+  }
+  const testLog = (line: string) =>
+    trace && fs.appendFileSync(trace, `# TEST ${Date.now()} ${line}\n`);
+  let ok = false;
   const h = await launchApp({ "Alpha.md": "Start." });
   try {
     await h.openNote("Alpha");
@@ -27,18 +38,23 @@ test("typing through an outside rename loses no space", async () => {
       // Renamed outside every eight words, mid-burst, as a sync client would.
       if (i % 8 === 4) {
         const next = h.vault.file(`Alpha ${i}.md`);
+        testLog(`rename ${path} -> ${next}; dir: ${fs.readdirSync(h.vault.file("")).join(" | ")}`);
         fs.renameSync(path, next);
         path = next;
       }
     }
     await sleep(SETTLE_MS * 2);
+    testLog(`end; dir: ${fs.readdirSync(h.vault.file("")).join(" | ")}`);
     const expected = `Start. w00 ${words.join(" ")}`;
     expect(await noteText(h.page)).toBe(expected);
     // Shown as U+00A0 where HTML would hide it, written as the plain space it is.
     await waitForFile(path, (t) => t === expected, { label: "plain spaces on disk" });
     expect(h.pageErrors).toEqual([]);
+    ok = true;
   } finally {
     await h.close();
+    if (trace) fs.renameSync(trace, trace.replace(".log", `-${ok ? "pass" : "FAIL"}.log`));
+    delete process.env.BOOJY_TRACE;
   }
 });
 
