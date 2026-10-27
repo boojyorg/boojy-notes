@@ -32,6 +32,7 @@ import {
   sleep,
   waitForFile,
   mdFiles,
+  renameRow,
   typeAtEnd,
 } from "./harness";
 
@@ -144,6 +145,76 @@ test("a note renamed outside with nothing pending keeps its place in the editor"
     await sleep(SETTLE_MS);
     expect(mdFiles(h.vault)).toEqual(["Beta.md", "Renamed.md"]);
     expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a save that lands before the watcher has seen an outside rename follows the file, never recreating the old name", async () => {
+  // Found on the Windows runner (#432's traces): the save reached the old path
+  // before the watcher reported the rename (it waits for files to settle), so
+  // it made the file there again; the watcher then saw no move, the renamed
+  // file read as a new note, and typing went on into the old name.
+  const h = await launchApp({ "Alpha.md": "Start." });
+  try {
+    await h.openNote("Alpha");
+    await typeAtEnd(h.page, " w0");
+    await sleep(SETTLE_MS);
+    let name = "Alpha";
+    for (let i = 1; i <= 4; i++) {
+      await h.page.keyboard.type(` w${i}`);
+      // The text commit (300 ms) and the save's debounce (500 ms) are running:
+      // the rename lands just before the save, inside the watcher's settling.
+      await sleep(700);
+      const next = `Alpha ${i}`;
+      fs.renameSync(h.vault.file(`${name}.md`), h.vault.file(`${next}.md`));
+      name = next;
+    }
+    await sleep(SETTLE_MS * 2);
+    expect(mdFiles(h.vault)).toEqual([`${name}.md`]);
+    expect(h.vault.read(`${name}.md`)).toBe("Start. w0 w1 w2 w3 w4");
+    expect(await editorTitle(h.page)).toBe(name);
+    expect(await sidebarNoteTitles(h.page)).toEqual([name]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a note renamed outside, then renamed back in the app, takes the name asked for", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha body.\n" });
+  try {
+    await h.openNote("Alpha");
+    await sleep(SETTLE_MS);
+    fs.renameSync(h.vault.file("Alpha.md"), h.vault.file("Renamed.md"));
+    await expect.poll(() => editorTitle(h.page), { timeout: 5_000 }).toBe("Renamed");
+    await renameRow(h.page, "Renamed", "Alpha");
+    await expect.poll(() => mdFiles(h.vault), { timeout: 5_000 }).toEqual(["Alpha.md"]);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Alpha body.\n");
+    expect(await editorTitle(h.page)).toBe("Alpha");
+  } finally {
+    await h.close();
+  }
+});
+
+test("a note renamed and edited outside just before a save keeps the outside text, and the local one as a copy", async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const h = await launchApp({ "Alpha.md": "Start." });
+  try {
+    await h.openNote("Alpha");
+    await typeAtEnd(h.page, " w0");
+    await sleep(SETTLE_MS);
+    await h.page.keyboard.type(" mine");
+    // Inside the save's debounce, and the watcher's settling.
+    await sleep(700);
+    fs.renameSync(h.vault.file("Alpha.md"), h.vault.file("Moved.md"));
+    fs.writeFileSync(h.vault.file("Moved.md"), "Theirs, edited.");
+    await sleep(SETTLE_MS * 2);
+    expect(h.vault.read("Moved.md")).toBe("Theirs, edited.");
+    const copy = `Moved (conflicted copy ${today}).md`;
+    expect(mdFiles(h.vault).sort()).toEqual([copy, "Moved.md"].sort());
+    expect(h.vault.read(copy)).toBe("Start. w0 mine");
   } finally {
     await h.close();
   }

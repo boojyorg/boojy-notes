@@ -364,12 +364,16 @@ references (Public Beta).
   app within 30 s, though the quit handshake caps the flush at 2 s; the retry passed. Once in
   about sixty runs; again on the macOS runner (`first-run.spec.ts:71`, 2026-10-21). If it
   recurs, trace which quit step waits (`BOOJY_TRACE`).
-- [ ] **Typing through an outside rename lost text once on the Windows runner**
-  (`repaint-spaces.spec.ts:16`, #411's run 40135637194, 2026-10-24), on both attempts: first
-  the test's own rename found its source path missing (an app rename is one hypothesis),
-  then the final file stopped mid-word. A comment-only change; the
-  rerun, master and the other systems pass. A sync client renames a note mid-typing, so this
-  is data safety if real: reproduce on the Windows VM with `BOOJY_TRACE` before Public Beta.
+- [ ] **Typing through an outside rename still splits the note about once in 160 Windows runs**
+  (`repaint-spaces.spec.ts:16` repeated in draft #432). #433 fixed the two traced races (a save
+  beating the watcher to the rename; a save in flight carrying the old name). The third: a save
+  half a second after the rename still wrote the old name without following the file; trace
+  with #432's existence and inode lines to see whether the file looked present or the inode
+  search missed.
+- [ ] **A keystroke typed as the editor moves into a conflicted copy is lost**, about one run
+  in ten of `outside-edit-view.spec.ts` › "typing through a burst" (three in ten before #430).
+  Traced: the browser's `beforeinput` fires, the editor's input handler never does, and the
+  copy's repaint leaves the DOM without it. Data safety; the next fix.
 
 ### Data safety / reliability
 

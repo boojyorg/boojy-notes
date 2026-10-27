@@ -35,23 +35,23 @@ iCloud eviction). `watcher-scale.spec.ts`.
 
 ## An outside rename or move is the same note
 
-Identity is the inode (`_identity`, memory only), consulted only in
-`relocateNote` for an unclaimed unlink. Found elsewhere in the vault, the note follows
-(`file-moved` → `adoptNoteData`), pending edits kept and flushed at the new path. No inode match
-stays a delete. Never compare bytes to decide identity. `external-rename.spec.ts`.
+Identity is the inode (`_identity`, memory only), asked by `relocateNote` for an unclaimed
+unlink or a save finding its file gone. Found elsewhere, the note follows (`file-moved` →
+`adoptNoteData`), pending edits flushed there; a save carrying an old name before the window's
+`outside-move-taken` is no rename back. No match is a delete. Never compare bytes to decide
+identity. `external-rename.spec.ts`.
 
 ## An outside edit is never silently overwritten
 
 - Everything from disk goes through `applyExternalNote`; "same" is judged by the writer
   (`persistedEquals`). No pending edits: take it at once.
 - **A note from disk keeps its block ids** (`keepBlockIds`): only what changed remounts, the
-  caret is painted back (a removed block's to the one in its place); what names text by place
-  in a changed block (a formula's source) closes. `outside-edit-view.spec.ts`.
+  caret is painted back (a removed block's to the one in its place); a formula's source in a
+  changed block closes. `outside-edit-view.spec.ts`.
 - **Pending edits: keep both.** The local version is written first as `Title (conflicted copy
-  YYYY-MM-DD)`; the disk version is adopted only once that succeeds, so a failed copy replaces
-  nothing.
-- **`write-note` refuses a stale save** (bytes differ from the last seen hash:
-  `{ stale: true, note }`); the refusal and the watcher both land in `takeOutsideVersion`.
+  YYYY-MM-DD)`; the disk version is adopted only once that succeeds.
+- **`write-note` refuses a stale save** (bytes not the last seen: `{ stale: true, note }`);
+  refusal and watcher both land in `takeOutsideVersion`.
 - **Once conflicted, the local version never goes over the outside path**: every flush writes
   the copy until one succeeds (`copyInFlight`). No merging, by decision. `external-edit.spec.ts`.
 

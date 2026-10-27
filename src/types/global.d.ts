@@ -189,6 +189,8 @@ declare global {
       onFileDeleted: (callback: (data: { filePath: string }) => void) => Unsubscribe;
       /** A note renamed or moved outside the app, as the disk now holds it. */
       onFileMoved: (callback: (note: Note) => void) => Unsubscribe;
+      /** The window has taken up a note's new name after an outside move. */
+      outsideMoveTaken: (noteId: string) => Promise<void>;
 
       // Quit/close flush handshake
       onAppWillClose: (callback: () => void) => Unsubscribe;
