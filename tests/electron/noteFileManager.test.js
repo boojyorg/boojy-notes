@@ -774,6 +774,66 @@ describe("relocateNote — an outside rename or move is the same note", () => {
     expect(getIdIndex()).toEqual({ [alpha]: "Beta.md" });
   });
 
+  // A save the window sent before it took up an outside move: the race the
+  // Windows runner found (#432), seen in the main process alone.
+  const save = (id, title, text) =>
+    writeNote({
+      id,
+      title,
+      folder: null,
+      content: { title, blocks: [{ id: "b1", type: "p", text }] },
+    });
+
+  it("writes a save carrying the name from before an outside move under the new name, never moving the file back", () => {
+    fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
+    readAllNotes(notesDir);
+    const id = idOf("Alpha.md");
+    fs.renameSync(path.join(notesDir, "Alpha.md"), path.join(notesDir, "Alpha 4.md"));
+    relocateNote(path.join(notesDir, "Alpha.md"), notesDir); // the watcher
+
+    const written = save(id, "Alpha", "Alpha body. typed");
+    expect(written.title).toBe("Alpha 4");
+    expect(fs.readdirSync(notesDir).filter((f) => f.endsWith(".md"))).toEqual(["Alpha 4.md"]);
+    expect(fs.readFileSync(path.join(notesDir, "Alpha 4.md"), "utf-8")).toBe("Alpha body. typed");
+  });
+
+  it("follows the file when the save comes before the watcher has seen the move", () => {
+    fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
+    readAllNotes(notesDir);
+    const id = idOf("Alpha.md");
+    fs.renameSync(path.join(notesDir, "Alpha.md"), path.join(notesDir, "Alpha 4.md"));
+
+    const written = save(id, "Alpha", "Alpha body. typed");
+    expect(written.title).toBe("Alpha 4");
+    expect(fs.readdirSync(notesDir).filter((f) => f.endsWith(".md"))).toEqual(["Alpha 4.md"]);
+    expect(getIdIndex()).toEqual({ [id]: "Alpha 4.md" });
+  });
+
+  it("knows every name from before a run of outside moves", () => {
+    fs.writeFileSync(path.join(notesDir, "A.md"), "Body.\n");
+    readAllNotes(notesDir);
+    const id = idOf("A.md");
+    fs.renameSync(path.join(notesDir, "A.md"), path.join(notesDir, "B.md"));
+    relocateNote(path.join(notesDir, "A.md"), notesDir);
+    fs.renameSync(path.join(notesDir, "B.md"), path.join(notesDir, "C.md"));
+    relocateNote(path.join(notesDir, "B.md"), notesDir);
+
+    expect(save(id, "B", "Body. typed").title).toBe("C");
+    expect(fs.readdirSync(notesDir).filter((f) => f.endsWith(".md"))).toEqual(["C.md"]);
+  });
+
+  it("renames as asked once the window has taken up the new name", () => {
+    fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
+    readAllNotes(notesDir);
+    const id = idOf("Alpha.md");
+    fs.renameSync(path.join(notesDir, "Alpha.md"), path.join(notesDir, "Alpha 4.md"));
+    relocateNote(path.join(notesDir, "Alpha.md"), notesDir);
+    save(id, "Alpha 4", "Alpha body. typed"); // caught up
+
+    expect(save(id, "Alpha", "Alpha body. typed").title).toBe("Alpha");
+    expect(fs.readdirSync(notesDir).filter((f) => f.endsWith(".md"))).toEqual(["Alpha.md"]);
+  });
+
   it("forgets a note's identity once the vault walk finds its file gone, so a reused inode is never taken for it", () => {
     fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
     readAllNotes(notesDir);

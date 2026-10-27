@@ -353,6 +353,7 @@ function relocateNote(filePath, notesDir) {
   if (!newPath) return null;
 
   const newRelPath = path.relative(notesDir, newPath);
+  _outsideMoves.set(id, [...(_outsideMoves.get(id) ?? []), nameOf(relPath)]);
   let displaced = null;
   for (const [other, p] of Object.entries(_idIndex)) {
     if (p === newRelPath && other !== id) {
@@ -379,6 +380,19 @@ function relocateNote(filePath, notesDir) {
   saveIndex(notesDir);
   return { note, raw, sameBytes, displaced };
 }
+
+/** The title and folder a vault-relative path gives a note. */
+function nameOf(relPath) {
+  const dir = path.dirname(relPath);
+  return {
+    title: path.basename(relPath, ".md"),
+    folder: dir === "." ? null : dir.split(path.sep).join("/"),
+  };
+}
+
+// A note moved or renamed outside the app, by the names it had before, until
+// the window has taken up the new one (`write-note`).
+const _outsideMoves = new Map(); // noteId → [{ title, folder }]
 
 // ─── Parse a single note file ───
 
@@ -571,6 +585,7 @@ function readAllNotes(notesDir) {
   if (!fs.existsSync(notesDir)) return notes;
 
   loadIndex(notesDir);
+  _outsideMoves.clear();
   history.openVault(notesDir);
   // A save the app died in the middle of: its temp file, gone if superseded,
   // otherwise kept as a recovered note the walk below lists.
@@ -675,8 +690,8 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // (it waits for a file to settle): written at the old path, the save made
     // the file there again, the watcher then saw no move, and the moved file
     // read as a new note while typing went on into the old name. The save
-    // follows the file by its inode, as the watcher would, takes the name the
-    // file has now, tells the window, and claims the unlink still to come.
+    // follows the file by its inode, as the watcher would, tells the window,
+    // and claims the unlink still to come.
     if (existingPath && !fs.existsSync(existingPath)) {
       const moved = relocateNote(existingPath, notesDir);
       if (moved) {
@@ -686,15 +701,29 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
         win?.webContents.send("file-moved", moved.note);
         if (moved.displaced)
           win?.webContents.send("file-deleted", { filePath: moved.note._filePath });
-        note = {
-          ...note,
-          title: moved.note.title,
-          folder: moved.note.folder ?? null,
-          content: { ...note.content, title: moved.note.title },
-        };
         existingRelPath = _idIndex[note.id];
         existingPath = path.join(notesDir, existingRelPath);
       }
+    }
+    // A save sent before the window took up an outside move carries the name
+    // the note had before it. That is not the user renaming the note back:
+    // written as a rename, it moved the file back to the old name under the
+    // other app's feet. It is written under the name the file has now. A save
+    // under the new name, or any other, means the window has caught up.
+    const before = _outsideMoves.get(note.id);
+    if (before && existingRelPath) {
+      const stale = before.some(
+        (b) => b.title === note.title && b.folder === (note.folder ?? null),
+      );
+      if (stale) {
+        const now = nameOf(existingRelPath);
+        note = {
+          ...note,
+          title: now.title,
+          folder: now.folder,
+          content: { ...note.content, title: now.title },
+        };
+      } else _outsideMoves.delete(note.id);
     }
 
     // A save never lands over bytes the app has not seen. The note's file can
