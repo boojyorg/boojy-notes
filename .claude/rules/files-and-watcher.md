@@ -37,7 +37,8 @@ iCloud eviction). `watcher-scale.spec.ts`.
 Identity is the inode (`_identity`, memory only), consulted only in
 `relocateNote` for an unclaimed unlink. Found elsewhere in the vault, the note follows
 (`file-moved` → `adoptNoteData`), pending edits kept and flushed at the new path. No inode match
-stays a delete. Never compare bytes to decide identity. `external-rename.spec.ts`.
+stays a delete; a save finding its file gone asks the inode first. Never compare bytes to
+decide identity. `external-rename.spec.ts`.
 
 ## An outside edit is never silently overwritten
 

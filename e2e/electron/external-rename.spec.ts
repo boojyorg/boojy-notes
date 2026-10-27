@@ -148,3 +148,34 @@ test("a note renamed outside with nothing pending keeps its place in the editor"
     await h.close();
   }
 });
+
+test("a save that lands before the watcher has seen an outside rename follows the file, never recreating the old name", async () => {
+  // Found on the Windows runner (#432's traces): the save reached the old path
+  // before the watcher reported the rename (it waits for files to settle), so
+  // it made the file there again; the watcher then saw no move, the renamed
+  // file read as a new note, and typing went on into the old name.
+  const h = await launchApp({ "Alpha.md": "Start." });
+  try {
+    await h.openNote("Alpha");
+    await typeAtEnd(h.page, " w0");
+    await sleep(SETTLE_MS);
+    let name = "Alpha";
+    for (let i = 1; i <= 4; i++) {
+      await h.page.keyboard.type(` w${i}`);
+      // The text commit (300 ms) and the save's debounce (500 ms) are running:
+      // the rename lands just before the save, inside the watcher's settling.
+      await sleep(700);
+      const next = `Alpha ${i}`;
+      fs.renameSync(h.vault.file(`${name}.md`), h.vault.file(`${next}.md`));
+      name = next;
+    }
+    await sleep(SETTLE_MS * 2);
+    expect(mdFiles(h.vault)).toEqual([`${name}.md`]);
+    expect(h.vault.read(`${name}.md`)).toBe("Start. w0 w1 w2 w3 w4");
+    expect(await editorTitle(h.page)).toBe(name);
+    expect(await sidebarNoteTitles(h.page)).toEqual([name]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
