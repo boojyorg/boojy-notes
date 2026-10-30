@@ -67,6 +67,22 @@ test("Open With and a second launch open notes in the running app; the open note
   }
 });
 
+test("a note made a moment ago, before the watcher has met it, opens", async () => {
+  const h = await launchApp({ "Inbox.md": "Inbox.\n" });
+  try {
+    await h.openNote("Inbox");
+    // Written and asked for at once: inside the watcher's settling time.
+    h.vault.write("Fresh.md", "Just made.\n");
+    await openFile(h, h.vault.file("Fresh.md"));
+    await expect(title(h)).toHaveText("Fresh");
+    await expect(h.page.getByRole("treeitem").filter({ hasText: "Fresh" })).toHaveCount(1);
+    await expect(toast(h)).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("a note in another storage location switches to it, saving the open note's typing first", async () => {
   const h = await launchApp(
     { "Inbox.md": "Inbox.\n" },

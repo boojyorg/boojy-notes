@@ -61,8 +61,8 @@ declare global {
       /** Notes opened from outside the app (electron/openRequests.ts): those held until now, then each as it comes. */
       takeOpenRequests: () => Promise<OpenRequest[]>;
       onOpenRequest: (callback: (request: OpenRequest) => void) => Unsubscribe;
-      /** The id of the note at a path in the open storage location (the index's spelling), or null. */
-      noteIdAt: (rel: string) => Promise<string | null>;
+      /** The note at a path in the open location (the index's spelling): its id, and the note when the index had not met the file. */
+      noteAt: (rel: string) => Promise<{ id: string; note?: Note } | null>;
       /** `title` is the basename the file actually got, which the title adopts. */
       /**
        * Writes the note and answers with the name the file got. Refused, and

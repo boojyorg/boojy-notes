@@ -27,7 +27,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // those that came before the notes were read, then each as it comes.
   takeOpenRequests: () => ipcRenderer.invoke("take-open-requests"),
   onOpenRequest: subscribe("open-request"),
-  noteIdAt: (rel) => ipcRenderer.invoke("note-id-at", rel),
+  noteAt: (rel) => ipcRenderer.invoke("note-at", rel),
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
   findAttachment: (src, markdown) => ipcRenderer.invoke("find-attachment", src, markdown),
   downloadNote: (id) => ipcRenderer.invoke("download-note", id),

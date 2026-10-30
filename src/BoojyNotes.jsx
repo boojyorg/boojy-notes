@@ -1356,6 +1356,7 @@ export default function BoojyNotes() {
   useOpenRequests(!fsLoading, {
     notesDir,
     switchVault,
+    adopt: takeNoteFromDisk,
     openNote: (id) => {
       setActiveNote(id);
       revealInSidebar(noteDataRef.current[id]?.folder ?? null);
