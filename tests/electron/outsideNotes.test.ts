@@ -36,7 +36,8 @@ let dir: string;
 /** What the window was sent about `id`: this module's notes outlive one test. */
 const about = (id: string) => sent.filter(([, v]) => (v as { id?: string })?.id === id);
 beforeEach(() => {
-  dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "outside-")));
+  // The real path as the app reads it: Windows' temp folder can be an 8.3 short name.
+  dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "outside-")));
   sent.length = 0;
 });
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
