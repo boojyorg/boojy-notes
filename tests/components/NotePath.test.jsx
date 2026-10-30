@@ -164,7 +164,7 @@ describe("NotePath", () => {
 
   // The narrower side's spacer starts with the difference, so the path centres
   // on the pane. Collapsed, the left group (the trio, Back and Forward) is the
-  // wider side; expanded, the ··· side is, by the arrows' narrower boxes.
+  // wider side; expanded, the ··· side is, by the gap beside `</>`.
   it("biases the spacers so the path centres on the pane, not the band", () => {
     const spacers = (collapsed) => {
       const { container } = mount(["A"], "n", collapsed ? { collapsed: true } : undefined);

@@ -90,12 +90,10 @@ export const CHROME_BOX = isPhone ? TOUCH : CHROME_BTN;
 /** The controls left of the path while the sidebar is hidden: the toggle, New
  *  note and Search; on the phone, ‹ alone (Home holds the other two). */
 const LEFT_GROUP = isPhone ? 1 : 3;
-/** Back and Forward, left of the path in both sidebar states (NotePath); the
- *  desktop's only (the phone has Home and the system's Back). */
+/** Back and Forward, left of the path in both sidebar states (NotePath), their
+ *  boxes touching so the pair reads as one control; the desktop's only (the
+ *  phone has Home and the system's Back). */
 export const HISTORY_GROUP = isPhone ? 0 : 2;
-/** Each arrow's box: a square smaller than a chrome button, the two touching,
- *  so the pair reads as one control, as a browser's does; centred on the row. */
-export const HISTORY_BTN = 28;
 const groupWidth = (n) => n * CHROME_BOX + (n - 1) * BTN_GAP;
 /** The collapsed trio's fade-in, timed to end with the panel's slide. */
 const TRIO_FADE_MS = PANEL_MS / 2;
@@ -117,7 +115,7 @@ export const chromeControlsLeft = (collapsed, fullScreen = false) =>
  * together.
  */
 export const chromePathInset = (collapsed, fullScreen = false) =>
-  historyLeft(collapsed, fullScreen) + HISTORY_GROUP * HISTORY_BTN + PATH_AIR;
+  historyLeft(collapsed, fullScreen) + HISTORY_GROUP * CHROME_BOX + PATH_AIR;
 
 /**
  * Where Back and Forward begin, from the editor's left edge: after the
