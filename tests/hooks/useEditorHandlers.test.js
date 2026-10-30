@@ -136,7 +136,7 @@ function setup(blocks, noteId = "note-1") {
   const deps = {
     noteDataRef,
     noteTitleSetRef,
-    activeNote: noteId,
+    activeNoteRef: { current: noteId },
     commitNoteData,
     blockRefs,
     editorRef,

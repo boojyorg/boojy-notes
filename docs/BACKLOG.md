@@ -370,10 +370,6 @@ references (Public Beta).
   half a second after the rename still wrote the old name without following the file; trace
   with #432's existence and inode lines to see whether the file looked present or the inode
   search missed.
-- [ ] **A keystroke typed as the editor moves into a conflicted copy is lost**, about one run
-  in ten of `outside-edit-view.spec.ts` › "typing through a burst" (three in ten before #430).
-  Traced: the browser's `beforeinput` fires, the editor's input handler never does, and the
-  copy's repaint leaves the DOM without it. Data safety; the next fix.
 
 ### Data safety / reliability
 
