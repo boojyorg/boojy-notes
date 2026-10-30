@@ -14,7 +14,7 @@ import {
   ChromeButton,
   chromePathInset,
   HISTORY_GROUP,
-  HISTORY_BTN_W,
+  HISTORY_BTN,
   historyLeft,
   SHORTCUTS,
 } from "./EditorChrome";
@@ -378,7 +378,9 @@ export default function NotePath({
             position: "absolute",
             top: CHROME_TOP,
             left: historyLeft(collapsed, fullScreen),
+            height: CHROME_BOX,
             display: "flex",
+            alignItems: "center",
             transition: glide("left"),
           }}
         >
@@ -387,7 +389,7 @@ export default function NotePath({
             disabled={!history.canBack}
             label="Back"
             shortcut={SHORTCUTS.back}
-            style={{ width: HISTORY_BTN_W }}
+            style={{ width: HISTORY_BTN, height: HISTORY_BTN }}
           >
             <HistoryBackIcon />
           </ChromeButton>
@@ -396,7 +398,7 @@ export default function NotePath({
             disabled={!history.canForward}
             label="Forward"
             shortcut={SHORTCUTS.forward}
-            style={{ width: HISTORY_BTN_W }}
+            style={{ width: HISTORY_BTN, height: HISTORY_BTN }}
           >
             <HistoryForwardIcon />
           </ChromeButton>
