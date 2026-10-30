@@ -848,13 +848,19 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
               const { [id]: _, ...rest } = prev;
               return rest;
             });
+            api.forgetOutsideNote?.(id);
           }
           links.onOutsideNoteGone?.({ id, title, writtenBack: pending });
         })
       : () => {};
 
-    // A PDF dropped into the vault in Finder is seen when the window is back.
-    const onFocus = () => syncFoldersFromDisk();
+    // A PDF dropped into the vault in Finder is seen when the window is back,
+    // and so is an edit made in another app to a note opened from outside
+    // every location, whether or not its folder could be watched.
+    const onFocus = () => {
+      syncFoldersFromDisk();
+      if (Object.values(noteDataRef.current).some((n) => n?.outside)) api.checkOutsideNotes?.();
+    };
     window.addEventListener("focus", onFocus);
 
     return () => {

@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openOutsideNote: (filePath) => ipcRenderer.invoke("open-outside-note", filePath),
   writeOutsideNote: (note) => ipcRenderer.invoke("write-outside-note", note),
   onOutsideNoteGone: subscribe("outside-note-gone"),
+  checkOutsideNotes: () => ipcRenderer.invoke("check-outside-notes"),
+  forgetOutsideNote: (id) => ipcRenderer.invoke("forget-outside-note", id),
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
   findAttachment: (src, markdown) => ipcRenderer.invoke("find-attachment", src, markdown),
   downloadNote: (id) => ipcRenderer.invoke("download-note", id),

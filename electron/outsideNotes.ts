@@ -30,7 +30,8 @@ import { isSameEntry } from "./vaultFs.js";
  *   are the app's own: an event that finds them is its own save's echo.
  */
 
-type Entry = { path: string; hash: string | null; dev: number; ino: number };
+/** `gone`: reported gone, and not said again until the file is written or read once more. */
+type Entry = { path: string; hash: string | null; dev: number; ino: number; gone?: boolean };
 
 /** A note the renderer takes: `outside` is the folder its file is in. */
 export type OutsideNote = {
@@ -112,7 +113,8 @@ function watchFolder(dir: string) {
   if (watches.has(dir)) return;
   let watcher: fs.FSWatcher;
   try {
-    watcher = fs.watch(dir, { persistent: false }, () => {
+    watcher = fs.watch(dir, { persistent: false }, (eventType, name) => {
+      trace("M", "outside folder event", eventType, String(name ?? ""), dir);
       const w = watches.get(dir);
       if (!w) return;
       if (w.timer) clearTimeout(w.timer);
@@ -122,10 +124,15 @@ function watchFolder(dir: string) {
       }, SETTLE_MS);
     });
   } catch (error) {
+    trace("M", "outside folder not watched", dir, String(error));
     console.warn("outside note: folder not watched", dir, String(error));
     return;
   }
-  watcher.on("error", () => {});
+  watcher.on("error", (error) => {
+    trace("M", "outside folder watch failed", dir, String(error));
+    watches.delete(dir);
+  });
+  trace("M", "outside folder watched", dir);
   watches.set(dir, { watcher, timer: null });
 }
 
@@ -149,9 +156,13 @@ function checkFolder(dir: string) {
       }
       continue;
     }
-    // Renamed in the same folder: the same file, by its inode.
-    const moved = fs
-      .readdirSync(dir)
+    // Renamed in the same folder: the same file, by its inode. A folder that
+    // has gone with it holds nothing to follow.
+    let names: string[] = [];
+    try {
+      names = fs.readdirSync(dir);
+    } catch {}
+    const moved = names
       .map((name) => path.join(dir, name))
       .find((p) => {
         try {
@@ -168,8 +179,21 @@ function checkFolder(dir: string) {
       win?.webContents.send("file-moved", { id, title, folder: null });
       continue;
     }
+    if (e.gone) continue;
+    e.gone = true;
     trace("M", "outside note gone", e.path);
     win?.webContents.send("outside-note-gone", { id, title: path.basename(e.path, ".md") });
+  }
+}
+
+/**
+ * Every open outside note looked at again, as the folder watch would: the
+ * window coming back to the front asks, so an edit made in another app is
+ * there when the user returns, even where a folder cannot be watched.
+ */
+export function checkOutsideNotes() {
+  for (const dir of new Set([...entries.values()].map((e) => path.dirname(e.path)))) {
+    checkFolder(dir);
   }
 }
 
@@ -244,4 +268,9 @@ export function registerOutsideNoteIPC(getMainWindow: () => BrowserWindow | null
     typeof filePath === "string" ? openOutsideNote(filePath) : { error: "missing" },
   );
   ipcMain.handle("write-outside-note", (_event, note: OutsideNote) => writeOutsideNote(note));
+  ipcMain.handle("check-outside-notes", () => checkOutsideNotes());
+  // The window let a gone note go: nothing of it is looked for again.
+  ipcMain.handle("forget-outside-note", (_event, id: unknown) => {
+    if (typeof id === "string") entries.delete(id);
+  });
 }

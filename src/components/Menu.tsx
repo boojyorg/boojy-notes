@@ -47,8 +47,10 @@ export const rectAnchor = (el: Element): MenuAnchor => {
 export interface MenuItem {
   label: string;
   icon?: ReactNode;
-  /** Muted text on the right: the item's key, or why it is disabled. */
+  /** Muted text on the right: the item's key, or a short why it is disabled. */
   hint?: string;
+  /** A muted line under the label: a longer why it is disabled, kept whole. */
+  detail?: string;
   /** A row that deletes: ordinary ink at rest, the danger ink while lit (by
    *  the pointer or the keys), its glyph with it. Every Delete and Remove
    *  carries it, undoable or not; a delete that can't be taken back also asks
@@ -364,6 +366,13 @@ export default function Menu({
               }}
             >
               {item.label}
+              {item.detail && (
+                <span
+                  style={{ display: "block", color: TEXT.muted, fontSize: isPhone ? 13 : 11.5 }}
+                >
+                  {item.detail}
+                </span>
+              )}
             </span>
             {item.hint && !isPhone && (
               <span style={{ color: TEXT.muted, fontSize: 12, marginLeft: 16, flexShrink: 0 }}>

@@ -205,7 +205,7 @@ const ContextMenu = memo(function ContextMenu({
     ? {
         label: "Version History",
         icon: <HistoryIcon />,
-        hint: "Not kept for this file",
+        detail: "Not kept for this file",
         rule: true,
         disabled: true,
       }
