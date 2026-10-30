@@ -65,32 +65,34 @@ test("the arrows step through notes and a picture, grey where there is nowhere t
 
     await h.openNote("Apple");
     await expect(back).toHaveAttribute("aria-disabled", "true");
+    await h.openNote("Banana");
     await expandAllFolders(h.page);
     await h.page.locator('[data-file-path$="whiteboard.png"]').click();
     await expect(picture).toBeVisible();
-    await h.openNote("Banana");
     await h.openNote("Cherry");
     await expect(name).toHaveText("Cherry");
     await expect(forward).toHaveAttribute("aria-disabled", "true");
 
     await back.click();
-    await expect(name).toHaveText("Banana");
-    await back.click();
     await expect(picture).toBeVisible();
     await back.click();
+    await expect(name).toHaveText("Banana");
+    // Note to note, so the same button stays under the pointer as it greys.
+    await back.click();
     await expect(name).toHaveText("Apple");
+    await expect(back).toHaveAttribute("aria-disabled", "true");
+    await expect(back).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     // Greyed, it still takes the press (Playwright waits out `aria-disabled`
     // unless forced) and does nothing.
-    await expect(back).toHaveAttribute("aria-disabled", "true");
     await back.click({ force: true });
     await expect(name).toHaveText("Apple");
     await expect(forward).not.toHaveAttribute("aria-disabled");
 
-    await forward.click();
-    await expect(picture).toBeVisible();
-    // Banana deleted outside: Forward steps over it to Cherry.
+    // Banana deleted outside: Forward steps over it to the picture.
     fs.rmSync(h.vault.file("Banana.md"));
     await expect(h.page.getByRole("treeitem").filter({ hasText: "Banana" })).toHaveCount(0);
+    await forward.click();
+    await expect(picture).toBeVisible();
     await forward.click();
     await expect(name).toHaveText("Cherry");
     await expect(forward).toHaveAttribute("aria-disabled", "true");

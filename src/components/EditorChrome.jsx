@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { useLayout, useSourceView } from "../context/LayoutContext";
@@ -93,6 +93,9 @@ const LEFT_GROUP = isPhone ? 1 : 3;
 /** Back and Forward, left of the path in both sidebar states (NotePath); the
  *  desktop's only (the phone has Home and the system's Back). */
 export const HISTORY_GROUP = isPhone ? 0 : 2;
+/** Each arrow's box: narrower than a chrome button and touching, so the pair
+ *  reads as one control, as a browser's does. Full height. */
+export const HISTORY_BTN_W = 28;
 const groupWidth = (n) => n * CHROME_BOX + (n - 1) * BTN_GAP;
 /** The collapsed trio's fade-in, timed to end with the panel's slide. */
 const TRIO_FADE_MS = PANEL_MS / 2;
@@ -114,7 +117,7 @@ export const chromeControlsLeft = (collapsed, fullScreen = false) =>
  * together.
  */
 export const chromePathInset = (collapsed, fullScreen = false) =>
-  historyLeft(collapsed, fullScreen) + (HISTORY_GROUP ? groupWidth(HISTORY_GROUP) : 0) + PATH_AIR;
+  historyLeft(collapsed, fullScreen) + HISTORY_GROUP * HISTORY_BTN_W + PATH_AIR;
 
 /**
  * Where Back and Forward begin, from the editor's left edge: after the
@@ -191,6 +194,14 @@ export function ChromeButton({
   const restBg = lit ? tagPillGround(theme) : active ? BG.hover : "none";
   const restInk = lit || on ? ACCENT.text : active ? TEXT.primary : TEXT.muted;
   const ref = useRef(null);
+  // The hover's paint is the element's own, so a control greyed under the
+  // pointer (Back, at the list's start) drops it here: the leave below does
+  // not repaint a disabled one, and the render does not touch an unchanged style.
+  useEffect(() => {
+    if (!disabled || !ref.current) return;
+    ref.current.style.background = restBg;
+    ref.current.style.color = restInk;
+  }, [disabled, restBg, restInk]);
   return (
     <button
       type="button"
