@@ -1243,6 +1243,7 @@ const EditorArea = memo(
             onRowPointerDown={onPathRowPointerDown}
             onShowFolder={onShowFolder}
             history={noteHistory}
+            outsideFolder={!deletedNote && !fileView ? (note?.outside ?? null) : null}
           >
             {deletedNote ? (
               <span data-deleted-title style={{ color: theme.TEXT.primary }}>

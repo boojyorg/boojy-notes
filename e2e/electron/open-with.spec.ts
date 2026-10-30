@@ -104,21 +104,19 @@ test("a note in another storage location switches to it, saving the open note's 
   }
 });
 
-test("a file outside every storage location, or gone, says so and opens nothing", async () => {
+test("a file that is gone says so and opens nothing; one outside every location opens on its own", async () => {
   const h = await launchApp({ "Inbox.md": "Inbox.\n" });
   try {
     await h.openNote("Inbox");
-    const loose = path.join(h.root, "Loose.md");
-    fs.writeFileSync(loose, "Loose.\n");
-    await openFile(h, loose);
-    await expect(toast(h)).toHaveText(
-      `"Loose.md" isn't in one of your storage locations, so Boojy Notes can't open it yet.`,
-    );
-    await toast(h).getByRole("button", { name: "Dismiss", exact: true }).click();
-
     await openFile(h, h.vault.file("Gone.md"));
     await expect(toast(h)).toHaveText(`Couldn't open "Gone.md": it isn't there any more.`);
     await expect(title(h)).toHaveText("Inbox");
+
+    // The rest of its life is outside-notes.spec.ts.
+    const loose = path.join(h.root, "Loose.md");
+    fs.writeFileSync(loose, "Loose.\n");
+    await openFile(h, loose);
+    await expect(title(h)).toHaveText("Loose");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

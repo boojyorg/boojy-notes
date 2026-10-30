@@ -5,6 +5,7 @@ import { hasOwnField } from "../../utils/domHelpers";
 import { openMathSource } from "../../utils/mathOpen";
 import { insertedImageWidth } from "../../utils/imageSize";
 import { editBlocks } from "../../utils/editBlocks";
+import { OUTSIDE_ADDS_NO_FILES } from "../../utils/vaultNotes";
 import { saveFileAsBlock } from "../../utils/savedFile";
 
 // The special blocks with a field of their own (a textarea, a title, a
@@ -73,6 +74,18 @@ export function useSlashCommands({
     });
 
     if (el) el.innerHTML = "<br>";
+
+    // A note opened from outside every location takes no file: it would be
+    // saved into the open location, beside nothing the note can reach.
+    if (
+      (command.type === "image" || command.type === "file") &&
+      noteDataRef.current[noteId]?.outside
+    ) {
+      clearSlashText();
+      refocusSlashBlock();
+      onError?.(OUTSIDE_ADDS_NO_FILES, "notice", { key: "adds-files" });
+      return;
+    }
 
     if (command.type === "image") {
       clearSlashText();

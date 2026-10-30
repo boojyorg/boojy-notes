@@ -8,6 +8,7 @@ import {
 import { editBlocks } from "../utils/editBlocks";
 import { fileForTarget } from "../utils/fileView";
 import { baseName } from "../utils/vaultPath";
+import { vaultNotes } from "../utils/vaultNotes";
 
 /**
  * Wikilink wiring for the editor:
@@ -62,7 +63,7 @@ export function useWikilinkHandlers({
     // path by the path (utils/wikilinkTarget). A title two notes share is
     // left out, so a plain `[[Goals]]` draws as unresolved: the click asks.
     const counts = new Map();
-    for (const n of Object.values(noteData)) {
+    for (const n of Object.values(vaultNotes(noteData))) {
       if (n._draft) continue;
       for (const k of noteLinkKeys(n)) counts.set(k, (counts.get(k) || 0) + 1);
     }

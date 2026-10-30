@@ -9,6 +9,7 @@ import {
   type SearchResult,
 } from "../utils/search";
 import { extractAllTags, nestTags, tagKey, type TagEntry } from "../utils/tags";
+import { vaultNotes } from "../utils/vaultNotes";
 
 export const SEARCH_DEBOUNCE_MS = 150;
 
@@ -61,25 +62,26 @@ export function useSearch(noteData: NoteData) {
     return { results: raw.results, totalCount: raw.totalCount, query };
   }, []);
 
-  // Build / update index when noteData changes
+  // Build / update index when the location's notes change (`vaultNotes`).
+  const listed = vaultNotes(noteData);
   useEffect(() => {
     const index = searchIndexRef.current;
-    if (index.size === 0 && Object.keys(noteData).length > 0) {
-      searchIndexRef.current = buildSearchIndex(noteData);
+    if (index.size === 0 && Object.keys(listed).length > 0) {
+      searchIndexRef.current = buildSearchIndex(listed);
     } else {
-      for (const [id, note] of Object.entries(noteData)) {
+      for (const [id, note] of Object.entries(listed)) {
         const entry = index.get(id);
         if (!entry || entry.note !== note) updateIndexEntry(index, id, note);
       }
       for (const id of index.keys()) {
-        if (!(id in noteData)) removeIndexEntry(index, id);
+        if (!(id in listed)) removeIndexEntry(index, id);
       }
     }
     // If search is active, re-run with current query
     if (lastQueryRef.current || tagFilterRef.current || folderFilterRef.current) {
       setSearchResults(run(lastQueryRef.current));
     }
-  }, [noteData, run, setSearchResults]);
+  }, [listed, run, setSearchResults]);
 
   const clearPending = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

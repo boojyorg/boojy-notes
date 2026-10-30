@@ -7,6 +7,7 @@ import { indentRun, moveStep } from "../utils/blockRun";
 import { fileExtension, saveFileAsBlock } from "../utils/savedFile";
 import { getAPI } from "../services/apiProvider";
 import { addsFiles } from "../utils/platform";
+import { OUTSIDE_ADDS_NO_FILES } from "../utils/vaultNotes";
 import { editBlocks, patchBlock } from "../utils/editBlocks";
 import { settleTypedSpaces } from "../utils/inlineFormatting";
 import { openMathSource } from "../utils/mathOpen";
@@ -22,6 +23,9 @@ export function useBlockOperations({
   focusBlockId,
   focusCursorPos,
   onError,
+  // The notes as the keystroke ref holds them: a note opened from outside
+  // every location takes no file (OUTSIDE_ADDS_NO_FILES).
+  noteDataRef,
 }) {
   // The text grain: what the user types into a block's own field. A
   // paragraph's contentEditable, a code block's textarea, a callout's title
@@ -251,6 +255,10 @@ export function useBlockOperations({
    * reads finished.
    */
   const saveAndInsertFiles = async (noteId, afterIndex, files) => {
+    if (noteDataRef?.current?.[noteId]?.outside) {
+      onError?.(OUTSIDE_ADDS_NO_FILES, "notice", { key: "adds-files" });
+      return;
+    }
     if (!addsFiles) {
       onError?.("Pictures and files can't be added on the phone yet", "notice", {
         key: "adds-files",

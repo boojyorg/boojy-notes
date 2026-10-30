@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useTheme } from "../../hooks/useTheme";
-import { recheckAttachments, useAttachment } from "../../hooks/useAttachment";
+import { OutsideFolder, recheckAttachments, useAttachment } from "../../hooks/useAttachment";
 import { getAPI } from "../../services/apiProvider";
 import { isMac } from "../../utils/platform";
 import { CopyIcon, FolderIcon, OpenLinkIcon, TrashIcon } from "../Icons";
@@ -51,6 +51,8 @@ function FileBlock({
   // as a card that opens nothing. Every action takes the file found, and
   // opening keeps the embed's `#page=`.
   const { rel, missing } = useAttachment(src);
+  // Find it… copies into the open location: no use to a note from outside every location.
+  const outside = useContext(OutsideFolder);
   const subpath = src?.includes("#") ? src.slice(src.indexOf("#")) : "";
   const file = rel ?? src;
 
@@ -84,7 +86,7 @@ function FileBlock({
       <MissingAttachment
         src={src}
         onFind={
-          findable(src)
+          findable(src) && !outside
             ? async () => {
                 if (await window.electronAPI.findAttachment(src)) recheckAttachments();
               }

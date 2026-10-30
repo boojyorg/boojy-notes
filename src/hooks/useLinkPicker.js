@@ -1,6 +1,7 @@
 // @ts-check
 import { useCallback, useMemo, useState } from "react";
 import { linkTargetFor, wikilinkStatus } from "../utils/wikilinkTarget";
+import { vaultNotes } from "../utils/vaultNotes";
 import { caretLength, caretOffsetAt, linkText, placeCaret } from "../utils/domHelpers";
 
 /**
@@ -93,7 +94,7 @@ export function useLinkPicker({
 
   const notes = useMemo(
     () =>
-      Object.entries(noteData)
+      Object.entries(vaultNotes(noteData))
         .filter(([, n]) => !n._draft && (n.title || "").trim())
         .map(([id, n]) => ({ id, title: n.title, folder: n.folder || null }))
         .sort((a, b) => a.title.localeCompare(b.title)),

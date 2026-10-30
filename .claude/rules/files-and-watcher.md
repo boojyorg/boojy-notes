@@ -22,7 +22,7 @@ iCloud eviction). `watcher-scale.spec.ts`.
 - **`write-note` claims the bytes it wrote**: a later event whose file holds exactly those bytes
   is the echo, however late; the claim ends at the first other bytes or the file gone.
 - **An unlink the app causes** (Trash, a rename's old path) is claimed once and consumed. A
-  Trash move's end forgets the file and looks again (`unlinkDone`; Put Back was lost).
+  Trash move's end forgets the file and looks again (`unlinkDone`).
   An unclaimed unlink is real, however soon.
 - A folder rename, removal or copy is the one timed suppression (`claimTree`).
   `watcher-ownership.spec.ts`.
@@ -71,8 +71,9 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - **Storage locations** (`electron/vaults.ts`): `open-vault` takes only a listed, present path.
   Remove never touches the folder; **Rename is a label (`vaultLabels`), never the folder's
   name**: other apps may point at it.
-- **A note opened from outside** (`openRequests.ts`) waits for the notes, goes by real path,
-  switches location as the switcher does. `open-with.spec.ts`.
+- **A note opened from outside** (`openRequests.ts`) goes by real path: in another location it
+  switches there; in none it is edited in place (`outsideNotes.ts`), never indexed, kept in
+  history or listed (`vaultNotes()`). `open-with.spec.ts`, `outside-notes.spec.ts`.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
   folders and on window focus. `trash-file` refuses a note (notes go by id, `trash-note`).
   `vault-switcher.spec.ts`.
@@ -90,7 +91,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   `disk-names.spec.ts`.
 - A note's own file is never its own collision (`ensureUniqueFilePath(target, ownPath)`).
 - **The name field is the user's while focused**: answers are adopted on blur (`settleTitle`).
-  A new note starts blank with an `Untitled` placeholder. `title-is-filename.spec.ts`.
+  `title-is-filename.spec.ts`.
 - A save keeps the mode, on macOS xattrs and birthtime (`cp -p`); a symlink is written
   through. `file-mode.spec.ts`.
 - **A rename moves the file first**, then the index, then the text: one file at every instant,
@@ -101,8 +102,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 ## Attachments
 
 **Found as Obsidian finds it** (`pickAttachment`, desktop and phone): the path as written,
-the note's folder, then by name, shortest path first, ties A–Z. Only by name reads an index,
-uncapped. Every action takes the path the block found; a paste takes a name no file has.
+the note's folder, then by name, shortest path first, ties A–Z. Every action takes the path the block found; a paste takes a name no file has.
 `attachment-resolution.spec.ts`. Loaded as `boojy-att://vault/<path>`, encoded in the **path,
 never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 

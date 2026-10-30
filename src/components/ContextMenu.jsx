@@ -92,6 +92,8 @@ const ContextMenu = memo(function ContextMenu({
   viewedFile,
   // Version History (desktop): the ··· menu becomes the note's past in place.
   onVersionHistory,
+  // The header's note is one opened from outside every location.
+  outsideNote = false,
   // The note's length and when it was edited ({ words, editedAt }, either
   // null), for a single note's menu; and the Mac's 24-hour setting.
   footer,
@@ -132,6 +134,10 @@ const ContextMenu = memo(function ContextMenu({
   // taken from the note on screen. It is the one menu that carries Settings,
   // and it opens with no active note at all, carrying Settings alone.
   const isHeader = ctxMenu.type === "header";
+  // A note opened from outside every location (electron/outsideNotes.ts) is
+  // edited in place and nothing more: no location's Duplicate, Move or Trash,
+  // and its Version History is not kept, which the greyed item says.
+  const outside = isHeader && outsideNote;
   const isBulk = ctxMenu.type === "note" && selectedNotes.size > 1;
 
   // Every item closes the menu and then acts. Both are state updates in one
@@ -195,16 +201,24 @@ const ContextMenu = memo(function ContextMenu({
   });
 
   // Version History opens the header's second group, how the note is seen.
-  const versionItem = onVersionHistory
+  const versionItem = outside
     ? {
         label: "Version History",
         icon: <HistoryIcon />,
-        // The Mac's key only: Ctrl+Alt+S elsewhere is Go to Sidebar (useAppKeyboard).
-        hint: isMac ? "⌥⌘S" : undefined,
+        detail: "Not kept for this file",
         rule: true,
-        action: run(onVersionHistory),
+        disabled: true,
       }
-    : null;
+    : onVersionHistory
+      ? {
+          label: "Version History",
+          icon: <HistoryIcon />,
+          // The Mac's key only: Ctrl+Alt+S elsewhere is Go to Sidebar (useAppKeyboard).
+          hint: isMac ? "⌥⌘S" : undefined,
+          rule: true,
+          action: run(onVersionHistory),
+        }
+      : null;
 
   const settingsItem = {
     label: "Settings",
@@ -287,12 +301,12 @@ const ContextMenu = memo(function ContextMenu({
     ? ctxMenu.id
       ? [
           ...phoneNewNote,
-          ...noteItems(ctxMenu.id, true).map((item, i) =>
-            i === 0 && isPhone ? { ...item, rule: true } : item,
-          ),
+          ...noteItems(ctxMenu.id, true)
+            .filter((item) => !outside || item.label === "Rename" || item.label === "Copy")
+            .map((item, i) => (i === 0 && isPhone ? { ...item, rule: true } : item)),
           ...(versionItem ? [versionItem, { ...viewItem, rule: false }] : [viewItem]),
           { ...settingsItem, rule: true },
-          deleteItem(ctxMenu.id),
+          ...(outside ? [] : [deleteItem(ctxMenu.id)]),
         ]
       : [settingsItem]
     : ctxMenu.type === "note" && isBulk

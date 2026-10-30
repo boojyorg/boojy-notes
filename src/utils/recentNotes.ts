@@ -54,7 +54,8 @@ export function recentRows(
   for (const id of ids) {
     if (id === currentId) continue;
     const note = noteData[id];
-    if (!note || note._draft) continue;
+    // A note opened from outside every location is no location's (`vaultNotes`).
+    if (!note || note._draft || note.outside) continue;
     out.push(id);
     if (out.length >= max) break;
   }

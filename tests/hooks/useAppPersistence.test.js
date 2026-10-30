@@ -48,6 +48,20 @@ describe("useAppPersistence", () => {
     expect(blob).not.toHaveProperty("tabs");
   });
 
+  it("keeps the location's note as the one to reopen while a note from outside is open", () => {
+    const noteData = {
+      n1: { title: "One" },
+      out: { title: "Loose", outside: "/Users/t/Downloads" },
+    };
+    const { rerender } = renderHook((p) => useAppPersistence(p), {
+      initialProps: deps({ noteData }),
+    });
+    vi.advanceTimersByTime(300);
+    rerender(deps({ noteData, activeNote: "out" }));
+    vi.advanceTimersByTime(300);
+    expect(JSON.parse(localStorage.getItem("boojy-ui-state")).activeNote).toBe("n1");
+  });
+
   it("debounces the ui-state write", () => {
     renderHook(() => useAppPersistence(deps()));
     vi.advanceTimersByTime(200);

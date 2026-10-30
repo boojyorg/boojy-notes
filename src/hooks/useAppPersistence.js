@@ -9,15 +9,20 @@ import { isNative } from "../utils/platform";
 export function useAppPersistence({ activeNote, expanded, noteData, customFolders, showToast }) {
   // Persist UI state (active note, expanded folders). Older builds also stored
   // `tabs` and `splitState` here — those keys are no longer written; the read
-  // side (useActiveNote) still understands them for migration.
+  // side (useActiveNote) still understands them for migration. A note opened
+  // from outside every location is the session's only: a restart opens the
+  // location's note that was open before it.
+  const lastLocationNote = useRef(activeNote);
+  if (!noteData?.[activeNote]?.outside) lastLocationNote.current = activeNote;
+  const savedNote = lastLocationNote.current;
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem("boojy-ui-state", JSON.stringify({ activeNote, expanded }));
+        localStorage.setItem("boojy-ui-state", JSON.stringify({ activeNote: savedNote, expanded }));
       } catch {}
     }, 300);
     return () => clearTimeout(timer);
-  }, [activeNote, expanded]);
+  }, [savedNote, expanded]);
 
   // Persist full note data to localStorage (web only)
   useEffect(() => {

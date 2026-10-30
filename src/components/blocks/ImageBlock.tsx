@@ -1,6 +1,6 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useContext, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
-import { recheckAttachments, useAttachment } from "../../hooks/useAttachment";
+import { OutsideFolder, recheckAttachments, useAttachment } from "../../hooks/useAttachment";
 import { cssZoom } from "../../utils/domHelpers";
 import { imageWashFill } from "../../utils/selectionBand";
 import { ExpandIcon, MoreHorizontalIcon } from "../Icons";
@@ -169,6 +169,8 @@ function ImageBlock({
   // The file the embed names, from the note's folder; asked again when files
   // arrive or go, so a picture synced in after "Not found" shows.
   const { url: resolvedSrc, rel, missing } = useAttachment(src, markdown);
+  // Find it… copies into the open location: no use to a note from outside every location.
+  const outside = useContext(OutsideFolder);
   // A new address is a new load (an outside edit, an undo, the file found
   // elsewhere), so one that changes after an error is not left drawing
   // "Image not found" (state adjusted in render, React's own pattern).
@@ -257,7 +259,7 @@ function ImageBlock({
         src={src}
         image
         selected={isSelected}
-        onFind={findable(src) ? findMissing : undefined}
+        onFind={findable(src) && !outside ? findMissing : undefined}
         onRemove={onDelete}
       />
     );

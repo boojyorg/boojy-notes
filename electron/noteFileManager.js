@@ -105,6 +105,9 @@ function noteToFilePath(note, notesDir, existingRelPath = null) {
  * (and back to `-2` on the save after, forever). Every other file on disk is
  * a collision, whether or not the ID index knows it — an unindexed file, or a
  * case-variant on a case-insensitive volume, must never be overwritten.
+ *
+ * @param {string} filePath
+ * @param {string | null} [ownPath]
  */
 function ensureUniqueFilePath(filePath, ownPath = null) {
   if (filePath === ownPath || !fs.existsSync(filePath)) return filePath;
@@ -1150,6 +1153,8 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
 
 export {
   insideVault,
+  noteText,
+  realBasename,
   vaultAttachment,
   sanitizeFilename,
   MAX_NAME_BYTES,

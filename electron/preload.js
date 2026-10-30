@@ -28,6 +28,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   takeOpenRequests: () => ipcRenderer.invoke("take-open-requests"),
   onOpenRequest: subscribe("open-request"),
   noteAt: (rel) => ipcRenderer.invoke("note-at", rel),
+  // A note outside every storage location (electron/outsideNotes.ts).
+  openOutsideNote: (filePath) => ipcRenderer.invoke("open-outside-note", filePath),
+  writeOutsideNote: (note) => ipcRenderer.invoke("write-outside-note", note),
+  onOutsideNoteGone: subscribe("outside-note-gone"),
+  checkOutsideNotes: () => ipcRenderer.invoke("check-outside-notes"),
+  forgetOutsideNote: (id) => ipcRenderer.invoke("forget-outside-note", id),
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
   findAttachment: (src, markdown) => ipcRenderer.invoke("find-attachment", src, markdown),
   downloadNote: (id) => ipcRenderer.invoke("download-note", id),
