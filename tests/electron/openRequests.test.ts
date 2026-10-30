@@ -13,7 +13,8 @@ let root: string;
 let vault: string;
 let other: string;
 beforeEach(() => {
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "open-req-")));
+  // The real path as the app reads it: Windows' temp folder can be an 8.3 short name.
+  root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "open-req-")));
   vault = path.join(root, "Notes");
   other = path.join(root, "Uni");
   fs.mkdirSync(path.join(vault, "Ideas"), { recursive: true });
