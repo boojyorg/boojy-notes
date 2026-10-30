@@ -13,10 +13,14 @@ import {
   chromePathRightInset,
   ChromeButton,
   chromePathInset,
+  HISTORY_GROUP,
+  historyLeft,
+  SHORTCUTS,
+  BTN_GAP,
 } from "./EditorChrome";
 import PathTreeMenu from "./PathTreeMenu";
 import { SCROLLBAR_W } from "../constants/layout";
-import { FolderIcon } from "./Icons";
+import { FolderIcon, HistoryBackIcon, HistoryForwardIcon } from "./Icons";
 import { fromTouch } from "../utils/touch";
 
 /*
@@ -196,6 +200,9 @@ export default function NotePath({
   onShowFolder,
   // The pane keeps a scrollbar lane at its right (a note); a viewed file's does not.
   lane = true,
+  // Back and Forward through the notes opened (useNoteHistory): { back,
+  // forward, canBack, canForward }.
+  history = null,
   children,
 }) {
   const { theme } = useTheme();
@@ -362,6 +369,38 @@ export default function NotePath({
         transition: glide("padding-left"),
       }}
     >
+      {/* Back and Forward, in the left padding, so the drag strip never lies
+          under them, and gliding with it when the sidebar is toggled. */}
+      {history && HISTORY_GROUP > 0 && (
+        <div
+          data-testid="history-arrows"
+          style={{
+            position: "absolute",
+            top: CHROME_TOP,
+            left: historyLeft(collapsed, fullScreen),
+            display: "flex",
+            gap: BTN_GAP,
+            transition: glide("left"),
+          }}
+        >
+          <ChromeButton
+            onClick={history.back}
+            disabled={!history.canBack}
+            label="Back"
+            shortcut={SHORTCUTS.back}
+          >
+            <HistoryBackIcon />
+          </ChromeButton>
+          <ChromeButton
+            onClick={history.forward}
+            disabled={!history.canForward}
+            label="Forward"
+            shortcut={SHORTCUTS.forward}
+          >
+            <HistoryForwardIcon />
+          </ChromeButton>
+        </div>
+      )}
       {/* The drag strip: the row's height, between the paddings, so it never
           lies under a control (see the header comment). The path, which
           opts out, comes after it. */}

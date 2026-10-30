@@ -163,9 +163,9 @@ describe("NotePath", () => {
   });
 
   // The narrower side's spacer starts with the difference, so the path centres
-  // on the pane. Collapsed, the left group (the trio) is the wider side;
-  // expanded, the editor's side of the row is empty since Undo and Redo went
-  // to the menu bar (2026-09-24), and the ··· side is the wider one.
+  // on the pane. Collapsed, the left group (the trio, Back and Forward) is the
+  // wider side; expanded, Back and Forward match the ··· side, so neither
+  // spacer needs a head start.
   it("biases the spacers so the path centres on the pane, not the band", () => {
     const spacers = (collapsed) => {
       const { container } = mount(["A"], "n", collapsed ? { collapsed: true } : undefined);
@@ -183,10 +183,9 @@ describe("NotePath", () => {
     expect(c.left.style.flexGrow).toBe("1");
     expect(c.right.style.flexGrow).toBe("1");
     cleanup();
-    const narrow = chromePathInset(false, false) - CHROME_PATH_RIGHT_INSET;
-    expect(narrow).toBeLessThan(0);
+    expect(chromePathInset(false, false)).toBe(CHROME_PATH_RIGHT_INSET);
     const e = spacers(false);
-    expect(e.left.style.flexBasis).toBe(`${-narrow}px`);
+    expect(e.left.style.flexBasis).toBe("0px");
     expect(e.right.style.flexBasis).toBe("0px");
   });
 

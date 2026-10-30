@@ -7,6 +7,7 @@ import { focusSidebar } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
 import { todoFlip } from "../utils/todoToggle";
 import { selectedLinesOf } from "../utils/selectedLines";
+import { historyKey } from "../utils/noteHistory";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -195,10 +196,8 @@ export function useAppKeyboard({
         newNote(L, titleRef);
         return;
       }
-      // Back and Forward through the notes opened: ⌘[ / ⌘] (Finder's and
-      // Safari's), Alt+← / → elsewhere (a browser's). The bracket is read by
-      // its physical key too, for layouts where it needs Alt.
-      const historyDir = historyKey(e);
+      // Back and Forward through the notes opened (`historyKey`).
+      const historyDir = historyKey(e, isMac);
       if (historyDir) {
         e.preventDefault();
         if (historyDir < 0) L.goBack?.();
@@ -371,18 +370,6 @@ export function useAppKeyboard({
     canForward,
     linkPageTo,
   ]);
-}
-
-/** -1 for Back, 1 for Forward, 0 for any other key. */
-function historyKey(e) {
-  if (isMac) {
-    if (!e.metaKey || e.ctrlKey || e.shiftKey) return 0;
-    if (e.key === "[" || e.code === "BracketLeft") return -1;
-    if (e.key === "]" || e.code === "BracketRight") return 1;
-    return 0;
-  }
-  if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return 0;
-  return e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
 }
 
 /** Shows the sidebar if it is hidden, then focuses it once it can take focus. */

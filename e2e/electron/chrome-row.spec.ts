@@ -24,12 +24,10 @@ import {
 /** A transitioned margin can settle a hundredth of a pixel short of its target. */
 const SUBPIXEL = 0.5;
 
-/**
- * The chrome buttons that sit left of the note's name while the sidebar is
- * away, in DOM order. Expanded there are none: Undo and Redo went to the menu
- * bar on 2026-09-24.
- */
-const LEFT_CONTROLS = ["Toggle sidebar", "New note", "Search notes"];
+/** Back and Forward: left of the note's name in both sidebar states. */
+const HISTORY_CONTROLS = ["Back", "Forward"];
+/** The chrome buttons left of the note's name while the sidebar is away, in DOM order. */
+const LEFT_CONTROLS = ["Toggle sidebar", "New note", "Search notes", ...HISTORY_CONTROLS];
 
 /**
  * The name's box once the layout has settled: the path's, whose edges are the
@@ -65,13 +63,12 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
   try {
     await h.openNote("Link end");
 
-    // Expanded: nothing stands in front of the name, so it starts past the
-    // editor's own edge and the band's air, at every width, since the sidebar
-    // stays in the layout at the minimum too.
+    // Expanded: only Back and Forward stand in front of the name, so it starts
+    // past them and the band's air, at every width, since the sidebar stays in
+    // the layout at the minimum too.
     for (const width of [1200, WINDOW_MIN_W]) {
       await setWidth(h, width);
-      const editor = (await h.page.locator(".editor-scroll").boundingBox())!;
-      const right = editor.x;
+      const { right } = await controlsRight(h.page, HISTORY_CONTROLS);
       const more = await h.page.locator("button[aria-label='Note actions']").boundingBox();
       const mid = more!.y + more!.height / 2;
       await expect
@@ -95,7 +92,7 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
     await settled(h.page);
     await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
 
-    // Collapsed: three controls, and the name still starts past the last.
+    // Collapsed: five controls, and the name still starts past the last.
     for (const width of [1200, 700, WINDOW_MIN_W]) {
       await setWidth(h, width);
       const { right, mid } = await controlsRight(h.page, LEFT_CONTROLS);
@@ -344,7 +341,7 @@ test("no window-drag rectangle lies under a chrome button, in either sidebar sta
       const overlaps = await h.page.evaluate(() => {
         const rect = (el: Element) => el.getBoundingClientRect();
         const drags = [...document.querySelectorAll<HTMLElement>('[style*="app-region: drag"]')];
-        const buttons = [...document.querySelectorAll<HTMLElement>("button[title]")].filter(
+        const buttons = [...document.querySelectorAll<HTMLElement>("button[aria-label]")].filter(
           (b) => !b.closest("[inert]") && rect(b).width > 0,
         );
         const hits: string[] = [];
@@ -361,7 +358,7 @@ test("no window-drag rectangle lies under a chrome button, in either sidebar sta
               q.top < r.bottom &&
               q.bottom > r.top
             )
-              hits.push(`${d.dataset.testid ?? d.className} over ${b.title}`);
+              hits.push(`${d.dataset.testid ?? d.className} over ${b.getAttribute("aria-label")}`);
           }
         }
         return { drags: drags.length, hits };

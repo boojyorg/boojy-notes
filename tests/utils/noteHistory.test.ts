@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 import {
   emptyHistory,
   HISTORY_LIMIT,
+  historyKey,
   historyOpen,
+  historyShortcut,
   historyTarget,
 } from "../../src/utils/noteHistory";
 
@@ -46,4 +48,25 @@ describe("noteHistory", () => {
     expect(h.ids[0]).toBe("n5");
     expect(h.at).toBe(HISTORY_LIMIT - 1);
   });
+});
+
+describe("the arrows' chips name the keys that step", () => {
+  // A chip's label read back as the press it describes.
+  const press = (label: string) => {
+    const [mods, key] = label.startsWith("⌘") ? ["⌘", label.slice(1)] : label.split("+");
+    return {
+      key: { "←": "ArrowLeft", "→": "ArrowRight" }[key] ?? key,
+      code: "",
+      metaKey: mods === "⌘",
+      altKey: mods === "Alt",
+      ctrlKey: false,
+      shiftKey: false,
+    };
+  };
+  for (const mac of [true, false]) {
+    it(mac ? "on a Mac" : "elsewhere", () => {
+      expect(historyKey(press(historyShortcut(-1, mac)), mac)).toBe(-1);
+      expect(historyKey(press(historyShortcut(1, mac)), mac)).toBe(1);
+    });
+  }
 });

@@ -17,7 +17,9 @@
 import {
   ArrowDownAZ as LuArrowDownAZ,
   ArrowDownToLine as LuArrowDownToLine,
+  ArrowLeft as LuArrowLeft,
   ArrowLeftToLine as LuArrowLeftToLine,
+  ArrowRight as LuArrowRight,
   ArrowRightLeft as LuArrowRightLeft,
   ArrowRightToLine as LuArrowRightToLine,
   ArrowUpDown as LuArrowUpDown,
@@ -234,6 +236,9 @@ export const TextStyleIcon = navIcon(LuALargeSmall, 22);
 export const MoreBlocksIcon = navIcon(LuSquarePlus, 20);
 /** The phone's way back from a note to Home. */
 export const BackIcon = navIcon(LuChevronLeft, 22);
+/** Back and Forward through the notes opened: arrows, never the folder's chevrons. */
+export const HistoryBackIcon = navIcon(LuArrowLeft, ICON_CONTROL);
+export const HistoryForwardIcon = navIcon(LuArrowRight, ICON_CONTROL);
 export const ArrowRightToLineIcon = navIcon(LuArrowRightToLine);
 /** Context-menu action glyphs — nav stroke: 1.5 reads too light beside the
  *  12.5px menu labels. Also Recently Deleted's row. */

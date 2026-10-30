@@ -1789,6 +1789,7 @@ export default function BoojyNotes() {
                 openNote={setActiveNote}
                 onPathRowPointerDown={handleSidebarPointerDown}
                 onShowFolder={isPhone ? showFolder : undefined}
+                noteHistory={noteHistory}
                 onTitleBlur={settleTitle}
                 pastVersion={versionHistory.state.past}
                 deletedNote={deletedPreview}
