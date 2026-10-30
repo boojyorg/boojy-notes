@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Ends setup however it ended; answers with the folder, made if it is the default.
   completeSetup: () => ipcRenderer.invoke("complete-setup"),
   readAllNotes: () => ipcRenderer.invoke("read-all-notes"),
+  // Notes opened from outside the app (Finder's Open With, a path at launch):
+  // those that came before the notes were read, then each as it comes.
+  takeOpenRequests: () => ipcRenderer.invoke("take-open-requests"),
+  onOpenRequest: subscribe("open-request"),
+  noteIdAt: (rel) => ipcRenderer.invoke("note-id-at", rel),
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
   findAttachment: (src, markdown) => ipcRenderer.invoke("find-attachment", src, markdown),
   downloadNote: (id) => ipcRenderer.invoke("download-note", id),

@@ -125,6 +125,8 @@ export interface AppHandle {
   userData: string;
   /** The Documents directory the app was given (`firstRun`), where its default folder goes. */
   documents: string;
+  /** The temp directory holding the vault, userData and any `otherVaults`. */
+  root: string;
   /** Console errors and uncaught page errors seen since launch. */
   pageErrors: string[];
   /** Click a note row in the sidebar by its visible title. */
@@ -170,13 +172,20 @@ function ownDisplay(): Promise<string> | undefined {
   return display;
 }
 
-async function launchElectron(userData: string, documents?: string, motion = false) {
+async function launchElectron(
+  userData: string,
+  documents?: string,
+  motion = false,
+  extraArgs: string[] = [],
+) {
   const displayEnv = await ownDisplay();
   const app = await _electron.launch({
     args: [
       path.join(here, "main-wrapper.mjs"),
       // Chromium's sandbox is unavailable on some CI containers.
       ...(process.env.CI ? ["--no-sandbox"] : []),
+      // Files to open, as Windows and Linux pass them to a launch.
+      ...extraArgs,
     ],
     cwd: repoRoot,
     env: {
@@ -224,6 +233,8 @@ export async function launchApp(
     firstRun = false,
     defaultFolderExists = false,
     motion = false,
+    otherVaults = {},
+    openAtLaunch = [],
   }: {
     prepare?: (vault: Vault) => void;
     /** Where the vault sits under the temp root; a dot-segment makes a hidden parent. */
@@ -240,6 +251,10 @@ export async function launchApp(
     defaultFolderExists?: boolean;
     /** Leave the app's own animation on (the suite runs with reduced motion). */
     motion?: boolean;
+    /** More storage locations beside the vault, listed as the switcher lists them: name → files. */
+    otherVaults?: Record<string, Record<string, string>>;
+    /** Paths, relative to `root`, passed to the launch as files to open. */
+    openAtLaunch?: string[];
   } = {},
 ): Promise<AppHandle> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-e2e-"));
@@ -264,18 +279,40 @@ export async function launchApp(
   const vault = makeVault(vaultDir);
   for (const [rel, content] of Object.entries(files)) vault.write(rel, content);
   prepare?.(vault);
+  const others = Object.entries(otherVaults).map(([name, notes]) => {
+    const dir = path.join(root, name);
+    for (const [rel, content] of Object.entries(notes)) {
+      fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+      fs.writeFileSync(path.join(dir, rel), content);
+    }
+    return dir;
+  });
   if (!firstRun)
-    fs.writeFileSync(path.join(userData, "config.json"), JSON.stringify({ notesDir: vaultDir }));
+    fs.writeFileSync(
+      path.join(userData, "config.json"),
+      JSON.stringify(
+        others.length
+          ? { notesDir: vaultDir, vaults: [vaultDir, ...others] }
+          : { notesDir: vaultDir },
+      ),
+    );
   // Keep the test offline: no update check against GitHub.
   fs.writeFileSync(path.join(userData, "settings.json"), JSON.stringify({ autoUpdate: false }));
 
-  const handle = { vault, userData, documents } as AppHandle;
+  const handle = { vault, userData, documents, root } as AppHandle;
   const attach = (launched: Awaited<ReturnType<typeof launchElectron>>) => {
     handle.app = launched.app;
     handle.page = launched.page;
     handle.pageErrors = launched.pageErrors;
   };
-  attach(await launchElectron(userData, firstRun ? documents : undefined, motion));
+  attach(
+    await launchElectron(
+      userData,
+      firstRun ? documents : undefined,
+      motion,
+      openAtLaunch.map((p) => path.join(root, p)),
+    ),
+  );
 
   handle.openNote = async (title) => {
     // Rows are buttons whose accessible name also carries the ··· menu label,

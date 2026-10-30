@@ -75,6 +75,7 @@ import PhoneKeyBar from "./components/PhoneKeyBar";
 import { SLASH_COMMANDS } from "./constants/data";
 import { getAPI } from "./services/apiProvider";
 import { fileFromHistoryKey, fileHistoryKey, useNoteHistory } from "./hooks/useNoteHistory";
+import { useOpenRequests } from "./hooks/useOpenRequests";
 import { useFileView } from "./hooks/useFileView";
 import { AttachmentFolder } from "./hooks/useAttachment";
 import { fileLinkTarget, pageLink } from "./utils/fileView";
@@ -1350,6 +1351,17 @@ export default function BoojyNotes() {
     },
     [setExpanded, markNewRows],
   );
+  // A note opened from Finder or a launch opens as a click on its row does,
+  // its folders opened in the sidebar.
+  useOpenRequests(!fsLoading, {
+    notesDir,
+    switchVault,
+    openNote: (id) => {
+      setActiveNote(id);
+      revealInSidebar(noteDataRef.current[id]?.folder ?? null);
+    },
+    notify: (message, kind) => showToast(message, kind),
+  });
   // The phone's path crumb: Home, with the open note's folders open so its
   // row (held, as the open note's always is) shows under the folder tapped.
   const showFolder = useCallback(() => {

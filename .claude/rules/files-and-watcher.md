@@ -62,16 +62,17 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 
 ## Folders are directories
 
-- Every subdirectory shows, empty or not; dot-directories and `attachments` are skipped.
+- Every subdirectory shows, empty or not, but dot-directories and `attachments`.
 - **The main process alone names folders** (`electron/folders.ts`): sanitises and de-duplicates
   a new last segment, keeps a moved folder's disk name, never escapes the vault
   (`resolveVaultDir`), answers with the final path. No input sanitises a folder name.
 - Rename and move are one `renameSync`, after flushing edits under it; not undoable. Delete waits for the Trash flush. A folder outlives its notes.
-- Duplicate folder: one directory copy (`Name (copy)`), adopted from disk.
 - **A missing chosen vault is never recreated**; writes refuse.
 - **Storage locations** (`electron/vaults.ts`): `open-vault` takes only a listed, present path.
   Remove never touches the folder; **Rename is a label (`vaultLabels`), never the folder's
   name**: other apps may point at it.
+- **A note opened from outside** (`openRequests.ts`) waits for the notes, goes by real path,
+  switches location as the switcher does. `open-with.spec.ts`.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
   folders and on window focus. `trash-file` refuses a note (notes go by id, `trash-note`).
   `vault-switcher.spec.ts`.
@@ -123,4 +124,4 @@ never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 ## Tracing
 
 `BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (built, app quit) logs both processes
-on one clock. `syncGeneration` is editor plumbing, not sync.
+on one clock.

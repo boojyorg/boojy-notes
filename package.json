@@ -83,6 +83,16 @@
   "build": {
     "appId": "org.boojy.notes",
     "productName": "Boojy Notes",
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "Markdown",
+        "description": "Markdown note",
+        "mimeType": "text/markdown",
+        "role": "Editor",
+        "rank": "Alternate"
+      }
+    ],
     "copyright": "Copyright 2026 Tyr Bujac",
     "publish": [
       {

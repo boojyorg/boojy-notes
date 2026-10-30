@@ -19,12 +19,15 @@ import {
 } from "./fileWatcher.js";
 import {
   getNotesDir,
+  loadConfig,
   settleSetupState,
   setupAutoUpdater,
   registerSettingsIPC,
   checkForUpdatesOnStartup,
 } from "./settingsManager.js";
 import { trace, traceEnabled } from "./trace.js";
+import { notePathsIn, openRequestQueue } from "./openRequests.js";
+import { rememberVault } from "./vaults.js";
 import { buildAppMenu } from "./appMenu.js";
 import {
   applySpelling,
@@ -139,6 +142,10 @@ function createWindow() {
     win.webContents.send("app-will-close");
   });
 
+  // A page loading afresh (a new window, a reload) reads its notes before it
+  // can take a note opened from outside.
+  mainWindow.webContents.on("did-start-loading", () => openRequests.reset());
+
   mainWindow.on("closed", () => {
     mainWindow = null;
     // Closing the window ends every writing session (the edits flushed above).
@@ -238,7 +245,32 @@ function createWindow() {
 // same vault each sees the other's saves as outside edits.
 if (!process.env.VITE_DEV_SERVER_URL && !app.requestSingleInstanceLock()) app.exit(0);
 
-app.on("second-instance", () => {
+// Notes opened from outside the app (electron/openRequests.ts). macOS sends
+// `open-file`, even before the app is ready; Windows and Linux pass the path
+// to the launch, or to a second launch, which hands it over below.
+const openRequests = openRequestQueue({
+  send: (request) => {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return false;
+    win.webContents.send("open-request", request);
+    return true;
+  },
+  vaults: () => {
+    const current = getNotesDir();
+    return [current, ...rememberVault(loadConfig().vaults, current).filter((v) => v !== current)];
+  },
+});
+app.on("open-file", (event, filePath) => {
+  event.preventDefault();
+  trace("M", "open-file", filePath);
+  openRequests.add([filePath]);
+  if (app.isReady() && !getMainWindow()) createWindow();
+});
+openRequests.add(notePathsIn(process.argv, process.cwd()));
+ipcMain.handle("take-open-requests", () => openRequests.take());
+
+app.on("second-instance", (_event, argv, workingDirectory) => {
+  openRequests.add(notePathsIn(argv, workingDirectory));
   const win = getMainWindow();
   // macOS keeps running with no window after Cmd+W; a launch brings one back.
   if (!win) {

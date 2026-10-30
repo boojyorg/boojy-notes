@@ -673,6 +673,11 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   ipcMain.handle("get-notes-dir", () => getNotesDir());
 
   ipcMain.handle("read-all-notes", () => readAllNotes(getNotesDir()));
+  // A note opened from outside the app (openRequests.ts), by its path in the
+  // open storage location: its id, once the location's notes are read.
+  ipcMain.handle("note-id-at", (_event, rel) =>
+    typeof rel === "string" ? indexedIdAt(rel) : null,
+  );
 
   // An offloaded note, downloaded: its text off the main thread, then parsed
   // as any note is. Null when its file is gone or the download failed.
