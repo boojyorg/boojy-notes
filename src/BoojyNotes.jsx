@@ -270,6 +270,11 @@ export default function BoojyNotes() {
           focusBlockId.current = blockId;
           focusCursorPos.current = Math.max(0, getCaretOffset(blockRefs.current[blockId]));
         }
+        // The copy is the open note from now, not from the render: the note's
+        // blocks have just become the outside version's, so a keystroke in
+        // between, read against them, found no block and was cancelled. The
+        // copy holds the blocks on screen.
+        activeNoteRef.current = copyId;
         setActiveNote(copyId);
       }
       showToast(
@@ -868,7 +873,7 @@ export default function BoojyNotes() {
   const editorHandlers = useEditorHandlers({
     noteDataRef,
     noteTitleSetRef,
-    activeNote,
+    activeNoteRef,
     commitNoteData,
     blockRefs,
     editorRef,

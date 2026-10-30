@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { getBlockFromNode, hasOwnField } from "../utils/domHelpers";
 import { useSlashCommands } from "./editor/useSlashCommands";
 import { useInputHandler } from "./editor/useInputHandler";
@@ -12,7 +12,9 @@ import { typedPaste } from "../utils/pasteBlocks";
 export function useEditorHandlers({
   noteDataRef,
   noteTitleSetRef,
-  activeNote,
+  // The open note's id, the one shared ref (NoteDataContext): a switch that
+  // must reach the next keystroke before the render (a conflict copy) sets it.
+  activeNoteRef,
   commitNoteData,
   blockRefs,
   editorRef,
@@ -43,10 +45,6 @@ export function useEditorHandlers({
   checkTodos,
   onError,
 }) {
-  // Use a ref for activeNote so inner helpers don't need it as a dependency
-  const activeNoteRef = useRef(activeNote);
-  activeNoteRef.current = activeNote;
-
   // Helper to get blocks and call getBlockFromNode with current refs
   const getBlock = (node) => {
     const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;

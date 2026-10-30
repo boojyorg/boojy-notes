@@ -136,7 +136,7 @@ function setup(blocks, noteId = "note-1") {
   const deps = {
     noteDataRef,
     noteTitleSetRef,
-    activeNote: noteId,
+    activeNoteRef: { current: noteId },
     commitNoteData,
     blockRefs,
     editorRef,
@@ -178,6 +178,7 @@ function setup(blocks, noteId = "note-1") {
   return {
     result,
     noteId,
+    activeNoteRef: deps.activeNoteRef,
     getNoteData: () => noteDataRef.current,
     noteDataRef,
     blockRefs,
@@ -205,6 +206,36 @@ function setup(blocks, noteId = "note-1") {
 // The paste and copy handlers, through the hook that wires them. The keys and
 // typed input are tested on their own hooks (tests/hooks/editor/).
 describe("useEditorHandlers", () => {
+  it("accepts and commits a keystroke to a conflict copy when the shared ref switches before a render", () => {
+    const s = setup([paragraph("Local")]);
+    s.placeCursorInBlock(0, 5);
+    const local = s.noteDataRef.current[s.noteId];
+    const copyId = "conflict-copy";
+    s.noteDataRef.current = {
+      ...makeNoteData(s.noteId, [paragraph("Outside")]),
+      [copyId]: { ...local, id: copyId },
+    };
+    s.activeNoteRef.current = copyId;
+    // No rerender: the old DOM still holds the local paragraph, as it does
+    // between adopting the conflict copy and React committing its note switch.
+    const before = {
+      target: s.editorRef.current,
+      inputType: "insertText",
+      data: "!",
+      getTargetRanges: () => [window.getSelection().getRangeAt(0)],
+      preventDefault: vi.fn(),
+    };
+    act(() => s.result.current.handleEditorBeforeInput(before));
+    expect(before.preventDefault).not.toHaveBeenCalled();
+
+    const el = s.blockRefs.current[local.content.blocks[0].id];
+    el.firstChild.data = "Local!";
+    s.updateBlockText.mockImplementation(() => {});
+    act(() => s.result.current.handleEditorInput({ target: s.editorRef.current }));
+    expect(s.updateBlockText).toHaveBeenCalledWith(copyId, 0, "Local!");
+    expect(s.noteDataRef.current[s.noteId].content.blocks[0].text).toBe("Outside");
+  });
+
   describe("handleEditorPaste", () => {
     function makePasteEvent(text, html) {
       const e = new Event("paste", { bubbles: true, cancelable: true });
