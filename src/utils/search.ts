@@ -4,6 +4,7 @@ import type { Block, Note, NoteData } from "../types/notes";
 import { stripMarkdownFormatting } from "./inlineFormatting";
 import { naturalCompare } from "./sidebarTree";
 import { withinFolder, baseName, parentFolder } from "./vaultPath";
+import { vaultNotes } from "./vaultNotes";
 
 /**
  * What one block contributes to a note's searchable text: prose, a callout's
@@ -177,7 +178,7 @@ export type SearchIndex = Map<string, IndexEntry>;
 /** Build a search index from noteData. */
 export function buildSearchIndex(noteData: NoteData): SearchIndex {
   const index: SearchIndex = new Map();
-  for (const [noteId, note] of Object.entries(noteData)) {
+  for (const [noteId, note] of Object.entries(vaultNotes(noteData))) {
     index.set(noteId, createIndexEntry(noteId, note));
   }
   return index;

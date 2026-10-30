@@ -63,6 +63,15 @@ declare global {
       onOpenRequest: (callback: (request: OpenRequest) => void) => Unsubscribe;
       /** The id of the note at a path in the open storage location (the index's spelling), or null. */
       noteIdAt: (rel: string) => Promise<string | null>;
+      /** A note outside every storage location (electron/outsideNotes.ts): opened, or why not. */
+      openOutsideNote: (
+        filePath: string,
+      ) => Promise<{ note?: Note; id?: string; error?: "missing" | "unreadable" }>;
+      writeOutsideNote: (
+        note: Note,
+      ) => Promise<{ filePath: string; title: string; stale?: boolean; note?: Note }>;
+      /** An outside note's file deleted, or moved out of its folder. */
+      onOutsideNoteGone: (callback: (gone: { id: string; title: string }) => void) => Unsubscribe;
       /** `title` is the basename the file actually got, which the title adopts. */
       /**
        * Writes the note and answers with the name the file got. Refused, and

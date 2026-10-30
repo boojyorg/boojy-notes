@@ -77,7 +77,7 @@ import { getAPI } from "./services/apiProvider";
 import { fileFromHistoryKey, fileHistoryKey, useNoteHistory } from "./hooks/useNoteHistory";
 import { useOpenRequests } from "./hooks/useOpenRequests";
 import { useFileView } from "./hooks/useFileView";
-import { AttachmentFolder } from "./hooks/useAttachment";
+import { AttachmentFolder, OutsideFolder } from "./hooks/useAttachment";
 import { fileLinkTarget, pageLink } from "./utils/fileView";
 import { blocksToMarkdown } from "./utils/markdown";
 import { wholeBlocksCopy } from "./utils/clipboardCopy";
@@ -219,6 +219,18 @@ export default function BoojyNotes() {
   // below, once Recently Deleted is wired up and the editor has moved off it.
   const [deletedOutside, setDeletedOutside] = useState(null);
   const onOpenNoteDeleted = useCallback((deleted) => setDeletedOutside(deleted), []);
+  // A note opened from outside every location whose file went (useFileSystem):
+  // edits pending were written back; with none, it left the app.
+  const onOutsideNoteGone = useCallback(
+    ({ title, writtenBack }) =>
+      showToast(
+        writtenBack
+          ? `"${title}" was deleted or moved outside Boojy Notes. Your unsaved edits were written back to it.`
+          : `"${title}" was deleted or moved outside Boojy Notes, so it was closed.`,
+        "notice",
+      ),
+    [showToast],
+  );
 
   // EditorArea's answer to the open note taking a version from disk: it
   // closes what was aimed at text that changed (useRef, filled by EditorArea).
@@ -297,6 +309,7 @@ export default function BoojyNotes() {
     flushAll,
     downloadOffloaded,
     rereadNote,
+    openOutside,
     folderOps,
     takeNoteFromDisk,
   } = useFileSystem(noteData, setCustomFolders, syncGeneration, showToast, {
@@ -309,6 +322,7 @@ export default function BoojyNotes() {
     onExternalConflict,
     onOpenNoteFromDisk,
     onOpenNoteDeleted,
+    onOutsideNoteGone,
     onNotesEdited: markEdited,
     onTitleResolved,
     remapNoteFolders,
@@ -698,7 +712,8 @@ export default function BoojyNotes() {
   // wash).
   const startNoteRename = useCallback(
     (id) => {
-      if (sidebarVisible) {
+      // A note from outside every location has no row: its name is the path's.
+      if (sidebarVisible && !noteDataRef.current[id]?.outside) {
         setRenamingNote(id);
         return;
       }
@@ -715,7 +730,7 @@ export default function BoojyNotes() {
         sel.addRange(range);
       }, 60);
     },
-    [sidebarVisible, setRenamingNote, setActiveNote],
+    [sidebarVisible, setRenamingNote, setActiveNote, noteDataRef],
   );
   const {
     createNote,
@@ -1356,6 +1371,7 @@ export default function BoojyNotes() {
   useOpenRequests(!fsLoading, {
     notesDir,
     switchVault,
+    openOutside,
     openNote: (id) => {
       setActiveNote(id);
       revealInSidebar(noteDataRef.current[id]?.folder ?? null);
@@ -1490,7 +1506,10 @@ export default function BoojyNotes() {
     sourceView,
     openVaultMenu,
     savePoint,
-    openVersionHistory: versionHistory.open,
+    // Not kept for a note opened from outside every location (the ··· says so).
+    openVersionHistory: () => {
+      if (!noteDataRef.current[activeNoteRef.current]?.outside) versionHistory.open();
+    },
     openRecentlyDeleted: recentlyDeleted.available ? openRecentlyDeleted : undefined,
     goBack: noteHistory.back,
     goForward: noteHistory.forward,
@@ -1777,47 +1796,49 @@ export default function BoojyNotes() {
           >
             {/* Embeds are read from the open note's folder (`useAttachment`). */}
             <AttachmentFolder.Provider value={note?.folder ?? null}>
-              <EditorArea
-                openFindRef={openFindRef}
-                switchViewRef={switchViewRef}
-                blockActionsRef={blockActionsRef}
-                outsideChangeRef={outsideChangeRef}
-                onEditorClick={clearSelection}
-                textOnlyEditForEditor={textOnlyEditForEditor}
-                syncGen={syncGeneration.current}
-                note={note}
-                activeNote={activeNote}
-                editorFadeIn={editorFadeIn}
-                onWikilinkClick={handleWikilinkClick}
-                onFileOpenInPlace={openFileInPlace}
-                onTagClick={handleTagClick}
-                toolbarState={toolbarState}
-                noteTitleSet={noteTitleSet}
-                onEditLink={linkPicker.openForLink}
-                onRemoveLink={removeLink}
-                describeLink={describeLink}
-                blockSelection={blockSelection}
-                setBlockSelection={setBlockSelection}
-                openNote={setActiveNote}
-                onPathRowPointerDown={handleSidebarPointerDown}
-                onShowFolder={isPhone ? showFolder : undefined}
-                noteHistory={noteHistory}
-                onTitleBlur={settleTitle}
-                pastVersion={versionHistory.state.past}
-                deletedNote={deletedPreview}
-                onTypeIntoDeleted={() => {
-                  setBinOpen(false);
-                  recentlyDeleted.setAsk(true);
-                }}
-                offloaded={offloaded}
-                unreadable={unreadable}
-                fileView={fileView}
-                onOpenFileDefault={viewedFileMenu?.openDefault}
-                onRevealFile={viewedFileMenu?.reveal}
-                fileActions={viewedFileMenu}
-                onTypeIntoPast={() => versionHistory.setAsk(true)}
-                showToast={showToast}
-              />
+              <OutsideFolder.Provider value={note?.outside ?? null}>
+                <EditorArea
+                  openFindRef={openFindRef}
+                  switchViewRef={switchViewRef}
+                  blockActionsRef={blockActionsRef}
+                  outsideChangeRef={outsideChangeRef}
+                  onEditorClick={clearSelection}
+                  textOnlyEditForEditor={textOnlyEditForEditor}
+                  syncGen={syncGeneration.current}
+                  note={note}
+                  activeNote={activeNote}
+                  editorFadeIn={editorFadeIn}
+                  onWikilinkClick={handleWikilinkClick}
+                  onFileOpenInPlace={openFileInPlace}
+                  onTagClick={handleTagClick}
+                  toolbarState={toolbarState}
+                  noteTitleSet={noteTitleSet}
+                  onEditLink={linkPicker.openForLink}
+                  onRemoveLink={removeLink}
+                  describeLink={describeLink}
+                  blockSelection={blockSelection}
+                  setBlockSelection={setBlockSelection}
+                  openNote={setActiveNote}
+                  onPathRowPointerDown={handleSidebarPointerDown}
+                  onShowFolder={isPhone ? showFolder : undefined}
+                  noteHistory={noteHistory}
+                  onTitleBlur={settleTitle}
+                  pastVersion={versionHistory.state.past}
+                  deletedNote={deletedPreview}
+                  onTypeIntoDeleted={() => {
+                    setBinOpen(false);
+                    recentlyDeleted.setAsk(true);
+                  }}
+                  offloaded={offloaded}
+                  unreadable={unreadable}
+                  fileView={fileView}
+                  onOpenFileDefault={viewedFileMenu?.openDefault}
+                  onRevealFile={viewedFileMenu?.reveal}
+                  fileActions={viewedFileMenu}
+                  onTypeIntoPast={() => versionHistory.setAsk(true)}
+                  showToast={showToast}
+                />
+              </OutsideFolder.Provider>
             </AttachmentFolder.Provider>
           </EditorProvider>
           {(isPhone || keyBarInWeb) && (
@@ -1850,6 +1871,7 @@ export default function BoojyNotes() {
         />
       )}
       <ContextMenu
+        outsideNote={!!noteData[ctxMenu?.id]?.outside}
         ctxMenu={ctxMenu}
         setCtxMenu={setCtxMenu}
         duplicateNote={duplicateNote}

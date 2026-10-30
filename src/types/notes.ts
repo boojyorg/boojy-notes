@@ -166,6 +166,12 @@ export interface Note {
    * Listed with no blocks; never written, only moved.
    */
   unreadable?: "encoding" | "too-large" | "read";
+  /**
+   * Its file is in none of the storage locations (opened from Finder,
+   * electron/outsideNotes.ts): the folder that file is in. Such a note is never
+   * listed, searched or linked (`vaultNotes`), and has no Version History.
+   */
+  outside?: string;
 }
 
 /** The app's note store: note id → note. */

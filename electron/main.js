@@ -27,6 +27,7 @@ import {
 } from "./settingsManager.js";
 import { trace, traceEnabled } from "./trace.js";
 import { notePathsIn, openRequestQueue } from "./openRequests.js";
+import { outsideAttachment, registerOutsideNoteIPC } from "./outsideNotes.js";
 import { rememberVault } from "./vaults.js";
 import { buildAppMenu } from "./appMenu.js";
 import {
@@ -290,6 +291,7 @@ function restartWatcher() {
 
 registerNoteFileIPC(getMainWindow, getNotesDir, { claimWrite, claimUnlink, releaseUnlinkClaim });
 registerHistoryIPC();
+registerOutsideNoteIPC(getMainWindow);
 // Recently Deleted re-reads its list when a note goes in or comes out.
 onDeletedChanged(() => getMainWindow()?.webContents.send("deleted-notes-changed"));
 // Diagnostic trace (electron/trace.js): the renderer asks once whether it is
@@ -335,15 +337,24 @@ app.whenReady().then(async () => {
   // Attachments load as `boojy-att://vault/<encoded name>`
   // (`src/utils/attachmentUrl.js`): the name is the URL's path, never its host,
   // which Chromium refuses to hold a space in. Only a file inside the vault is
-  // served, found as every handler finds one (`vaultAttachment`).
+  // served, found as every handler finds one (`vaultAttachment`). A picture
+  // beside a note opened from outside every location is
+  // `boojy-att://outside/<encoded absolute path>`, served only from inside an
+  // open outside note's folder, by real path (`outsideAttachment`).
   protocol.handle("boojy-att", (request) => {
     let relativePath;
+    let host;
     try {
-      relativePath = decodeURIComponent(new URL(request.url).pathname.slice(1));
+      const url = new URL(request.url);
+      host = url.host;
+      relativePath = decodeURIComponent(url.pathname.slice(1));
     } catch {
       return new Response("Bad request", { status: 400 });
     }
-    const absPath = vaultAttachment(getNotesDir(), relativePath);
+    const absPath =
+      host === "outside"
+        ? outsideAttachment(relativePath)
+        : vaultAttachment(getNotesDir(), relativePath);
     if (!absPath) return new Response("Not found", { status: 404 });
     return net.fetch(pathToFileURL(absPath).toString());
   });

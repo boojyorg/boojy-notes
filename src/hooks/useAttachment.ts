@@ -5,6 +5,12 @@ import { resolveAttachmentUrl } from "../utils/attachmentUrl";
 
 /** The open note's folder (vault-relative, null at the root): where its embeds are read from. */
 export const AttachmentFolder = createContext<string | null>(null);
+/**
+ * A note opened from outside every location: the folder its file is in. Its
+ * embeds are read beside it (`boojy-att://outside/…`), served only from
+ * inside that folder (electron/outsideNotes.ts), and are no vault file.
+ */
+export const OutsideFolder = createContext<string | null>(null);
 
 // Every answer holds until a file that is not a note arrives or goes, or the
 // vault changes (`attachments-changed`); then each embed asks again. Kept
@@ -61,6 +67,7 @@ export interface Attachment {
  */
 export function useAttachment(src: string, markdown = false): Attachment {
   const folder = useContext(AttachmentFolder);
+  const outside = useContext(OutsideFolder);
   const gen = useSyncExternalStore(subscribe, currentGeneration);
   const inVault = !!vaultAPI()?.locateAttachment && attachmentRef(src, markdown) !== null;
   const key = `${folder ?? ""}\0${markdown ? 1 : 0}\0${src}`;
@@ -69,7 +76,7 @@ export function useAttachment(src: string, markdown = false): Attachment {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: a re-check (`gen`) clears the answers, and every embed asks again
   useEffect(() => {
-    if (!inVault || answers.has(key)) return;
+    if (!inVault || outside || answers.has(key)) return;
     let live = true;
     const askedAt = generation;
     const locate = vaultAPI()?.locateAttachment;
@@ -81,9 +88,17 @@ export function useAttachment(src: string, markdown = false): Attachment {
     return () => {
       live = false;
     };
-  }, [inVault, key, src, folder, markdown, gen]);
+  }, [inVault, outside, key, src, folder, markdown, gen]);
 
   if (!inVault) return { rel: null, url: src, missing: false };
+  if (outside) {
+    const ref = attachmentRef(src, markdown) as string;
+    return {
+      rel: null,
+      url: `boojy-att://outside/${encodeURIComponent(`${outside}/${ref}`)}`,
+      missing: false,
+    };
+  }
   const rel = answers.has(key)
     ? (cached as string | null)
     : held?.key === key

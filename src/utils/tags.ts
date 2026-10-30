@@ -1,5 +1,6 @@
 import type { Block, NoteData } from "../types/notes";
 import { LINK_DEST } from "./linkDestination";
+import { vaultNotes } from "./vaultNotes";
 
 /**
  * The one tag grammar. `#` at the start of the text or after whitespace or
@@ -76,7 +77,7 @@ export interface TagEntry {
 export function extractAllTags(noteData: NoteData | null | undefined): Map<string, TagEntry> {
   const tags = new Map<string, TagEntry>();
   if (!noteData) return tags;
-  for (const [noteId, note] of Object.entries(noteData)) {
+  for (const [noteId, note] of Object.entries(vaultNotes(noteData))) {
     const blocks = note?.content?.blocks;
     if (!blocks) continue;
     for (const block of blocks) {

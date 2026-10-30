@@ -15,6 +15,7 @@ import { buildTree, collectPaths, pathsToTree, naturalCompare } from "../utils/s
 import { compareNotes, sortNoteIds, SORT_RECENT } from "../utils/noteSort";
 import { useNoteSort } from "../hooks/useNoteSort";
 import { NEW_ROW_MS } from "../tokens/motion";
+import { vaultNotes } from "../utils/vaultNotes";
 
 const SidebarContext = createContext(null);
 
@@ -110,7 +111,7 @@ export function SidebarProvider({ children }) {
     textOnlyEditForSidebar.current = false;
     const roots = [];
     const map = {};
-    for (const [id, n] of Object.entries(noteData)) {
+    for (const [id, n] of Object.entries(vaultNotes(noteData))) {
       if (n._draft) continue; // Hide drafts from sidebar
       if (n.folder) {
         if (!map[n.folder]) map[n.folder] = [];

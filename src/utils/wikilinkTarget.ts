@@ -1,4 +1,5 @@
 import type { NoteData } from "../types/notes";
+import { vaultNotes } from "./vaultNotes";
 
 /**
  * What a `[[target]]` names. Obsidian writes three forms beyond the plain
@@ -62,7 +63,7 @@ export function wikilinkCandidates(target: string, noteData: NoteData): string[]
   const key = wikilinkKey(parseWikilinkTarget(target));
   if (!key) return [];
   const ids: string[] = [];
-  for (const [id, note] of Object.entries(noteData)) {
+  for (const [id, note] of Object.entries(vaultNotes(noteData))) {
     if (note._draft) continue;
     if (noteLinkKeys(note).includes(key)) ids.push(id);
   }
@@ -80,7 +81,7 @@ export function linkTargetFor(id: string, noteData: NoteData): string {
   if (!note) return "";
   const title = (note.title || "").trim();
   const key = title.toLowerCase();
-  const namesakes = Object.entries(noteData).filter(
+  const namesakes = Object.entries(vaultNotes(noteData)).filter(
     ([other, n]) => other !== id && !n._draft && (n.title || "").trim().toLowerCase() === key,
   );
   return namesakes.length > 0 && note.folder ? `${note.folder}/${title}` : title;

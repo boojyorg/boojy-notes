@@ -202,6 +202,9 @@ export default function NotePath({
   // Back and Forward through the notes opened (useNoteHistory): { back,
   // forward, canBack, canForward }.
   history = null,
+  // A note opened from outside every location: the folder its file is in,
+  // named muted before it. It is no folder of the app's, so it opens nothing.
+  outsideFolder = null,
   children,
 }) {
   const { theme } = useTheme();
@@ -449,8 +452,18 @@ export default function NotePath({
             const at = parents.length - form.keep + i;
             return [crumb(at, folder, "note-path-folder", undefined), sep(`sep-${at}`)];
           })}
+          {outsideFolder && [
+            <span
+              key="outside"
+              data-testid="note-path-outside"
+              style={{ color: TEXT.muted, flexShrink: 0, whiteSpace: "nowrap" }}
+            >
+              {outsideFolder.split(/[\\/]/).filter(Boolean).pop() ?? outsideFolder}
+            </span>,
+            sep("sep-outside"),
+          ]}
           {/* The phone's ‹ is the way to the root, so the glyph would only take the name's room. */}
-          {parents.length === 0 && !isPhone && rootGlyph}
+          {parents.length === 0 && !outsideFolder && !isPhone && rootGlyph}
           <span
             style={{
               display: "flex",

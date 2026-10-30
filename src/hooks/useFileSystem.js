@@ -30,6 +30,9 @@ export function persistedEquals(a, b) {
   );
 }
 
+/** A note's save: its location's writer, or, for a note outside every location, its own. */
+const writeOf = (api, note) => (note.outside ? api.writeOutsideNote(note) : api.writeNote(note));
+
 /** The name a note's unsaved version is kept under when the file changed outside the app. */
 export function conflictCopyTitle(title, date = new Date()) {
   return `${title || "Untitled"} (conflicted copy ${localDay(date)})`;
@@ -145,6 +148,9 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     const here = links.latestNoteDataRef?.current ?? noteDataRef.current;
     const kept = {};
     for (const [id, n] of Object.entries(next)) kept[id] = withKeptBlockIds(here[id], n);
+    // A note opened from outside every location is in no location's read:
+    // it stays through a reload, a switch and the rebuild after a delete.
+    for (const [id, n] of Object.entries(here)) if (n?.outside && !(id in kept)) kept[id] = n;
     links.replaceNoteData(kept);
   }, []);
   // Work to run once the next flush has finished: after pending writes and
@@ -263,8 +269,10 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       editorLinksRef.current?.onNotesEdited?.(newlyDirty);
     }
 
+    // A note opened from outside every location leaves state when its file
+    // has gone; the app never trashes a file it does not keep.
     for (const id of Object.keys(prev)) {
-      if (!noteData[id] && !prev[id]?._draft) {
+      if (!noteData[id] && !prev[id]?._draft && !prev[id]?.outside) {
         deletedNotes.current.add(id);
         dirtyNotes.current.delete(id);
       }
@@ -337,7 +345,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         });
         let written;
         try {
-          written = await api.writeNote(snapshot(local, requestedTitle));
+          written = await writeOf(api, snapshot(local, requestedTitle));
         } catch (err) {
           console.error("useFileSystem: conflict copy write failed", id, err);
           dirtyNotes.current.add(id);
@@ -511,12 +519,14 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
           try {
             const t0 = performance.now();
             trace("write start", noteId, "blocks", note.content?.blocks?.length ?? 0);
-            const written = await api.writeNote(note);
+            const written = await writeOf(api, note);
             if (written?.stale) {
               // The file changed under the note since the app last saw it, so
               // nothing was written. The disk version is the outside change
               // it is; the note stays dirty until its copy is written.
               trace("write refused", noteId, "file changed on disk");
+              // An outside note's file that is no longer text stays as it is; the edits wait here.
+              if (!written.note) continue;
               const { _filePath, ...external } = written.note;
               await takeOutsideVersion(external);
               continue;
@@ -672,6 +682,20 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     [takeOutsideVersion],
   );
 
+  // A note outside every location, opened from Finder (electron/outsideNotes.ts):
+  // taken as the disk holds it, never written for being opened. Resolves to
+  // its id, or to why it could not open.
+  const openOutside = useCallback(
+    async (filePath) => {
+      if (!isElectron) return { error: "missing" };
+      const opened = await window.electronAPI.openOutsideNote(filePath);
+      if (opened.error) return { error: opened.error };
+      if (opened.note) applyExternal(opened.note);
+      return { id: opened.id ?? opened.note.id };
+    },
+    [applyExternal],
+  );
+
   // ─── Listen for external file changes (the tree watcher → IPC; the phone's sync) ───
   useEffect(() => {
     if (!isNative) return;
@@ -806,6 +830,29 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       })();
     });
 
+    // An outside note's file deleted, or moved out of its folder. Edits not
+    // yet written are written back, which makes the file again, as for a note
+    // in a location; with none, the note leaves the app.
+    const unsubOutsideGone = api.onOutsideNoteGone
+      ? api.onOutsideNoteGone(({ id, title }) => {
+          const links = editorLinksRef.current;
+          const pending = dirtyNotes.current.has(id) || !!links?.unflushedNotes?.current?.has(id);
+          trace("outside note gone", id, pending ? "pending: written back" : "closed");
+          if (pending) {
+            clearTimeout(writeTimer.current);
+            writeTimer.current = setTimeout(() => flushRef.current(), WRITE_DEBOUNCE_MS);
+          } else {
+            externalIds.current.add(id);
+            links.adoptNoteData((prev) => {
+              if (!prev[id]) return prev;
+              const { [id]: _, ...rest } = prev;
+              return rest;
+            });
+          }
+          links.onOutsideNoteGone?.({ id, title, writtenBack: pending });
+        })
+      : () => {};
+
     // A PDF dropped into the vault in Finder is seen when the window is back.
     const onFocus = () => syncFoldersFromDisk();
     window.addEventListener("focus", onFocus);
@@ -815,6 +862,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       unsubMove();
       unsubDelete();
       unsubFolders();
+      unsubOutsideGone();
       window.removeEventListener("focus", onFocus);
     };
     // Deps deliberately not exhaustive: onError is not stable; setCustomFolders/syncGeneration are stable refs/setters
@@ -1010,6 +1058,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     flushAll,
     downloadOffloaded,
     rereadNote,
+    openOutside,
     folderOps,
     /** A note as the disk holds it now (a restore): taken, never written back. */
     takeNoteFromDisk: applyExternal,
