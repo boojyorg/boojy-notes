@@ -27,7 +27,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // those that came before the notes were read, then each as it comes.
   takeOpenRequests: () => ipcRenderer.invoke("take-open-requests"),
   onOpenRequest: subscribe("open-request"),
-  noteIdAt: (rel) => ipcRenderer.invoke("note-id-at", rel),
+  noteAt: (rel) => ipcRenderer.invoke("note-at", rel),
   // A note outside every storage location (electron/outsideNotes.ts).
   openOutsideNote: (filePath) => ipcRenderer.invoke("open-outside-note", filePath),
   writeOutsideNote: (note) => ipcRenderer.invoke("write-outside-note", note),

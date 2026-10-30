@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { OpenRequest } from "../../electron/openRequests";
+import type { Note } from "../types/notes";
 
 type Handlers = {
   /** The open storage location's folder. */
@@ -8,6 +9,8 @@ type Handlers = {
   switchVault: (dir: string) => Promise<boolean>;
   /** Take a note outside every location (useFileSystem): its id, or why it could not open. */
   openOutside: (filePath: string) => Promise<{ id?: string; error?: "missing" | "unreadable" }>;
+  /** Take a note as the disk holds it (one the window has not met yet). */
+  adopt: (note: Note) => void;
   /** Open the note as the sidebar does. */
   openNote: (id: string) => void;
   notify: (message: string, kind: "notice" | "warning") => void;
@@ -53,8 +56,9 @@ export function useOpenRequests(loaded: boolean, handlers: Handlers) {
         return;
       }
       if (request.vault !== h.notesDir && !(await h.switchVault(request.vault))) return;
-      const id = await api.noteIdAt(request.rel);
-      if (id) latest.current.openNote(id);
+      const found = await api.noteAt(request.rel);
+      if (found?.note) latest.current.adopt(found.note);
+      if (found) latest.current.openNote(found.id);
       else h.notify(`Couldn't open "${fileName(request.rel)}" as a note.`, "warning");
     };
     // Subscribed before taking: the main process sends nothing until the queue is taken.
