@@ -26,9 +26,11 @@ export function useNoteHistory({
   const [history, setHistory] = useState<NoteHistory>(emptyHistory);
   const stepping = useRef<string | null>(null);
 
+  // Starts again from what is open: the location arriving at startup comes
+  // after the last session's note has opened, and is no reason to forget it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the key is the trigger
   useEffect(() => {
-    setHistory(emptyHistory());
+    setHistory(current ? historyOpen(emptyHistory(), current) : emptyHistory());
   }, [resetKey]);
 
   useEffect(() => {
