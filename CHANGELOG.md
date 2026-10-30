@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+## v0.19.0 — 2026-10-30
+
+### Features
+
+- **Open Markdown files from Finder** — Boojy Notes appears in Finder's Open With menu for `.md` files, and you can make it the default (select a file, Get Info, Open with, Change All). A note in one of your storage locations opens as if you'd clicked it in the sidebar; if it's in another location, Boojy switches there first, saving anything you'd typed. On Windows and Linux, a file given to the app opens the same way.
+- **Edit a Markdown file from anywhere** — A `.md` file outside your storage locations, such as one in Downloads, opens on its own and is edited in place. The top row shows its folder, renaming it renames the file in that folder, and a change made in another app shows up; if you were typing at the time, both versions are kept. It isn't listed in the sidebar, search, tags or links, and Version History isn't kept for it. Pictures can't be added to it yet.
+- **Back and Forward** — Two arrows at the left of the note's top row step through the notes and files you've opened, as ⌘[ and ⌘] do. An arrow fades when there's nowhere to go.
+- **⌘Enter ticks a to-do** — With the cursor in a to-do, ⌘Enter (Ctrl+Enter on Windows and Linux) ticks it, and pressing it again unticks it. With several lines selected, their to-dos go one way together. Format → Check Off does the same.
+- **Each note keeps its own Markdown view** — Showing a note as Markdown (⌘/) now applies to that note only, and is remembered through a restart. Other notes still open formatted.
+- **Words and when edited** — A note's ··· menu ends with its word count and when it was last edited, such as "1,632 words · Edited 12 min ago".
+- **Cut, Copy and Paste in every field** — Search, the note's name, a rename and Settings' fields now have the right-click menu the note has. So does the Markdown view.
+- **An update that's ready says so** — When a new version has downloaded, a notice offers Restart. Your edits are saved first.
+
+### Improvements
+
+- **Pictures and files are found where Obsidian finds them** — A picture or file in a note is looked for as Obsidian looks: the path as written, the note's own folder, then anywhere in the storage location by name. Notes brought over from Obsidian show their pictures instead of "Not found". The Markdown is never changed.
+- **An outside edit keeps your place** — When another app or an AI tool edits the note you have open, the note updates in place and your cursor stays where it was. Before, the note was rebuilt and your next keystroke started a new paragraph at the end.
+- **A note deleted outside the app can be restored** — A note another app deletes goes to Recently Deleted for 30 days. If it was the note you had open, it stays on screen, read-only, with a notice and Restore.
+- **Tables wrap at words** — A narrow table no longer breaks words in half, short columns such as codes and numbers stay on one line, and the header row has a faint grey background.
+- **Calmer buttons** — Every button is now bordered and neutral, with the main action in bold and Delete in red text, never filled with teal or red. In menus, Delete turns red only while it's highlighted.
+- **Note embeds find their note** — `![[Folder/Note]]` now finds the note, a name two notes share says so instead of guessing, and an embed shows the note's latest text. A file block opens its file in the note's place, and its menu adds Open in Default App.
+- **Pictures appear at once** — Reopening a note draws its pictures straight away, so the text no longer jumps as they load.
+- **Full screen** — The title in full screen's top strip is centred, and the menu bar's menus and dialogs follow the app's Light or Dark theme instead of the Mac's.
+- **A 24-hour clock shows 09:05** — Times in Version History and the ··· menu use two digits for the hour on a 24-hour clock, as the Mac's clock does.
+
+### Bug Fixes
+
+- **A keystroke is never lost when a note changes outside** — If a note changed on disk while you were typing, a keystroke typed at the moment the editor moved into the conflicted copy could be lost. It's now kept.
+- **Typing through an outside rename** — If another app renamed the note you were typing in, a save could make the file again under its old name, leaving two files. Your typing now carries on into the renamed file.
+- **Typing never damages a link or a code block** — Typing in a block could rewrite formatting inside a link's address (an `*` in a URL), or break a code block inside a quote or callout. Neither happens now.
+- **Selections made with Shift+↓** — A selection made with Shift+↓ from the start of a line also counted the next line, so ⌘1 made three headings from two lines and Tab indented one item too many. Commands now act only on the lines the selection holds.
+- **Back works from the first note** — After the app started, ⌘[ only worked once you'd opened a third note. It now works from the second.
+- **No stray focus rings** — Closing Settings with Escape, or Shift-clicking a row, no longer shows a focus ring on something you didn't reach with the keyboard.
+- **Smaller fixes** — Renaming a version in Version History: Escape now cancels and Enter saves once. Copy image, Show in Finder and Open act on the picture shown, wherever it's stored. A conflicted copy made just after midnight is named with the right day. The slash menu opens on its line at every interface size. ArrowUp on an empty line in a callout goes to the line above.
+
+### Android (in testing)
+
+- **Pictures found as on the computer** — The phone looks for a note's pictures and files the same way the computer now does.
+- **Holding a row selects nothing** — Holding a note or folder on Home no longer selects its name.
+
 ## v0.18.0 — 2026-10-24
 
 ### Features
