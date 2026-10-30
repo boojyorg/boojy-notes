@@ -31,3 +31,26 @@ export function historyTarget(h: NoteHistory, dir: -1 | 1, exists: (id: string) 
   }
   return -1;
 }
+
+/**
+ * -1 for Back, 1 for Forward, 0 for any other key: ⌘[ / ⌘] on a Mac
+ * (Finder's and Safari's), Alt+← / → elsewhere (a browser's). The bracket is
+ * read by its physical key too, for layouts where it needs Alt.
+ */
+export function historyKey(
+  e: Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">,
+  mac: boolean,
+): -1 | 0 | 1 {
+  if (mac) {
+    if (!e.metaKey || e.ctrlKey || e.shiftKey) return 0;
+    if (e.key === "[" || e.code === "BracketLeft") return -1;
+    if (e.key === "]" || e.code === "BracketRight") return 1;
+    return 0;
+  }
+  if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return 0;
+  return e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
+}
+
+/** The key `historyKey` takes, as the chrome's chips show it. */
+export const historyShortcut = (dir: -1 | 1, mac: boolean) =>
+  mac ? (dir < 0 ? "⌘[" : "⌘]") : dir < 0 ? "Alt+←" : "Alt+→";

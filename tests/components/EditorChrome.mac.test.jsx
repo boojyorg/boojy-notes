@@ -76,11 +76,10 @@ describe("EditorChrome on macOS with the sidebar hidden", () => {
     for (const t of ["Toggle sidebar", "Search notes", "New note"]) {
       expect(getByLabelText(t)).toBeInTheDocument();
     }
-    // 3 buttons at 32 + two 2px gaps, then the band's air.
-    expect(chromePathInset(true)).toBe(MAC_TRAFFIC_INSET + 100 + PATH_AIR);
-    // Expanded, nothing is on the editor's side of the row (Undo and Redo are
-    // the menu bar's since 2026-09-24): the band starts at the inset's air.
-    expect(chromePathInset(false)).toBe(10 + PATH_AIR);
+    // 3 buttons at 32 + two 2px gaps, a gap, Back and Forward (2 × 32), then the band's air.
+    expect(chromePathInset(true)).toBe(MAC_TRAFFIC_INSET + 100 + 2 + 64 + PATH_AIR);
+    // Expanded, Back and Forward alone stand on the editor's side of the row.
+    expect(chromePathInset(false)).toBe(10 + 64 + PATH_AIR);
     // The right edge clears the ··· by the same air, in every state.
     expect(CHROME_PATH_RIGHT_INSET).toBe(10 + 32 + 2 + 32 + PATH_AIR);
   });
@@ -108,7 +107,7 @@ describe("EditorChrome on macOS in full screen", () => {
     expect(trafficLightsShown(true)).toBe(false);
     expect(trafficLightsShown(false)).toBe(true);
     expect(chromeControlsLeft(true, true)).toBe(CHROME_INSET);
-    expect(chromePathInset(true, true)).toBe(CHROME_INSET + 100 + PATH_AIR);
+    expect(chromePathInset(true, true)).toBe(CHROME_INSET + 100 + 2 + 64 + PATH_AIR);
     // Expanded the group never sat behind the lights, so nothing changes.
     expect(chromePathInset(false, true)).toBe(chromePathInset(false, false));
     // No drag strip anywhere: the path band is the drag region now (NotePath).

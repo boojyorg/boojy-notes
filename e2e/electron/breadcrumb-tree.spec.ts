@@ -21,7 +21,7 @@ import {
 } from "./harness";
 
 const NOTE = "University/Archive/Todd's Note.md";
-const LONG_TITLE = "Todd's Revision Note";
+const LONG_TITLE = "Revision Note";
 const LONG = `University/Archive/${LONG_TITLE}.md`;
 const FILES: Record<string, string> = {
   [NOTE]: "Alpha.\n",
@@ -291,8 +291,8 @@ test("hidden folders: the ellipsis opens the root with the path expanded, inside
       // newest so it sorts first among them (Most recent is the default).
       for (let i = 1; i <= 15; i++) vault.write(`University/Archive/Note ${i}.md`, `N${i}.\n`);
       // A name long enough that its folders cannot all show beside it at the
-      // window's minimum (Todd's Note alone fits since Undo and Redo left the
-      // row on 2026-09-24).
+      // window's minimum, short enough that the ellipsis still fits beside it
+      // (a longer one leaves the name alone, with Back and Forward in the row).
       vault.write(LONG, "Long.\n");
       const base = Date.now() - 60_000;
       for (const f of vault.list()) vault.setMtime(f, base);

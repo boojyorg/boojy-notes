@@ -14,9 +14,9 @@ import { WINDOW_MIN_W } from "../../src/constants/layout";
 import { expandAllFolders, launchApp, MOD, waitForFile, settled, setWidth } from "./harness";
 
 const SUBPIXEL = 0.5;
-// Collapsed, the trio stands left of the path; expanded, nothing does (Undo and
-// Redo went to the menu bar on 2026-09-24), and the pane's own edge is the limit.
-const LEFT_CONTROLS = ["Toggle sidebar", "Search notes", "New note"];
+// Back and Forward stand left of the path in both states; collapsed, after the trio.
+const HISTORY_CONTROLS = ["Back", "Forward"];
+const LEFT_CONTROLS = ["Toggle sidebar", "Search notes", "New note", ...HISTORY_CONTROLS];
 
 /** The path's box, the pane's box, and the controls either side of the path. */
 async function rowGeometry(page: Page, controls: string[]) {
@@ -62,7 +62,7 @@ test("the path shows the note's folders before its name, centred on the pane, in
     // Expanded: every folder, no ellipsis, and the whole thing on the pane's centre.
     expect(await folders(h.page)).toEqual(["University", "Archive"]);
     expect(await ellipses(h.page)).toBe(0);
-    let g = await rowGeometry(h.page, []);
+    let g = await rowGeometry(h.page, HISTORY_CONTROLS);
     expect(Math.abs(g.centre - g.paneCentre)).toBeLessThanOrEqual(1);
     expect(g.left).toBeGreaterThanOrEqual(g.controlsRight + PATH_AIR - SUBPIXEL);
     expect(g.right).toBeLessThanOrEqual(g.moreLeft - PATH_AIR + SUBPIXEL);

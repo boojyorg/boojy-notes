@@ -81,11 +81,10 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   bypasses the app's history); no zoom roles (they steal the UI scale's keys); Reload is dev
   only. `app-menu.spec.ts`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`):
-  after `TOOLTIP_REST_MS`, at once while warm; portalled above every surface,
-  placed via `cssZoom`. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
+  portalled above every surface, placed via `cssZoom`. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
 - **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes and files opened
-  (`useNoteHistory`, memory only). `⌘K` is link, not Search. `⇧⌘L`/`E`/`R` align a
-  table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`. Sort has none.
+  (`useNoteHistory`, memory only), as do the desktop's ← → before the path. `⌘K` is link,
+  not Search. `⇧⌘L`/`E`/`R` align a table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`. Sort has none.
 - **`⌘0`–`9` apply a block kind, never toggle** (`KIND_KEYS`); Actual Size is `⇧⌘0`.
   `block-kind-keys.spec.ts`.
 - **The collapsed header carries the sidebar's three controls**, never both sets at once. Only the hidden sidebar's chrome row and action
