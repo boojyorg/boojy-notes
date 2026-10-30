@@ -24,6 +24,7 @@ const {
   openOutsideNote,
   outsideAttachment,
   registerOutsideNoteIPC,
+  resetOutsideNotes,
   writeOutsideNote,
 } = await import("../../electron/outsideNotes");
 
@@ -112,6 +113,35 @@ describe("outside notes", () => {
     expect(about(note.id).slice(1)).toEqual([
       ["outside-note-gone", { id: note.id, title: "Second" }],
     ]);
+  });
+
+  it("a save after an outside rename follows the file; one carrying the old name is no rename back", () => {
+    const note = open("Loose.md", "Words.\n");
+    fs.renameSync(file("Loose.md"), file("Renamed.md"));
+    const body = (text: string) => ({ title: note.title, blocks: [{ id: "b", type: "p", text }] });
+    expect(writeOutsideNote({ ...note, content: body("Words. typed") })).toMatchObject({
+      title: "Renamed",
+    });
+    expect(about(note.id)).toContainEqual([
+      "file-moved",
+      { id: note.id, title: "Renamed", folder: null },
+    ]);
+    // Still the old name: the window has not taken the rename yet.
+    writeOutsideNote({ ...note, content: body("Words. more") });
+    expect(fs.readdirSync(dir)).toEqual(["Renamed.md"]);
+    expect(fs.readFileSync(file("Renamed.md"), "utf8").trimEnd()).toBe("Words. more");
+    // Taken; a rename the user makes after it is the rename it is.
+    writeOutsideNote({ ...note, title: "Renamed", content: body("Words. more") });
+    writeOutsideNote({ ...note, title: "Loose", content: body("Words. more") });
+    expect(fs.readdirSync(dir)).toEqual(["Loose.md"]);
+  });
+
+  it("forgets every note when a window loads afresh", () => {
+    const note = open("Fresh.md", "Text.\n");
+    resetOutsideNotes();
+    const again = openOutsideNote(file("Fresh.md"));
+    expect(again.note?.id).toBeDefined();
+    expect(again.note?.id).not.toBe(note.id);
   });
 
   it("serves a picture from inside an open note's folder only", () => {

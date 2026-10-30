@@ -792,6 +792,7 @@ export default function BoojyNotes() {
     focusBlockId,
     focusCursorPos,
     onError: showToast,
+    noteDataRef,
   });
   const { updateBlockText, insertBlockAfter, deleteBlock, indentBlockRange, setBlockKind } =
     blockOps;

@@ -7,9 +7,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { PNG } from "../fixtures";
+import { PNG, PNG_B64 } from "../fixtures";
 import {
   type AppHandle,
+  dropFiles,
   END_OF_LINE,
   launchApp,
   MOD,
@@ -235,6 +236,81 @@ test("a conflict copy that cannot be written keeps the edits here and says so, t
     try {
       fs.chmodSync(path.join(h.root, "Downloads"), 0o755);
     } catch {}
+    await h.close();
+  }
+});
+
+test("renamed in Finder before its pending save, the save follows the file and never makes the old name again", async () => {
+  const h = await launchApp({ "Inbox.md": "Inbox.\n" });
+  try {
+    const out = outsideFolder(h, { "Loose.md": "Words.\n" });
+    await openAndPlace(h, out.file("Loose.md"), "Loose");
+    await h.page.keyboard.type(" typed");
+    // Just before the save fires (the text commit's 300 ms, then the write's
+    // 500), so it lands before the folder watch has settled on the rename
+    // (300 ms after it). With the fix either order passes; this one is the race.
+    await sleep(650);
+    fs.renameSync(out.file("Loose.md"), out.file("Renamed.md"));
+    await waitForFile(out.file("Renamed.md"), (t) => t === "Words. typed\n");
+    await expect(title(h.page)).toHaveText("Renamed", { timeout: 5_000 });
+    // Typing on: still the renamed file, under its new name.
+    await h.page.keyboard.type(" more");
+    await waitForFile(out.file("Renamed.md"), (t) => t === "Words. typed more\n");
+    await sleep(SETTLE_MS);
+    expect(fs.readdirSync(out.dir)).toEqual(["Renamed.md"]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("after a reload (a new window), the same file opened again shows its text", async () => {
+  const h = await launchApp({ "Inbox.md": "Inbox.\n" });
+  try {
+    const out = outsideFolder(h, { "Again.md": "Still here.\n" });
+    await openFile(h, out.file("Again.md"));
+    await expect(title(h.page)).toHaveText("Again");
+    await h.page.reload();
+    await expect(h.page.getByRole("treeitem").first()).toBeVisible();
+    await openFile(h, out.file("Again.md"));
+    await expect(title(h.page)).toHaveText("Again");
+    await expect.poll(() => noteText(h.page)).toContain("Still here.");
+  } finally {
+    await h.close();
+  }
+});
+
+test("a picture dropped or pasted into it is refused with a notice, and nothing is saved anywhere", async () => {
+  const h = await launchApp({ "Inbox.md": "Inbox.\n" });
+  try {
+    const out = outsideFolder(h, { "Plain.md": "One\n\nTwo\n" });
+    await openAndPlace(h, out.file("Plain.md"), "Plain");
+    const two = await h.page.locator('[data-block-type="p"]', { hasText: "Two" }).boundingBox();
+    await dropFiles(
+      h.page,
+      [{ name: "Dropped.png", bytes: Buffer.from(PNG_B64, "base64") }],
+      two!.x + 20,
+      two!.y + 2,
+    );
+    await expect(toast(h)).toHaveText(
+      "Pictures and files can't be added to a note outside your storage locations yet.",
+    );
+    await h.page.evaluate((b64) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const data = new DataTransfer();
+      data.items.add(new File([bytes], "Pasted.png", { type: "image/png" }));
+      const target = document.getSelection()?.anchorNode?.parentElement ?? document.body;
+      target.dispatchEvent(
+        new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
+      );
+    }, PNG_B64);
+    await sleep(SETTLE_MS);
+    expect(h.vault.list().filter((f) => !f.endsWith(".md"))).toEqual([]);
+    expect(fs.readdirSync(out.dir)).toEqual(["Plain.md"]);
+    expect(fs.readFileSync(out.file("Plain.md"), "utf8")).toBe("One\n\nTwo\n");
+    await expect(h.page.locator('[data-block-type="image"]')).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
     await h.close();
   }
 });

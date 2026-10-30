@@ -27,7 +27,7 @@ import {
 } from "./settingsManager.js";
 import { trace, traceEnabled } from "./trace.js";
 import { notePathsIn, openRequestQueue } from "./openRequests.js";
-import { outsideAttachment, registerOutsideNoteIPC } from "./outsideNotes.js";
+import { outsideAttachment, registerOutsideNoteIPC, resetOutsideNotes } from "./outsideNotes.js";
 import { rememberVault } from "./vaults.js";
 import { buildAppMenu } from "./appMenu.js";
 import {
@@ -144,8 +144,12 @@ function createWindow() {
   });
 
   // A page loading afresh (a new window, a reload) reads its notes before it
-  // can take a note opened from outside.
-  mainWindow.webContents.on("did-start-loading", () => openRequests.reset());
+  // can take a note opened from outside, and holds none from outside a
+  // location that the last one opened (outsideNotes.ts).
+  mainWindow.webContents.on("did-start-loading", () => {
+    openRequests.reset();
+    resetOutsideNotes();
+  });
 
   mainWindow.on("closed", () => {
     mainWindow = null;
