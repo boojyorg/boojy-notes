@@ -673,6 +673,24 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   ipcMain.handle("get-notes-dir", () => getNotesDir());
 
   ipcMain.handle("read-all-notes", () => readAllNotes(getNotesDir()));
+  // A note opened from outside the app (openRequests.ts), by its path in the
+  // open storage location: its id, and the note itself when the index has
+  // not met the file yet (made a moment ago, the watcher still settling). It
+  // is read and indexed here as the watcher would; the watcher's own report
+  // then finds the same note, unchanged.
+  ipcMain.handle("note-at", (_event, rel) => {
+    if (typeof rel !== "string") return null;
+    const known = indexedIdAt(rel);
+    if (known) return { id: known };
+    const notesDir = getNotesDir();
+    const filePath = insideVault(notesDir, rel);
+    if (!filePath || !fs.existsSync(filePath)) return null;
+    const note = parseNoteFile(filePath, notesDir);
+    if (!note) return null;
+    saveIndex(notesDir);
+    const { _filePath, ...found } = note;
+    return { id: found.id, note: found };
+  });
 
   // An offloaded note, downloaded: its text off the main thread, then parsed
   // as any note is. Null when its file is gone or the download failed.

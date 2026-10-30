@@ -6,6 +6,7 @@
 // changes, change this file in the same commit.
 
 import type { MenuState } from "../../electron/appMenu";
+import type { OpenRequest } from "../../electron/openRequests";
 import type { OtherFile } from "../../electron/folders";
 import type { Version } from "../../electron/history";
 import type { SpellingState } from "../../electron/spelling";
@@ -57,6 +58,11 @@ declare global {
       /** Ends setup however it ended; answers with the notes folder, made if it is the default. */
       completeSetup: () => Promise<string>;
       readAllNotes: () => Promise<Record<string, Note>>;
+      /** Notes opened from outside the app (electron/openRequests.ts): those held until now, then each as it comes. */
+      takeOpenRequests: () => Promise<OpenRequest[]>;
+      onOpenRequest: (callback: (request: OpenRequest) => void) => Unsubscribe;
+      /** The note at a path in the open location (the index's spelling): its id, and the note when the index had not met the file. */
+      noteAt: (rel: string) => Promise<{ id: string; note?: Note } | null>;
       /** `title` is the basename the file actually got, which the title adopts. */
       /**
        * Writes the note and answers with the name the file got. Refused, and
