@@ -89,6 +89,9 @@ export const menuSurface = (theme: Theme) => ({
   outline: "none",
 });
 
+/** A capped menu's right padding, so its pills sit 2.5px off the scrollbar's ink. */
+const MENU_SCROLL_PAD_RIGHT = 1.5;
+
 /** The rule between groups: its own line between the pills, inset like them. */
 export function MenuRule() {
   const { theme } = useTheme();
@@ -474,6 +477,9 @@ export default function Menu({
           maxWidth,
           maxHeight,
           overflowY: maxHeight ? "auto" : undefined,
+          // Beside a scrollbar the pills stop 2.5px short of its ink (the
+          // thumb's 1px border plus this), not a full MENU_PAD: the bar is the edge.
+          ...(maxHeight && { paddingRight: MENU_SCROLL_PAD_RIGHT }),
         }}
       >
         {header}
