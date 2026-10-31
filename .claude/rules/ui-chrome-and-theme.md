@@ -21,7 +21,7 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
   a note's selection (`bandFill`, below the ==highlight==), a search hit's words.
 - **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
-  alone. A choice is ticked; a surface it cannot be uses `menuSurface`. `Menu.test.tsx`.
+  alone. A choice is ticked in the row's ink, never accent; a surface it cannot be uses `menuSurface`. `Menu.test.tsx`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
   hover included. `themeContrast.test.js`, `e2e/accessibility.spec.ts`.
 - **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);

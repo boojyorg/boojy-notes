@@ -190,7 +190,7 @@ export default function Menu({
 }: MenuProps) {
   const { theme } = useTheme();
   const surfaceZ = onTop ? Z.FIELD_MENU : overSettings ? Z.SETTINGS_MENU : undefined;
-  const { BG, TEXT, ACCENT, SEMANTIC } = theme;
+  const { BG, TEXT, SEMANTIC } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const subRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(initialActive);
@@ -384,12 +384,12 @@ export default function Menu({
                 <ChevronRightIcon />
               </span>
             )}
-            {/* The chosen item's mark: a check in the mark colour. */}
+            {/* The chosen item's mark: a check in the row's own ink, as a system menu's. */}
             {ticks && item.checked && (
               <span
                 aria-hidden="true"
                 data-testid={checkTestId}
-                style={{ display: "flex", flexShrink: 0, color: ACCENT.primary }}
+                style={{ display: "flex", flexShrink: 0, color: TEXT.primary }}
               >
                 <CheckIcon />
               </span>

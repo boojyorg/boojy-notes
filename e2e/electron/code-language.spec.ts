@@ -40,12 +40,18 @@ test("the label opens the menu, Plain first then alphabetical, with the block's 
   expect(await menu(h.page).getByRole("menuitemradio").allInnerTexts()).toEqual([
     "Plain",
     "Bash",
+    "C#",
+    "C++",
     "CSS",
     "HTML",
+    "Java",
     "JavaScript",
     "JSON",
+    "LaTeX",
+    "Markdown",
     "Mermaid",
     "Python",
+    "R",
     "SQL",
     "TypeScript",
   ]);
@@ -64,7 +70,7 @@ test("a letter jumps to a language and Enter writes its fence word to disk", asy
   await expect(menu(h.page)).toBeFocused();
   // The menu holds focus, so the letter never reaches the code field under it.
   await h.page.keyboard.press("t");
-  await expect(menu(h.page)).toHaveAttribute("aria-activedescendant", "code-lang-item-9");
+  await expect(menu(h.page)).toHaveAttribute("aria-activedescendant", "code-lang-item-15");
   await h.page.keyboard.press("Enter");
   await expect(menu(h.page)).toHaveCount(0);
   await expect(label(h.page)).toHaveText(/TypeScript/);
@@ -171,6 +177,60 @@ test("an imported ```js block reads JavaScript, and re-picking it leaves the fil
     await sleep(SETTLE_MS);
     expect(g.vault.read("Imported.md")).toBe(imported);
     expect(g.pageErrors).toEqual([]);
+  } finally {
+    await g.close();
+  }
+});
+
+// `md` is Markdown: its label, its tick and its colours; re-picking it writes nothing.
+test("an imported ```md block reads Markdown, coloured, and re-picking it leaves the file alone", async () => {
+  const imported = "Intro.\n\n```md\n# Heading 1\n```\n";
+  const g = await launchApp({ "Imported.md": imported });
+  try {
+    await g.openNote("Imported");
+    await expect(label(g.page)).toHaveText(/Markdown/);
+    await expect(g.page.locator(".code-overlay .token").first()).toBeAttached();
+    await g.page.locator(".code-block").first().hover();
+    await label(g.page).click();
+    const checked = menu(g.page).locator('[role="menuitemradio"][aria-checked="true"]');
+    await expect(checked).toHaveText("Markdown");
+    await checked.click();
+    await expect(menu(g.page)).toHaveCount(0);
+    await sleep(SETTLE_MS);
+    expect(g.vault.read("Imported.md")).toBe(imported);
+    expect(g.pageErrors).toEqual([]);
+  } finally {
+    await g.close();
+  }
+});
+
+// A first line long enough to wrap: the grip meets its first visual row, as a
+// paragraph's does, never the middle of the wrapped line.
+test("the grip sits on a wrapped first line's first row", async () => {
+  const long = "word ".repeat(80).trim();
+  const g = await launchApp({ "Wrap.md": `Intro.\n\n\`\`\`\n${long}\nnext\n\`\`\`\n` });
+  try {
+    await g.openNote("Wrap");
+    const block = g.page.locator(".code-block").first();
+    const box = (await block.boundingBox())!;
+    await g.page.mouse.move(box.x + 40, box.y + 20);
+    const grip = g.page.locator('[data-testid="block-drag-handle"]');
+    await grip.waitFor();
+    const { gripMid, rowTop, rowH, lineH } = await g.page.evaluate(() => {
+      const gr = document
+        .querySelector('[data-testid="block-drag-handle"]')!
+        .getBoundingClientRect();
+      const line = document.querySelector(".code-block .code-line")!;
+      const lr = line.getBoundingClientRect();
+      return {
+        gripMid: gr.top + gr.height / 2,
+        rowTop: lr.top,
+        rowH: lr.height,
+        lineH: lr.height / Math.round(lr.height / parseFloat(getComputedStyle(line).lineHeight)),
+      };
+    });
+    expect(rowH).toBeGreaterThan(lineH * 1.5);
+    expect(Math.abs(gripMid - (rowTop + lineH / 2))).toBeLessThan(2);
   } finally {
     await g.close();
   }

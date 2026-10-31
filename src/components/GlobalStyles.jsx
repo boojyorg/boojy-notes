@@ -835,9 +835,8 @@ ${tagPillCss(theme)}
         @media (hover: hover) {
           .code-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
         }
-        /* The language, in the code's own quiet face. */
+        /* The language is a label in the chrome's face, not code. */
         .code-lang {
-          font: 11.5px 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
           user-select: none;
         }
         .code-lang svg { width: 12px; height: 12px; }

@@ -9,6 +9,11 @@ describe("canonicalLang", () => {
     expect(canonicalLang("py")).toBe("python");
     expect(canonicalLang("zsh")).toBe("bash");
     expect(canonicalLang("htm")).toBe("html");
+    expect(canonicalLang("md")).toBe("markdown");
+    expect(canonicalLang("tex")).toBe("latex");
+    expect(canonicalLang("cs")).toBe("csharp");
+    expect(canonicalLang("C#")).toBe("csharp");
+    expect(canonicalLang("c++")).toBe("cpp");
   });
 
   it("answers the empty language for a fence that names none", () => {
@@ -31,6 +36,8 @@ describe("canonicalLang", () => {
 describe("sameLang", () => {
   it("is how a re-pick of the same language writes nothing", () => {
     expect(sameLang("js", "javascript")).toBe(true);
+    expect(sameLang("md", "markdown")).toBe(true);
+    expect(sameLang("c++", "cpp")).toBe(true);
     expect(sameLang("", "plain")).toBe(true);
     expect(sameLang("js", "typescript")).toBe(false);
     expect(sameLang("rust", "")).toBe(false);

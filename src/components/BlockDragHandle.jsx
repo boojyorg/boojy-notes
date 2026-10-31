@@ -74,7 +74,13 @@ function firstLineRect(el, zoom) {
     return { top: r.top, height: Math.min(DIAGRAM_ROW * zoom, r.height || DIAGRAM_ROW * zoom) };
   }
   const ownRow = el.querySelector(OWN_FIRST_ROW);
-  if (ownRow) return ownRow.getBoundingClientRect();
+  if (ownRow) {
+    const r = ownRow.getBoundingClientRect();
+    // A long first line wraps: the grip meets its first visual row, as a paragraph's does.
+    const lh = parseFloat(getComputedStyle(ownRow).lineHeight);
+    if (!Number.isFinite(lh)) return r;
+    return { top: r.top, height: Math.min(r.height, lh * zoom) };
+  }
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
   });
