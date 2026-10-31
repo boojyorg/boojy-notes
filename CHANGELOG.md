@@ -7,6 +7,7 @@
 - **More code languages** — Code blocks now offer C#, C++, Java, LaTeX, Markdown and R, coloured as you type. Short names work too: a block marked `md`, `tex`, `cs` or `c++` reads as its language, and the file keeps the word you typed. The menu shows about ten at a time and scrolls, opening at the block's current language. A block with no language now reads "Plain text".
 - **Quieter menus** — The tick beside the chosen item in a menu is now the text colour instead of teal.
 - **Code block toolbar** — The language name uses the app's normal font, and hovering it says "Change language".
+- **A narrower slash menu** — The menu that opens when you type `/` is a little narrower, so it covers less of the note.
 
 ### Fixes
 
