@@ -197,7 +197,7 @@ export default function Menu({
 }: MenuProps) {
   const { theme } = useTheme();
   const surfaceZ = onTop ? Z.FIELD_MENU : overSettings ? Z.SETTINGS_MENU : undefined;
-  const { BG, TEXT, ACCENT, SEMANTIC } = theme;
+  const { BG, TEXT, SEMANTIC } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const subRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(initialActive);
@@ -272,6 +272,18 @@ export default function Menu({
     document.addEventListener("keydown", onKey, !takesFocus);
     return () => document.removeEventListener("keydown", onKey, !takesFocus);
   }, [takesFocus]);
+
+  // A capped menu opens with its choice in view, centred, nothing highlighted:
+  // the menu's own scroll, never the page's.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on open only
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    const chosen = itemsRef.current.findIndex((r) => r.checked);
+    if (!maxHeight || !menu || chosen < 0) return;
+    const row = document.getElementById(`${idPrefix}-${chosen}`);
+    if (!row) return;
+    menu.scrollTop = row.offsetTop - (menu.clientHeight - row.offsetHeight) / 2;
+  }, []);
 
   useEffect(() => {
     if (maxHeight && active >= 0) {
@@ -411,12 +423,12 @@ export default function Menu({
                 <ChevronRightIcon />
               </span>
             )}
-            {/* The chosen item's mark: a check in the mark colour. */}
+            {/* The chosen item's mark: a check in the row's own ink, as a system menu's. */}
             {ticks && item.checked && (
               <span
                 aria-hidden="true"
                 data-testid={checkTestId}
-                style={{ display: "flex", flexShrink: 0, color: ACCENT.primary }}
+                style={{ display: "flex", flexShrink: 0, color: TEXT.primary }}
               >
                 <CheckIcon />
               </span>
@@ -468,7 +480,12 @@ export default function Menu({
       />
       <div
         ref={menuRef}
-        className={["motion-pop", align === "end" && "motion-from-end", className]
+        className={[
+          "motion-pop",
+          align === "end" && "motion-from-end",
+          maxHeight && "menu-scroll",
+          className,
+        ]
           .filter(Boolean)
           .join(" ")}
         role="menu"
@@ -493,6 +510,8 @@ export default function Menu({
           maxWidth,
           maxHeight,
           overflowY: maxHeight ? "auto" : undefined,
+          // Beside a scrollbar the gap to the pills is the thumb's own border.
+          ...(maxHeight && { paddingRight: 0 }),
         }}
       >
         {header}

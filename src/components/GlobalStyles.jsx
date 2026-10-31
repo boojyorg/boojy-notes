@@ -1,6 +1,6 @@
 import { useTheme } from "../hooks/useTheme";
 import { tagPillCss, tagPillGround } from "../styles/tagPill";
-import { CHROME_BTN, LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
+import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
@@ -175,6 +175,16 @@ export default function GlobalStyles() {
            colours as the global bar. Pairs with ROW_INSET_RIGHT in Sidebar.jsx. */
         .sidebar-scroll::-webkit-scrollbar-thumb {
           border-left-width: 3px;
+          border-right-width: 2px;
+        }
+        /* A capped menu's bar: MENU_PAD between it and the row pills, as on
+           the menu's other side, and 2px off the surface's edge. Its gutter is
+           13px, one wider than the app's: 4px of border, 7px of ink, 2px of
+           border. The track starts 6px down so the ink clears the 12px corner. */
+        .menu-scroll::-webkit-scrollbar { width: ${MENU_PAD + 7 + 2}px; }
+        .menu-scroll::-webkit-scrollbar-track { margin-block: 3.5px; }
+        .menu-scroll::-webkit-scrollbar-thumb {
+          border-left-width: ${MENU_PAD}px;
           border-right-width: 2px;
         }
         `
@@ -835,9 +845,8 @@ ${tagPillCss(theme)}
         @media (hover: hover) {
           .code-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
         }
-        /* The language, in the code's own quiet face. */
+        /* The language is a label in the chrome's face, not code. */
         .code-lang {
-          font: 11.5px 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
           user-select: none;
         }
         .code-lang svg { width: 12px; height: 12px; }

@@ -5,6 +5,14 @@
 ### Improvements
 
 - **Shortcuts line up in Turn into** — In a block's Turn into menu, and the table's alignment menu, the tick beside the current choice has its own space, so the shortcuts stand in one straight column. Numbered list now comes before Bullet list there and in Format → List, so the shortcuts read in order, ⌘7 then ⌘8.
+- **More code languages** — Code blocks now offer C#, C++, Java, LaTeX, Markdown and R, coloured as you type. Short names work too: a block marked `md`, `tex`, `cs` or `c++` reads as its language, and the file keeps the word you typed. The menu shows about ten at a time and scrolls, opening at the block's current language. A block with no language now reads "Plain text".
+- **Quieter menus** — The tick beside the chosen item in a menu is now the text colour instead of teal.
+- **Code block toolbar** — The language name uses the app's normal font, and hovering it says "Change language".
+- **A narrower slash menu** — The menu that opens when you type `/` is a little narrower, so it covers less of the note.
+
+### Fixes
+
+- **The grip beside a code block** — The grip for moving a code block or diagram now sits level with its language and copy buttons at the top of the box, not beside the first line of code lower down.
 
 ## v0.19.0 — 2026-10-30
 

@@ -68,8 +68,7 @@ describe("CodeLangMenu", () => {
     ]);
   });
 
-  // The chosen language is marked with a check, as Sort marks its mode: the
-  // accent as a marker, never a surface.
+  // The chosen language is marked with a check, as Sort marks its mode.
   it("checks the block's own language and nothing else", () => {
     const { menu } = mount("python");
     const checked = [...menu.querySelectorAll('[role="menuitemradio"]')].filter(
