@@ -225,7 +225,7 @@ test("Turn into's shortcuts stand in one column, the tick beside them", async ()
     .map((t) => t.match(/(\d)$/)?.[1])
     .filter(Boolean);
   expect(digits).toEqual(["0", "1", "2", "3", "7", "8", "9"]);
-  // The tick stands as far from its shortcut as from the menu's edge.
+  // The tick has room on both sides.
   const { before, after } = await kinds.evaluate((el) => {
     const row = el.querySelector('[role="menuitemradio"][aria-checked="true"]')!;
     const parts = [...row.children] as HTMLElement[];
@@ -234,7 +234,10 @@ test("Turn into's shortcuts stand in one column, the tick beside them", async ()
     const inner = el.getBoundingClientRect().right - 1; // the menu's 1px border
     return { before: tick.left - hint.right, after: inner - tick.right };
   });
-  expect(before).toBeCloseTo(after, 0);
+  // 14px either side by the eye: the check's glyph sits ~2.5px inside its box,
+  // so the box stands 2px nearer the edge and 2px further from the shortcut.
+  expect(before).toBeCloseTo(16, 0);
+  expect(after).toBeCloseTo(12, 0);
   if (process.env.SHOT) {
     const b = (await kinds.boundingBox())!;
     await h.page.screenshot({

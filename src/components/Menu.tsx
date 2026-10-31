@@ -91,7 +91,10 @@ export const menuSurface = (theme: Theme) => ({
 
 /** Between a row's parts, and between a shortcut and the tick slot after it. */
 const ROW_GAP = 8;
-const TICK_GAP = 14;
+/** How much nearer the edge a tick stands than a row's other ends (optical). */
+const TICK_NUDGE = 2;
+/** Shortcut to tick: 14px by the boxes, plus the nudge so the shortcut stays put. */
+const TICK_GAP = 14 + TICK_NUDGE;
 
 /** The rule between groups: its own line between the pills, inset like them. */
 export function MenuRule() {
@@ -344,7 +347,11 @@ export default function Menu({
               borderRadius: MENU_ROW_RADIUS,
               // On the phone a row is a touch target, its label body-sized.
               minHeight: isPhone ? TOUCH : undefined,
-              padding: isPhone ? "0 14px" : "7px 10px",
+              // A tickable row ends 2px nearer the edge: the tick's glyph sits
+              // ~2.5px inside its box, so the box comes out to meet the eye.
+              padding: isPhone
+                ? "0 14px"
+                : `7px ${role === "menuitem" ? 10 : 10 - TICK_NUDGE}px 7px 10px`,
               cursor: item.disabled ? "default" : "pointer",
               // The glyph takes the row's ink, so a lit Delete's goes red with it.
               color: item.disabled
