@@ -35,7 +35,7 @@ iCloud eviction). `watcher-scale.spec.ts`.
 
 ## An outside rename or move is the same note
 
-Identity is the inode (`_identity`, memory only), asked by `relocateNote` for an unclaimed
+Identity is the inode, read exact (`fileIdentity`: bigint, a Windows id rounds as a Number) (`_identity`, memory only), asked by `relocateNote` for an unclaimed
 unlink or a save finding its file gone. Found elsewhere, the note follows (`file-moved` →
 `adoptNoteData`), pending edits flushed there; a save carrying an old name before the window's
 `outside-move-taken` is no rename back. No match is a delete. Never compare bytes to decide

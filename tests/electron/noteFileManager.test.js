@@ -858,6 +858,46 @@ describe("relocateNote — an outside rename or move is the same note", () => {
     expect(fs.readdirSync(notesDir).filter((f) => f.endsWith(".md"))).toEqual(["Alpha.md"]);
   });
 
+  // Windows CI, 2026-10-31: a note deleted outside was taken for moved onto the
+  // note being typed in, whose file then held the deleted note's text. A file id
+  // there is 64 bits; the plain stat's Number rounds it, so two files made
+  // together can share one. Identity is read exact (`fileIdentity`, bigint).
+  it("never takes a deleted note for moved onto another whose file id only rounds alike", () => {
+    fs.writeFileSync(path.join(notesDir, "Essay.md"), "First.\n");
+    fs.writeFileSync(path.join(notesDir, "Other.md"), "Other.\n");
+    const realStat = fs.statSync;
+    // What Windows' plain stat gives: two exact ids, one rounded Number.
+    const spy = vi.spyOn(fs, "statSync").mockImplementation((p, opts) => {
+      const st = realStat(p, opts);
+      if (!opts?.bigint && String(p).endsWith(".md")) st.ino = 2 ** 60;
+      return st;
+    });
+    try {
+      readAllNotes(notesDir);
+      const essay = idOf("Essay.md");
+      fs.unlinkSync(path.join(notesDir, "Other.md"));
+
+      expect(relocateNote(path.join(notesDir, "Other.md"), notesDir)).toBeNull();
+      expect(getIdIndex()[essay]).toBe("Essay.md");
+      expect(fs.readFileSync(path.join(notesDir, "Essay.md"), "utf-8")).toBe("First.\n");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  // Two names for one file (a hard link) are two notes holding one identity:
+  // one name deleted is a delete, never the note moving onto the other name.
+  it("never takes a deleted note for moved onto another note holding the same file", () => {
+    fs.writeFileSync(path.join(notesDir, "Essay.md"), "First.\n");
+    fs.linkSync(path.join(notesDir, "Essay.md"), path.join(notesDir, "Other.md"));
+    readAllNotes(notesDir);
+    const essay = idOf("Essay.md");
+    fs.unlinkSync(path.join(notesDir, "Other.md"));
+
+    expect(relocateNote(path.join(notesDir, "Other.md"), notesDir)).toBeNull();
+    expect(getIdIndex()[essay]).toBe("Essay.md");
+  });
+
   it("forgets a note's identity once the vault walk finds its file gone, so a reused inode is never taken for it", () => {
     fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
     readAllNotes(notesDir);

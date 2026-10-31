@@ -9,7 +9,7 @@ import * as history from "./history.js";
 import { attachmentRef } from "../src/utils/attachmentPath.js";
 import { attachmentAdded, locateAttachment, nameTaken } from "./attachmentIndex.js";
 import { isOffloaded, offloadedAmong, readDownloading } from "./offloaded.js";
-import { isSameEntry, isSkippedName, vaultKey } from "./vaultFs.js";
+import { fileIdentity, isSameEntry, isSkippedName, vaultKey } from "./vaultFs.js";
 import { applyEol, blocksToMarkdown, detectEol, markdownToBlocks } from "../src/utils/markdown.js";
 
 // ─── Filename helpers ───
@@ -283,7 +283,7 @@ function getIdIndex() {
 // outlive the session, so nothing needs to survive one. The record is
 // consulted in exactly one place, `relocateNote`, when an indexed path is
 // reported gone.
-const _identity = new Map(); // id → { dev, ino, hash }
+const _identity = new Map(); // id → { key: fileIdentity, hash }
 const hashOf = (text) => crypto.createHash("sha1").update(text).digest("hex");
 
 /** Whether the file holds exactly `text`; `known` is its text when already read. Unreadable is no. */
@@ -295,8 +295,11 @@ function holds(filePath, known, text) {
   }
 }
 
-function recordIdentity(id, stat, raw) {
-  _identity.set(id, { dev: stat.dev, ino: stat.ino, hash: hashOf(raw) });
+/** The note's file and the bytes the app last saw in it; a file already gone forgets it. */
+function recordIdentity(id, filePath, raw) {
+  const key = fileIdentity(filePath);
+  if (key) _identity.set(id, { key, hash: hashOf(raw) });
+  else _identity.delete(id);
 }
 
 /**
@@ -346,16 +349,20 @@ function relocateNote(filePath, notesDir) {
   let newPath = null;
   walkNoteFiles(notesDir, (candidate) => {
     if (newPath) return;
-    try {
-      const s = fs.statSync(candidate);
-      if (s.dev === identity.dev && s.ino === identity.ino) newPath = candidate;
-    } catch {
-      /* gone between readdir and stat */
-    }
+    if (fileIdentity(candidate) === identity.key) newPath = candidate;
   });
   if (!newPath) return null;
 
   const newRelPath = path.relative(notesDir, newPath);
+  // A file another note already holds by the same identity is that note's, not
+  // this one moved: two names for one file (a hard link). Taken for a move, the
+  // deleted note's text went over the other's. `mv -f` over a note is still a
+  // move: the note it displaced held a file that is gone.
+  for (const [other, p] of Object.entries(_idIndex)) {
+    if (p === newRelPath && other !== id && _identity.get(other)?.key === identity.key) {
+      return null;
+    }
+  }
   _outsideMoves.set(id, [...(_outsideMoves.get(id) ?? []), nameOf(relPath)]);
   let displaced = null;
   for (const [other, p] of Object.entries(_idIndex)) {
@@ -429,7 +436,7 @@ function offloadedNote(filePath, notesDir, stat) {
   _idIndex[id] = relPath;
   // Offloading keeps the bytes the app last saw, so a save still compares
   // against them (it downloads the file to do so); a note never read has none.
-  _identity.set(id, { dev: stat.dev, ino: stat.ino, hash: _identity.get(id)?.hash ?? null });
+  _identity.set(id, { key: fileIdentity(filePath), hash: _identity.get(id)?.hash ?? null });
   return {
     id,
     title,
@@ -489,8 +496,7 @@ function unreadableNote(filePath, notesDir, stat, reason, bytes = null) {
   const id = indexedIdAt(relPath) ?? `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   _idIndex[id] = relPath;
   _identity.set(id, {
-    dev: stat.dev,
-    ino: stat.ino,
+    key: fileIdentity(filePath),
     hash: bytes ? hashOf(bytes.toString("utf-8")) : null,
   });
   _unreadable.add(id);
@@ -552,7 +558,7 @@ function parseNoteFile(filePath, notesDir, offloaded = false) {
     // Update index
     _idIndex[id] = relPath;
     _unreadable.delete(id);
-    recordIdentity(id, stat, raw);
+    recordIdentity(id, filePath, raw);
     // History is a copy, kept outside the vault: a userData that cannot be
     // written must not keep the note itself from being listed.
     try {
@@ -879,11 +885,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // landed. The write still happened, so it still answers as done: thrown,
     // the renderer kept the note dirty and its retry wrote the deleted file
     // back. With no identity, the watcher's unlink is the delete it is.
-    try {
-      recordIdentity(note.id, fs.statSync(realPath), bodyMd);
-    } catch {
-      _identity.delete(note.id);
-    }
+    recordIdentity(note.id, realPath, bodyMd);
     saveIndex(notesDir);
     history.recordWrite(note.id, bodyMd);
 

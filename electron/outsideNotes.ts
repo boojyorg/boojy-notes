@@ -12,7 +12,7 @@ import {
   sanitizeFilename,
 } from "./noteFileManager.js";
 import { trace } from "./trace.js";
-import { isSameEntry } from "./vaultFs.js";
+import { fileIdentity, isSameEntry } from "./vaultFs.js";
 
 /**
  * A note whose file is in none of the storage locations, opened from Finder
@@ -38,8 +38,8 @@ import { isSameEntry } from "./vaultFs.js";
 type Entry = {
   path: string;
   hash: string | null;
-  dev: number;
-  ino: number;
+  /** `fileIdentity`: exact, never the plain stat's rounded numbers. */
+  identity: string | null;
   gone?: boolean;
   movedFrom?: Set<string>;
 };
@@ -70,12 +70,10 @@ const realPath = (p: string) => {
 const idFor = (real: string) => [...entries].find(([, e]) => e.path === real)?.[0] ?? null;
 
 function record(id: string, filePath: string, text: string | null) {
-  const stat = fs.statSync(filePath);
   entries.set(id, {
     path: filePath,
     hash: text === null ? null : hashOf(text),
-    dev: stat.dev,
-    ino: stat.ino,
+    identity: fileIdentity(filePath),
     movedFrom: entries.get(id)?.movedFrom,
   });
 }
@@ -97,8 +95,7 @@ function followRename(id: string, e: Entry): boolean {
     .map((name) => path.join(dir, name))
     .find((p) => {
       try {
-        const st = fs.statSync(p);
-        return st.isFile() && st.dev === e.dev && st.ino === e.ino;
+        return e.identity !== null && fs.statSync(p).isFile() && fileIdentity(p) === e.identity;
       } catch {
         return false;
       }

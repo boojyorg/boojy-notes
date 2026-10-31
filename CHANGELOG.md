@@ -6,6 +6,10 @@
 
 - **A narrower slash menu** — The menu that opens when you type `/` is a little narrower, so it covers less of the note.
 
+### Fixes
+
+- **Windows: a note deleted outside the app could overwrite another** — When another app deleted a note, Boojy could mistake it for having moved onto a different note and write the deleted note's text into that one. Notes are now told apart exactly, including two names for one file (a hard link).
+
 ## v0.19.0 — 2026-10-30
 
 ### Features
