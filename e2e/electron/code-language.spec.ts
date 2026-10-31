@@ -271,3 +271,32 @@ test("the menu is capped and opens scrolled to the block's language", async () =
     await g.close();
   }
 });
+
+// A hover highlights the row where it is: scrolling to show a half-hidden row
+// whole slid the list under the pointer, near the top or bottom edge. A key's
+// move is still followed into view.
+test("hovering a half-hidden row never scrolls the menu; a key still does", async () => {
+  await h.page.locator(".code-block").first().hover();
+  await label(h.page).click();
+  const m = menu(h.page);
+  await expect(m).toBeFocused();
+  const scrollTop = () => m.evaluate((el) => el.scrollTop);
+  // Scrolled a little, as a wheel leaves it: the first row half under the top edge.
+  await m.evaluate((el) => {
+    el.scrollTop = 14;
+  });
+  const before = await scrollTop();
+  expect(before).toBe(14);
+  const box = (await m.boundingBox())!;
+  const firstBottom = await m.evaluate(
+    (el) => el.querySelector('[role="menuitemradio"]')!.getBoundingClientRect().bottom,
+  );
+  await h.page.mouse.move(box.x + 40, firstBottom - 4, { steps: 4 });
+  await expect(m).toHaveAttribute("aria-activedescendant", "code-lang-item-0");
+  await h.page.waitForTimeout(150);
+  expect(await scrollTop()).toBe(before);
+  // A key's move is followed: Home shows the first row whole.
+  await h.page.keyboard.press("Home");
+  await expect.poll(scrollTop).toBeLessThan(before);
+  expect(h.pageErrors).toEqual([]);
+});

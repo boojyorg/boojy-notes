@@ -226,10 +226,18 @@ export default function Menu({
     if (item.submenu) openSub(i, keyboard);
     else item.action?.();
   };
+  // A key's move is followed into view, even onto the row already lit; a
+  // hover's is not: the row is under the pointer already, and scrolling to
+  // show it whole slid the list beneath it.
+  const [keyMoves, setKeyMoves] = useState(0);
+  const setActiveByKey: typeof setActive = (v) => {
+    setActive(v);
+    setKeyMoves((n) => n + 1);
+  };
   const menuKeys = useMenuKeys({
     rows: () => itemsRef.current,
     active,
-    setActive,
+    setActive: setActiveByKey,
     choose: (i) => choose(itemsRef.current[i], i, true),
     close: onClose,
   });
@@ -285,11 +293,12 @@ export default function Menu({
     menu.scrollTop = row.offsetTop - (menu.clientHeight - row.offsetHeight) / 2;
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a key's move, not the row, is the cue
   useEffect(() => {
-    if (maxHeight && active >= 0) {
+    if (maxHeight && keyMoves && active >= 0) {
       document.getElementById(`${idPrefix}-${active}`)?.scrollIntoView?.({ block: "nearest" });
     }
-  }, [active, idPrefix, maxHeight]);
+  }, [keyMoves]);
 
   // The submenu's first row level with the row that opened it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-placed when the menu itself moves
