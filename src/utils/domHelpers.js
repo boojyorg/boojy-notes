@@ -361,7 +361,7 @@ export function caretOffsetAt(el, node, offset) {
  * Other inline formatting (bold, italic) keeps the browser's own behaviour:
  * typing at the end of bold text extends the bold, as in every editor.
  */
-export function placeCaret(el, pos = 0) {
+export function placeCaret(el, pos = 0, { reveal = true } = {}) {
   if (!el?.isConnected) return false;
   let ancestor = el.parentElement;
   while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
@@ -376,7 +376,8 @@ export function placeCaret(el, pos = 0) {
   const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(range);
-  if (takesFocus) el.scrollIntoView?.({ block: "nearest" });
+  // `reveal: false` keeps the view exactly: Back's caret, whose line is on screen already.
+  if (takesFocus && reveal) el.scrollIntoView?.({ block: "nearest" });
   return true;
 }
 

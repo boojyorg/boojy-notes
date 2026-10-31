@@ -136,7 +136,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **The note's first line sits on the New note row's baseline, for every block type.** The
   column padding is one number (`COLUMN_TOP`, `utils/typeBaseline.ts`); a first block reaches up
   (`firstBlockLift`) rather than pushing the line down. A note opens scrolled to the
-  top. `note-path.spec.ts`, `editor-scroll.spec.ts`.
+  top, but Back/Forward return to the visit's place (`notePlace.ts`, per visit: top block, the caret only if on screen; a Markdown-view note opens at the top). `note-path.spec.ts`, `editor-scroll.spec.ts`, `note-history.spec.ts`.
 
 ## A folder crumb opens the sidebar's tree under itself
 

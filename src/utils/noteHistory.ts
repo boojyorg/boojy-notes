@@ -8,20 +8,28 @@
 
 export interface NoteHistory {
   ids: string[];
+  /**
+   * Each entry's visit, a number no other entry has had: a note opened twice
+   * is two visits, each with its own place to come back to (`notePlace.ts`).
+   */
+  visits: number[];
   /** The place: the index of the open note, or -1 before any. */
   at: number;
+  /** The next visit's number. */
+  serial: number;
 }
 
 /** How many notes back the list reaches. */
 export const HISTORY_LIMIT = 50;
 
-export const emptyHistory = (): NoteHistory => ({ ids: [], at: -1 });
+export const emptyHistory = (): NoteHistory => ({ ids: [], visits: [], at: -1, serial: 0 });
 
 /** The history with `id` opened: forward dropped, `id` added, the oldest let go past the limit. */
 export function historyOpen(h: NoteHistory, id: string): NoteHistory {
   if (h.ids[h.at] === id) return h;
   const ids = [...h.ids.slice(0, h.at + 1), id].slice(-HISTORY_LIMIT);
-  return { ids, at: ids.length - 1 };
+  const visits = [...h.visits.slice(0, h.at + 1), h.serial].slice(-HISTORY_LIMIT);
+  return { ids, visits, at: ids.length - 1, serial: h.serial + 1 };
 }
 
 /** The index one step back (-1) or forward (1) that still exists, or -1 for none. */
