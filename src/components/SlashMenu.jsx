@@ -16,7 +16,7 @@ import { menuSurface } from "./Menu";
 /** Row height is icon (20) + 7px above and below; a touch target on the phone. */
 const ICON_COL = 20;
 const ROW_PAD_Y = isPhone ? (TOUCH - ICON_COL) / 2 : 7;
-const MENU_WIDTH = 300;
+const MENU_WIDTH = 260;
 /** On the phone: the long-press menu's width, so a label and its hint read as one row. */
 const PHONE_MENU_W = 270;
 /** Air the phone keeps between the menu and the screen's right edge. */

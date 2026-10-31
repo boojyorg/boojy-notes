@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+- **A narrower slash menu** — The menu that opens when you type `/` is a little narrower, so it covers less of the note.
+
 ## v0.19.0 — 2026-10-30
 
 ### Features
