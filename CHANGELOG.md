@@ -12,6 +12,7 @@
 
 ### Fixes
 
+- **Two names for one file** — When a note's file also had a second name (a hard link) and another app deleted one name, Boojy could take the other note for the deleted one moved, and write its text there. Notes are now told apart exactly.
 - **The grip beside a code block** — The grip for moving a code block or diagram now sits level with its language and copy buttons at the top of the box, not beside the first line of code lower down.
 
 ## v0.19.0 — 2026-10-30

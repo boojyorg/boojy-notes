@@ -18,15 +18,25 @@ export function isDeletableOsCruft(name: string): boolean {
   );
 }
 
+/**
+ * A file's identity, exact: its volume and file id, as text, or null when the
+ * path is gone. Never the plain stat's numbers: on Windows a file id is 64 bits
+ * and a Number rounds it, so two files made together can share one, and a
+ * deleted note was taken for moved onto the next one and its text written there.
+ */
+export function fileIdentity(p: string): string | null {
+  try {
+    const st = fs.statSync(p, { bigint: true });
+    return `${st.dev}:${st.ino}`;
+  } catch {
+    return null;
+  }
+}
+
 /** Whether two paths name the same directory entry (false if either is missing). */
 export function isSameEntry(a: string, b: string): boolean {
-  try {
-    const sa = fs.statSync(a);
-    const sb = fs.statSync(b);
-    return sa.ino === sb.ino && sa.dev === sb.dev;
-  } catch {
-    return false;
-  }
+  const id = fileIdentity(a);
+  return id !== null && id === fileIdentity(b);
 }
 
 /** A short key naming a vault in the stores kept outside it (index, history). */
