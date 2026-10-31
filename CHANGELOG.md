@@ -13,6 +13,7 @@
 
 ### Fixes
 
+- **The Markdown view keeps your place** — Scrolled down a note and switched to Show Markdown, the view could jump to the top of the note instead of staying where you were. It happened when a code block or a heading was at the top of the window. Now the same part of the note stays where it was, both ways.
 - **Menus that scroll stay still under the pointer** — In the code block's language menu, moving the pointer onto a row half hidden at the top or bottom no longer slides the list. The arrow keys still scroll it to follow the highlight.
 - **Two names for one file** — When a note's file also had a second name (a hard link) and another app deleted one name, Boojy could take the other note for the deleted one moved, and write its text there. Notes are now told apart exactly.
 - **The grip beside a code block** — The grip for moving a code block or diagram now sits level with its language and copy buttons at the top of the box, not beside the first line of code lower down.

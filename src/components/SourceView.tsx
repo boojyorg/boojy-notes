@@ -215,7 +215,14 @@ function scrollTopFor(scroller: HTMLElement, line: number, top: number): number 
   return scroller.scrollTop + at - top;
 }
 
-/** The top of the line holding `offset` in the painted layer, in viewport pixels. */
+/**
+ * The top of the line holding `offset` in the painted layer, in viewport
+ * pixels, measured on the character at `offset`. An offset at the end of one
+ * painted run is measured at the start of the next: a range collapsed at a
+ * run's end has no box, and Chromium reports it as all zeros, which read as
+ * "the window's top" and scrolled the note there (a fence or a heading's text
+ * starts a run of its own).
+ */
 function lineTop(layer: HTMLElement | null, offset: number): number | null {
   if (!layer) return null;
   const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
@@ -223,20 +230,25 @@ function lineTop(layer: HTMLElement | null, offset: number): number | null {
   let node = walker.nextNode() as Text | null;
   let last: Text | null = null;
   while (node) {
-    if (left <= node.data.length) {
-      const range = document.createRange();
-      range.setStart(node, left);
-      range.setEnd(node, Math.min(left + 1, node.data.length));
-      // A browser measures a range; a test DOM may not, and the switch
-      // then keeps the scroll it has.
-      const rect = range.getClientRects?.()[0] ?? range.getBoundingClientRect?.();
-      return rect ? rect.top : null;
-    }
+    if (left < node.data.length) return topOf(node, left);
     left -= node.data.length;
     last = node;
     node = walker.nextNode() as Text | null;
   }
-  return last
-    ? (last.parentElement?.getBoundingClientRect().bottom ?? null)
-    : layer.getBoundingClientRect().top;
+  // The end of the text: on the last character's line, unless that is a line
+  // break, when the caret stands on the empty line after it.
+  if (!last) return layer.getBoundingClientRect().top;
+  if (last.data.length && !last.data.endsWith("\n")) return topOf(last, last.data.length - 1);
+  return last.parentElement?.getBoundingClientRect().bottom ?? null;
+}
+
+/** The top of character `at` of `node`, or null when it has no box to measure. */
+function topOf(node: Text, at: number): number | null {
+  const range = document.createRange();
+  range.setStart(node, at);
+  range.setEnd(node, at + 1);
+  // A browser measures a range; a test DOM may not, and the switch then
+  // keeps the scroll it has. Neither is a zero box taken for a line.
+  const rect = range.getClientRects?.()[0] ?? range.getBoundingClientRect?.();
+  return rect && (rect.width || rect.height) ? rect.top : null;
 }

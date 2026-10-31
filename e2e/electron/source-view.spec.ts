@@ -160,6 +160,62 @@ test("the path at the top holds still across the switch, folders and all", async
   }
 });
 
+test("a scrolled note keeps its place across the switch when a code block is at the top", async () => {
+  // The block kept still was the code block at the top, and its fence starts a
+  // painted run of its own: measured at the end of the run before, its line
+  // read as the window's top and the switch scrolled the note to its start.
+  const prose = "A line of the note, long enough to take some room.\n\n".repeat(30);
+  const h = await launchApp({
+    "Long.md": `# Long\n\n${prose}\`\`\`js\nconst fence = 1;\n\`\`\`\n\n${prose}`,
+  });
+  try {
+    await h.openNote("Long");
+    const fenceTop = (where: "formatted" | "markdown") =>
+      h.page.evaluate((where) => {
+        const pane = document.querySelector(".editor-scroll")!.getBoundingClientRect().top;
+        if (where === "formatted") {
+          const code = [...document.querySelectorAll("[data-block-id]")].find((b) =>
+            b.textContent?.includes("const fence"),
+          );
+          return code!.getBoundingClientRect().top - pane;
+        }
+        const walker = document.createTreeWalker(
+          document.querySelector(".source-layer")!,
+          NodeFilter.SHOW_TEXT,
+        );
+        for (let n = walker.nextNode() as Text | null; n; n = walker.nextNode() as Text | null) {
+          const at = n.data.indexOf("```js");
+          if (at < 0) continue;
+          const range = document.createRange();
+          range.setStart(n, at);
+          range.setEnd(n, at + 1);
+          return range.getBoundingClientRect().top - pane;
+        }
+        return null;
+      }, where);
+    // Scrolled with no caret in the note (it stays in the sidebar), the code
+    // block just below the pane's top.
+    await h.page.evaluate(() => {
+      const scroller = document.querySelector(".editor-scroll")!;
+      const code = [...document.querySelectorAll("[data-block-id]")].find((b) =>
+        b.textContent?.includes("const fence"),
+      )!;
+      scroller.scrollTop +=
+        code.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 10;
+    });
+    const before = await fenceTop("formatted");
+    for (const view of ["markdown", "formatted", "markdown", "formatted"] as const) {
+      await menuClick(h, "toggleSourceView");
+      await expect(h.page.getByRole("textbox", { name: "Markdown" })).toHaveCount(
+        view === "markdown" ? 1 : 0,
+      );
+      await expect.poll(() => fenceTop(view)).toBeCloseTo(before!, -1.5);
+    }
+  } finally {
+    await h.close();
+  }
+});
+
 test("a menu the keyboard opened in one view does not follow into the other", async () => {
   const h = await launchApp({ "Alpha.md": "First line.\n" });
   try {
