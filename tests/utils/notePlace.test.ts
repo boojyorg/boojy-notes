@@ -64,12 +64,20 @@ describe("capturePlace", () => {
   });
 
   // A caret scrolled out of view is not restored: typing there would be unseen.
-  it("keeps the caret only while it is on screen", () => {
-    expect(capturePlace(blocks, refs, pane(), () => ({ id: "c", offset: 2 }))?.caret).toEqual({
-      id: "c",
-      offset: 2,
-    });
-    expect(capturePlace(blocks, refs, pane(), () => ({ id: "a", offset: 2 }))?.caret).toBeNull();
+  // Its own line decides, never its block: a tall block shows while the line
+  // the caret is on has gone above (review 2026-10-31).
+  it("keeps the caret only while its own line is on screen", () => {
+    const at = (id: string, top: number) => () => ({ id, offset: 2, line: rect(top, 16) });
+    expect(capturePlace(blocks, refs, pane(), at("c", 145))?.caret).toEqual({ id: "c", offset: 2 });
+    expect(capturePlace(blocks, refs, pane(), at("a", 70))?.caret).toBeNull();
+    // b shows (100–140), but a caret on a line at 80 is above the pane.
+    expect(capturePlace(blocks, refs, pane(), at("b", 80))?.caret).toBeNull();
+  });
+
+  // Rects are viewport pixels; the place keeps CSS pixels (the UI scale).
+  it("records how far down the anchor stands in CSS pixels", () => {
+    const shifted = { ...refs, b: { getBoundingClientRect: () => rect(112, 40) } as Element };
+    expect(capturePlace(blocks, shifted, pane(), () => null, 1.2)?.anchor?.top).toBeCloseTo(10);
   });
 
   it("says when the view was at the very top, and is nothing with no block on screen", () => {

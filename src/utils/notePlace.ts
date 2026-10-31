@@ -9,7 +9,10 @@
 export interface NotePlace {
   /** At the very top: restored as the top, whatever is first now. */
   atTop: boolean;
-  /** The block at the top of the view, with its neighbours as fallbacks. */
+  /**
+   * The block at the top of the view, with its neighbours as fallbacks; `top`
+   * in CSS pixels, so a change of Interface size between visits still lands.
+   */
   anchor: { id: string; before: string | null; after: string | null; top: number } | null;
   /** The caret, if it was on screen and collapsed; a selection is never kept. */
   caret: { id: string; offset: number } | null;
@@ -45,14 +48,18 @@ interface Block {
 
 /**
  * The place as the page shows it now. `caretIn` reads the caret: the block id
- * and offset it rests in, or null for none, a selection, or one outside the
- * note. Null with no block on screen (an empty or unmounted note).
+ * and offset it rests in and its own line's rect (`caretRect`: a tall block can
+ * show while the caret's line is scrolled away), or null for none, a
+ * selection, or one outside the note. Rects are viewport pixels; `zoom` (the
+ * UI scale, `cssZoom`) turns them into the CSS pixels scrollTop counts. Null
+ * with no block on screen (an empty or unmounted note).
  */
 export function capturePlace(
   blocks: readonly Block[],
   refs: Record<string, Element | null | undefined>,
   scroller: Element,
-  caretIn: () => { id: string; offset: number } | null,
+  caretIn: () => { id: string; offset: number; line: DOMRect } | null,
+  zoom = 1,
 ): NotePlace | null {
   const pane = scroller.getBoundingClientRect();
   let anchor: NotePlace["anchor"] = null;
@@ -63,16 +70,14 @@ export function capturePlace(
         id: blocks[i].id,
         before: blocks[i - 1]?.id ?? null,
         after: blocks[i + 1]?.id ?? null,
-        top: r.top - pane.top,
+        top: (r.top - pane.top) / zoom,
       };
       break;
     }
   }
   if (!anchor) return null;
-  let caret = caretIn();
-  if (caret) {
-    const r = refs[caret.id]?.getBoundingClientRect();
-    if (!r || r.bottom <= pane.top || r.top >= pane.bottom) caret = null;
-  }
+  const c = caretIn();
+  const showing = c && c.line.bottom > pane.top && c.line.top < pane.bottom;
+  const caret = showing ? { id: c.id, offset: c.offset } : null;
   return { atTop: scroller.scrollTop <= 0, anchor, caret };
 }

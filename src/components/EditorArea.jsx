@@ -51,6 +51,9 @@ import {
   isBlockJump,
   revealCaret,
   revealInNote,
+  caretRangeAt,
+  caretRect,
+  cssZoom,
 } from "../utils/domHelpers";
 import { openMathSource } from "../utils/mathOpen";
 import { drawInlineMath } from "../utils/inlineMath";
@@ -316,17 +319,24 @@ const EditorArea = memo(
       const ids = new Set(blocks.map((b) => b.id));
       const anchor = resolveAnchor(place, ids);
       const anchorEl = anchor && blockRefs.current[anchor.id];
+      // Rects are viewport pixels, scrollTop CSS pixels (the UI scale).
+      const zoom = cssZoom(scroller);
       if (anchorEl) {
         scroller.scrollTop +=
-          anchorEl.getBoundingClientRect().top - scroller.getBoundingClientRect().top - anchor.top;
+          (anchorEl.getBoundingClientRect().top - scroller.getBoundingClientRect().top) / zoom -
+          anchor.top;
       }
       const caret = resolveCaret(place, ids);
       const caretEl = caret && blockRefs.current[caret.id];
       const block = caret && blocks.find((b) => b.id === caret.id);
       if (!caretEl || !isEditableBlock(block)) return;
+      // Only a caret whose own line shows, put back without moving the view.
+      const range = caretRangeAt(caretEl, caret.offset);
       const pane = scroller.getBoundingClientRect();
-      const r = caretEl.getBoundingClientRect();
-      if (r.bottom > pane.top && r.top < pane.bottom) placeCaret(caretEl, caret.offset);
+      const line = range && caretRect(range, caretEl);
+      if (line && line.bottom > pane.top && line.top < pane.bottom) {
+        placeCaret(caretEl, caret.offset, { reveal: false });
+      }
     }, [activeNote, editorScrollRef]);
 
     // The open visit's place, kept as you scroll and as the caret moves, at
@@ -346,13 +356,16 @@ const EditorArea = memo(
         const root = id && blockRefs.current[id];
         if (!root?.contains(node)) return null;
         const offset = getCaretOffset(root);
-        return offset >= 0 ? { id, offset } : null;
+        return offset >= 0 ? { id, offset, line: caretRect(sel.getRangeAt(0), root) } : null;
       };
       let frame = 0;
       const capture = () => {
         frame = 0;
         const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
-        record(activeNote, capturePlace(blocks, blockRefs.current, scroller, caretIn));
+        record(
+          activeNote,
+          capturePlace(blocks, blockRefs.current, scroller, caretIn, cssZoom(scroller)),
+        );
       };
       const schedule = () => {
         if (!frame) frame = requestAnimationFrame(capture);

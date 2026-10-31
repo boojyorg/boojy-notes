@@ -268,3 +268,112 @@ test("left by a link, the block at the top deleted outside: Back lands on its ne
     await h.close();
   }
 });
+
+// Review 2026-10-31 (#446). Measured geometry is viewport pixels, scrollTop
+// CSS pixels: at a UI scale above 100% the two differ.
+test("the place comes back at an Interface size above 100%", async () => {
+  const h = await launchApp({ "Apple.md": long("Apple"), "Banana.md": "B.\n" });
+  try {
+    const name = h.page.getByRole("textbox", { name: "Note title" });
+    await h.page.evaluate(() => {
+      document.documentElement.style.zoom = "120%";
+    });
+    await h.openNote("Apple");
+    await scrollTo(h.page, "Apple 30.");
+    const there = await topBlock(h.page);
+    const at = await scrollTop(h.page);
+    await h.openNote("Banana");
+    await expect(name).toHaveText("Banana");
+    await h.page.keyboard.press(BACK);
+    await expect(name).toHaveText("Apple");
+    expect(await topBlock(h.page)).toEqual(there);
+    expect(Math.abs((await scrollTop(h.page)) - at)).toBeLessThan(2);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// A paragraph of about ten lines: taller than a line, shorter than the pane.
+const tall = `${"Tall sentence goes on and on across the column. ".repeat(20).trim()}`;
+
+/** Scroll so the paragraph's top stands `down` px below the pane's top (negative: above it). */
+async function placeTall(page: import("@playwright/test").Page, down: number) {
+  await page.evaluate((down) => {
+    const s = document.querySelector(".editor-scroll")!;
+    const el = [...document.querySelectorAll("[data-block-id]")].find((b) =>
+      (b as HTMLElement).innerText.startsWith("Tall"),
+    )!;
+    s.scrollTop += el.getBoundingClientRect().top - s.getBoundingClientRect().top - down;
+  }, down);
+  await page.waitForTimeout(120);
+}
+const caretInTall = (page: import("@playwright/test").Page) =>
+  page.evaluate(() => {
+    const n = window.getSelection()?.anchorNode;
+    const el = n && (n.nodeType === Node.ELEMENT_NODE ? (n as Element) : n.parentElement);
+    return !!(el?.closest("[data-block-id]") as HTMLElement | null)?.innerText.startsWith("Tall");
+  });
+
+// A tall paragraph can show while the caret in it is scrolled away: the caret's
+// own line decides, never its block's box.
+test("a caret on a scrolled-away line of a tall paragraph is not put back", async () => {
+  const h = await launchApp({
+    "Apple.md": long("Apple", 80, { 10: tall }),
+    "Banana.md": "B.\n",
+  });
+  try {
+    const name = h.page.getByRole("textbox", { name: "Note title" });
+    await h.openNote("Apple");
+    const para = h.page.locator("[data-block-id]").filter({ hasText: "Tall sentence" });
+    await placeTall(h.page, 200); // well clear of the top row
+    const box = (await para.boundingBox())!;
+    expect(box.height).toBeGreaterThan(120);
+    await h.page.mouse.click(box.x + 20, box.y + 8); // its first line
+    await h.page.waitForTimeout(120);
+    expect(await caretInTall(h.page)).toBe(true);
+    await placeTall(h.page, -60); // the first line gone above, the paragraph still showing
+    const there = await topBlock(h.page);
+    expect(there?.text.startsWith("Tall sentence")).toBe(true);
+    await h.openNote("Banana");
+    await expect(name).toHaveText("Banana");
+    await h.page.keyboard.press(BACK);
+    await expect(name).toHaveText("Apple");
+    expect(await topBlock(h.page)).toEqual(there);
+    expect(await caretInTall(h.page)).toBe(false);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// Putting the caret back must not bring its block into view: a paragraph
+// clipped at the top, the caret on a line that shows, stays as it was.
+test("a caret put back in a clipped paragraph leaves the view where it was", async () => {
+  const h = await launchApp({
+    "Apple.md": long("Apple", 80, { 10: tall }),
+    "Banana.md": "B.\n",
+  });
+  try {
+    const name = h.page.getByRole("textbox", { name: "Note title" });
+    await h.openNote("Apple");
+    const para = h.page.locator("[data-block-id]").filter({ hasText: "Tall sentence" });
+    await placeTall(h.page, -60); // its top 60px above the pane, its bottom showing
+    const box = (await para.boundingBox())!;
+    await h.page.mouse.click(box.x + 20, box.y + box.height - 10); // its last line
+    await h.page.waitForTimeout(120);
+    expect(await caretInTall(h.page)).toBe(true);
+    const there = await topBlock(h.page);
+    const at = await scrollTop(h.page);
+    await h.openNote("Banana");
+    await expect(name).toHaveText("Banana");
+    await h.page.keyboard.press(BACK);
+    await expect(name).toHaveText("Apple");
+    expect(await topBlock(h.page)).toEqual(there);
+    expect(Math.abs((await scrollTop(h.page)) - at)).toBeLessThan(2);
+    expect(await caretInTall(h.page)).toBe(true);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
