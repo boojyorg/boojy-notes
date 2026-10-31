@@ -177,13 +177,14 @@ export default function GlobalStyles() {
           border-left-width: 3px;
           border-right-width: 2px;
         }
-        /* A capped menu's bar stands MENU_PAD off the surface's edge, as its
-           row pills do: the track gives up the difference top and bottom, the
-           thumb's edge-side border grows by it (still 7px of ink). */
-        .menu-scroll::-webkit-scrollbar-track { margin-block: ${MENU_PAD - 2.5}px; }
+        /* A capped menu's bar: MENU_PAD between it and the row pills, as on
+           the menu's other side, and 1px off the surface's edge, as the Mac's
+           sits. The 12px gutter is 4px of border, 7px of ink, 1px of border; the
+           track starts 6px down so the ink clears the 12px corner. */
+        .menu-scroll::-webkit-scrollbar-track { margin-block: 3.5px; }
         .menu-scroll::-webkit-scrollbar-thumb {
-          border-left-width: 1px;
-          border-right-width: ${MENU_PAD}px;
+          border-left-width: ${MENU_PAD}px;
+          border-right-width: 1px;
         }
         `
         }
