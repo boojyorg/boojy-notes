@@ -12,10 +12,13 @@ import Menu, { type MenuAnchor } from "./Menu";
  * nine rows is where reading the list beats scanning it; the menu takes focus
  * (`useFocusTrap`) so the letters never reach the code field under it.
  *
- * The list is Plain, then alphabetical: one editorial exception, because Plain
+ * The list is Plain text, then alphabetical: one editorial exception, because Plain text
  * is the absence of a language, and a mechanical rule for every language added
  * after it.
  */
+
+/** About ten rows; the rest scroll, the chosen one centred on open. */
+const LANG_MENU_MAX_H = 320;
 
 export interface CodeLangItem {
   value: string;
@@ -50,6 +53,7 @@ export default function CodeLangMenu({
       gapY={4}
       align="end"
       minWidth={140}
+      maxHeight={LANG_MENU_MAX_H}
       onClose={onClose}
       items={languages.map((item) => ({
         label: item.label,

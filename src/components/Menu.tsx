@@ -266,6 +266,18 @@ export default function Menu({
     return () => document.removeEventListener("keydown", onKey, !takesFocus);
   }, [takesFocus]);
 
+  // A capped menu opens with its choice in view, centred, nothing highlighted:
+  // the menu's own scroll, never the page's.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on open only
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    const chosen = itemsRef.current.findIndex((r) => r.checked);
+    if (!maxHeight || !menu || chosen < 0) return;
+    const row = document.getElementById(`${idPrefix}-${chosen}`);
+    if (!row) return;
+    menu.scrollTop = row.offsetTop - (menu.clientHeight - row.offsetHeight) / 2;
+  }, []);
+
   useEffect(() => {
     if (maxHeight && active >= 0) {
       document.getElementById(`${idPrefix}-${active}`)?.scrollIntoView?.({ block: "nearest" });

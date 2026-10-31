@@ -137,11 +137,11 @@ describe("CodeBlock", () => {
     }
   });
 
-  it('displays "Plain" when no language is set', () => {
+  it('displays "Plain text" when no language is set', () => {
     const props = { ...defaultProps, block: { ...defaultProps.block, lang: "" } };
     const { container } = render(<CodeBlock {...props} />);
     const langLabel = container.querySelector(".code-lang");
-    expect(langLabel.textContent).toBe("Plain");
+    expect(langLabel.textContent).toBe("Plain text");
   });
 
   it("calls onUpdateCode when textarea value changes", () => {

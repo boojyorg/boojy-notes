@@ -34,13 +34,13 @@ import "prismjs/components/prism-markdown";
 import "prismjs/components/prism-r";
 
 /**
- * The languages offered, Plain then alphabetical: one editorial exception,
- * because Plain is the absence of a language, and a mechanical rule for every
+ * The languages offered, Plain text then alphabetical: one editorial exception,
+ * because Plain text is the absence of a language, and a mechanical rule for every
  * language added after it. Each is a
  * Prism grammar imported above; adding a row means adding its grammar.
  */
 const LANGUAGES = [
-  { value: "", label: "Plain" },
+  { value: "", label: "Plain text" },
   { value: "bash", label: "Bash" },
   { value: "csharp", label: "C#" },
   { value: "cpp", label: "C++" },
@@ -424,7 +424,7 @@ export default memo(function CodeBlock({
   // string names, not the string itself. A file's ```js is JavaScript here and
   // stays `js` on disk; a word the app does not know reads as it was written.
   const canonical = canonicalLang(lang);
-  // Plain for no language, as the menu names it.
+  // Plain text for no language, as the menu names it.
   const displayLabel = LANGUAGES.find((l) => l.value === canonical)?.label || canonical;
 
   const codeField = (
