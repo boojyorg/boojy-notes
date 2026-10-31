@@ -256,26 +256,67 @@ describe("inlineMarkdownToHtml", () => {
     expect(result).not.toContain("<em>");
   });
 
-  // A backslash escape is shown as written, the way Obsidian's live preview
-  // shows it: hiding it looked tidier, but the DOM walker read the text back
-  // without it, so `\*not italic\*` became `*not italic*` on the first edit
-  // and rendered as italic on the next repaint.
-  it("shows backslash-escaped asterisks literally and never as italic", () => {
-    const result = inlineMarkdownToHtml("\\*not italic\\*");
-    expect(result).not.toContain("<em>");
-    expect(result).toBe("\\*not italic\\*");
+  // A backslash escape is drawn as its symbol alone, sealed: the walkers read
+  // the element back with its backslash, so `\*not italic\*` never becomes
+  // `*not italic*` on an edit (it once did, when the backslash was simply
+  // hidden, and rendered italic on the next repaint).
+  const esc = (ch) => `<span class="md-escape" contenteditable="false">${ch}</span>`;
+
+  it("draws escaped asterisks as sealed symbols, never as italic", () => {
+    expect(inlineMarkdownToHtml("\\*not italic\\*")).toBe(`${esc("*")}not italic${esc("*")}<br>`);
   });
 
-  it("shows backslash-escaped tildes literally and never as strikethrough", () => {
-    const result = inlineMarkdownToHtml("\\~\\~not deleted\\~\\~");
-    expect(result).not.toContain("<del>");
-    expect(result).toBe("\\~\\~not deleted\\~\\~");
+  it("draws escaped tildes and backticks as symbols, never as strikethrough or code", () => {
+    expect(inlineMarkdownToHtml("\\~\\~kept\\~\\~")).toBe(
+      `${esc("~")}${esc("~")}kept${esc("~")}${esc("~")}<br>`,
+    );
+    expect(inlineMarkdownToHtml("\\`not code\\`")).toBe(`${esc("`")}not code${esc("`")}<br>`);
   });
 
-  it("shows backslash-escaped backticks literally and never as code", () => {
-    const result = inlineMarkdownToHtml("\\`not code\\`");
-    expect(result).not.toContain("<code>");
-    expect(result).toBe("\\`not code\\`");
+  it("reads an escaped backslash as one, so the star after it is a marker", () => {
+    expect(inlineMarkdownToHtml("a \\\\ b")).toBe(`a ${esc("\\")} b`);
+    expect(inlineMarkdownToHtml("\\\\*it*")).toBe(`${esc("\\")}<em>it</em>`);
+    // A backslash before anything else is text.
+    expect(inlineMarkdownToHtml("C:\\Users")).toBe("C:\\Users");
+  });
+
+  it("escapes any ASCII punctuation, the HTML-special ones included, and nothing else", () => {
+    expect(inlineMarkdownToHtml("\\- a, 1\\. b, \\_c\\_")).toBe(
+      `${esc("-")} a, 1${esc(".")} b, ${esc("_")}c${esc("_")}<br>`,
+    );
+    expect(inlineMarkdownToHtml("\\<b\\> \\& x")).toBe(
+      `${esc("&lt;")}b${esc("&gt;")} ${esc("&amp;")} x`,
+    );
+    expect(inlineMarkdownToHtml("caf\\é")).toBe("caf\\é");
+    for (const md of ["\\- a, 1\\. b, \\_c\\_", "\\<b\\> \\& x", "\\&lt; stays", "\\$5 and \\$6"]) {
+      expect(domNodeToMarkdown(makeEl(inlineMarkdownToHtml(md))), md).toBe(md);
+    }
+  });
+
+  it("leaves an escape as written in a code span, a link's address and a wikilink", () => {
+    expect(inlineMarkdownToHtml("`a\\*b`")).toBe("<code>a\\*b</code>");
+    const link = inlineMarkdownToHtml("[x \\* y](https://a.com/\\*b)");
+    expect(link).toContain('href="https://a.com/\\*b"');
+    expect(link).toContain(`x ${esc("*")} y`);
+    expect(inlineMarkdownToHtml("[[a\\#b]]")).toContain('data-target="a\\#b">a\\#b</span>');
+    expect(inlineMarkdownToHtml("$a\\#b$")).toContain('data-math="a\\#b"');
+  });
+
+  it("ends a line with an escape in a <br>, so the caret has a place after it", () => {
+    expect(inlineMarkdownToHtml("a \\*")).toBe(`a ${esc("*")}<br>`);
+    expect(inlineMarkdownToHtml("**a \\***")).toBe(`<strong>a ${esc("*")}</strong><br>`);
+    // Not a formula: End then lands inside KaTeX's drawing.
+    expect(inlineMarkdownToHtml("sum $x$")).not.toContain("<br>");
+    expect(inlineMarkdownToHtml("\\* a")).not.toContain("<br>");
+    // The walkers ignore it: the bytes are the same.
+    for (const md of ["a \\*", "**a \\***"]) {
+      expect(domNodeToMarkdown(makeEl(inlineMarkdownToHtml(md))), md).toBe(md);
+    }
+  });
+
+  it("draws an escape inside bold, and an escaped # is no tag", () => {
+    expect(inlineMarkdownToHtml("**a \\* b**")).toBe(`<strong>a ${esc("*")} b</strong>`);
+    expect(inlineMarkdownToHtml("\\#tag")).toBe(`${esc("#")}tag`);
   });
 
   it("keeps every escape through the edit path: render, walk, serialise", () => {
@@ -286,15 +327,19 @@ describe("inlineMarkdownToHtml", () => {
       "\\=\\=not marked\\=\\=",
       "\\[not a link\\]",
       "\\[\\[not a wikilink\\]\\]",
-      "\\# not a tag",
+      "\\# not a heading",
+      "a \\\\ b and \\\\*it*",
+      "**a \\* b** and `c\\*d` and [x \\* y](https://a.com/\\*b)",
+      "[[a\\#b]] and $a\\#b$ and [[Note|al\\*ias]]",
       "mixed **bold** and \\*escaped\\* and [[Real]]",
     ];
     for (const md of cases) {
       const html = inlineMarkdownToHtml(md);
       expect(htmlToInlineMarkdown(html), md).toBe(md);
+      expect(htmlToInlineMarkdown(sanitizeInlineHtml(html)), md).toBe(md);
       expect(domNodeToMarkdown(makeEl(html)), md).toBe(md);
     }
-    expect(inlineMarkdownToHtml("\\[\\[not a wikilink\\]\\]")).not.toContain("class=");
+    expect(inlineMarkdownToHtml("\\[\\[not a wikilink\\]\\]")).not.toContain('class="wikilink');
   });
 
   it("handles & in HTML entity escaping", () => {
@@ -314,6 +359,11 @@ describe("stripMarkdownFormatting", () => {
   it("returns empty for falsy input", () => {
     expect(stripMarkdownFormatting("")).toBe("");
     expect(stripMarkdownFormatting(null)).toBe("");
+  });
+
+  it("shows an escaped symbol alone and never reads it as a marker", () => {
+    expect(stripMarkdownFormatting("\\*not italic\\* and \\# no")).toBe("*not italic* and # no");
+    expect(stripMarkdownFormatting("a \\\\ b")).toBe("a \\ b");
   });
 
   it("strips bold", () => {

@@ -207,9 +207,12 @@ test("a soft-break line that begins like a heading, a list or a rule stays in it
     ]);
 
     await h.restart();
-    // One paragraph still; the escapes the file holds are shown as written.
+    // One paragraph still, shown as it was typed: each escape the file holds
+    // is drawn as its symbol alone.
     expect(await blockTypes(h.page)).toEqual(["p"]);
-    expect(await blockShapes(h.page)).toEqual([written]);
+    expect(await blockShapes(h.page)).toEqual([
+      "Intro line.\n# not a heading\n- not a list\n1. not an item\n---",
+    ]);
     expect(h.vault.read("Soft.md")).toBe(written);
     expectNoTempFiles(h.vault);
     expect(h.pageErrors).toEqual([]);

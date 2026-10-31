@@ -1,6 +1,11 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach } from "vitest";
-import { closingFormatAt, paintTypedFormat, typedFormatHit } from "../../src/utils/typedFormatting";
+import {
+  closingFormatAt,
+  endsInEscape,
+  paintTypedFormat,
+  typedFormatHit,
+} from "../../src/utils/typedFormatting";
 import { domNodeToMarkdown } from "../../src/utils/inlineFormatting";
 import { CARET_ANCHOR } from "../../src/utils/domHelpers";
 
@@ -295,5 +300,77 @@ describe("typed inline maths", () => {
     expect(closingFormatAt("$x $")).toBeNull();
     expect(closingFormatAt("$x$", "5")).toBeNull();
     expect(closingFormatAt("$$x$")).toBeNull();
+  });
+});
+
+describe("closingFormatAt after backslashes", () => {
+  it("opens after an escaped backslash, never after an escaping one", () => {
+    expect(closingFormatAt("a \\\\*it*")).toMatchObject({ kind: "italic", content: "it" });
+    expect(closingFormatAt("a \\*it*")).toBeNull();
+    expect(closingFormatAt("a \\\\\\*it*")).toBeNull();
+    expect(closingFormatAt("\\\\**b**")).toMatchObject({ kind: "bold" });
+  });
+});
+
+describe("endsInEscape", () => {
+  it("is an escapable symbol after an odd run of backslashes", () => {
+    for (const md of [
+      "\\*",
+      "a \\#",
+      "\\\\",
+      "\\\\\\*",
+      "x\\`",
+      "\\[",
+      "\\-",
+      "1\\.",
+      "\\_",
+      "\\<",
+    ]) {
+      expect(endsInEscape(md), md).toBe(true);
+    }
+  });
+
+  it("is not a symbol after an escaped backslash, a plain symbol, or another character", () => {
+    for (const md of ["*", "\\\\*", "a\\b", "C:\\U", "\\", ""]) {
+      expect(endsInEscape(md), md).toBe(false);
+    }
+  });
+});
+
+describe("a typed escape", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("seals the symbol after its backslash and parks the caret after it, bytes unchanged", () => {
+    const el = block("say \\*", 6);
+    const hit = typedFormatHit(el, typed("*"));
+    expect(hit).toMatchObject({ kind: "escape", visibleCaret: 6 });
+    expect(paintTypedFormat(el, hit, domNodeToMarkdown(el), new Set())).toBe(true);
+    caretAfterAnchor(el, ".md-escape");
+    expect(el.querySelector(".md-escape").textContent).toBe("*");
+    expect(domNodeToMarkdown(el)).toBe("say \\*");
+  });
+
+  it("seals inside bold, where the escape is not a direct child", () => {
+    document.body.innerHTML =
+      '<div contenteditable="true"><p id="b"><strong>a \\#</strong> end</p></div>';
+    const el = document.getElementById("b");
+    const text = el.querySelector("strong").firstChild;
+    window.getSelection().collapse(text, 4);
+    const hit = typedFormatHit(el, typed("#"));
+    expect(hit).toMatchObject({ kind: "escape", visibleCaret: 4 });
+    expect(paintTypedFormat(el, hit, domNodeToMarkdown(el), new Set())).toBe(true);
+    caretAfterAnchor(el, ".md-escape");
+    expect(domNodeToMarkdown(el)).toBe("**a \\#** end");
+  });
+
+  it("leaves a code span, a link and an escaped backslash's star alone", () => {
+    document.body.innerHTML = '<div contenteditable="true"><p id="b"><code>a\\*</code></p></div>';
+    let el = document.getElementById("b");
+    window.getSelection().collapse(el.querySelector("code").firstChild, 3);
+    expect(typedFormatHit(el, typed("*"))).toBeNull();
+    el = block("a \\\\*", 5);
+    expect(typedFormatHit(el, typed("*"))).toBeNull();
   });
 });
