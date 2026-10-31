@@ -297,8 +297,15 @@ export default function Menu({
     setSubPos({ left, top });
   }, [subOf, idPrefix, pos?.left, pos?.top]);
 
-  const rows = (list: MenuItem[], lit: number, setLit: typeof setActive, prefix: string) =>
-    list.map((item, i) => {
+  const rows = (list: MenuItem[], lit: number, setLit: typeof setActive, prefix: string) => {
+    // A list with both ticks and shortcuts keeps a tick's room on every row,
+    // so the shortcuts stand in one column whichever row is chosen.
+    const tickSlot =
+      ticks &&
+      !isPhone &&
+      list.some((r) => r.hint) &&
+      list.some((r) => (r.role ?? "menuitem") !== "menuitem");
+    return list.map((item, i) => {
       const role = item.role ?? "menuitem";
       const inMain = list === items;
       return (
@@ -394,10 +401,19 @@ export default function Menu({
                 <CheckIcon />
               </span>
             )}
+            {tickSlot && !item.checked && !item.submenu && !item.drills && (
+              <span
+                aria-hidden="true"
+                style={{ display: "flex", flexShrink: 0, visibility: "hidden" }}
+              >
+                <CheckIcon />
+              </span>
+            )}
           </button>
         </Fragment>
       );
     });
+  };
 
   const stop = (e: SyntheticEvent) => e.stopPropagation();
   const close = (e: SyntheticEvent) => {

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+- **Shortcuts line up in Turn into** — In a block's Turn into menu, and the table's alignment menu, the tick beside the current choice has its own space, so the shortcuts stand in one straight column.
+
 ## v0.19.0 — 2026-10-30
 
 ### Features
