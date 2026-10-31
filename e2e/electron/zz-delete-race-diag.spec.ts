@@ -10,7 +10,8 @@ import { END_OF_LINE, SETTLE_MS, launchApp, sleep } from "./harness";
 
 test.setTimeout(600_000);
 
-test("diag: another note deleted outside, repeated with tracing", async ({}, testInfo) => {
+test("diag: another note deleted outside, repeated with tracing", async () => {
+  const testInfo = test.info();
   const bad: string[] = [];
   for (let i = 0; i < 25; i++) {
     const trace = testInfo.outputPath(`trace-${i}.log`);
