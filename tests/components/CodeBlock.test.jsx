@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render, fireEvent, cleanup, act } from "@testing-library/react";
 
 // Mock Prism to avoid loading real grammars
 vi.mock("prismjs", () => {
@@ -30,6 +30,13 @@ vi.mock("prismjs/components/prism-json", () => ({}));
 vi.mock("prismjs/components/prism-bash", () => ({}));
 vi.mock("prismjs/components/prism-sql", () => ({}));
 vi.mock("prismjs/components/prism-markup", () => ({}));
+vi.mock("prismjs/components/prism-c", () => ({}));
+vi.mock("prismjs/components/prism-cpp", () => ({}));
+vi.mock("prismjs/components/prism-csharp", () => ({}));
+vi.mock("prismjs/components/prism-java", () => ({}));
+vi.mock("prismjs/components/prism-latex", () => ({}));
+vi.mock("prismjs/components/prism-markdown", () => ({}));
+vi.mock("prismjs/components/prism-r", () => ({}));
 
 // The language menu carries the theme; the block itself takes none.
 vi.mock("../../src/hooks/useTheme", () => ({
@@ -85,11 +92,56 @@ describe("CodeBlock", () => {
     expect(langLabel.textContent).toBe("JavaScript");
   });
 
-  it('displays "Plain" when no language is set', () => {
+  it("reads a short name as its language: md is Markdown", () => {
+    for (const [lang, label] of [
+      ["markdown", "Markdown"],
+      ["md", "Markdown"],
+      ["tex", "LaTeX"],
+      ["cs", "C#"],
+      ["c++", "C++"],
+      ["r", "R"],
+    ]) {
+      const { container, unmount } = render(
+        <CodeBlock {...defaultProps} block={{ ...defaultProps.block, lang }} />,
+      );
+      expect(container.querySelector(".code-lang").textContent).toBe(label);
+      unmount();
+    }
+  });
+
+  // The chip names the control on hover or keyboard focus, never over its own menu.
+  it("names the language button with a chip, hidden while its menu is open", () => {
+    // jsdom never matches `:focus-visible`; say what the browser would for a Tab.
+    const matches = Element.prototype.matches;
+    vi.spyOn(Element.prototype, "matches").mockImplementation(function (sel) {
+      if (sel === ":focus-visible") return this === document.activeElement;
+      return matches.call(this, sel);
+    });
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<CodeBlock {...defaultProps} />);
+      const button = container.querySelector(".code-lang");
+      act(() => button.focus());
+      act(() => vi.runAllTimers());
+      expect(document.body.textContent).toContain("Change language");
+      fireEvent.click(button);
+      expect(document.body.querySelector("[data-testid='code-lang-menu']")).toBeInTheDocument();
+      expect(
+        [...document.body.querySelectorAll("[role='tooltip']")].some((t) =>
+          t.textContent.includes("Change language"),
+        ),
+      ).toBe(false);
+    } finally {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('displays "Plain text" when no language is set', () => {
     const props = { ...defaultProps, block: { ...defaultProps.block, lang: "" } };
     const { container } = render(<CodeBlock {...props} />);
     const langLabel = container.querySelector(".code-lang");
-    expect(langLabel.textContent).toBe("Plain");
+    expect(langLabel.textContent).toBe("Plain text");
   });
 
   it("calls onUpdateCode when textarea value changes", () => {

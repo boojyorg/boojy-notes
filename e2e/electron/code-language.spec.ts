@@ -30,28 +30,34 @@ test.afterEach(async () => {
 const label = (page: AppHandle["page"]) => page.getByRole("button", { name: "Code language" });
 const menu = (page: AppHandle["page"]) => page.getByRole("menu", { name: "Code language" });
 
-test("the label opens the menu, Plain first then alphabetical, with the block's own language checked", async () => {
-  await expect(label(h.page)).toHaveText(/Plain/);
+test("the label opens the menu, Plain text first then alphabetical, with the block's own language checked", async () => {
+  await expect(label(h.page)).toHaveText(/Plain text/);
   await h.page.locator(".code-block").first().hover();
   await label(h.page).click();
   await expect(menu(h.page)).toBeVisible();
   // Focus lands a frame after the menu shows; a key before that misses it.
   await expect(menu(h.page)).toBeFocused();
   expect(await menu(h.page).getByRole("menuitemradio").allInnerTexts()).toEqual([
-    "Plain",
+    "Plain text",
     "Bash",
+    "C#",
+    "C++",
     "CSS",
     "HTML",
+    "Java",
     "JavaScript",
     "JSON",
+    "LaTeX",
+    "Markdown",
     "Mermaid",
     "Python",
+    "R",
     "SQL",
     "TypeScript",
   ]);
   const checked = menu(h.page).locator('[role="menuitemradio"][aria-checked="true"]');
   await expect(checked).toHaveCount(1);
-  await expect(checked).toHaveText("Plain");
+  await expect(checked).toHaveText("Plain text");
   expect(h.pageErrors).toEqual([]);
 });
 
@@ -64,7 +70,7 @@ test("a letter jumps to a language and Enter writes its fence word to disk", asy
   await expect(menu(h.page)).toBeFocused();
   // The menu holds focus, so the letter never reaches the code field under it.
   await h.page.keyboard.press("t");
-  await expect(menu(h.page)).toHaveAttribute("aria-activedescendant", "code-lang-item-9");
+  await expect(menu(h.page)).toHaveAttribute("aria-activedescendant", "code-lang-item-15");
   await h.page.keyboard.press("Enter");
   await expect(menu(h.page)).toHaveCount(0);
   await expect(label(h.page)).toHaveText(/TypeScript/);
@@ -86,7 +92,7 @@ test("Escape closes it and changes nothing", async () => {
   await h.page.keyboard.press("ArrowDown");
   await h.page.keyboard.press("Escape");
   await expect(menu(h.page)).toHaveCount(0);
-  await expect(label(h.page)).toHaveText(/Plain/);
+  await expect(label(h.page)).toHaveText(/Plain text/);
   await sleep(SETTLE_MS);
   expect(h.vault.read(NOTE)).toBe(FILE);
   expect(h.pageErrors).toEqual([]);
@@ -118,7 +124,7 @@ test("a press outside closes it", async () => {
   await expect(menu(h.page)).toBeFocused();
   await h.page.mouse.click(para!.x + 10, para!.y + para!.height / 2);
   await expect(menu(h.page)).toHaveCount(0);
-  await expect(label(h.page)).toHaveText(/Plain/);
+  await expect(label(h.page)).toHaveText(/Plain text/);
   expect(h.pageErrors).toEqual([]);
 });
 
@@ -170,6 +176,96 @@ test("an imported ```js block reads JavaScript, and re-picking it leaves the fil
     await expect(menu(g.page)).toHaveCount(0);
     await sleep(SETTLE_MS);
     expect(g.vault.read("Imported.md")).toBe(imported);
+    expect(g.pageErrors).toEqual([]);
+  } finally {
+    await g.close();
+  }
+});
+
+// `md` is Markdown: its label, its tick and its colours; re-picking it writes nothing.
+test("an imported ```md block reads Markdown, coloured, and re-picking it leaves the file alone", async () => {
+  const imported = "Intro.\n\n```md\n# Heading 1\n```\n";
+  const g = await launchApp({ "Imported.md": imported });
+  try {
+    await g.openNote("Imported");
+    await expect(label(g.page)).toHaveText(/Markdown/);
+    await expect(g.page.locator(".code-overlay .token").first()).toBeAttached();
+    await g.page.locator(".code-block").first().hover();
+    await label(g.page).click();
+    const checked = menu(g.page).locator('[role="menuitemradio"][aria-checked="true"]');
+    await expect(checked).toHaveText("Markdown");
+    await checked.click();
+    await expect(menu(g.page)).toHaveCount(0);
+    await sleep(SETTLE_MS);
+    expect(g.vault.read("Imported.md")).toBe(imported);
+    expect(g.pageErrors).toEqual([]);
+  } finally {
+    await g.close();
+  }
+});
+
+// A code block's first row is its frame's toolbar, not its first line of code
+// (a toolbar's height lower): the grip stands level with the language and copy
+// buttons, for code, an empty block and a diagram alike.
+test("the grip stands level with a code block's toolbar", async () => {
+  const long = "word ".repeat(80).trim();
+  const g = await launchApp({
+    "Grip.md": `Intro.\n\n\`\`\`\n${long}\nnext\n\`\`\`\n\nMid.\n\n\`\`\`js\n\`\`\`\n\nEnd.\n\n\`\`\`mermaid\nflowchart LR\n  A --> B\n\`\`\`\n`,
+  });
+  try {
+    await g.openNote("Grip");
+    const blocks = g.page.locator(".code-block");
+    for (let i = 0; i < 3; i++) {
+      const block = blocks.nth(i);
+      await block.scrollIntoViewIfNeeded();
+      const box = (await block.boundingBox())!;
+      await g.page.mouse.move(box.x + 40, box.y + box.height - 8, { steps: 3 });
+      const grip = g.page.locator('[data-testid="block-drag-handle"]');
+      await grip.waitFor();
+      const off = await block.evaluate((el) => {
+        const gr = document
+          .querySelector('[data-testid="block-drag-handle"]')!
+          .getBoundingClientRect();
+        const tr = el.querySelector(":scope > .code-tools")!.getBoundingClientRect();
+        return gr.top + gr.height / 2 - (tr.top + tr.height / 2);
+      });
+      expect(Math.abs(off)).toBeLessThan(1);
+    }
+    expect(g.pageErrors).toEqual([]);
+  } finally {
+    await g.close();
+  }
+});
+
+// Sixteen rows would cover half the note: the menu shows about ten and
+// scrolls, opening with the block's own language in view, and a letter
+// scrolls to its language.
+test("the menu is capped and opens scrolled to the block's language", async () => {
+  const g = await launchApp({ "R.md": "Intro.\n\n```r\nx <- 1\n```\n" });
+  try {
+    await g.openNote("R");
+    await g.page.locator(".code-block").first().hover();
+    await label(g.page).click();
+    const m = menu(g.page);
+    await expect(m).toBeFocused();
+    const fits = (name: string) =>
+      m.evaluate((el, n) => {
+        const row = [...el.querySelectorAll('[role="menuitemradio"]')].find(
+          (r) => r.textContent === n,
+        )!;
+        const a = el.getBoundingClientRect();
+        const b = row.getBoundingClientRect();
+        return b.top >= a.top && b.bottom <= a.bottom;
+      }, name);
+    const { scrollH, clientH } = await m.evaluate((el) => ({
+      scrollH: el.scrollHeight,
+      clientH: el.clientHeight,
+    }));
+    expect(scrollH).toBeGreaterThan(clientH);
+    expect(await fits("R")).toBe(true);
+    expect(await fits("Plain text")).toBe(false);
+    await g.page.keyboard.press("b");
+    await expect.poll(() => fits("Bash")).toBe(true);
     expect(g.pageErrors).toEqual([]);
   } finally {
     await g.close();

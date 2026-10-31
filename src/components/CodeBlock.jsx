@@ -24,22 +24,36 @@ import "prismjs/components/prism-json";
 import "prismjs/components/prism-bash";
 import "prismjs/components/prism-sql";
 import "prismjs/components/prism-markup";
+// C++ extends C, so C loads first; Markdown and LaTeX bring their own `md` and `tex`.
+import "prismjs/components/prism-c";
+import "prismjs/components/prism-cpp";
+import "prismjs/components/prism-csharp";
+import "prismjs/components/prism-java";
+import "prismjs/components/prism-latex";
+import "prismjs/components/prism-markdown";
+import "prismjs/components/prism-r";
 
 /**
- * The languages offered, Plain then alphabetical: one editorial exception,
- * because Plain is the absence of a language, and a mechanical rule for every
+ * The languages offered, Plain text then alphabetical: one editorial exception,
+ * because Plain text is the absence of a language, and a mechanical rule for every
  * language added after it. Each is a
  * Prism grammar imported above; adding a row means adding its grammar.
  */
 const LANGUAGES = [
-  { value: "", label: "Plain" },
+  { value: "", label: "Plain text" },
   { value: "bash", label: "Bash" },
+  { value: "csharp", label: "C#" },
+  { value: "cpp", label: "C++" },
   { value: "css", label: "CSS" },
   { value: "html", label: "HTML" },
+  { value: "java", label: "Java" },
   { value: "javascript", label: "JavaScript" },
   { value: "json", label: "JSON" },
+  { value: "latex", label: "LaTeX" },
+  { value: "markdown", label: "Markdown" },
   { value: "mermaid", label: "Mermaid" },
   { value: "python", label: "Python" },
+  { value: "r", label: "R" },
   { value: "sql", label: "SQL" },
   { value: "typescript", label: "TypeScript" },
 ];
@@ -56,6 +70,8 @@ const LANG_ALIAS = {
   html: "markup",
   xml: "markup",
   svg: "markup",
+  "c++": "cpp",
+  "c#": "csharp",
 };
 
 /**
@@ -122,6 +138,7 @@ export default memo(function CodeBlock({
   const [viewing, setViewing] = useState(false);
   const viewTip = useTooltip();
   const viewBtnRef = useRef(null);
+  const langTip = useTooltip();
   const copyTip = useTooltip();
   const copyBtnRef = useRef(null);
   const [ctxMenu, setCtxMenu] = useState(null);
@@ -407,7 +424,7 @@ export default memo(function CodeBlock({
   // string names, not the string itself. A file's ```js is JavaScript here and
   // stays `js` on disk; a word the app does not know reads as it was written.
   const canonical = canonicalLang(lang);
-  // Plain for no language, as the menu names it.
+  // Plain text for no language, as the menu names it.
   const displayLabel = LANGUAGES.find((l) => l.value === canonical)?.label || canonical;
 
   const codeField = (
@@ -448,16 +465,23 @@ export default memo(function CodeBlock({
         aria-haspopup="menu"
         aria-expanded={!!langMenu}
         aria-label="Code language"
+        {...langTip.handlers}
         onClick={(e) => {
           e.stopPropagation();
           if (langMenu) closeLangMenu();
           else openLangMenu();
         }}
-        onMouseDown={(e) => e.preventDefault()}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          langTip.handlers.onMouseDown();
+        }}
       >
         {displayLabel}
         <ChevronDownIcon size={12} />
       </button>
+      {langTip.shown && !langMenu && (
+        <Tooltip label="Change language" anchor={langLabelRef.current} />
+      )}
       {diagram && (
         <button
           ref={codeBtnRef}

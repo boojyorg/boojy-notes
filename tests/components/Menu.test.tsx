@@ -191,6 +191,9 @@ describe("Menu", () => {
     expect(a).toHaveAttribute("aria-checked", "true");
     expect(a.querySelector("svg")).not.toBeNull();
     expect(b.querySelector("svg")).toBeNull();
+    // The tick is the row's ink, as a system menu's, never the accent.
+    const tick = a.querySelector("svg")?.parentElement as HTMLElement;
+    expect(tick.style.color).toBe("rgb(20, 17, 15)");
     expect(screen.getAllByRole("separator")).toHaveLength(1);
   });
 });
