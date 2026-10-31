@@ -89,6 +89,13 @@ export const menuSurface = (theme: Theme) => ({
   outline: "none",
 });
 
+/** Between a row's parts, and between a shortcut and the tick slot after it. */
+const ROW_GAP = 8;
+/** How much nearer the edge a tick stands than a row's other ends (optical). */
+const TICK_NUDGE = 2;
+/** Shortcut to tick: 14px by the boxes, plus the nudge so the shortcut stays put. */
+const TICK_GAP = 14 + TICK_NUDGE;
+
 /** The rule between groups: its own line between the pills, inset like them. */
 export function MenuRule() {
   const { theme } = useTheme();
@@ -190,7 +197,7 @@ export default function Menu({
 }: MenuProps) {
   const { theme } = useTheme();
   const surfaceZ = onTop ? Z.FIELD_MENU : overSettings ? Z.SETTINGS_MENU : undefined;
-  const { BG, TEXT, ACCENT, SEMANTIC } = theme;
+  const { BG, TEXT, SEMANTIC } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const subRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(initialActive);
@@ -266,6 +273,18 @@ export default function Menu({
     return () => document.removeEventListener("keydown", onKey, !takesFocus);
   }, [takesFocus]);
 
+  // A capped menu opens with its choice in view, centred, nothing highlighted:
+  // the menu's own scroll, never the page's.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on open only
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    const chosen = itemsRef.current.findIndex((r) => r.checked);
+    if (!maxHeight || !menu || chosen < 0) return;
+    const row = document.getElementById(`${idPrefix}-${chosen}`);
+    if (!row) return;
+    menu.scrollTop = row.offsetTop - (menu.clientHeight - row.offsetHeight) / 2;
+  }, []);
+
   useEffect(() => {
     if (maxHeight && active >= 0) {
       document.getElementById(`${idPrefix}-${active}`)?.scrollIntoView?.({ block: "nearest" });
@@ -297,8 +316,15 @@ export default function Menu({
     setSubPos({ left, top });
   }, [subOf, idPrefix, pos?.left, pos?.top]);
 
-  const rows = (list: MenuItem[], lit: number, setLit: typeof setActive, prefix: string) =>
-    list.map((item, i) => {
+  const rows = (list: MenuItem[], lit: number, setLit: typeof setActive, prefix: string) => {
+    // A list with both ticks and shortcuts keeps a tick's room on every row,
+    // so the shortcuts stand in one column whichever row is chosen.
+    const tickSlot =
+      ticks &&
+      !isPhone &&
+      list.some((r) => r.hint) &&
+      list.some((r) => (r.role ?? "menuitem") !== "menuitem");
+    return list.map((item, i) => {
       const role = item.role ?? "menuitem";
       const inMain = list === items;
       return (
@@ -333,7 +359,11 @@ export default function Menu({
               borderRadius: MENU_ROW_RADIUS,
               // On the phone a row is a touch target, its label body-sized.
               minHeight: isPhone ? TOUCH : undefined,
-              padding: isPhone ? "0 14px" : "7px 10px",
+              // A tickable row ends 2px nearer the edge: the tick's glyph sits
+              // ~2.5px inside its box, so the box comes out to meet the eye.
+              padding: isPhone
+                ? "0 14px"
+                : `7px ${role === "menuitem" ? 10 : 10 - TICK_NUDGE}px 7px 10px`,
               cursor: item.disabled ? "default" : "pointer",
               // The glyph takes the row's ink, so a lit Delete's goes red with it.
               color: item.disabled
@@ -348,7 +378,7 @@ export default function Menu({
               transition: "background var(--motion-fast), color var(--motion-fast)",
               display: "flex",
               alignItems: "center",
-              gap: isPhone ? 12 : 8,
+              gap: isPhone ? 12 : ROW_GAP,
             }}
           >
             {item.icon && (
@@ -375,7 +405,16 @@ export default function Menu({
               )}
             </span>
             {item.hint && !isPhone && (
-              <span style={{ color: TEXT.muted, fontSize: 12, marginLeft: 16, flexShrink: 0 }}>
+              <span
+                style={{
+                  color: TEXT.muted,
+                  fontSize: 12,
+                  marginLeft: 16,
+                  // The tick's room: as far from its shortcut as from the edge.
+                  marginRight: tickSlot ? TICK_GAP - ROW_GAP : undefined,
+                  flexShrink: 0,
+                }}
+              >
                 {item.hint}
               </span>
             )}
@@ -384,12 +423,20 @@ export default function Menu({
                 <ChevronRightIcon />
               </span>
             )}
-            {/* The chosen item's mark: a check in the mark colour. */}
+            {/* The chosen item's mark: a check in the row's own ink, as a system menu's. */}
             {ticks && item.checked && (
               <span
                 aria-hidden="true"
                 data-testid={checkTestId}
-                style={{ display: "flex", flexShrink: 0, color: ACCENT.primary }}
+                style={{ display: "flex", flexShrink: 0, color: TEXT.primary }}
+              >
+                <CheckIcon />
+              </span>
+            )}
+            {tickSlot && !item.checked && !item.submenu && !item.drills && (
+              <span
+                aria-hidden="true"
+                style={{ display: "flex", flexShrink: 0, visibility: "hidden" }}
               >
                 <CheckIcon />
               </span>
@@ -398,6 +445,7 @@ export default function Menu({
         </Fragment>
       );
     });
+  };
 
   const stop = (e: SyntheticEvent) => e.stopPropagation();
   const close = (e: SyntheticEvent) => {
@@ -432,7 +480,12 @@ export default function Menu({
       />
       <div
         ref={menuRef}
-        className={["motion-pop", align === "end" && "motion-from-end", className]
+        className={[
+          "motion-pop",
+          align === "end" && "motion-from-end",
+          maxHeight && "menu-scroll",
+          className,
+        ]
           .filter(Boolean)
           .join(" ")}
         role="menu"
@@ -457,6 +510,8 @@ export default function Menu({
           maxWidth,
           maxHeight,
           overflowY: maxHeight ? "auto" : undefined,
+          // Beside a scrollbar the gap to the pills is the thumb's own border.
+          ...(maxHeight && { paddingRight: 0 }),
         }}
       >
         {header}

@@ -202,6 +202,51 @@ test("Turn into by pointer: hover opens the kinds beside the menu, a click conve
   expect((await types(h.page))[0]).toBe("h1:Intro.");
 });
 
+// The tick has its own room on every row, so the chosen row's shortcut stands
+// in line with the rest instead of moving left to make space for it.
+test("Turn into's shortcuts stand in one column, the tick beside them", async () => {
+  await clickGrip(h.page, 0);
+  await menu(h.page).getByRole("menuitem", { name: "Turn into" }).hover();
+  const kinds = h.page.getByRole("menu", { name: "Turn into" });
+  await expect(kinds).toBeVisible();
+  const ends = await kinds.evaluate((el) =>
+    [...el.querySelectorAll('[role="menuitemradio"]')]
+      .map((row) => {
+        const spans = [...row.children].filter((c) => c.textContent && !c.querySelector("svg"));
+        const hint = spans.length > 1 ? spans[spans.length - 1] : null;
+        return hint ? Math.round(hint.getBoundingClientRect().right) : null;
+      })
+      .filter((x) => x !== null),
+  );
+  expect(ends.length).toBeGreaterThan(3);
+  expect(new Set(ends).size).toBe(1);
+  // The shortcuts read in order, ⌘0 down to ⌘9, never jumping back.
+  const digits = (await kinds.getByRole("menuitemradio").allInnerTexts())
+    .map((t) => t.match(/(\d)$/)?.[1])
+    .filter(Boolean);
+  expect(digits).toEqual(["0", "1", "2", "3", "7", "8", "9"]);
+  // The tick has room on both sides.
+  const { before, after } = await kinds.evaluate((el) => {
+    const row = el.querySelector('[role="menuitemradio"][aria-checked="true"]')!;
+    const parts = [...row.children] as HTMLElement[];
+    const tick = parts[parts.length - 1].getBoundingClientRect();
+    const hint = parts[parts.length - 2].getBoundingClientRect();
+    const inner = el.getBoundingClientRect().right - 1; // the menu's 1px border
+    return { before: tick.left - hint.right, after: inner - tick.right };
+  });
+  // 14px either side by the eye: the check's glyph sits ~2.5px inside its box,
+  // so the box stands 2px nearer the edge and 2px further from the shortcut.
+  expect(before).toBeCloseTo(16, 0);
+  expect(after).toBeCloseTo(12, 0);
+  if (process.env.SHOT) {
+    const b = (await kinds.boundingBox())!;
+    await h.page.screenshot({
+      path: process.env.SHOT,
+      clip: { x: b.x - 4, y: b.y - 4, width: b.width + 8, height: b.height + 8 },
+    });
+  }
+});
+
 test("Turn into by keyboard: Escape selects, Shift+F10 opens the menu, → the kinds", async () => {
   await outro(h.page).click();
   await h.page.keyboard.press("Escape");

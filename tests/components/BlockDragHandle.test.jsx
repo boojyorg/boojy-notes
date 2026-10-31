@@ -28,11 +28,13 @@ const blockRects = {
   b2: { top: 80, height: 51 }, // two-line paragraph
   b3: { top: 140, height: 30 },
   hr: { top: 80, height: 17, rule: { top: 88, height: 1 } }, // a divider: 8px, the rule, 8px
-  // A fence opening on a blank line: 15px of padding, then rows of 21px. The
-  // first row holds nothing, the second holds the first characters.
+  // A fence opening on a blank line: its toolbar 4px down (26px tall), then
+  // rows of 21px from 15px down; the first row holds nothing, the second holds
+  // the first characters.
   code: {
     top: 80,
     height: 90,
+    toolbar: { top: 84, height: 26 },
     rows: [
       { top: 95, height: 21 },
       { top: 116, height: 21 },
@@ -57,13 +59,16 @@ function Harness({ blocks, startHandleDrag }) {
             </div>
           ) : id.startsWith("code") ? (
             <div key={id} data-block-id={id} data-block-type="code" contentEditable="false">
-              <div className="code-body">
-                <pre className="code-overlay">
-                  <code>
-                    <span className="code-line" />
-                    <span className="code-line">const a = 1;</span>
-                  </code>
-                </pre>
+              <div className="code-block">
+                <div className="code-tools" />
+                <div className="code-body">
+                  <pre className="code-overlay">
+                    <code>
+                      <span className="code-line" />
+                      <span className="code-line">const a = 1;</span>
+                    </code>
+                  </pre>
+                </div>
               </div>
             </div>
           ) : id.startsWith("hr") ? (
@@ -93,6 +98,11 @@ function layOut() {
     p.getBoundingClientRect = () => rect(BLOCK_LEFT, r.top, 500, r.height);
     const rule = p.querySelector("hr");
     if (rule) rule.getBoundingClientRect = () => rect(BLOCK_LEFT, r.rule.top, 500, r.rule.height);
+    const tools = p.querySelector(".code-tools");
+    if (tools) {
+      const t = r.toolbar;
+      tools.getBoundingClientRect = () => rect(BLOCK_LEFT, t.top, 500, t.height);
+    }
     const rows = p.querySelectorAll(".code-line");
     rows.forEach((row, i) => {
       const rr = r.rows[i];
@@ -169,21 +179,18 @@ describe("BlockDragHandle", () => {
     expect(parseFloat(handle.style.top) + HANDLE_H / 2).toBeCloseTo(ruleTop + ruleH / 2, 5);
   });
 
-  // The text walk that finds a block's first line skips whitespace, which is
-  // right for prose and wrong for code: a fence opening on a blank line put the
-  // grip on the first row with characters in it, two rows and 40px down
-  // (2026-09-19). A block that draws its own rows is asked for its first one.
-  it("beside a code block it centres on the first row, even when that row is blank", async () => {
+  // A code block's first row is its toolbar, the frame's top row: the grip
+  // stands level with it, never with a line of code. A fence opening on a blank
+  // line once put the grip on the first row with characters in it, two rows
+  // and 40px down (2026-09-19): the toolbar is above both, blank or not.
+  it("beside a code block it centres on the toolbar, even when the first line is blank", async () => {
     render(<Harness blocks={["b1", "code", "b3"]} startHandleDrag={vi.fn()} />);
     layOut();
     await hoverAt(100); // inside the code block's band
     const handle = screen.getByTestId("block-drag-handle");
     expect(handle.dataset.targetBlock).toBe("code");
-    const first = blockRects.code.rows[0];
-    expect(parseFloat(handle.style.top) + HANDLE_H / 2).toBeCloseTo(
-      first.top + first.height / 2,
-      5,
-    );
+    const bar = blockRects.code.toolbar;
+    expect(parseFloat(handle.style.top) + HANDLE_H / 2).toBeCloseTo(bar.top + bar.height / 2, 5);
   });
 
   it("the gap between two blocks belongs to the block above", async () => {
