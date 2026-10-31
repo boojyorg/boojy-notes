@@ -293,6 +293,57 @@ describe("inlineMarkdownToHtml", () => {
     }
   });
 
+  // An escape in an attribute is put back after the attribute encoding ran:
+  // a bare `"` there once closed the value and drew a live event handler.
+  const parsed = (html) =>
+    new DOMParser().parseFromString(`<body>${html}</body>`, "text/html").body;
+  const handlers = (body) =>
+    [...body.querySelectorAll("*")].flatMap((el) =>
+      [...el.attributes].map((a) => a.name).filter((n) => n.startsWith("on")),
+    );
+
+  it("never lets an escaped quote out of a link's, a bare URL's or a wikilink's attribute", () => {
+    for (const md of [
+      '[x](\\" onmouseover="alert(1))',
+      '[x](https://a.com/\\"onmouseover=\\"alert(1))',
+      'https://a.com/\\"onmouseover=\\"alert(1)',
+      '[[a\\" onmouseover="alert(1)]]',
+      "[x](https://a.com/\\'onmouseover=\\'alert(1))",
+    ]) {
+      expect(handlers(parsed(inlineMarkdownToHtml(md))), md).toEqual([]);
+    }
+  });
+
+  it("keeps an escaped quote in a wikilink's target and a link's address through read-back", () => {
+    const wiki = parsed(inlineMarkdownToHtml('[[a\\"b]] and [[c\\"d|alias]]'));
+    expect(
+      [...wiki.querySelectorAll(".wikilink")].map((w) => w.getAttribute("data-target")),
+    ).toEqual(['a\\"b', 'c\\"d']);
+    const link = parsed(inlineMarkdownToHtml('[x](https://a.com/\\"b)'));
+    expect(link.querySelector("a")?.getAttribute("href")).toBe('https://a.com/\\"b');
+    for (const md of ['[[a\\"b]] and [[c\\"d|alias]]', '[x](https://a.com/\\"b)', "[[it\\'s]]"]) {
+      expect(domNodeToMarkdown(makeEl(inlineMarkdownToHtml(md))), md).toBe(md);
+    }
+  });
+
+  it("escapes every punctuation mark safely in every attribute an escape can reach", () => {
+    const marks = [..."!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"];
+    for (const ch of marks) {
+      for (const md of [
+        `[x](https://a.com/\\${ch}b)`,
+        `https://a.com/\\${ch}b`,
+        `[[a\\${ch}b]]`,
+        `[[a\\${ch}b|alias]]`,
+      ]) {
+        const body = parsed(inlineMarkdownToHtml(md));
+        expect(handlers(body), md).toEqual([]);
+        for (const el of body.querySelectorAll("*")) {
+          for (const a of el.attributes) expect(a.value.includes("\x00"), md).toBe(false);
+        }
+      }
+    }
+  });
+
   it("leaves an escape as written in a code span, a link's address and a wikilink", () => {
     expect(inlineMarkdownToHtml("`a\\*b`")).toBe("<code>a\\*b</code>");
     const link = inlineMarkdownToHtml("[x \\* y](https://a.com/\\*b)");

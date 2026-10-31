@@ -63,13 +63,21 @@ const LITERAL_ESCAPE_RE =
 /**
  * The shielded escapes put back into the rendered HTML: as written inside a
  * tag (an `href`, a wikilink's `data-target`), a code span or a wikilink, and
- * as sealed elements everywhere else.
+ * as sealed elements everywhere else. Inside a tag the escape is an
+ * attribute's value and is encoded as one: the attribute encoding ran while
+ * it was shielded, and a bare `"` put back there closed the value early, so
+ * `[x](\" onmouseover=…)` drew a live event handler and `[[a\"b]]` lost its
+ * target on read-back.
  */
 function restoreEscapes(html, escapes) {
   if (!escapes.length) return html;
   const asWritten = (piece) => piece.replace(ESC_TOKEN_RE, (_, i) => `\\${escapes[Number(i)]}`);
+  const inAttribute = (tag) =>
+    tag.replace(ESC_TOKEN_RE, (_, i) =>
+      `\\${escapes[Number(i)]}`.replace(/"/g, "&quot;").replace(/'/g, "&#39;"),
+    );
   return html
-    .replace(/<[^>]*>/g, asWritten)
+    .replace(/<[^>]*>/g, inAttribute)
     .replace(LITERAL_ESCAPE_RE, asWritten)
     .replace(ESC_TOKEN_RE, (_, i) => escapeAtomHtml(escapes[Number(i)]));
 }

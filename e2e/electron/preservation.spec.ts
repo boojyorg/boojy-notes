@@ -68,13 +68,14 @@ test("a note or folder asked to start with a dot gets a visible name and survive
   }
 });
 
-test("a backslash escape is shown as written and survives an edit, a save and a restart", async () => {
+test("a backslash escape shows its symbol alone and its bytes survive an edit, a save and a restart", async () => {
   const source = "\\*not italic\\* and \\# not a tag.\n";
   const h = await launchApp({ "Escapes.md": source });
   try {
     await h.openNote("Escapes");
     const block = h.page.locator("[data-block-id]").first();
-    await expect(block).toHaveText("\\*not italic\\* and \\# not a tag.");
+    // Drawn as its symbols, sealed; never as italic or a tag.
+    await expect(block).toHaveText("*not italic* and # not a tag.");
     expect(await block.locator("em, .inline-tag").count()).toBe(0);
 
     await block.click();
@@ -87,7 +88,7 @@ test("a backslash escape is shown as written and survives an edit, a save and a 
 
     await h.restart();
     await h.openNote("Escapes");
-    expect(await noteText(h.page)).toBe("\\*not italic\\* and \\# not a tag. Edited");
+    expect(await noteText(h.page)).toBe("*not italic* and # not a tag. Edited");
     expect(await h.page.locator("[data-block-id] em, [data-block-id] .inline-tag").count()).toBe(0);
     expect(h.vault.read("Escapes.md")).toBe("\\*not italic\\* and \\# not a tag. Edited\n");
     expect(h.pageErrors).toEqual([]);

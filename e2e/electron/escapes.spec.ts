@@ -154,6 +154,30 @@ test("a code span, a link's address and a wikilink keep their backslashes in vie
   }
 });
 
+test("an escaped quote in a link's address never becomes a live attribute", async () => {
+  // Put back after the attribute encoding ran, a bare `"` closed the href and
+  // the rest became an event handler that ran on hover.
+  const h = await launchApp({
+    [NOTE]:
+      '[hover](https://a.com/\\" onmouseover="document.body.dataset.owned=1) and https://b.com/\\"onmouseover=\\"document.body.dataset.owned=2\n',
+  });
+  try {
+    await h.openNote("Escapes");
+    for (const link of await h.page.locator("[data-block-id] a").all()) await link.hover();
+    await sleep(200);
+    expect(await h.page.evaluate(() => document.body.dataset.owned ?? null)).toBeNull();
+    const handlers = await h.page.evaluate(() =>
+      [...document.querySelectorAll("[data-block-id] *")].flatMap((el) =>
+        [...el.attributes].map((a) => a.name).filter((n) => n.startsWith("on")),
+      ),
+    );
+    expect(handlers).toEqual([]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("a table cell keeps its escape through an edit", async () => {
   const h = await launchApp({ [NOTE]: "| a \\* b | c |\n| --- | --- |\n| 1 | 2 |\n" });
   try {
