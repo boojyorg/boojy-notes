@@ -444,7 +444,12 @@ export default function Menu({
       />
       <div
         ref={menuRef}
-        className={["motion-pop", align === "end" && "motion-from-end", className]
+        className={[
+          "motion-pop",
+          align === "end" && "motion-from-end",
+          maxHeight && "menu-scroll",
+          className,
+        ]
           .filter(Boolean)
           .join(" ")}
         role="menu"

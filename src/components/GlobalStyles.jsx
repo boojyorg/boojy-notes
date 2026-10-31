@@ -1,6 +1,6 @@
 import { useTheme } from "../hooks/useTheme";
 import { tagPillCss, tagPillGround } from "../styles/tagPill";
-import { CHROME_BTN, LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
+import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
@@ -176,6 +176,14 @@ export default function GlobalStyles() {
         .sidebar-scroll::-webkit-scrollbar-thumb {
           border-left-width: 3px;
           border-right-width: 2px;
+        }
+        /* A capped menu's bar stands MENU_PAD off the surface's edge, as its
+           row pills do: the track gives up the difference top and bottom, the
+           thumb's edge-side border grows by it (still 7px of ink). */
+        .menu-scroll::-webkit-scrollbar-track { margin-block: ${MENU_PAD - 2.5}px; }
+        .menu-scroll::-webkit-scrollbar-thumb {
+          border-left-width: 1px;
+          border-right-width: ${MENU_PAD}px;
         }
         `
         }
