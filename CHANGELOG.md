@@ -4,6 +4,7 @@
 
 ### Improvements
 
+- **Back and Forward return you to your place** — Going back or forward to a note (← →, ⌘[ ⌘]) puts you where you were: the same part of the page, and the text cursor too if it was on screen, so you can keep typing. Each visit keeps its own place. Opening a note from the sidebar, Search or a link works as before. A note you'd left in the Markdown view opens at the top.
 - **Shortcuts line up in Turn into** — In a block's Turn into menu, and the table's alignment menu, the tick beside the current choice has its own space, so the shortcuts stand in one straight column. Numbered list now comes before Bullet list there and in Format → List, so the shortcuts read in order, ⌘7 then ⌘8.
 - **More code languages** — Code blocks now offer C#, C++, Java, LaTeX, Markdown and R, coloured as you type. Short names work too: a block marked `md`, `tex`, `cs` or `c++` reads as its language, and the file keeps the word you typed. The menu shows about ten at a time and scrolls, opening at the block's current language. A block with no language now reads "Plain text".
 - **Quieter menus** — The tick beside the chosen item in a menu is now the text colour instead of teal.

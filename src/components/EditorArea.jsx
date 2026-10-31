@@ -57,6 +57,7 @@ import { drawInlineMath } from "../utils/inlineMath";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
+import { capturePlace, resolveAnchor, resolveCaret } from "../utils/notePlace";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import { useSpellingMarks } from "../hooks/editor/useSpellingMarks";
 import { useHoldToGrab } from "../hooks/editor/useHoldToGrab";
@@ -300,10 +301,70 @@ const EditorArea = memo(
     // A note opens at its top. The scroller is not keyed by the note (only
     // the column inside it is), so the previous note's scroll would carry
     // over. A layout effect, so a search jump's own scroll (150 ms
-    // later) still wins.
+    // later) still wins. Back and Forward return to the visit's place
+    // instead (`notePlace.ts`): its top block where it stood, and the caret
+    // if it was on screen, never pulling the page to it.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: the note opening is the cue; the rest is read as it stands
     useLayoutEffect(() => {
-      if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
+      const scroller = editorScrollRef.current;
+      if (!scroller) return;
+      const back = activeNote ? noteHistory?.takeRestore?.(activeNote) : null;
+      scroller.scrollTop = 0;
+      const place = back?.place;
+      if (!place || sourceView) return;
+      const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
+      const ids = new Set(blocks.map((b) => b.id));
+      const anchor = resolveAnchor(place, ids);
+      const anchorEl = anchor && blockRefs.current[anchor.id];
+      if (anchorEl) {
+        scroller.scrollTop +=
+          anchorEl.getBoundingClientRect().top - scroller.getBoundingClientRect().top - anchor.top;
+      }
+      const caret = resolveCaret(place, ids);
+      const caretEl = caret && blockRefs.current[caret.id];
+      const block = caret && blocks.find((b) => b.id === caret.id);
+      if (!caretEl || !isEditableBlock(block)) return;
+      const pane = scroller.getBoundingClientRect();
+      const r = caretEl.getBoundingClientRect();
+      if (r.bottom > pane.top && r.top < pane.bottom) placeCaret(caretEl, caret.offset);
     }, [activeNote, editorScrollRef]);
+
+    // The open visit's place, kept as you scroll and as the caret moves, at
+    // most once a frame, for Back and Forward to return to.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: refs and the history's stable recorder
+    useEffect(() => {
+      const scroller = editorScrollRef.current;
+      const record = noteHistory?.recordPlace;
+      if (!scroller || !record || !activeNote) return;
+      const caretIn = () => {
+        const sel = window.getSelection();
+        if (!sel?.rangeCount || !sel.isCollapsed) return null;
+        const node = sel.anchorNode;
+        if (!node || !editorRef.current?.contains(node)) return null;
+        const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+        const id = el?.closest?.("[data-block-id]")?.getAttribute("data-block-id");
+        const root = id && blockRefs.current[id];
+        if (!root?.contains(node)) return null;
+        const offset = getCaretOffset(root);
+        return offset >= 0 ? { id, offset } : null;
+      };
+      let frame = 0;
+      const capture = () => {
+        frame = 0;
+        const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
+        record(activeNote, capturePlace(blocks, blockRefs.current, scroller, caretIn));
+      };
+      const schedule = () => {
+        if (!frame) frame = requestAnimationFrame(capture);
+      };
+      scroller.addEventListener("scroll", schedule, { passive: true });
+      document.addEventListener("selectionchange", schedule);
+      return () => {
+        cancelAnimationFrame(frame);
+        scroller.removeEventListener("scroll", schedule);
+        document.removeEventListener("selectionchange", schedule);
+      };
+    }, [activeNote]);
 
     useEffect(() => {
       const el = editorRef.current;

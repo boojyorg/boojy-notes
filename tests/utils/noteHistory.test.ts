@@ -17,7 +17,7 @@ const all = () => true;
 
 describe("noteHistory", () => {
   it("records each note opened, once for the same note twice", () => {
-    expect(opened("a", "b", "b", "c")).toEqual({ ids: ["a", "b", "c"], at: 2 });
+    expect(opened("a", "b", "b", "c")).toMatchObject({ ids: ["a", "b", "c"], at: 2 });
   });
 
   it("steps back and forward, with nowhere to go at either end", () => {
@@ -30,7 +30,7 @@ describe("noteHistory", () => {
 
   it("drops what was ahead when a note is opened after going back", () => {
     const h = historyOpen({ ...opened("a", "b", "c"), at: 1 }, "d");
-    expect(h).toEqual({ ids: ["a", "b", "d"], at: 2 });
+    expect(h).toMatchObject({ ids: ["a", "b", "d"], at: 2 });
     expect(historyTarget(h, 1, all)).toBe(-1);
   });
 
