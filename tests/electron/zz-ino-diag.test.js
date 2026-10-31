@@ -20,8 +20,8 @@ it("diag: Number ino collisions among files made together", () => {
     exact.add(b.toString());
   }
   const sample = fs.statSync(files[0], { bigint: true }).ino;
-  console.log(
-    `INO-DIAG ${process.platform}: files=${files.length} distinctExact=${exact.size} distinctNumber=${plain.size} aboveSafeInt=${unsafe} sample=${sample} (0x${sample.toString(16)})`,
+  process.stderr.write(
+    `INO-DIAG ${process.platform}: files=${files.length} distinctExact=${exact.size} distinctNumber=${plain.size} aboveSafeInt=${unsafe} sample=${sample} (0x${sample.toString(16)})\n`,
   );
   fs.rmSync(dir, { recursive: true, force: true });
 });
