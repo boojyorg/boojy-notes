@@ -204,33 +204,34 @@ test("an imported ```md block reads Markdown, coloured, and re-picking it leaves
   }
 });
 
-// A first line long enough to wrap: the grip meets its first visual row, as a
-// paragraph's does, never the middle of the wrapped line.
-test("the grip sits on a wrapped first line's first row", async () => {
+// A code block's first row is its frame's toolbar, not its first line of code
+// (a toolbar's height lower): the grip stands level with the language and copy
+// buttons, for code, an empty block and a diagram alike.
+test("the grip stands level with a code block's toolbar", async () => {
   const long = "word ".repeat(80).trim();
-  const g = await launchApp({ "Wrap.md": `Intro.\n\n\`\`\`\n${long}\nnext\n\`\`\`\n` });
+  const g = await launchApp({
+    "Grip.md": `Intro.\n\n\`\`\`\n${long}\nnext\n\`\`\`\n\nMid.\n\n\`\`\`js\n\`\`\`\n\nEnd.\n\n\`\`\`mermaid\nflowchart LR\n  A --> B\n\`\`\`\n`,
+  });
   try {
-    await g.openNote("Wrap");
-    const block = g.page.locator(".code-block").first();
-    const box = (await block.boundingBox())!;
-    await g.page.mouse.move(box.x + 40, box.y + 20);
-    const grip = g.page.locator('[data-testid="block-drag-handle"]');
-    await grip.waitFor();
-    const { gripMid, rowTop, rowH, lineH } = await g.page.evaluate(() => {
-      const gr = document
-        .querySelector('[data-testid="block-drag-handle"]')!
-        .getBoundingClientRect();
-      const line = document.querySelector(".code-block .code-line")!;
-      const lr = line.getBoundingClientRect();
-      return {
-        gripMid: gr.top + gr.height / 2,
-        rowTop: lr.top,
-        rowH: lr.height,
-        lineH: lr.height / Math.round(lr.height / parseFloat(getComputedStyle(line).lineHeight)),
-      };
-    });
-    expect(rowH).toBeGreaterThan(lineH * 1.5);
-    expect(Math.abs(gripMid - (rowTop + lineH / 2))).toBeLessThan(2);
+    await g.openNote("Grip");
+    const blocks = g.page.locator(".code-block");
+    for (let i = 0; i < 3; i++) {
+      const block = blocks.nth(i);
+      await block.scrollIntoViewIfNeeded();
+      const box = (await block.boundingBox())!;
+      await g.page.mouse.move(box.x + 40, box.y + box.height - 8, { steps: 3 });
+      const grip = g.page.locator('[data-testid="block-drag-handle"]');
+      await grip.waitFor();
+      const off = await block.evaluate((el) => {
+        const gr = document
+          .querySelector('[data-testid="block-drag-handle"]')!
+          .getBoundingClientRect();
+        const tr = el.querySelector(":scope > .code-tools")!.getBoundingClientRect();
+        return gr.top + gr.height / 2 - (tr.top + tr.height / 2);
+      });
+      expect(Math.abs(off)).toBeLessThan(1);
+    }
+    expect(g.pageErrors).toEqual([]);
   } finally {
     await g.close();
   }

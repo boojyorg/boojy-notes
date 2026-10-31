@@ -49,13 +49,16 @@ export const HANDLE_GAP = 8;
  * computed line-height and padding are CSS pixels and are scaled by `zoom` to
  * match.
  *
- * A block that draws its own rows is asked first, because the text walk below
- * skips whitespace and a row of its own may hold none: a code block's first
- * line is a row even when it is blank. A divider's rule is the same question: the one row it has.
+ * A block whose first row is not text is asked first: a code block's or
+ * diagram's is its toolbar, a divider's its rule.
  */
-const OWN_FIRST_ROW = ".code-line, hr";
-/** The row a diagram's grip is centred on, at the top of its drawing (a code line's height). */
-const DIAGRAM_ROW = 21;
+const OWN_FIRST_ROW = "hr";
+/**
+ * A code block's or diagram's first row is its frame's toolbar (language, copy),
+ * not its first line of code, which stands a toolbar's height lower: the grip
+ * meets the toolbar, the block's own top row. Measured hidden or shown.
+ */
+const TOOLBAR_ROW = ":scope > .code-tools, :scope > .code-block > .code-tools";
 
 const MODIFIER_KEYS = new Set(["Shift", "Meta", "Control", "Alt"]);
 
@@ -66,21 +69,10 @@ const GRIP_GESTURES = [
 ];
 
 function firstLineRect(el, zoom) {
-  // A closed diagram's first row is its drawing: its code, folded away above
-  // it, has a first line with no height. Open, the code's first line leads.
-  const drawing = el.querySelector(".diagram-view");
-  if (drawing && !el.querySelector(".diagram-code[data-open]")) {
-    const r = drawing.getBoundingClientRect();
-    return { top: r.top, height: Math.min(DIAGRAM_ROW * zoom, r.height || DIAGRAM_ROW * zoom) };
-  }
+  const toolbar = el.querySelector(TOOLBAR_ROW);
+  if (toolbar) return toolbar.getBoundingClientRect();
   const ownRow = el.querySelector(OWN_FIRST_ROW);
-  if (ownRow) {
-    const r = ownRow.getBoundingClientRect();
-    // A long first line wraps: the grip meets its first visual row, as a paragraph's does.
-    const lh = parseFloat(getComputedStyle(ownRow).lineHeight);
-    if (!Number.isFinite(lh)) return r;
-    return { top: r.top, height: Math.min(r.height, lh * zoom) };
-  }
+  if (ownRow) return ownRow.getBoundingClientRect();
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
   });

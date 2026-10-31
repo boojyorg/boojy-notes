@@ -10,7 +10,7 @@
 
 ### Fixes
 
-- **The grip beside a code block** — When a code block's first line is long enough to wrap, the grip now sits beside its first row instead of between rows.
+- **The grip beside a code block** — The grip for moving a code block or diagram now sits level with its language and copy buttons at the top of the box, not beside the first line of code lower down.
 
 ## v0.19.0 — 2026-10-30
 
