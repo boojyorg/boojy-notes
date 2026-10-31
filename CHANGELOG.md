@@ -8,7 +8,7 @@
 
 ### Fixes
 
-- **Windows: a note deleted outside the app could overwrite another** — When another app deleted a note, Boojy could mistake it for having moved onto a different note and write the deleted note's text into that one. Notes are now told apart exactly, including two names for one file (a hard link).
+- **Two names for one file** — When a note's file also had a second name (a hard link) and another app deleted one name, Boojy could take the other note for the deleted one moved, and write its text there. Notes are now told apart exactly.
 
 ## v0.19.0 — 2026-10-30
 
