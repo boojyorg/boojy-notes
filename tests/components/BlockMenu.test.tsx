@@ -82,8 +82,8 @@ describe("BlockMenu", () => {
       "1",
       "2",
       "3",
-      "8",
       "7",
+      "8",
       "9",
       undefined, // Quote has no number
     ]);
@@ -153,8 +153,8 @@ describe("kindLabel / TURN_INTO", () => {
       "h1",
       "h2",
       "h3",
-      "bullet",
       "numbered",
+      "bullet",
       "checkbox",
       "blockquote",
     ]);

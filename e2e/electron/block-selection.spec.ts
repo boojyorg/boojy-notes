@@ -220,6 +220,21 @@ test("Turn into's shortcuts stand in one column, the tick beside them", async ()
   );
   expect(ends.length).toBeGreaterThan(3);
   expect(new Set(ends).size).toBe(1);
+  // The shortcuts read in order, ⌘0 down to ⌘9, never jumping back.
+  const digits = (await kinds.getByRole("menuitemradio").allInnerTexts())
+    .map((t) => t.match(/(\d)$/)?.[1])
+    .filter(Boolean);
+  expect(digits).toEqual(["0", "1", "2", "3", "7", "8", "9"]);
+  // The tick stands as far from its shortcut as from the menu's edge.
+  const { before, after } = await kinds.evaluate((el) => {
+    const row = el.querySelector('[role="menuitemradio"][aria-checked="true"]')!;
+    const parts = [...row.children] as HTMLElement[];
+    const tick = parts[parts.length - 1].getBoundingClientRect();
+    const hint = parts[parts.length - 2].getBoundingClientRect();
+    const inner = el.getBoundingClientRect().right - 1; // the menu's 1px border
+    return { before: tick.left - hint.right, after: inner - tick.right };
+  });
+  expect(before).toBeCloseTo(after, 0);
   if (process.env.SHOT) {
     const b = (await kinds.boundingBox())!;
     await h.page.screenshot({

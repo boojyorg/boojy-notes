@@ -13,8 +13,12 @@ import {
   TurnIntoIcon,
 } from "./Icons";
 
-/** The kinds Turn into offers, by `/` menu id, in the menu bar's order. */
-const TURN_INTO_IDS = ["text", "h1", "h2", "h3", "bullet", "numbered", "checkbox", "blockquote"];
+/**
+ * The kinds Turn into offers, by `/` menu id, in the menu bar's order: the
+ * order of their shortcuts (⌘0–3, then ⌘7 numbered, ⌘8 bullet, ⌘9 to-do), so
+ * the column reads up and never jumps back.
+ */
+const TURN_INTO_IDS = ["text", "h1", "h2", "h3", "numbered", "bullet", "checkbox", "blockquote"];
 export const TURN_INTO = TURN_INTO_IDS.map((id) => {
   const c = SLASH_COMMANDS.find((cmd) => cmd.id === id);
   if (!c) throw new Error(`no slash command ${id}`);

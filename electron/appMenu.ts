@@ -263,8 +263,8 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
           label: "List",
           enabled: !noteless,
           submenu: [
-            kind("bullet", "bullet", "Bullet List", "-", "CmdOrCtrl+8"),
             kind("numbered", "numbered", "Numbered List", "1.", "CmdOrCtrl+7"),
+            kind("bullet", "bullet", "Bullet List", "-", "CmdOrCtrl+8"),
             kind("todo", "checkbox", "To-do List", "[]", "CmdOrCtrl+9"),
           ],
         },

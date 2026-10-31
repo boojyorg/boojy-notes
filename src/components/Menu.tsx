@@ -89,6 +89,10 @@ export const menuSurface = (theme: Theme) => ({
   outline: "none",
 });
 
+/** Between a row's parts, and between a shortcut and the tick slot after it. */
+const ROW_GAP = 8;
+const TICK_GAP = 14;
+
 /** The rule between groups: its own line between the pills, inset like them. */
 export function MenuRule() {
   const { theme } = useTheme();
@@ -355,7 +359,7 @@ export default function Menu({
               transition: "background var(--motion-fast), color var(--motion-fast)",
               display: "flex",
               alignItems: "center",
-              gap: isPhone ? 12 : 8,
+              gap: isPhone ? 12 : ROW_GAP,
             }}
           >
             {item.icon && (
@@ -382,7 +386,16 @@ export default function Menu({
               )}
             </span>
             {item.hint && !isPhone && (
-              <span style={{ color: TEXT.muted, fontSize: 12, marginLeft: 16, flexShrink: 0 }}>
+              <span
+                style={{
+                  color: TEXT.muted,
+                  fontSize: 12,
+                  marginLeft: 16,
+                  // The tick's room: as far from its shortcut as from the edge.
+                  marginRight: tickSlot ? TICK_GAP - ROW_GAP : undefined,
+                  flexShrink: 0,
+                }}
+              >
                 {item.hint}
               </span>
             )}
