@@ -30,37 +30,61 @@ const KEYBOARD_SETTINGS_URL = "x-apple.systempreferences:com.apple.Keyboard-Sett
 
 /**
  * Run by `osascript -l JavaScript`, before either script below. **A word is
- * misspelled only if every language in the system's list says so**: a note
+ * misspelled only if every language the user writes in says so**: a note
  * mixes them, even in one sentence, and a paragraph read as one language
- * underlined the other's words (`Por ejemplo en español`). Each is checked in
- * the spelling the list gives it (the list's `en-GB`, never a plain `en`,
- * which is US English); with none usable, the system's own.
+ * underlined the other's words (`Por ejemplo en español`). Those languages are
+ * the system's language list, each in the spelling it gives (the list's
+ * `en-GB`, never a plain `en`, which is US English); with none usable, the
+ * system's own.
  *
- * A text's language (`langFor`) is chosen only among that list (asked of every
- * language, `Conference` read as French) and only orders the work: which
- * language a paragraph is checked in first, whose guesses a word gets first.
- * A range's fields arrive as strings ("0").
+ * **A sentence plainly in another language of the Spelling settings counts
+ * that language too** (`sureOther`): French on for spelling alone, a French
+ * sentence underlined every word. Only when sure (`SURE`, a sentence's worth):
+ * the Spelling list holds some 30 languages by default, a dozen of which
+ * accept any Latin word, so a word asked of all of them is never wrong, and a
+ * short item read as Indonesian or Italian must not count.
+ *
+ * A text's language (`langFor`) is chosen only among the system's list and
+ * only orders the work: which language a paragraph is checked in first, whose
+ * guesses a word gets first. A range's fields arrive as strings ("0").
  */
 const MAC_PRELUDE = `
 ObjC.import("AppKit");
 ObjC.import("NaturalLanguage");
+const SURE = 0.9;
 const checker = $.NSSpellChecker.sharedSpellChecker;
 const available = ObjC.deepUnwrap(checker.availableLanguages);
+const spellingList = ObjC.deepUnwrap(checker.userPreferredLanguages) || [];
+const baseOf = (l) => l.split(/[-_]/)[0];
 function spellingOf(base, preferred) {
   return preferred.map((l) => l.replace("-", "_")).filter((l) => l.startsWith(base + "_"))
-    .concat(base).find((l) => available.includes(l));
+    .concat(spellingList.filter((l) => baseOf(l) === base), base).find((l) => available.includes(l));
 }
 function userLangs(preferred) {
-  const langs = [...new Set(preferred.map((l) => spellingOf(l.split("-")[0], preferred)).filter(Boolean))];
+  const langs = [...new Set(preferred.map((l) => spellingOf(baseOf(l), preferred)).filter(Boolean))];
   return langs.length ? langs : [ObjC.unwrap(checker.language)];
 }
-function langFor(text, preferred, langs) {
+function likeliest(text, bases) {
   const recognizer = $.NLLanguageRecognizer.alloc.init;
-  recognizer.languageConstraints = $([...new Set(preferred.map((l) => l.split("-")[0]))]);
+  recognizer.languageConstraints = $([...new Set(bases)]);
   recognizer.processString($(text));
-  const told = ObjC.unwrap(recognizer.dominantLanguage) || "";
+  const hypotheses = ObjC.deepUnwrap(recognizer.languageHypothesesWithMaximum(1)) || {};
+  const [told, sure] = Object.entries(hypotheses)[0] || ["", 0];
+  return { told, sure };
+}
+function langFor(text, preferred, langs) {
+  const { told } = likeliest(text, preferred.map(baseOf));
   const lang = told && spellingOf(told, preferred);
   return langs.includes(lang) ? lang : langs[0];
+}
+function sureOther(sentence, preferred, langs) {
+  const { told, sure } = likeliest(sentence, spellingList.concat(preferred).map(baseOf));
+  if (sure < SURE || !spellingList.some((l) => baseOf(l) === told)) return null;
+  const lang = spellingOf(told, preferred);
+  return lang && !langs.includes(lang) ? lang : null;
+}
+function sentencesOf(text) {
+  return text.split(/(?<=[.!?…])\\s+/);
 }
 function missAt(text, at, lang) {
   const r = checker.checkSpellingOfStringStartingAtLanguageWrapInSpellDocumentWithTagWordCount(
@@ -75,10 +99,10 @@ function wrongIn(word, langs) {
 const MAC_WORD = `${MAC_PRELUDE}
 function run(argv) {
   const word = argv[0], paragraph = argv[1], preferred = JSON.parse(argv[2]);
-  const langs = userLangs(preferred);
-  if (!wrongIn(word, langs)) return "null";
-  const sentence = paragraph.split(/(?<=[.!?…])\\s+/).find((s) => s.includes(word)) || paragraph;
-  const first = langFor(sentence, preferred, langs);
+  const sentence = sentencesOf(paragraph).find((s) => s.includes(word)) || paragraph;
+  const langs = userLangs(preferred), other = sureOther(sentence, preferred, langs);
+  if (!wrongIn(word, other ? [other, ...langs] : langs)) return "null";
+  const first = other || langFor(sentence, preferred, langs);
   const guesses = [];
   for (const lang of [first, ...langs.filter((l) => l !== first)]) {
     const some = ObjC.deepUnwrap(checker.guessesForWordRangeInStringLanguageInSpellDocumentWithTag(
@@ -95,8 +119,11 @@ function run(argv) {
   const texts = JSON.parse(ObjC.unwrap($.NSString.alloc.initWithDataEncoding(input, $.NSUTF8StringEncoding)));
   const preferred = JSON.parse(argv[0]), langs = userLangs(preferred);
   return JSON.stringify(texts.map((text) => {
-    // The paragraph's likeliest language first; a word it rejects asks the rest.
-    const lang = langFor(text, preferred, langs), others = langs.filter((l) => l !== lang), words = [];
+    // The paragraph's likeliest language first; a word it rejects asks the
+    // rest, and any language one of its sentences is plainly in.
+    const lang = langFor(text, preferred, langs);
+    const extra = sentencesOf(text).map((s) => sureOther(s, preferred, langs)).filter(Boolean);
+    const others = [...new Set(langs.filter((l) => l !== lang).concat(extra))], words = [];
     for (let at = 0, miss; (miss = missAt(text, at, lang)); at = miss[0] + miss[1]) {
       const word = text.substr(miss[0], miss[1]);
       if (wrongIn(word, others)) words.push(word);

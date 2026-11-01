@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 
@@ -57,5 +58,30 @@ describe.skipIf(process.platform !== "darwin")(
       expect(inSpanish?.[0]).toBe("manzana");
       expect(inEnglish?.[0]).not.toBe("manzana");
     });
+
+    // French on in Keyboard → Text Input → Spelling, but not in the system's
+    // language list: its sentences are still French.
+    const frenchForSpelling =
+      process.platform === "darwin" &&
+      execFileSync("osascript", [
+        "-l",
+        "JavaScript",
+        "-e",
+        'ObjC.import("AppKit"); ObjC.deepUnwrap($.NSSpellChecker.sharedSpellChecker.userPreferredLanguages).some((l) => l.startsWith("fr")) ? "yes" : "no"',
+      ])
+        .toString()
+        .trim() === "yes";
+
+    it.skipIf(!frenchForSpelling)(
+      "counts a sentence plainly in a Spelling-only language",
+      async () => {
+        const words = await macMisspellings(
+          ["Bonjour, je voudrais acheter une pomme demain.", "Conferance", "Teh meeting"],
+          LANGS,
+        );
+        // A short item is never sure enough to bring a language of its own.
+        expect(words).toEqual([[], ["Conferance"], ["Teh"]]);
+      },
+    );
   },
 );
