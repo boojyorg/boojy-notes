@@ -7,7 +7,7 @@ vi.mock("../../electron/settingsManager.js", () => ({
   saveSettings: vi.fn(),
 }));
 
-const { macMisspellings, onDictionaryReady } = await import("../../electron/spelling");
+const { macGuesses, macMisspellings, onDictionaryReady } = await import("../../electron/spelling");
 
 describe("onDictionaryReady", () => {
   it("tells the window each time a dictionary is ready, until unsubscribed", () => {
@@ -24,14 +24,38 @@ describe("onDictionaryReady", () => {
 });
 
 // The system's own checker and language recognizer: a Mac only.
-describe.skipIf(process.platform !== "darwin")("macMisspellings", () => {
-  it("reads a one-word item in one of the user's languages, never another", async () => {
-    // Asked of every language, `Conference` read as French (underlined) and
-    // `Conferance` as Norwegian (passed).
-    const words = await macMisspellings(
-      ["Conference", "Conferance", "Manzanas"],
-      ["es-GB", "en-GB"],
-    );
-    expect(words).toEqual([[], ["Conferance"], []]);
-  });
-});
+describe.skipIf(process.platform !== "darwin")(
+  "a Mac's spelling, in every language the user has",
+  () => {
+    const LANGS = ["es-GB", "en-GB"];
+
+    it("underlines a word only when every language rejects it", async () => {
+      // One-word items were read as French or Norwegian; a mixed paragraph as
+      // English alone, underlining its Spanish.
+      const words = await macMisspellings(
+        [
+          "Conference",
+          "Conferance",
+          "Manzanas",
+          "Press </> to see the raw Markdown. Por ejemplo en español es gris.",
+          "I bought it at the mercado yesterdy.",
+        ],
+        LANGS,
+      );
+      expect(words).toEqual([[], ["Conferance"], [], [], ["yesterdy"]]);
+    });
+
+    it("answers a right-click: nothing for a word some language accepts, else guesses", async () => {
+      expect(await macGuesses("ejemplo", "Por ejemplo en español.", LANGS)).toBeNull();
+      const guesses = await macGuesses("yesterdy", "I bought it yesterdy.", LANGS);
+      expect(guesses?.[0]).toBe("yesterday");
+    });
+
+    it("offers the sentence's language first", async () => {
+      const inSpanish = await macGuesses("manzanna", "Compré una manzanna ayer.", LANGS);
+      const inEnglish = await macGuesses("manzanna", "I ate a manzanna today.", LANGS);
+      expect(inSpanish?.[0]).toBe("manzana");
+      expect(inEnglish?.[0]).not.toBe("manzana");
+    });
+  },
+);
