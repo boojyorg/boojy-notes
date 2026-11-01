@@ -519,15 +519,17 @@ export default function GlobalStyles() {
         }
 ${tagPillCss(theme)}
         [data-block-id] .wikilink {
-          color: ${theme.wikilink.color};
-          /* Solid, as a web link's: dashed is kept for a link to no note. */
+          /* A web link's ink, underline and hover; dashed is kept for a link to no note. */
+          color: ${theme.link.color};
           text-decoration: underline;
-          text-decoration-color: ${theme.wikilink.underline};
+          text-decoration-color: ${theme.link.underline};
           cursor: pointer;
         }
         @media (hover: hover) {
           [data-block-id] .wikilink:hover {
-            text-decoration-color: ${theme.wikilink.color};
+            text-decoration-color: ${theme.link.color};
+            background: ${theme.link.hoverBg};
+            border-radius: 2px;
           }
         }
         /* Selected text in the note, and in every field (Search, a rename),
@@ -582,6 +584,7 @@ ${tagPillCss(theme)}
           [data-block-id] .wikilink-broken:hover {
             color: ${theme.wikilinkBroken.hoverColor};
             text-decoration-color: ${theme.wikilinkBroken.hoverUnderline};
+            background: none;
           }
         }
         /* A $$ block (MathBlock): the content hover while the pointer is on
