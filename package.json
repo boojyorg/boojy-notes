@@ -4,6 +4,7 @@
   "version": "0.20.0",
   "description": "Boojy Notes",
   "author": "Tyr Bujac",
+  "repository": "github:boojyorg/boojy-notes",
   "type": "module",
   "main": "dist-electron/main.js",
   "packageManager": "pnpm@10.14.0",
