@@ -165,3 +165,20 @@ test("a callout body's span is literal and keeps its spelling through an edit", 
     await h.close();
   }
 });
+
+test("a zero-width space the file holds inside a span survives an edit beside it", async () => {
+  const line = "see `a​b` here";
+  const h = await launchApp({ "Zw.md": `${line}\n` });
+  try {
+    await h.openNote("Zw");
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.type("!");
+    await waitForFile(h.vault.file("Zw.md"), (t) => t.includes("!"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Zw.md")).toBe(`${line}!\n`);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

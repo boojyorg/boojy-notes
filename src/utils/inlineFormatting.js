@@ -36,6 +36,22 @@ const CODE_OR_MATH_RE = new RegExp(
 );
 
 /**
+ * A code element's text as the file holds it: every character, a U+200B
+ * included, but the one inside a caret anchor, which is the editor's
+ * scaffolding (`walkNode` reads anchors the same way). Stripping every U+200B
+ * deleted the file's own on the next edit beside the span.
+ */
+function codeElementText(el) {
+  let text = "";
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+    const inAnchor = t.parentElement?.closest(`.${CARET_ANCHOR_CLASS}`);
+    text += inAnchor && el.contains(inAnchor) ? t.data.replace(CARET_ANCHOR_RE, "") : t.data;
+  }
+  return text;
+}
+
+/**
  * The Markdown a rendered code element stands for: its source as the file
  * wrote it (`data-md`) while it still shows that source's text, so an
  * untouched span keeps its spelling (backticks, padding, a line break);
@@ -43,7 +59,7 @@ const CODE_OR_MATH_RE = new RegExp(
  * read back as it (`editedCodeSpanSource`).
  */
 function codeElementMarkdown(el) {
-  const text = el.textContent.replace(/\u200B/g, "");
+  const text = codeElementText(el);
   const source = el.getAttribute("data-md");
   if (!source) return codeSpanSource(text);
   return codeSourceText(source) === text ? source : editedCodeSpanSource(source, text);

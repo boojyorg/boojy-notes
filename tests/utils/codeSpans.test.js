@@ -166,6 +166,19 @@ describe("an untouched span keeps its spelling", () => {
     expect(domNodeToMarkdown(typed)).toBe("``a`b``");
   });
 
+  it("a U+200B the file holds in a span is kept; only a caret anchor's is scaffolding", () => {
+    // The file's own zero-width space, untouched and after an edit.
+    const source = "`a\u200Bb` c";
+    expect(readBacks(source)).toEqual({ live: source, serialised: source });
+    const el = render(source);
+    el.querySelector("code").firstChild.data = "a\u200Bbx";
+    expect(domNodeToMarkdown(el)).toBe("`a\u200Bbx` c");
+    // An anchor's U+200B inside a span is never the file's.
+    const anchored = document.createElement("p");
+    anchored.innerHTML = '<code>ab<span class="caret-anchor">\u200B</span></code>';
+    expect(domNodeToMarkdown(anchored)).toBe("`ab`");
+  });
+
   it("a source that is not one span showing the text is ignored", () => {
     // Pasted HTML can carry any attribute: `` `a` **b** `a` `` is two spans
     // and a bold, never this span's spelling.
