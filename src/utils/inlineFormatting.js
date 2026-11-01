@@ -1,7 +1,7 @@
 // Inline markdown ↔ HTML conversion utilities.
 // Stores formatting as markdown tokens in block.text, renders as HTML via innerHTML.
 
-import { CARET_ANCHOR_CLASS, INLINE_MATH_CLASS } from "./domHelpers";
+import { CARET_ANCHOR_CLASS, ESCAPE_CLASS, INLINE_MATH_CLASS } from "./domHelpers";
 import { parseWikilinkTarget, wikilinkKey } from "./wikilinkTarget";
 import { LINK_DEST } from "./linkDestination";
 import { TAG_RE } from "./tags";
@@ -38,6 +38,48 @@ const CODE_OR_MATH_RE = new RegExp(
 function mathAtomHtml(escapedSource) {
   const attr = escapedSource.replace(/"/g, "&quot;");
   return `<span class="${INLINE_MATH_CLASS}" contenteditable="false" data-math="${attr}">$${escapedSource}$</span>`;
+}
+
+/**
+ * What a backslash escapes: any ASCII punctuation, as CommonMark reads it
+ * (and Obsidian, and the writer, which escapes a soft-break line's first
+ * punctuation so it never opens a block: `\-`, `1\.`). A backslash before
+ * anything else is text (`C:\Users`).
+ */
+export const ESCAPABLE_RE = /[!-/:-@[-`{-~]/;
+
+/** A backslash escape in prose: the symbol alone, sealed; its backslash is the walker's to write back. */
+const escapeAtomHtml = (ch) => `<span class="${ESCAPE_CLASS}" contenteditable="false">${ch}</span>`;
+
+const ESC_TOKEN_RE = /\x00ESC(\d+)\x00/g;
+/** Rendered text ending in an escape, inside formatting or not. */
+const ESCAPE_AT_END_RE = new RegExp(
+  `<span class="${ESCAPE_CLASS}"[^>]*>[^<]*</span>(?:</[a-z]+>)*$`,
+);
+/** A code span or a wikilink, whole: an escape in either is shown as written. */
+const LITERAL_ESCAPE_RE =
+  /<code>[\s\S]*?<\/code>|<span class="wikilink[^"]*"[^>]*>[\s\S]*?<\/span>/g;
+
+/**
+ * The shielded escapes put back into the rendered HTML: as written inside a
+ * tag (an `href`, a wikilink's `data-target`), a code span or a wikilink, and
+ * as sealed elements everywhere else. Inside a tag the escape is an
+ * attribute's value and is encoded as one: the attribute encoding ran while
+ * it was shielded, and a bare `"` put back there closed the value early, so
+ * `[x](\" onmouseover=…)` drew a live event handler and `[[a\"b]]` lost its
+ * target on read-back.
+ */
+function restoreEscapes(html, escapes) {
+  if (!escapes.length) return html;
+  const asWritten = (piece) => piece.replace(ESC_TOKEN_RE, (_, i) => `\\${escapes[Number(i)]}`);
+  const inAttribute = (tag) =>
+    tag.replace(ESC_TOKEN_RE, (_, i) =>
+      `\\${escapes[Number(i)]}`.replace(/"/g, "&quot;").replace(/'/g, "&#39;"),
+    );
+  return html
+    .replace(/<[^>]*>/g, inAttribute)
+    .replace(LITERAL_ESCAPE_RE, asWritten)
+    .replace(ESC_TOKEN_RE, (_, i) => escapeAtomHtml(escapes[Number(i)]));
 }
 
 /** `[text](destination)`, the destination as `LINK_DEST` reads it. */
@@ -104,13 +146,14 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // 1. Escape HTML entities (prevent XSS / accidental tag injection)
   s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-  // 1b. Protect backslash-escaped characters (e.g., \* \~ \= \`) from the
-  // formatting passes below. They are restored *with* their backslash, shown
-  // as written the way Obsidian's live preview shows them: the DOM walkers
-  // read the text back verbatim, so a hidden backslash was gone on the first
-  // edit and `\*not italic\*` became italic on the next repaint.
+  // 1b. Protect backslash-escaped punctuation (`ESCAPABLE_RE`; `<`, `>` and
+  // `&` as the entities step 1 made them) from the formatting passes below. In prose each is restored as a sealed
+  // element showing the symbol alone (`escapeAtomHtml`), which the walkers
+  // read back with its backslash, so the file keeps it however the line is
+  // edited. Where an escape means nothing (a code span) or the HTML is an
+  // attribute or a link's target, it is put back as written.
   const escapes = [];
-  s = s.replace(/\\([*~`=[\]#])/g, (_, ch) => {
+  s = s.replace(/\\(&(?:lt|gt|amp);|[!-/:-@[-`{-~])/g, (_, ch) => {
     escapes.push(ch);
     return `\x00ESC${escapes.length - 1}\x00`;
   });
@@ -244,7 +287,7 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // Restore the formulas, then the runs of stars, then backslash-escaped characters, backslash included
   s = s.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathAtomHtml(maths[Number(i)]));
   s = s.replace(/\x00RUN(\d+)\x00/g, (_, i) => runs[parseInt(i, 10)]);
-  s = s.replace(/\x00ESC(\d+)\x00/g, (_, i) => `\\${escapes[parseInt(i, 10)]}`);
+  s = restoreEscapes(s, escapes);
 
   // 12. A newline inside block text is a soft break: one line break on screen.
   // A trailing newline gets a second <br>, the way Chromium keeps an empty
@@ -253,6 +296,13 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // a closing element too (`` `x\n` ``).
   s = s.replace(/\n/g, "<br>");
   if (/<br>(?:<\/[a-z]+>)*$/.test(s)) s += "<br>";
+  // An escape at the very end leaves Chromium no caret position after it in
+  // the line: End went past it into the next block, and the letters typed
+  // after it landed there. The trailing <br> is one, and the walkers ignore
+  // it as they ignore the one above. Not after a formula: End then landed in
+  // KaTeX's drawing, where the letters were lost; its own nesting already
+  // gives the caret a place.
+  else if (ESCAPE_AT_END_RE.test(s)) s += "<br>";
 
   return s;
 }
@@ -345,6 +395,11 @@ export function nodeToMarkdown(child, before = "") {
     // A formula is its source, whatever KaTeX drew inside it.
     if (child.classList.contains(INLINE_MATH_CLASS))
       return `$${child.getAttribute("data-math") ?? ""}$`;
+    // An escape is its symbol with the backslash the screen leaves out.
+    if (child.classList.contains(ESCAPE_CLASS)) {
+      const ch = child.textContent?.[0];
+      return ch ? `\\${ch}` : "";
+    }
     // External link icon — decorative, skip
     if (child.classList.contains("external-link-icon")) return "";
     if (child.classList.contains(CARET_ANCHOR_CLASS)) {
@@ -459,6 +514,15 @@ function sanitizeInto(target, sourceNode, inAnchor) {
         el.setAttribute("data-math", source);
         el.textContent = `$${source}$`;
         target.appendChild(el);
+      } else if (tag === "SPAN" && child.classList.contains(ESCAPE_CLASS)) {
+        // An escape stays sealed, so the Markdown read from the copy keeps its backslash.
+        const ch = child.textContent?.[0];
+        if (!ch) continue;
+        const el = document.createElement("span");
+        el.className = ESCAPE_CLASS;
+        el.setAttribute("contenteditable", "false");
+        el.textContent = ch;
+        target.appendChild(el);
       } else if (ALLOWED_TAGS.has(tag)) {
         // Normalize <b> → <strong>, <i> → <em>, <s> → <del>
         let newTag = tag;
@@ -524,7 +588,12 @@ function sanitizeInto(target, sourceNode, inAnchor) {
  */
 export function stripMarkdownFormatting(md) {
   if (!md) return "";
-  let s = md;
+  // An escaped symbol is shown alone, and is never a marker for the passes below.
+  const escapes = [];
+  let s = md.replace(/\\([!-/:-@[-`{-~])/g, (_, ch) => {
+    escapes.push(ch);
+    return `\x00ESC${escapes.length - 1}\x00`;
+  });
   // Remove wikilinks: [[target|display]] → display, [[target]] → target
   s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2");
   s = s.replace(/\[\[([^\]]+)\]\]/g, "$1");
@@ -542,5 +611,5 @@ export function stripMarkdownFormatting(md) {
   s = s.replace(/~~(.+?)~~/g, "$1");
   // Remove highlight (==text== → text)
   s = s.replace(/==(.+?)==/g, "$1");
-  return s;
+  return s.replace(ESC_TOKEN_RE, (_, i) => escapes[Number(i)]);
 }

@@ -5,7 +5,7 @@
 
 import { prefersReducedMotion } from "../tokens/motion";
 import { foldText, originAt } from "./search";
-import { outsideMath } from "./domHelpers";
+import { outsideAtoms } from "./domHelpers";
 
 interface Segment {
   node: Text | null;
@@ -25,7 +25,7 @@ export function matchRanges(root: Node, terms: string[]): Range[] {
   const walker = doc.createTreeWalker(
     root,
     NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
-    outsideMath,
+    outsideAtoms,
   );
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (n.nodeType === Node.TEXT_NODE) {
