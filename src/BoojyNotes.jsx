@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import { fontStack } from "./tokens/typography";
 import WindowStrip from "./components/WindowStrip";
 import { useWindowResizing } from "./hooks/useWindowResizing";
 import { belowItem, selectedIds } from "./utils/blockRun";
@@ -1619,7 +1620,7 @@ export default function BoojyNotes() {
           : theme.BG.darkest,
         display: "flex",
         flexDirection: "column",
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        fontFamily: fontStack,
         color: theme.TEXT.primary,
         overflow: "hidden",
         fontSize: 13,

@@ -30,7 +30,9 @@ export interface DiagramColours {
 
 export type Drawn = { svg: string } | { error: string } | { empty: true };
 
-const FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+import { fontStack } from "../tokens/typography";
+
+const FONT = fontStack;
 
 /**
  * Boojy's look: rounded flat boxes (no shadow), hairline borders, finer

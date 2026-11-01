@@ -96,8 +96,8 @@ const BIAS_SHRINK = 1000;
 export const PATH_FONT = { fontSize: isPhone ? 15 : 14, fontWeight: 400, lineHeight: "20px" };
 /** The name alone is medium, the obvious thing in the row: the row stands in
  *  for a title bar, whose title is the heavier item. Folders stay regular in
- *  secondary ink. 500 is a real cut in any Inter and in the
- *  system font; 450 would be a guess about the reader's font. The twin's
+ *  secondary ink. 500 is a real cut in SF Pro and in Segoe
+ *  UI; 450 would be a guess about the reader's font. The twin's
  *  name spans carry it so the fit is measured with the heavier glyphs. */
 export const NAME_WEIGHT = 500;
 /** The root glyph is a chrome button like the row's others (an 18px glyph in
