@@ -198,6 +198,17 @@ describe("paintMarkdown", () => {
     expect(marks(html)).toEqual(["_", "_", "[", "](https://a.b/c_(d))"]);
   });
 
+  it("paints a deep pile of unclosed Markdown fences without running out of stack", () => {
+    // Each opener nests the rest; painted without a bound, 10,000 of them
+    // overflowed the stack, and the view paints before the edit is committed.
+    const md = "````markdown\n".repeat(10_000);
+    expect(() => paintMarkdown(md)).not.toThrow();
+    expect(text(paintMarkdown(md))).toBe(md);
+    // Past the bound a fence's body is shown as written, still muted where fences are.
+    const deep = "````markdown\n".repeat(20) + "- item";
+    expect(text(paintMarkdown(deep))).toBe(deep);
+  });
+
   it("gives a final empty line its height", () => {
     expect(paintMarkdown("a\n").endsWith("\n​")).toBe(true);
     expect(paintMarkdown("a")).toBe("a");

@@ -11,6 +11,7 @@ import {
   MOD,
   SETTLE_MS,
   expandAllFolders,
+  isMac,
   launchApp,
   menuClick,
   sleep,
@@ -199,6 +200,25 @@ test("the painted colours stay under the field's letters: every wrap the same, b
     expect(heights.bold).toBeGreaterThan(0);
     expect(heights.code).toBeGreaterThan(0);
     expect(Math.abs(heights.field - heights.layer)).toBeLessThanOrEqual(1);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("typing in the view of a note piled with unclosed Markdown fences still reaches the file", async () => {
+  // Painted without a bound, each opener nested the rest and the stack ran
+  // out before the edit was committed: the keystroke never reached the disk.
+  const md = "````markdown\n".repeat(10_000);
+  const h = await launchApp({ "Pile.md": md });
+  try {
+    await h.openNote("Pile");
+    await h.page.keyboard.press(`${MOD}+/`);
+    const field = h.page.getByRole("textbox", { name: "Markdown" });
+    await expect(field).toBeFocused();
+    await field.press(isMac ? "Meta+ArrowUp" : "Control+Home");
+    await h.page.keyboard.type("x");
+    await waitForFile(h.vault.file("Pile.md"), (t) => t.startsWith("x````markdown"));
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

@@ -234,14 +234,26 @@ function paintMarker(marker: string): { html: string; heading: boolean; quote: b
  * by the code block's highlighter (`highlightCode`), and a language it does
  * not know as written. Its lines stay its lines: the HTML keeps every newline.
  */
-function paintFenceBody(lines: string[], info: string): string {
+function paintFenceBody(lines: string[], info: string, depth: number): string {
   const lang = canonicalLang(info);
-  if (lang === "markdown") return paintLines(lines, false);
+  if (lang === "markdown") {
+    // Each level repaints its body, so the nesting is bounded: a pile of
+    // unclosed openers overflowed the stack, and the view paints before an
+    // edit is committed, so the edit never reached the file. Past the
+    // bound the body is shown as written.
+    return depth < MAX_FENCE_DEPTH ? paintLines(lines, false, depth + 1) : esc(lines.join("\n"));
+  }
   return highlightCode(lines.join("\n"), lang);
 }
 
-/** The lines painted, joined by their newlines; frontmatter read only when `atStart`. */
-function paintLines(lines: string[], atStart: boolean): string {
+/** How deep Markdown fences inside Markdown fences are painted as Markdown. */
+const MAX_FENCE_DEPTH = 8;
+
+/**
+ * The lines painted, joined by their newlines; frontmatter read only when
+ * `atStart`; `depth` is how many Markdown fences they sit inside.
+ */
+function paintLines(lines: string[], atStart: boolean, depth = 0): string {
   const out: string[] = [];
   let fence: { mark: string; info: string; body: string[] } | null = null;
   // Frontmatter as the parser reads it: `---` on line 1 with a later `---`
@@ -262,7 +274,7 @@ function paintLines(lines: string[], atStart: boolean): string {
       const mark = fence.mark;
       const closes = fenceOpen && fenceOpen[1][0] === mark[0] && fenceOpen[1].length >= mark.length;
       if (closes && line.trim() === fenceOpen[1].padEnd(line.trim().length, mark[0])) {
-        if (fence.body.length) out.push(paintFenceBody(fence.body, fence.info));
+        if (fence.body.length) out.push(paintFenceBody(fence.body, fence.info, depth));
         fence = null;
         out.push(muted(line));
       } else fence.body.push(line);
@@ -287,7 +299,7 @@ function paintLines(lines: string[], atStart: boolean): string {
     out.push(marker.html + body);
   }
   // A fence the file never closes runs to its end, as the parser reads it.
-  if (fence?.body.length) out.push(paintFenceBody(fence.body, fence.info));
+  if (fence?.body.length) out.push(paintFenceBody(fence.body, fence.info, depth));
   return out.join("\n");
 }
 
