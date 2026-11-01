@@ -83,6 +83,7 @@ import { wholeBlocksCopy } from "../utils/clipboardCopy";
 import { fromTouch } from "../utils/touch";
 import { isTodoKey, todoFlip } from "../utils/todoToggle";
 import { editedSurface, shedStyleResidue } from "../utils/styleResidue";
+import { forgetDeletedStyle } from "../utils/typingStyle";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -417,6 +418,8 @@ const EditorArea = memo(
       };
     }, [activeNote, hasNote, editorRef, sourceView, blockRefs]);
 
+    // One native input listener for what Chromium does beside the app's own
+    // handlers: a deletion's remembered style is forgotten, and
     // Chromium's copied look (a deleted code span's font and grey, as
     // `<font>` and a styled `<span>` on the next text typed) is unwrapped
     // where it appears. The read-back already takes it as plain text, so this
@@ -426,6 +429,9 @@ const EditorArea = memo(
       if (!el) return;
       const onInput = (e) => {
         if (e.isComposing) return;
+        // After a deletion the next letters take the caret's own formatting,
+        // never the deleted text's (utils/typingStyle).
+        forgetDeletedStyle(e);
         const textRootOf = (blockEl) => {
           const type = blockEl.getAttribute("data-block-type");
           if (!type || !isEditableBlock({ type })) return null;
