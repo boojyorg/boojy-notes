@@ -7,7 +7,7 @@ vi.mock("../../electron/settingsManager.js", () => ({
   saveSettings: vi.fn(),
 }));
 
-const { onDictionaryReady } = await import("../../electron/spelling");
+const { macMisspellings, onDictionaryReady } = await import("../../electron/spelling");
 
 describe("onDictionaryReady", () => {
   it("tells the window each time a dictionary is ready, until unsubscribed", () => {
@@ -20,5 +20,18 @@ describe("onDictionaryReady", () => {
     stop();
     session.emit("spellcheck-dictionary-initialized", "fr");
     expect(notify).toHaveBeenCalledTimes(2);
+  });
+});
+
+// The system's own checker and language recognizer: a Mac only.
+describe.skipIf(process.platform !== "darwin")("macMisspellings", () => {
+  it("reads a one-word item in one of the user's languages, never another", async () => {
+    // Asked of every language, `Conference` read as French (underlined) and
+    // `Conferance` as Norwegian (passed).
+    const words = await macMisspellings(
+      ["Conference", "Conferance", "Manzanas"],
+      ["es-GB", "en-GB"],
+    );
+    expect(words).toEqual([[], ["Conferance"], []]);
   });
 });

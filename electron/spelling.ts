@@ -30,16 +30,23 @@ const KEYBOARD_SETTINGS_URL = "x-apple.systempreferences:com.apple.Keyboard-Sett
 
 /**
  * Run by `osascript -l JavaScript`, before either script below: a text's
- * language is the paragraph's, in the spelling the system's language list
+ * language is the paragraph's, chosen only among the system's language list
+ * (asked of every language, a one-word item read as French or Norwegian:
+ * `Conference` underlined, `Conferance` passed), in the spelling the list
  * gives it (the list's `en-GB`, never a plain `en`, which is US English);
  * with none told, the system's own. A range's fields arrive as strings ("0").
  */
 const MAC_PRELUDE = `
 ObjC.import("AppKit");
+ObjC.import("NaturalLanguage");
 const checker = $.NSSpellChecker.sharedSpellChecker;
 const available = ObjC.deepUnwrap(checker.availableLanguages);
 function langFor(text, preferred) {
-  const told = ObjC.unwrap($.NSLinguisticTagger.dominantLanguageForString(text)) || "";
+  const recognizer = $.NLLanguageRecognizer.alloc.init;
+  const bases = [...new Set(preferred.map((l) => l.split("-")[0]))];
+  if (bases.length) recognizer.languageConstraints = $(bases);
+  recognizer.processString($(text));
+  const told = ObjC.unwrap(recognizer.dominantLanguage) || "";
   const candidates = told
     ? preferred.map((l) => l.replace("-", "_")).filter((l) => l.startsWith(told + "_")).concat(told)
     : [];
@@ -96,6 +103,16 @@ function osa<T>(script: string, args: string[], fallback: T, stdin?: string): Pr
 }
 
 const preferred = () => JSON.stringify(app.getPreferredSystemLanguages());
+
+/** A Mac's misspelled words in each paragraph, in its language among `languages` (BCP 47, `en-GB`). */
+export function macMisspellings(texts: string[], languages: string[]): Promise<string[][]> {
+  return osa(
+    MAC_PARAGRAPHS,
+    [JSON.stringify(languages)],
+    texts.map(() => []),
+    JSON.stringify(texts),
+  );
+}
 
 const spellingOn = () => loadSettings().spellCheckEnabled !== false;
 
@@ -185,12 +202,7 @@ export function registerSpellingIPC() {
   // The whole note at once, for the underline: one script for every paragraph.
   ipcMain.handle("check-paragraphs", (_event, texts: string[]) =>
     isMac && spellingOn()
-      ? osa(
-          MAC_PARAGRAPHS,
-          [preferred()],
-          texts.map(() => []),
-          JSON.stringify(texts),
-        )
+      ? macMisspellings(texts, app.getPreferredSystemLanguages())
       : texts.map(() => []),
   );
   ipcMain.handle("get-spelling", (event) => spellingState(event.sender.session));
