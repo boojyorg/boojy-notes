@@ -482,17 +482,21 @@ export default function GlobalStyles() {
             border-radius: 2px;
           }
         }
+        /* The arrow says a click leaves the app, so it reads as a glyph (3:1 at 0.75).
+           Inline-block keeps the link's underline from running on under it; a small
+           lift keeps it beside the word rather than floating above it. */
         [data-block-id] .external-link-icon {
-          font-size: 0.65em;
-          opacity: 0.5;
-          vertical-align: super;
+          display: inline-block;
+          font-size: 0.75em;
+          opacity: 0.75;
+          vertical-align: 0.3em;
           user-select: none;
           pointer-events: none;
           margin-left: 1px;
         }
         @media (hover: hover) {
           [data-block-id] a:hover .external-link-icon {
-            opacity: 0.8;
+            opacity: 1;
           }
         }
         /* The strike is drawn in the text's own colour, never the accent:
@@ -516,8 +520,8 @@ export default function GlobalStyles() {
 ${tagPillCss(theme)}
         [data-block-id] .wikilink {
           color: ${theme.wikilink.color};
+          /* Solid, as a web link's: dashed is kept for a link to no note. */
           text-decoration: underline;
-          text-decoration-style: dotted;
           text-decoration-color: ${theme.wikilink.underline};
           cursor: pointer;
         }
