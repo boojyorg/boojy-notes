@@ -622,6 +622,9 @@ const EditableBlock = memo(
             style={{
               color: block.checked ? TEXT.muted : TEXT.primary,
               textDecoration: block.checked ? "line-through" : "none",
+              // A done task's strike is half the text's ink: the tick already says
+              // done, so the line stays quiet and the words stay readable.
+              textDecorationColor: "color-mix(in srgb, currentColor 50%, transparent)",
               outline: "none",
               flex: 1,
               transition: "color var(--motion-fast)",
