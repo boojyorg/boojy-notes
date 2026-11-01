@@ -98,14 +98,14 @@ app's, made through state.**
 - **The browser's caret is fixed at the keystroke** (`beforeinput`: `caretOutOfLinkEnd`/`Start`),
   never on `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
-  (`utils/wikilinkTarget.ts`). An explicit path is
-  the path. A name two notes share, or none, draws dashed and opens the link picker in fix mode.
+  (`utils/wikilinkTarget.ts`). An explicit path is the path. A web link's ink and
+  hover, solid (the ↗ alone tells them apart); a name two notes share, or none, draws dashed
+  and opens the link picker in fix mode.
   A vault file's name opens it in the note's place, at `#page=N` (`fileForTarget`).
   `link-resolution.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and an
-  unresolved click: address, notes, `Create note`. Writes `[words](url)`, a
-  bare URL, `[[Target|words]]` or `[[Target]]`, the shortest clear target
-  (`linkTargetFor`). `[[` is notes only. The linked words' wash is unwrapped before read-back.
+  unresolved click: address, notes, `Create note`. Writes the shortest clear
+  target (`linkTargetFor`). `[[` is notes only. The linked words' wash is unwrapped before read-back.
   `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE` in `utils/tags.ts`,
   read by renderer, completion, search and filter. `extractAllTags` skips code, frontmatter,
