@@ -627,7 +627,7 @@ ${tagPillCss(theme)}
           border-radius: 8px;
           margin: ${rhythm.blockGap}px 0;
           /* The top keeps the toolbar's row, so the first line never sits under it. */
-          padding: 28px 16px 14px;
+          padding: ${rhythm.codePadTop}px 16px ${rhythm.codePadBottom}px;
           transition: border-color var(--motion-fast);
         }
         .code-block:focus-within {
@@ -848,6 +848,10 @@ ${tagPillCss(theme)}
           top: 4px;
           right: 4px;
           z-index: 2;
+          /* The block's own ground: invisible over the padding, and over a first line
+             that runs under it the toolbar stays legible. */
+          background: ${theme.codeBlockBg};
+          border-radius: 6px;
           display: flex;
           align-items: center;
           gap: 2px;
