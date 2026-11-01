@@ -25,7 +25,9 @@ export interface Rhythm {
   /**
    * Space inside a code block above its first line and below its last. The top
    * holds the hover toolbar's row (language, copy), so a first line never runs
-   * under it; the bottom is free to match or not.
+   * under it. The bottom matches: the toolbar shows only on hover, and at rest an
+   * uneven box reads as a stray blank line. Not tighter with the toolbar over the
+   * code: it hides a long first line's end while you type there.
    */
   codePadTop: number;
   codePadBottom: number;
@@ -49,7 +51,7 @@ export const DEFAULT_RHYTHM: Rhythm = {
   headingBelow: 8,
   blockGap: 16,
   codePadTop: 28,
-  codePadBottom: 14,
+  codePadBottom: 28,
   measure: 43,
 };
 

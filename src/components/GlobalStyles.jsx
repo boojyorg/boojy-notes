@@ -908,8 +908,8 @@ ${tagPillCss(theme)}
         .diagram-view {
           overflow-x: auto;
           cursor: text;
-          margin: 0 -16px -14px;
-          padding-bottom: 14px;
+          margin: 0 -16px -${rhythm.codePadBottom}px;
+          padding-bottom: ${rhythm.codePadBottom}px;
           border-radius: 0 0 7px 7px;
         }
         .diagram-render { display: flex; }
@@ -924,8 +924,8 @@ ${tagPillCss(theme)}
         .diagram-code-inner { position: relative; min-height: 0; overflow: hidden; }
         .diagram-code[data-open] .diagram-code-inner {
           border-bottom: 1px solid ${theme.codeBlockBorder};
-          margin: -28px -16px 14px;
-          padding: 28px 16px 12px;
+          margin: -${rhythm.codePadTop}px -16px 14px;
+          padding: ${rhythm.codePadTop}px 16px 12px;
         }
         @media (prefers-reduced-motion: reduce) { .diagram-code { transition: none; } }
         /* Prism.js token colors */
