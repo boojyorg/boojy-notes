@@ -66,9 +66,28 @@ test("Option+Down walks block starts; Option+Up goes to this block's start, then
   await h.page.keyboard.press("End");
   await h.page.keyboard.press(`${MOD}+ArrowUp`);
   await expect.poll(where).toBe("Last b@0");
+  const env = await h.page.evaluate(() => {
+    const c = document.createElement("canvas").getContext("2d") as CanvasRenderingContext2D;
+    const w = (f: string) => {
+      c.font = f;
+      return c.measureText("Second block. Inter test").width;
+    };
+    const b = document.querySelector("[data-block-id]") as HTMLElement;
+    return {
+      interInstalled: w("15px Inter, monospace") !== w("15px monospace"),
+      family: getComputedStyle(b).fontFamily,
+      win: [innerWidth, innerHeight],
+      scrollTop: document.querySelector(".editor-scroll")?.scrollTop,
+    };
+  });
+  console.log("DIAG env", JSON.stringify(env));
+  console.log("DIAG box", JSON.stringify(await h.page.getByText("Second block.").boundingBox()));
   await h.page.getByText("Second block.").click();
+  console.log("DIAG after click", await where());
   await h.page.keyboard.press("Home");
+  console.log("DIAG after Home", await where());
   await h.page.keyboard.press(`${MOD}+ArrowUp`);
+  console.log("DIAG after Option+Up", await where());
   await expect.poll(where).toBe("First @0");
   await h.page.keyboard.press(`${MOD}+ArrowUp`);
   await expect.poll(where).toBe("title");
