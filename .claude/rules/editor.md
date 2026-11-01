@@ -18,7 +18,8 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
 | `replaceNoteData` | the whole vault: load, switch, rebuild after outside delete | keeps existing notes' |
 
 - **Undo and redo act on the open note only** (`takeNewestFor`); stacks shared.
-  A typing group belongs to one note and a structural commit closes it. Undo never conjures a
+  A typing group belongs to one note and a structural commit closes it. One keystroke is one
+  entry: Enter's split and Backspace's join set text and blocks in one commit. `undo-steps.spec.ts`. Undo never conjures a
   deleted note; a move is not undoable. `undo-scope.spec.ts`.
 - A draft ends in the ref at its first keystroke. The rebuild after an
   outside delete keeps drafts and dirty notes from the ref. A vault switch flushes, empties,

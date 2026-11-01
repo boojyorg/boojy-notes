@@ -126,6 +126,20 @@ describe("useBlockOperations", () => {
       expect(blks[1].type).toBe("checkbox");
       expect(blks[1].checked).toBe(false);
     });
+
+    it("sets the split block's text in the same commit (Enter: one undo entry)", () => {
+      const { result, noteId, getNoteData, commitNoteData, commitTextChange } = setup([
+        paragraph("first half second"),
+      ]);
+      act(() => {
+        // A space Chromium typed as U+00A0 is settled as typing would settle it.
+        result.current.insertBlockAfter(noteId, 0, "p", "second", { splitText: "first\u00a0half" });
+      });
+      const blks = getNoteData()[noteId].content.blocks;
+      expect(blks.map((b) => b.text)).toEqual(["first half", "second"]);
+      expect(commitNoteData).toHaveBeenCalledTimes(1);
+      expect(commitTextChange).not.toHaveBeenCalled();
+    });
   });
 
   describe("deleteBlock", () => {
@@ -141,6 +155,19 @@ describe("useBlockOperations", () => {
       expect(blks).toHaveLength(2);
       expect(blks[0].text).toBe("a");
       expect(blks[1].text).toBe("c");
+    });
+
+    it("joins the removed block into another in the same commit (Backspace: one undo entry)", () => {
+      const { result, noteId, getNoteData, commitNoteData, commitTextChange } = setup([
+        paragraph("Hello"),
+        paragraph("World"),
+      ]);
+      act(() => {
+        result.current.deleteBlock(noteId, 1, { mergeInto: { index: 0, text: "HelloWorld" } });
+      });
+      expect(getNoteData()[noteId].content.blocks.map((b) => b.text)).toEqual(["HelloWorld"]);
+      expect(commitNoteData).toHaveBeenCalledTimes(1);
+      expect(commitTextChange).not.toHaveBeenCalled();
     });
   });
 

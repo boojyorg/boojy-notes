@@ -41,10 +41,10 @@ export function useBlockOperations({
   // non-breaking space Chromium typed becomes the space it was
   // (settleTypedSpaces). A code block's textarea types what it is given,
   // Option+Space included, and code is kept literal.
+  const settledText = (block, newText) =>
+    block.type === "code" ? newText : settleTypedSpaces(newText, block.text);
   const updateBlockText = (noteId, blockIndex, newText) =>
-    typeIntoBlock(noteId, blockIndex, (block) => ({
-      text: block.type === "code" ? newText : settleTypedSpaces(newText, block.text),
-    }));
+    typeIntoBlock(noteId, blockIndex, (block) => ({ text: settledText(block, newText) }));
 
   const updateCalloutTitle = (noteId, blockIndex, title) =>
     typeIntoBlock(noteId, blockIndex, (block) => ({
@@ -61,12 +61,19 @@ export function useBlockOperations({
       ),
     }));
 
+  // `opts.splitText`: the text the block at `afterIndex` keeps (Enter's
+  // split), set in the same commit. Committed apart, as typing, it opened an
+  // undo entry of its own, so one undo step after Enter changed nothing.
   const insertBlockAfter = (noteId, afterIndex, type = "p", text = "", opts = {}) => {
     const newBlock = { id: genBlockId(), type, text };
     if (type === "checkbox") newBlock.checked = false;
     if (opts.indent) newBlock.indent = opts.indent;
     commitNoteData(
       editBlocks(noteId, (blocks) => {
+        if (opts.splitText !== undefined && blocks[afterIndex]) {
+          const kept = blocks[afterIndex];
+          blocks[afterIndex] = { ...kept, text: settledText(kept, opts.splitText) };
+        }
         blocks.splice(afterIndex + 1, 0, newBlock);
       }),
     );
@@ -137,9 +144,17 @@ export function useBlockOperations({
     insertBlockAfter(noteId, blockIndex, "p", "");
   };
 
-  const deleteBlock = (noteId, blockIndex) => {
+  // `opts.mergeInto`: `{ index, text }`, the block the removed one joins and
+  // the text it ends with (Backspace's merge), in the same commit and so one
+  // undo entry, as Enter's split.
+  const deleteBlock = (noteId, blockIndex, opts = {}) => {
     commitNoteData(
       editBlocks(noteId, (blocks) => {
+        const into = opts.mergeInto;
+        if (into && blocks[into.index]) {
+          const kept = blocks[into.index];
+          blocks[into.index] = { ...kept, text: settledText(kept, into.text) };
+        }
         blocks.splice(blockIndex, 1);
       }),
     );

@@ -70,7 +70,6 @@ export function useKeyboardHandlers({
   tagMenuRef,
   setTagMenu,
   syncGeneration,
-  updateBlockText,
   insertBlockAfter,
   openCodeBlock,
   openMathBlock,
@@ -243,9 +242,9 @@ export function useKeyboardHandlers({
           focusCursorPos.current = 0;
           return;
         }
-        updateBlockText(noteId, blockIndex, text);
+        // One commit, one undo entry: the line's text and the new block.
         syncGeneration.current++;
-        insertBlockAfter(noteId, blockIndex, "p", "");
+        insertBlockAfter(noteId, blockIndex, "p", "", { splitText: text });
         return;
       }
 
@@ -295,10 +294,11 @@ export function useKeyboardHandlers({
       // boundary, not a newline left at the head or tail of either half.
       if (afterText.startsWith("\n")) afterText = afterText.slice(1);
       else if (beforeText.endsWith("\n")) beforeText = beforeText.slice(0, -1);
-      updateBlockText(noteId, blockIndex, beforeText);
+      // One commit, one undo entry: the first half's text and the second half.
       syncGeneration.current++;
       insertBlockAfter(noteId, blockIndex, isList ? blockType : "p", afterText, {
         indent: isList ? block.indent || 0 : 0,
+        splitText: beforeText,
       });
     }
 
@@ -393,8 +393,10 @@ export function useKeyboardHandlers({
               // The seam in visible characters: `**bold**` is four fewer than
               // its Markdown, and the caret landed that far into the moved text.
               const cursorPos = endOffset(blockRefs, prevBlock);
-              updateBlockText(noteId, prevIdx, prevText + text);
-              deleteBlock(noteId, blockIndex);
+              // One commit, one undo entry: the joined text and the removal.
+              deleteBlock(noteId, blockIndex, {
+                mergeInto: { index: prevIdx, text: prevText + text },
+              });
               syncGeneration.current++;
               focusBlockId.current = prevBlock.id;
               focusCursorPos.current = cursorPos;
