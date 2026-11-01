@@ -72,7 +72,7 @@ describe("blockCopyPayload: a whole-block copy is Markdown and block HTML", () =
   it("inline formatting renders as elements, in a heading too", () => {
     const { html } = blockCopyPayload([p("**b** *i* `c` ~~s~~ ==h=="), h(2, "Release **day**")]);
     expect(html).toBe(
-      "<p><strong>b</strong> <em>i</em> <code>c</code> <del>s</del> <mark>h</mark></p><h2>Release <strong>day</strong></h2>",
+      '<p><strong>b</strong> <em>i</em> <code data-md="`c`">c</code> <del>s</del> <mark>h</mark></p><h2>Release <strong>day</strong></h2>',
     );
   });
 

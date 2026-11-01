@@ -118,6 +118,24 @@ describe("FloatingToolbar", () => {
     expect(onFormat).toHaveBeenCalledWith("code");
   });
 
+  it("inside a code span, only Inline code acts; the rest are unavailable", () => {
+    const onFormat = vi.fn();
+    const { getByRole } = shown({
+      onFormat,
+      activeFormats: { ...defaultFormats, code: true, lockedByCode: true },
+    });
+    for (const name of ["Bold", "Italic", "Strikethrough", "Highlight", "Link"]) {
+      const btn = getByRole("button", { name });
+      expect(btn).toHaveAttribute("aria-disabled", "true");
+      fireEvent.mouseDown(btn);
+    }
+    expect(onFormat).not.toHaveBeenCalled();
+    const code = getByRole("button", { name: "Inline code" });
+    expect(code).not.toHaveAttribute("aria-disabled");
+    fireEvent.mouseDown(code);
+    expect(onFormat).toHaveBeenCalledWith("code");
+  });
+
   it("applies active styling when a format is active", () => {
     const { getByRole } = shown({
       activeFormats: { ...defaultFormats, bold: true, highlight: true },

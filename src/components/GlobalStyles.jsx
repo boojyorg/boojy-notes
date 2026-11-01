@@ -468,6 +468,10 @@ export default function GlobalStyles() {
           padding: 1px 4px;
           font-family: 'SF Mono', 'Fira Code', monospace;
           font-size: 0.9em;
+          /* Every space in a code span is the file's (GitHub's rule): a
+             collapsed one, standing for a line break in the source, was
+             dropped by Chromium on the next keystroke beside it. */
+          white-space: break-spaces;
         }
         [data-block-id] a {
           color: ${theme.link.color};
@@ -679,6 +683,8 @@ ${tagPillCss(theme)}
         }
         .code-overlay code {
           display: block;
+          /* The textarea's wrapping, not an inline span's: the layers must agree. */
+          white-space: inherit;
           font-family: inherit;
           font-size: inherit;
           line-height: inherit;

@@ -1,4 +1,5 @@
 import type { Block, NoteData } from "../types/notes";
+import { findCodeSpans } from "./codeSpans";
 import { LINK_DEST } from "./linkDestination";
 import { vaultNotes } from "./vaultNotes";
 
@@ -52,14 +53,19 @@ export function tagSourceText(block: Block): string[] {
 }
 
 const NOT_PROSE_RE = new RegExp(
-  String.raw`\`[^\`]*\`|https?:\/\/\S+|www\.\S+|\]\(${LINK_DEST}\)|\[\[[^\]]*\]\]|(?<![\\$])\$(?=\S)[^$\n]*?\S\$`,
+  String.raw`https?:\/\/\S+|www\.\S+|\]\(${LINK_DEST}\)|\[\[[^\]]*\]\]|(?<![\\$])\$(?=\S)[^$\n]*?\S\$`,
   "g",
 );
 
 /** Every tag in one piece of prose, as written. */
 export function tagsInText(text: string): string[] {
   if (!text?.includes("#")) return [];
-  const prose = text.replace(NOT_PROSE_RE, " ");
+  // Code spans first, by the renderer's own rule (``` `` `#x` `` ```), then the rest.
+  let prose = text;
+  for (const span of findCodeSpans(text).reverse()) {
+    prose = `${prose.slice(0, span.start)} ${prose.slice(span.end)}`;
+  }
+  prose = prose.replace(NOT_PROSE_RE, " ");
   const out: string[] = [];
   for (const m of prose.matchAll(TAG_RE)) out.push(m[2]);
   return out;

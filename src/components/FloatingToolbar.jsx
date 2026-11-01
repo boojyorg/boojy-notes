@@ -74,7 +74,7 @@ export function clampedLeft(bar, left) {
   return Math.min(Math.max(left, min), max);
 }
 
-function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow }) {
+function ToolbarBtn({ format, active, disabled, onClick, onRest, onLeave, tip, tipBelow }) {
   const { theme } = useTheme();
   const { ACCENT, TEXT } = theme;
   const [hovered, setHovered] = useState(false);
@@ -85,11 +85,12 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
       className="press"
       aria-pressed={active}
       aria-label={format.label}
+      aria-disabled={disabled || undefined}
       data-testid={`format-${format.id}`}
       onMouseDown={(e) => {
         // The default would move focus and collapse the selection being formatted.
         e.preventDefault();
-        onClick();
+        if (!disabled) onClick();
       }}
       onMouseEnter={() => {
         setHovered(true);
@@ -106,15 +107,15 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
         borderRadius: 5,
         border: "none",
         padding: 0,
-        cursor: "pointer",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         // Active is the glyph in the accent and nothing else, Notion's grammar:
         // the fill is for hover alone, so a pressed button still lifts on hover
         // and the accent stays ink, never a surface.
-        background: hovered ? theme.overlay(0.08) : "transparent",
-        color: active ? ACCENT.text : TEXT.primary,
+        background: hovered && !disabled ? theme.overlay(0.08) : "transparent",
+        color: disabled ? TEXT.muted : active ? ACCENT.text : TEXT.primary,
+        cursor: disabled ? "default" : "pointer",
         // The ink is not animated: a pressed glyph that fades into the accent
         // reads as the press taking a moment to land. The fill is
         // hover's, and hover is what a ramp is for.
@@ -229,6 +230,9 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
           key={format.id}
           format={format}
           active={activeFormats[format.id]}
+          // A selection reaching into a code span: its text is literal, so
+          // only Inline code acts (useInlineFormatting refuses the rest too).
+          disabled={activeFormats.lockedByCode && format.id !== "code"}
           onClick={() => onFormat(format.id)}
           onRest={onRest}
           onLeave={onLeave}

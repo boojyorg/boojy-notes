@@ -240,12 +240,53 @@ export function toggleWrappingTag(sel: Selection, tagName: string, boundary: Nod
  * `execCommand` sets for the next keystroke has no structural equivalent, and
  * it is the editor that keeps that residue for a text block (`applyFormat`).
  */
+/** The code span `node` is inside, below `boundary`, or null. */
+function codeAround(node: Node | null, boundary: Node | null): Element | null {
+  for (let n = node; n && n !== boundary; n = n.parentNode) {
+    if (n.nodeName === "CODE") return n as Element;
+  }
+  return null;
+}
+
+/**
+ * Whether `format` must not act on `range`: **a code span is literal**, so
+ * no format but code itself (and its removal) applies inside one, and a
+ * selection that starts or ends inside one is refused rather than formatted
+ * in part. Wrapped `**` would read back as stars in the code. A selection
+ * holding whole spans among words is formatted whole (`**a `b` c**`, code
+ * nested). An end resting on a span's outer edge is outside it.
+ */
+export function formatBlockedByCode(
+  range: Range,
+  format: InlineFormat,
+  boundary: Node | null,
+): boolean {
+  if (format === "code") return false;
+  const edge = (container: Node, offset: number, atStart: boolean) => {
+    const code = codeAround(container, boundary);
+    if (!code) return false;
+    if (range.collapsed) return true;
+    // A selection's start with none of the span's text after it, or its end
+    // with none before it, holds none of the span.
+    const beyond = document.createRange();
+    beyond.selectNodeContents(code);
+    if (atStart) beyond.setStart(container, offset);
+    else beyond.setEnd(container, offset);
+    return beyond.toString() !== "";
+  };
+  return (
+    edge(range.startContainer, range.startOffset, true) ||
+    edge(range.endContainer, range.endOffset, false)
+  );
+}
+
 export function applyDomFormat(
   sel: Selection,
   format: InlineFormat,
   boundary: Node | null,
 ): boolean {
   if (!sel.rangeCount || sel.isCollapsed) return false;
+  if (formatBlockedByCode(sel.getRangeAt(0), format, boundary)) return false;
   const tag = WRAP_TAGS[format];
   if (!tag) return false;
   toggleWrappingTag(sel, tag, boundary);
