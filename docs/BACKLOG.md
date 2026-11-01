@@ -431,9 +431,8 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   shadows at 0.4–0.5 where `theme.modalShadow` is 0.12/0.08 in Light; the code block's
   context-menu hover is white at 6% over a white surface, invisible in Light; the find
   highlight colours are hardcoded amber in `main.jsx`; `CalloutBlock` imports eleven icons
-  straight from `lucide-react` at 15 and 17px, stroke 1.8, off both tiers; no font token
-  (`Inter` is named first and never shipped, so every geometry judgement in the rules was made
-  in SF Pro), four mono stacks, no `tabular-nums` where counts change width.
+  straight from `lucide-react` at 15 and 17px, stroke 1.8, off both tiers;
+  four mono stacks, no `tabular-nums` where counts change width.
 - **Updater behaviour** — `autoDownload` is on and every launch checks. A failed check reaches
   Settings → Updates ("Couldn't check for updates", Try again; `settingsManager.js:136`,
   `UpdatesTab.tsx`) and nowhere else; the promise's own `catch(() => {})` is harmless.

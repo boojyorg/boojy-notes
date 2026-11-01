@@ -23,6 +23,15 @@ export interface Rhythm {
   /** Space above and below a code block, table or callout. */
   blockGap: number;
   /**
+   * Space inside a code block above its first line and below its last. The top
+   * holds the hover toolbar's row (language, copy), so a first line never runs
+   * under it. The bottom matches: the toolbar shows only on hover, and at rest an
+   * uneven box reads as a stray blank line. Not tighter with the toolbar over the
+   * code: it hides a long first line's end while you type there.
+   */
+  codePadTop: number;
+  codePadBottom: number;
+  /**
    * The longest a line of text gets, in ems of the body size, so it holds the
    * same number of characters at any body size and any interface size (the
    * UI scale enlarges text and column together). The window decides how close
@@ -41,6 +50,8 @@ export const DEFAULT_RHYTHM: Rhythm = {
   headingAbove: 28,
   headingBelow: 8,
   blockGap: 16,
+  codePadTop: 28,
+  codePadBottom: 28,
   measure: 43,
 };
 

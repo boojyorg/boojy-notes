@@ -8,6 +8,11 @@ import { expect, test } from "@playwright/test";
 import { type AppHandle, launchApp } from "./harness";
 
 const MOD = process.platform === "darwin" ? "Alt" : "Control";
+// The line's ends by the platform's own keys. On a Mac, Home and End scroll the
+// document and leave the caret, so they only moved it while the note could not
+// scroll; the Mac's are Cmd+Left and Cmd+Right.
+const LINE_START = process.platform === "darwin" ? "Meta+ArrowLeft" : "Home";
+const LINE_END = process.platform === "darwin" ? "Meta+ArrowRight" : "End";
 const FILE =
   "First line\nsoft second line\n\nSecond block.\n\n```js\nlet a = 1;\n```\n\nAfter code.\n\n---\n\nLast block.\n";
 
@@ -42,7 +47,7 @@ const where = () =>
 
 test("Option+Down walks block starts; Option+Up goes to this block's start, then the one above", async () => {
   await h.page.locator("[data-block-id]").first().click();
-  await h.page.keyboard.press("End");
+  await h.page.keyboard.press(LINE_END);
   await h.page.keyboard.press(`${MOD}+ArrowDown`);
   // One step past both lines of the first paragraph.
   await expect.poll(where).toBe("Second@0");
@@ -63,11 +68,11 @@ test("Option+Down walks block starts; Option+Up goes to this block's start, then
   await expect.poll(where).toBe("@0");
   // From a block's middle, Option+Up goes to its own start first.
   await h.page.getByText("Last block.").click();
-  await h.page.keyboard.press("End");
+  await h.page.keyboard.press(LINE_END);
   await h.page.keyboard.press(`${MOD}+ArrowUp`);
   await expect.poll(where).toBe("Last b@0");
   await h.page.getByText("Second block.").click();
-  await h.page.keyboard.press("Home");
+  await h.page.keyboard.press(LINE_START);
   await h.page.keyboard.press(`${MOD}+ArrowUp`);
   await expect.poll(where).toBe("First @0");
   await h.page.keyboard.press(`${MOD}+ArrowUp`);

@@ -55,6 +55,8 @@ const CONTROLS = [
   { key: "headingAbove", label: "Above heading (H2)", min: 8, max: 64, step: 2, unit: "px" },
   { key: "headingBelow", label: "Below heading (H2)", min: 0, max: 24, step: 1, unit: "px" },
   { key: "blockGap", label: "Code, table, callout", min: 0, max: 32, step: 1, unit: "px" },
+  { key: "codePadTop", label: "Inside code, top", min: 8, max: 40, step: 1, unit: "px" },
+  { key: "codePadBottom", label: "Inside code, bottom", min: 8, max: 40, step: 1, unit: "px" },
   { key: "measure", label: "Line length", min: 30, max: 50, step: 0.5, unit: "em" },
 ];
 
