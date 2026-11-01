@@ -18,6 +18,7 @@ vi.mock("prismjs", () => {
     default: {
       languages,
       highlight: (text, _grammar, _name) => text,
+      hooks: { add: () => {} },
     },
   };
 });
