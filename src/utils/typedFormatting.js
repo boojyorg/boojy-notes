@@ -22,7 +22,12 @@ import {
   getCaretOffset,
   placeCaret,
 } from "./domHelpers";
-import { ESCAPABLE_RE, inlineMarkdownToHtml, nodeToMarkdown } from "./inlineFormatting";
+import {
+  ESCAPABLE_RE,
+  domNodeToMarkdown,
+  inlineMarkdownToHtml,
+  nodeToMarkdown,
+} from "./inlineFormatting";
 import { markdownAfter, markdownBefore } from "./crossBlockEdit";
 
 /**
@@ -316,4 +321,19 @@ export function paintTypedFormat(el, hit, text, noteTitles) {
   el.innerHTML = saved;
   if (hit.visibleCaret >= 0) placeCaret(el, hit.visibleCaret);
   return false;
+}
+
+/**
+ * A field's text after a keystroke (a table cell, a callout's body), with a
+ * typed closing marker painted as a text block paints it: `` `tag` `` typed in
+ * a cell became code only on the next repaint from state, which a field that
+ * already holds state's text never gets (`useOwnedField`). The field commits
+ * what this returns, as it committed its read-back before.
+ */
+export function fieldTextAfterTyping(el, native, noteTitles) {
+  const text = domNodeToMarkdown(el);
+  const hit = native ? typedFormatHit(el, native) : null;
+  if (!hit) return text;
+  const painted = hit.rewritten ? hit.newText : text;
+  return paintTypedFormat(el, hit, painted, noteTitles) ? painted : text;
 }

@@ -34,7 +34,9 @@ test("editing one cell rewrites only its row; the rest of the table keeps its sp
     await h.page.keyboard.type("5");
 
     const expected = [...lines];
-    expected[5] = "| Tea | 2.105 |";
+    // Lined up but for the wikilink row, so the other rows keep their lines;
+    // the edited row fits the header's columns and is padded to sit with them.
+    expected[5] = "| Tea     |  2.105 |";
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("2.105"));
     expect(h.vault.read(NOTE)).toBe(expected.join("\n"));
     expect(h.pageErrors).toEqual([]);

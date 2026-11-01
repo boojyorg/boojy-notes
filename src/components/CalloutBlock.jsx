@@ -22,6 +22,7 @@ import {
   FileText,
 } from "lucide-react";
 import { fromTouch } from "../utils/touch";
+import { fieldTextAfterTyping } from "../utils/typedFormatting";
 
 /* ─── Callout type configuration ─── */
 
@@ -279,9 +280,17 @@ export default memo(function CalloutBlock({
     onUpdateTitle(noteId, blockIndex, titleRef.current?.textContent || "");
   }, [noteId, blockIndex, onUpdateTitle]);
 
-  const handleBodyInput = useCallback(() => {
-    onUpdateText(noteId, blockIndex, domNodeToMarkdown(bodyRef.current));
-  }, [noteId, blockIndex, onUpdateText]);
+  // A typed closing marker is painted here, as a text block paints it.
+  const handleBodyInput = useCallback(
+    (e) => {
+      onUpdateText(
+        noteId,
+        blockIndex,
+        fieldTextAfterTyping(bodyRef.current, e?.nativeEvent, noteTitleSet),
+      );
+    },
+    [noteId, blockIndex, onUpdateText, noteTitleSet],
+  );
 
   /* ─── Scroll restoration (runs after DOM sync, before paint) ─── */
 

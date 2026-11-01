@@ -177,3 +177,22 @@ export function alignedSeparator(
   });
   return style.spaced ? `| ${cells.join(" | ")} |` : `|${cells.join("|")}|`;
 }
+
+/**
+ * The widths an edited row of a table that is not lined up throughout may
+ * still be padded to: the header's, when the header and separator share their
+ * pipes (the author lined the table up; one long row stuck out). Null for a
+ * table written plainly, which stays plain.
+ */
+export function headerWidthsIfLinedUp(header: string, separator: string): number[] | null {
+  const h = pipeColumns(header);
+  const s = pipeColumns(separator);
+  if (!h || !s || h.length < 3 || h.length !== s.length || h.some((c, i) => c !== s[i]))
+    return null;
+  return columnWidths(header);
+}
+
+/** Whether escaped `cells` fit `widths` exactly cell for cell, so padding them moves no pipe. */
+export function rowFits(cells: string[], widths: number[]): boolean {
+  return cells.length === widths.length && cells.every((c, i) => displayWidth(c) <= widths[i]);
+}
