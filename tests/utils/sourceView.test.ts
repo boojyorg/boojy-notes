@@ -110,27 +110,71 @@ describe("paintMarkdown", () => {
     expect(text(paintMarkdown(odd))).toBe(odd);
   });
 
-  it("mutes the markers and leaves the words in the text's ink", () => {
+  /** The text of every span of class `cls`, in order. */
+  const role = (html: string, cls: string) =>
+    [...html.matchAll(new RegExp(`<span class="${cls}">([^<]*)</span>`, "g"))].map((m) => m[1]);
+
+  it("gives each part of the file its role's ink", () => {
     const html = paintMarkdown(NOTE);
+    // Indentation and quote markers muted; list and task markers their own ink.
     expect(marks(html)).toEqual(
-      expect.arrayContaining([
-        "---",
-        "# ",
-        "- ",
-        "  - ",
-        "- [ ] ",
-        "- [x] ",
-        "**",
-        "[[",
-        "]]",
-        "&gt; ",
-        "```js",
-        "```",
-      ]),
+      expect.arrayContaining(["---", "  ", "**", "[[", "]]", "&gt; ", "```"]),
     );
+    expect(role(html, "md-hmark")).toEqual(["# "]);
+    expect(role(html, "md-list")).toEqual(["- ", "- ", "- ", "- [ ] ", "- [x] "]);
+    expect(role(html, "md-wiki")).toEqual(["Todd's Note"]);
+    expect(role(html, "md-tag")).toEqual(["#admin"]);
+    expect(role(html, "md-info")).toEqual(["js"]);
     expect(html).toContain('<span class="md-meta">tags: [uni]</span>');
     expect(html).toContain('<span class="md-strong">Term prep</span>');
     expect(html).toContain('<span class="md-strong">library card</span>');
+    expect(html).toContain('<span class="md-quote">Read slowly. Take notes by hand.</span>');
+  });
+
+  it("draws links, addresses and wikilink aliases in the accent, their brackets muted", () => {
+    const html = paintMarkdown(
+      "See [the guide](https://a.b/c) at https://x.y/z. and [[Note|alias]]",
+    );
+    expect(role(html, "md-link")).toEqual(["the guide", "https://x.y/z"]);
+    expect(marks(html)).toEqual(["[", "](https://a.b/c)", "[[", "|", "]]"]);
+    expect(role(html, "md-wiki")).toEqual(["Note", "alias"]);
+  });
+
+  it("reads a tag as the renderer does, and nothing else as one", () => {
+    expect(role(paintMarkdown("#start and (#paren) and a#b and # heading-ish"), "md-tag")).toEqual([
+      "#start",
+      "#paren",
+    ]);
+  });
+
+  it("colours a fence's code as a code block does, and a Markdown fence as Markdown", () => {
+    const py = paintMarkdown('```python\ndef greet(name):\n    return f"Hi {name}"\n```');
+    expect(py).toContain('<span class="token keyword">def</span>');
+    expect(py).toContain('<span class="token function">greet</span>');
+    // A Markdown fence holding a Python fence: its list is a list, its code is code.
+    const nested = paintMarkdown("````markdown\n- item\n```python\nreturn 1\n```\n````\nafter");
+    expect(role(nested, "md-list")).toEqual(["- "]);
+    expect(nested).toContain('<span class="token keyword">return</span>');
+    expect(text(nested)).toBe("````markdown\n- item\n```python\nreturn 1\n```\n````\nafter");
+  });
+
+  it("leaves a language it does not know as written, and runs an unclosed fence to the end", () => {
+    const html = paintMarkdown("```klingon\nqapla' **x**\n```\n~~~\n# open\n<tag>");
+    expect(html).toContain("\nqapla' **x**\n");
+    expect(html).toContain("\n# open\n&lt;tag&gt;");
+    expect(html).not.toContain("md-strong");
+  });
+
+  it("draws every character as written across fences, nesting and odd fence lengths", () => {
+    for (const md of [
+      '````markdown\n```python\ndef f():\n    return """a\nb"""\n```\n````\n',
+      "```\n\n\n```\n\n~~~~js\n// a\n/* b\n c */\n~~~~",
+      "> - [ ] quoted task with `code` and [[a|b]] #tag\n1. one\n   2) two",
+      "```mermaid\nflowchart LR\n  A --> B\n```",
+      "```unclosed\nstill code\n",
+    ]) {
+      expect(text(paintMarkdown(md)), md).toBe(md);
+    }
   });
 
   it("draws frontmatter only where the parser reads it: a `---` on line 1 that something closes", () => {
@@ -145,6 +189,7 @@ describe("paintMarkdown", () => {
     const html = paintMarkdown("```\n# not a heading\n**x**\n```\nsee `**raw**` here");
     expect(html).toContain("\n# not a heading\n**x**\n");
     expect(marks(html)).toEqual(["```", "```", "`", "`"]);
+    expect(role(html, "md-code")).toEqual(["**raw**"]);
   });
 
   it("keeps a word's underscore and a link's address muted", () => {

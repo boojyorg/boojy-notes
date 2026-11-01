@@ -217,6 +217,9 @@ keeps its own view, saved** (`useSourceView`).
 - **It repaints only when the blocks aren't the ones it committed** (by identity).
 - The caret crosses by block (`utils/sourceView.ts`). The entry place is read once in
   `useState`. `source-view.spec.ts`.
+- **Colour says what each part is; nothing may change a character's width** (the field lies
+  over the layer): the platform's monospace, no ligatures in either box; a fence's code by
+  `highlightCode`, a `markdown` fence by the view's own painter. `sourceView.test.ts`.
 
 ## Lists
 

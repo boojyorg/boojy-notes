@@ -160,6 +160,51 @@ test("the path at the top holds still across the switch, folders and all", async
   }
 });
 
+test("the painted colours stay under the field's letters: every wrap the same, bold and code included", async () => {
+  // Only colour and weight may differ between the layer and the field; a
+  // weight or a tint that changed a character's width would wrap a long line
+  // one word sooner in one of them, and the caret would drift from the text.
+  const long = "word ".repeat(40).trim();
+  const md = [
+    "# A heading long enough to wrap: " + long,
+    "",
+    `Prose with **bold ${long}** and \`inline code ${long.slice(0, 60)}\` and [a link](https://a.b/c) #tag.`,
+    "",
+    `- [ ] a task ${long}`,
+    `> a quote ${long}`,
+    "",
+    "```python",
+    `def greet(name):  # ${long}`,
+    '    return f"Hello, {name}!"',
+    "```",
+    "",
+    "````markdown",
+    `- **nested ${long}**`,
+    "````",
+    "",
+  ]
+    .join("\n")
+    .repeat(6);
+  const h = await launchApp({ "Paint.md": md });
+  try {
+    await h.openNote("Paint");
+    await h.page.keyboard.press(`${MOD}+/`);
+    await expect(h.page.getByRole("textbox", { name: "Markdown" })).toBeFocused();
+    const heights = await h.page.evaluate(() => ({
+      field: document.querySelector(".source-field")!.scrollHeight,
+      layer: document.querySelector(".source-layer")!.scrollHeight,
+      bold: document.querySelectorAll(".source-layer .md-strong").length,
+      code: document.querySelectorAll(".source-layer .token").length,
+    }));
+    expect(heights.bold).toBeGreaterThan(0);
+    expect(heights.code).toBeGreaterThan(0);
+    expect(Math.abs(heights.field - heights.layer)).toBeLessThanOrEqual(1);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("a scrolled note keeps its place across the switch when a code block is at the top", async () => {
   // The block kept still was the code block at the top, and its fence starts a
   // painted run of its own: measured at the end of the run before, its line
@@ -179,19 +224,11 @@ test("a scrolled note keeps its place across the switch when a code block is at 
           );
           return code!.getBoundingClientRect().top - pane;
         }
-        const walker = document.createTreeWalker(
-          document.querySelector(".source-layer")!,
-          NodeFilter.SHOW_TEXT,
+        // The fence's line: its language, painted on the line the fence opens.
+        const info = [...document.querySelectorAll(".source-layer .md-info")].find(
+          (el) => el.textContent === "js",
         );
-        for (let n = walker.nextNode() as Text | null; n; n = walker.nextNode() as Text | null) {
-          const at = n.data.indexOf("```js");
-          if (at < 0) continue;
-          const range = document.createRange();
-          range.setStart(n, at);
-          range.setEnd(n, at + 1);
-          return range.getBoundingClientRect().top - pane;
-        }
-        return null;
+        return info ? info.getBoundingClientRect().top - pane : null;
       }, where);
     // Scrolled with no caret in the note (it stays in the sidebar), the code
     // block just below the pane's top.
