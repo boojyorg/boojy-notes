@@ -37,11 +37,11 @@ export const DEFAULT_RHYTHM: Rhythm = {
   bodySize: 15,
   // A phone's narrow column reads closer: 1.6 beside Notion and Obsidian's 1.5.
   lineHeight: isPhone ? 1.6 : 1.7,
-  paragraphGap: 9,
+  paragraphGap: 10,
   headingAbove: 28,
   headingBelow: 8,
   blockGap: 16,
-  measure: 40,
+  measure: 43,
 };
 
 /** Heading type at a 15px body: size, weight, line height, tracking. */
