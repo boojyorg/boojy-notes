@@ -374,8 +374,11 @@ describe("useKeyboardHandlers", () => {
       const { result } = renderHook(() => useKeyboardHandlers(deps));
       result.current.handleBlockKeyDown("note-1", 1, key("Backspace"));
       expect(deps.selectBlock).not.toHaveBeenCalled();
-      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "HelloWorld");
-      expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 1);
+      // The joined text and the removal are one commit (one undo entry).
+      expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 1, {
+        mergeInto: { index: 0, text: "HelloWorld" },
+      });
+      expect(deps.updateBlockText).not.toHaveBeenCalled();
     });
 
     it("Backspace at the start of a heading makes it a paragraph and keeps its text", () => {
@@ -456,7 +459,9 @@ describe("useKeyboardHandlers", () => {
       caretIn(deps.blockRefs.current.b2, "World", 0);
       const { result } = renderHook(() => useKeyboardHandlers(deps));
       result.current.handleBlockKeyDown("note-1", 1, key("Backspace"));
-      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "Hi **there**World");
+      expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 1, {
+        mergeInto: { index: 0, text: "Hi **there**World" },
+      });
       expect(deps.focusCursorPos.current).toBe(8);
     });
 
@@ -548,7 +553,9 @@ describe("useKeyboardHandlers", () => {
       caretIn(deps.blockRefs.current.b2, "World", 0);
       const { result } = renderHook(() => useKeyboardHandlers(deps));
       result.current.handleBlockKeyDown("note-1", 2, key("Backspace"));
-      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "HelloWorld");
+      expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 2, {
+        mergeInto: { index: 0, text: "HelloWorld" },
+      });
       expect(focusOwnedField).not.toHaveBeenCalled();
     });
 
@@ -566,8 +573,10 @@ describe("useKeyboardHandlers", () => {
       caretIn(deps.blockRefs.current.b2, "World", 0);
       const { result } = renderHook(() => useKeyboardHandlers(deps));
       result.current.handleBlockKeyDown("note-1", 2, key("Backspace"));
-      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "HelloWorld");
-      expect(deps.updateBlockText).not.toHaveBeenCalledWith("note-1", 1, expect.anything());
+      // Merged into the paragraph above the embed, never into the embed.
+      expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 2, {
+        mergeInto: { index: 0, text: "HelloWorld" },
+      });
     });
 
     it("an image is stopped on too; a file block between is still stepped over", () => {
