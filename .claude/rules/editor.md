@@ -252,7 +252,8 @@ Blocks are Markdown structure, not lines (`structureParagraphs`).
 Table cell, callout title/body, code textarea. **The field holds what state holds, and the file
 never holds a byte sequence the syntax cannot.**
 
-- Read with the editor's reader, commit every input through `commitTextChange`.
+- Read with the editor's reader, commit every input through `commitTextChange`; a typed
+  closing marker converts there as in a block (`fieldTextAfterTyping`).
 - **`data-inline-field`** (cell, callout body) marks a field that owns its inline formatting
   (`formatInlineField`): wrapped in the field, then an `input` event so its own handler commits.
   Chromium's `Cmd+B` must never run in a field. `special-block-fields.spec.ts`.
