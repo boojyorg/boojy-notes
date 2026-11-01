@@ -4,7 +4,7 @@ import { caretOffsetIn, overlaps, spellParagraphs, wordRanges } from "../../util
 
 /** A pause in the typing before a changed paragraph is checked. */
 const SETTLE_MS = 150;
-/** Where Chromium put its dotted underline (measured on Inter, as the line
+/** Where Chromium put its dotted underline (measured on SF Pro, as the line
  *  was drawn before): up from the bottom of the word's box by this much of
  *  the font size, then down by the line's 1px offset. */
 const LINE_RISE_EM = 0.207;

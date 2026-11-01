@@ -6,8 +6,9 @@
  * and only the difference between ascent and descent is left, so one constant
  * answers it for every size and line height the app uses.
  *
- * That constant is Inter's ascent minus its descent, as a fraction of the font
- * size, fitted to Chromium's own layout (probing a zero-width inline-block on
+ * That constant is the system face's ascent minus its descent (SF Pro: no face
+ * ships with the app), as a fraction of the font size, fitted to Chromium's own
+ * layout on a Mac (probing a zero-width inline-block on
  * the baseline against the box's top):
  *
  * | size / line-height | measured | this model |

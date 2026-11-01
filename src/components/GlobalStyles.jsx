@@ -4,6 +4,7 @@ import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W } from "../constants/lay
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
+import { fontStack } from "../tokens/typography";
 import { bandFill, withAlpha } from "../utils/selectionBand";
 import { SEARCH_HIT_ALPHA, SEARCH_HIT_STEPS } from "../utils/searchHighlight";
 import { settingsStyles } from "./settings/SettingsPrimitives";
@@ -379,10 +380,10 @@ export default function GlobalStyles() {
         html.popup-open [data-drag-region] { -webkit-app-region: no-drag !important; }
         input::placeholder { color: ${theme.TEXT.muted}; }
         /* The app font on the body too, so a surface portalled to it (the
-           table's cell menu) inherits Inter rather than the browser's serif
+           table's cell menu) inherits the app font rather than the browser's serif
            The app root sets the same stack. */
         body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-family: ${fontStack};
         }
         [contenteditable]:focus:not(:focus-visible) { outline: none; }
         *:focus-visible { outline: 2px solid var(--boojy-focus-ring); outline-offset: 2px; border-radius: 2px; }
@@ -510,11 +511,18 @@ export default function GlobalStyles() {
           text-decoration-thickness: 1.5px;
           color: inherit;
         }
-        /* Bold inside a heading is one step heavier than the heading. Left to the browser, "bolder" on a 600 or 700 heading
-           jumps to 900, which is a different face rather than an emphasis. */
+        /* Bold in a note is semibold: an emphasis, not a shout. The browser's 700 stood out
+           more than the quiet chrome asks for, and the Markdown view already draws 600. */
+        [data-block-id] strong, [data-block-id] b { font-weight: 600; }
+        /* Bold on text that is already heavy is one step heavier than it. Left to the browser,
+           "bolder" on a 600 or 700 heading jumps to 900, a different face rather than an
+           emphasis; at the body's 600 a header cell's or callout title's bold would vanish.
+           Equal specificity, so these come after the body rule. */
         [data-block-type="h1"] strong, [data-block-type="h6"] strong { font-weight: 800; }
         [data-block-type="h2"] strong, [data-block-type="h3"] strong,
-        [data-block-type="h4"] strong, [data-block-type="h5"] strong { font-weight: 700; }
+        [data-block-type="h4"] strong, [data-block-type="h5"] strong,
+        .table-block th strong, .table-block th b,
+        .callout-title strong, .callout-title b { font-weight: 700; }
         [data-block-id] mark {
           background: ${theme.mark.bg};
           color: inherit;
@@ -865,7 +873,7 @@ ${tagPillCss(theme)}
           border-radius: 6px;
           background: transparent;
           color: ${theme.TEXT.muted};
-          font: 500 12px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font: 500 12px ${fontStack};
           cursor: pointer;
           transition: background-color var(--motion-fast), color var(--motion-fast);
         }
