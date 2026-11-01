@@ -62,7 +62,7 @@ Built with React 19 and Vite 8, Electron 44 for the desktop shell, Vitest and Pl
 
 ## Status
 
-Boojy Notes is in Beta, since v0.15.0. The latest release is v0.19.0, published on 2026-10-30 for macOS, Windows and Linux. It's the build [boojy.org](https://boojy.org) offers, and an installed copy from v0.8.0 onward updates itself to it. The desktop app is complete enough for ordinary daily use: I use it every day, and what I bump into decides what gets finished next. On Windows the installer isn't signed yet, so Windows warns about an unknown publisher; choose More info, then Run anyway.
+Boojy Notes is in Beta, since v0.15.0. The latest release is v0.20.0, published on 2026-11-01 for macOS, Windows and Linux. It's the build [boojy.org](https://boojy.org) offers, and an installed copy from v0.8.0 onward updates itself to it. The desktop app is complete enough for ordinary daily use: I use it every day, and what I bump into decides what gets finished next. On Windows the installer isn't signed yet, so Windows warns about an unknown publisher; choose More info, then Run anyway.
 
 The same notes on an Android phone work, in testing. The vault sits in a Dropbox folder: on the desktop, Dropbox's own app keeps it in step, and an Android app on the same editor syncs it, writing offline too. The phone app isn't available to download yet.
 
