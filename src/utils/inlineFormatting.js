@@ -5,6 +5,7 @@ import { CARET_ANCHOR_CLASS, ESCAPE_CLASS, INLINE_MATH_CLASS } from "./domHelper
 import { parseWikilinkTarget, wikilinkKey } from "./wikilinkTarget";
 import { LINK_DEST } from "./linkDestination";
 import { TAG_RE } from "./tags";
+import { codeSourceText, codeSpanSource, editedCodeSpanSource, findCodeSpans } from "./codeSpans";
 
 /** Step 1 of the renderer, for prose that has been read back to characters. */
 const escapeHtml = (text) =>
@@ -19,7 +20,7 @@ const unescapeHtml = (html) =>
  * Every `<` in the string is a tag's, because the text's own were escaped first.
  */
 const PROSE_OR_ELEMENT_RE =
-  /<a\b[^>]*>[\s\S]*?<\/a>|<code>[\s\S]*?<\/code>|<span class="wikilink[^"]*"[^>]*>[\s\S]*?<\/span>|<[^>]*>|[^<]+/g;
+  /<a\b[^>]*>[\s\S]*?<\/a>|<code\b[^>]*>[\s\S]*?<\/code>|<span class="wikilink[^"]*"[^>]*>[\s\S]*?<\/span>|<[^>]*>|[^<]+/g;
 
 /**
  * A code span, a bare URL or a link's destination (`](…)`), left whole for
@@ -33,6 +34,36 @@ const CODE_OR_MATH_RE = new RegExp(
   String.raw`(\`[^\`]+\`|https?:\/\/[^\s<]+|\]\(${LINK_DEST}\))|(?<![\\$])\$(?=[^\s$])((?:[^$\n\\]|\\[^\n])+?)(?<=\S)\$(?![$\d])`,
   "g",
 );
+
+/**
+ * A code element's text as the file holds it: every character, a U+200B
+ * included, but the one inside a caret anchor, which is the editor's
+ * scaffolding (`walkNode` reads anchors the same way). Stripping every U+200B
+ * deleted the file's own on the next edit beside the span.
+ */
+function codeElementText(el) {
+  let text = "";
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+    const inAnchor = t.parentElement?.closest(`.${CARET_ANCHOR_CLASS}`);
+    text += inAnchor && el.contains(inAnchor) ? t.data.replace(CARET_ANCHOR_RE, "") : t.data;
+  }
+  return text;
+}
+
+/**
+ * The Markdown a rendered code element stands for: its source as the file
+ * wrote it (`data-md`) while it still shows that source's text, so an
+ * untouched span keeps its spelling (backticks, padding, a line break);
+ * edited, the same runs and padding around the new text where they still
+ * read back as it (`editedCodeSpanSource`).
+ */
+function codeElementMarkdown(el) {
+  const text = codeElementText(el);
+  const source = el.getAttribute("data-md");
+  if (!source) return codeSpanSource(text);
+  return codeSourceText(source) === text ? source : editedCodeSpanSource(source, text);
+}
 
 /** The inline formula's element: its source on `data-math`, drawn by KaTeX later (`utils/inlineMath`). */
 function mathAtomHtml(escapedSource) {
@@ -58,7 +89,7 @@ const ESCAPE_AT_END_RE = new RegExp(
 );
 /** A code span or a wikilink, whole: an escape in either is shown as written. */
 const LITERAL_ESCAPE_RE =
-  /<code>[\s\S]*?<\/code>|<span class="wikilink[^"]*"[^>]*>[\s\S]*?<\/span>/g;
+  /<code\b[^>]*>[\s\S]*?<\/code>|<span class="wikilink[^"]*"[^>]*>[\s\S]*?<\/span>/g;
 
 /**
  * The shielded escapes put back into the rendered HTML: as written inside a
@@ -132,16 +163,56 @@ function autolinkProse(escaped) {
   return out + escapeHtml(text.slice(last));
 }
 
+/** `md` with each code span replaced by a token, its element pushed onto `codes`. */
+function shieldCodeSpans(md, codes) {
+  const spans = findCodeSpans(md);
+  if (!spans.length) return md;
+  let out = "";
+  let last = 0;
+  for (const { start, end, source, text } of spans) {
+    // A line break in the source is an entity: the soft-break pass (12) turns
+    // every newline left in the HTML into a `<br>`, attributes included.
+    const attr = escapeHtml(source)
+      .replace(/"/g, "&quot;")
+      .replace(/\r/g, "&#13;")
+      .replace(/\n/g, "&#10;");
+    codes.push({ source: attr, html: `<code data-md="${attr}">${escapeHtml(text)}</code>` });
+    out += `${md.slice(last, start)}\x00CODE${codes.length - 1}\x00`;
+    last = end;
+  }
+  return out + md.slice(last);
+}
+
+const CODE_TOKEN_RE = /\x00CODE(\d+)\x00/g;
+
+/**
+ * The shielded code spans put back: as their source inside a tag (a wikilink's
+ * `data-target`: `[[a `b`]]` names "a `b`"), where an element would break the
+ * attribute open; as their elements everywhere else.
+ */
+function restoreCodeSpans(html, codes) {
+  if (!codes.length) return html;
+  return html
+    .replace(/<[^>]*>/g, (tag) => tag.replace(CODE_TOKEN_RE, (_, i) => codes[Number(i)].source))
+    .replace(CODE_TOKEN_RE, (_, i) => codes[Number(i)].html);
+}
+
 /**
  * Convert inline markdown tokens to HTML for rendering.
- * Process order: escape HTML → shield escapes, link destinations, wikilink
- *                targets, star runs and maths → code → bold+italic → bold → italic →
+ * Process order: shield code spans → escape HTML → shield escapes, link
+ *                destinations, wikilink targets, star runs and maths → bold+italic → bold → italic →
  *                strikethrough → highlight → wikilinks → markdown links →
  *                bare URLs (in prose only, on the text as written) → tags
  */
 export function inlineMarkdownToHtml(md, noteTitles) {
   if (!md) return "";
   let s = md;
+
+  // 0. Code spans, before anything else reads the text: everything in one is
+  // literal. Each is shielded whole and restored at the end as its element,
+  // its text escaped there and its source on `data-md` for the read-back.
+  const codes = [];
+  s = shieldCodeSpans(s, codes);
 
   // 1. Escape HTML entities (prevent XSS / accidental tag injection)
   s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -203,9 +274,6 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     );
     return `\x00MATH${maths.length - 1}\x00`;
   });
-
-  // 2. Inline code (must be first so formatting inside backticks is preserved literally)
-  s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
 
   // 3. Bold+Italic (***text***) — must come before bold and italic
   s = s.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
@@ -288,6 +356,7 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   s = s.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathAtomHtml(maths[Number(i)]));
   s = s.replace(/\x00RUN(\d+)\x00/g, (_, i) => runs[parseInt(i, 10)]);
   s = restoreEscapes(s, escapes);
+  s = restoreCodeSpans(s, codes);
 
   // 12. A newline inside block text is a soft break: one line break on screen.
   // A trailing newline gets a second <br>, the way Chromium keeps an empty
@@ -383,7 +452,8 @@ export function nodeToMarkdown(child, before = "") {
 
   if (tag === "STRONG" || tag === "B") return inner ? `**${inner}**` : "";
   if (tag === "EM" || tag === "I") return inner ? `*${inner}*` : "";
-  if (tag === "CODE") return inner ? `\`${inner}\`` : "";
+  // A code span is literal: its text, in the spelling the file gave it.
+  if (tag === "CODE") return codeElementMarkdown(child);
   if (tag === "DEL" || tag === "S") return inner ? `~~${inner}~~` : "";
   if (tag === "MARK") return inner ? `==${inner}==` : "";
   if (tag === "A") {
@@ -541,6 +611,12 @@ function sanitizeInto(target, sourceNode, inAnchor) {
           if (dataUrl) el.setAttribute("data-url", dataUrl);
         }
 
+        // A code span's source, so a split or a copy keeps its spelling; it is
+        // read back only while it is one span showing the element's text.
+        if (tag === "CODE" && child.hasAttribute("data-md")) {
+          el.setAttribute("data-md", child.getAttribute("data-md"));
+        }
+
         // Copy class + data attrs for SPAN (wikilinks, tags, link icons)
         if (tag === "SPAN") {
           const cls = child.getAttribute("class") || "";
@@ -590,7 +666,14 @@ export function stripMarkdownFormatting(md) {
   if (!md) return "";
   // An escaped symbol is shown alone, and is never a marker for the passes below.
   const escapes = [];
-  let s = md.replace(/\\([!-/:-@[-`{-~])/g, (_, ch) => {
+  // A code span is its text, literal: no pass below reads inside it.
+  const spans = findCodeSpans(md);
+  const codes = spans.map((span) => span.text);
+  let s = md;
+  for (let i = spans.length - 1; i >= 0; i--) {
+    s = `${s.slice(0, spans[i].start)}\x00CODE${i}\x00${s.slice(spans[i].end)}`;
+  }
+  s = s.replace(/\\([!-/:-@[-`{-~])/g, (_, ch) => {
     escapes.push(ch);
     return `\x00ESC${escapes.length - 1}\x00`;
   });
@@ -605,11 +688,11 @@ export function stripMarkdownFormatting(md) {
   s = s.replace(/\*\*(.+?)\*\*/g, "$1");
   // Remove italic (*text* → text)
   s = s.replace(/\*(.+?)\*/g, "$1");
-  // Remove inline code (`text` → text)
-  s = s.replace(/`([^`]+)`/g, "$1");
   // Remove strikethrough (~~text~~ → text)
   s = s.replace(/~~(.+?)~~/g, "$1");
   // Remove highlight (==text== → text)
   s = s.replace(/==(.+?)==/g, "$1");
-  return s.replace(ESC_TOKEN_RE, (_, i) => escapes[Number(i)]);
+  return s
+    .replace(ESC_TOKEN_RE, (_, i) => escapes[Number(i)])
+    .replace(CODE_TOKEN_RE, (_, i) => codes[Number(i)]);
 }

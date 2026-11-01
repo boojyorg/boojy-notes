@@ -47,7 +47,7 @@ describe("inlineMarkdownToHtml", () => {
   });
 
   it("converts inline code", () => {
-    expect(inlineMarkdownToHtml("`code`")).toBe("<code>code</code>");
+    expect(inlineMarkdownToHtml("`code`")).toBe('<code data-md="`code`">code</code>');
   });
 
   it("converts bold+italic", () => {
@@ -128,7 +128,7 @@ describe("inlineMarkdownToHtml", () => {
     const result = inlineMarkdownToHtml("**bold** and *italic* with `code`");
     expect(result).toContain("<strong>bold</strong>");
     expect(result).toContain("<em>italic</em>");
-    expect(result).toContain("<code>code</code>");
+    expect(result).toContain('<code data-md="`code`">code</code>');
   });
 
   // --- Bug fix regression tests ---
@@ -226,7 +226,7 @@ describe("inlineMarkdownToHtml", () => {
     expect(link.match(/<a /g)).toHaveLength(1);
     expect(link).toContain(">see https://a.com here<span");
     const code = inlineMarkdownToHtml("`see https://x.com`");
-    expect(code).toBe("<code>see https://x.com</code>");
+    expect(code).toBe('<code data-md="`see https://x.com`">see https://x.com</code>');
     const wiki = inlineMarkdownToHtml("[[see https://x.com]]");
     expect(wiki).toBe(
       '<span class="wikilink" data-target="see https://x.com">see https://x.com</span>',
@@ -345,7 +345,7 @@ describe("inlineMarkdownToHtml", () => {
   });
 
   it("leaves an escape as written in a code span, a link's address and a wikilink", () => {
-    expect(inlineMarkdownToHtml("`a\\*b`")).toBe("<code>a\\*b</code>");
+    expect(inlineMarkdownToHtml("`a\\*b`")).toBe('<code data-md="`a\\*b`">a\\*b</code>');
     const link = inlineMarkdownToHtml("[x \\* y](https://a.com/\\*b)");
     expect(link).toContain('href="https://a.com/\\*b"');
     expect(link).toContain(`x ${esc("*")} y`);

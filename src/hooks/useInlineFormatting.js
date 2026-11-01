@@ -12,6 +12,7 @@ import {
   formatInlineField,
   inlineFieldFor,
   shedTrailingSpace,
+  formatBlockedByCode,
 } from "../utils/inlineFormatCommands";
 
 /** No inline format active — what the toolbars show when there is no selection. */
@@ -22,6 +23,7 @@ export const EMPTY_FORMATS = {
   link: false,
   strikethrough: false,
   highlight: false,
+  lockedByCode: false,
 };
 
 export function useInlineFormatting({
@@ -123,6 +125,8 @@ export function useInlineFormatting({
         }
         return;
       }
+      // Inside a code span only code itself acts: its text is literal.
+      if (formatBlockedByCode(sel.getRangeAt(0), format, editorRef.current)) return;
       if (format === "link") {
         // Open link editor popover instead of using prompt()
         onOpenLinkEditor?.();
@@ -206,6 +210,8 @@ export function useInlineFormatting({
       link: isFormatActive(["A"]),
       strikethrough: isFormatActive(["DEL", "S"]),
       highlight: isFormatActive(["MARK"]),
+      // Every format but code is unavailable while the selection reaches into a span.
+      lockedByCode: formatBlockedByCode(sel.getRangeAt(0), "bold", editorRef.current),
     };
   }, [editorRef]);
 

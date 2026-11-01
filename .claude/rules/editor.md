@@ -119,17 +119,18 @@ app's, made through state.**
 
 ## Typed inline formatting converts on the closing marker, and changes no bytes
 
-- `**b**`, `*i*`, `` `c` ``, `~~s~~`, `==h==`, `***bi***` become elements when the closing
-  marker is typed; the literal run *is* the Markdown, so it is a repaint and Cmd+Z is typing
-  undo.
+- A format becomes its element when its closing marker is typed; the literal run *is* the
+  Markdown, so it is a repaint and Cmd+Z is typing undo.
+- **A code span is literal** (`codeSpans.js`): nothing in it is drawn;
+  untouched it keeps its spelling (`data-md`), edited only what changed; only ⌘E acts in
+  one. `literal-code.spec.ts`.
 - **The trigger is the native `insertText` of one marker character**, outside composition,
   never the text alone (Backspace re-converted); strict matcher (`closingFormatAt`). **The paint
   is verified** (`paintTypedFormat`): paired differently, the old DOM and caret come back.
   `typed-formatting.spec.ts`.
 - **Block triggers wait for their space, and Enter does what the space does**
-  (`utils/blockTriggers.ts`): `# `, `- `, `1. `, `> `, `[] `, ` ``` `, `--- `, `||| `, `![] `.
-  The marker carries an argument (fence language, pipe count = columns + 1), which a trigger
-  firing on its last character could never read. **A line kind's marker typed before a
+  (`utils/blockTriggers.ts`). A marker can carry an argument (fence language, columns),
+  which a trigger firing on its last character could never read. **A line kind's marker typed before a
   one-line paragraph's text converts it too** (`LINE_MARKER_RE`); Cmd+Z gives the literal
   back. `marker-on-text.spec.ts`.
 
@@ -149,7 +150,7 @@ app's, made through state.**
   keep theirs; a field outside the note gets the same (`TextFieldMenu`).
 - **Items run the keys' own path** (a guess as `insertText`, Paste by IPC).
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is
-  late) on a layer (a highlight clips a leaning glyph); not code, tags, links. Guesses only on
+  late) on a layer; not code, tags, links. Guesses only on
   a marked word. A Mac: wrong in all its languages, guessed in the sentence's first.
   Windows: Chromium's line and guesses. `spelling.spec.ts`, `spelling-line.spec.ts`.
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`); never focused, so the selection
@@ -196,7 +197,7 @@ app's, made through state.**
 ## Maths
 
 **A `$$` formula never moves; its source opens underneath** (`MathBlock`; ⌘Z stays the
-note's). Enter is a new line; Shift+Enter, Escape, Done or a click away finishes; ↑/↓ at its edges walk out. `math-block.spec.ts`.
+note's). Enter is a new line; Shift+Enter, Escape or a click away finishes; ↑/↓ at its edges walk out. `math-block.spec.ts`.
 
 **`$x$` in a sentence is one sealed element** (`data-math`): one caret character. The
 closing `$` converts it; a press opens its source (`InlineMathPanel`); in a

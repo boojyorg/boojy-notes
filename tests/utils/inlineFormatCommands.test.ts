@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   FIELD_FORMATS,
   applyDomFormat,
+  formatBlockedByCode,
   formatInlineField,
   inlineFieldFor,
   inlineFormatForKey,
@@ -309,5 +310,66 @@ describe("toggleWrappingTag — spaces at the selection's edges stay outside", (
     toggleWrappingTag(sel, "STRONG", root);
     expect(root.textContent).toBe("x one two y");
     expect(root.querySelector("strong")?.textContent).toBe("one two");
+  });
+});
+
+describe("a code span is literal: only code acts inside one", () => {
+  /** `before <code>code</code> after`, selected between two (node, offset) points. */
+  function around(
+    pick: (nodes: { before: Text; code: Text; after: Text }) => [Text, number, Text, number],
+  ) {
+    const root = document.createElement("div");
+    root.innerHTML = "before <code>code</code> after";
+    document.body.appendChild(root);
+    const before = root.firstChild as Text;
+    const code = root.querySelector("code")?.firstChild as Text;
+    const after = root.lastChild as Text;
+    const [sn, so, en, eo] = pick({ before, code, after });
+    const range = document.createRange();
+    range.setStart(sn, so);
+    range.setEnd(en, eo);
+    const sel = window.getSelection() as Selection;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return { root, sel, range };
+  }
+
+  it("refuses every format but code inside a span, and leaves the DOM alone", () => {
+    const { root, sel, range } = around(({ code }) => [code, 1, code, 3]);
+    for (const format of ["bold", "italic", "strikethrough", "highlight", "link"] as const) {
+      expect(formatBlockedByCode(range, format, root)).toBe(true);
+      expect(applyDomFormat(sel, format, root)).toBe(false);
+    }
+    expect(root.innerHTML).toBe("before <code>code</code> after");
+    expect(formatBlockedByCode(range, "code", root)).toBe(false);
+  });
+
+  it("refuses a selection with one end inside a span, rather than formatting part of it", () => {
+    let { root, range } = around(({ before, code }) => [before, 0, code, 2]);
+    expect(formatBlockedByCode(range, "bold", root)).toBe(true);
+    document.body.innerHTML = "";
+    ({ root, range } = around(({ code, after }) => [code, 2, after, 3]));
+    expect(formatBlockedByCode(range, "bold", root)).toBe(true);
+  });
+
+  it("formats whole spans among words, the code nested", () => {
+    const { root, sel, range } = around(({ before, after }) => [before, 0, after, 6]);
+    expect(formatBlockedByCode(range, "bold", root)).toBe(false);
+    expect(applyDomFormat(sel, "bold", root)).toBe(true);
+    expect(root.innerHTML).toBe("<strong>before <code>code</code> after</strong>");
+  });
+
+  it("an end on a span's outer edge holds none of it", () => {
+    // Chromium leaves a selection that stops at a span inside its text, at an edge.
+    let { root, range } = around(({ before, code }) => [before, 0, code, 0]);
+    expect(formatBlockedByCode(range, "bold", root)).toBe(false);
+    document.body.innerHTML = "";
+    ({ root, range } = around(({ code, after }) => [code, 4, after, 6]));
+    expect(formatBlockedByCode(range, "bold", root)).toBe(false);
+  });
+
+  it("refuses a caret inside a span (its typing style would land in the code)", () => {
+    const { root, range } = around(({ code }) => [code, 2, code, 2]);
+    expect(formatBlockedByCode(range, "bold", root)).toBe(true);
   });
 });
