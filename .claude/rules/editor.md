@@ -149,9 +149,9 @@ app's, made through state.**
   keep theirs; a field outside the note gets the same (`TextFieldMenu`).
 - **Items run the keys' own path** (a guess as `insertText`, Paste by IPC).
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is
-  late) on a layer (a highlight clips a leaning glyph): whole note on open; not code, tags,
-  links. Guesses only on a marked word; a Mac by paragraph language. Windows: Chromium's line
-  and guesses. `spelling.spec.ts`, `spelling-line.spec.ts`.
+  late) on a layer (a highlight clips a leaning glyph); not code, tags, links. Guesses only on
+  a marked word. A Mac: wrong in all its languages, guessed in the sentence's first.
+  Windows: Chromium's line and guesses. `spelling.spec.ts`, `spelling-line.spec.ts`.
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`); never focused, so the selection
   stays blue. `text-context-menu.spec.ts`.
 
