@@ -14,7 +14,8 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
   sidebar, `BG.surface` content hover, `BG.hover` row, menu and icon-button hover *and* selected, `BG.divider`
   borders. Text is `primary` / `secondary` / `muted`.
 - **The accent is two tokens.** `ACCENT.primary` is the mark (fills, bars, markers);
-  `ACCENT.text` is accent as readable ink; `onAccent` (white) is for shapes only.
+  `ACCENT.text` is accent as readable ink; `onAccent` (white) is for shapes only. The tag
+  pill alone has its own ink (`tagText`), deep enough for its ground.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   **One button, bordered and neutral**: the asked-for action is bold, Delete red ink.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`),

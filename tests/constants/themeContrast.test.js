@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NIGHT, DAY } from "../../src/constants/themes.js";
+import { TAG_PILL_ALPHA, TAG_PILL_HOVER_ALPHA } from "../../src/styles/tagPill";
 
 // WCAG 2 contrast: 4.5:1 for words, 3:1 for a glyph that carries meaning
 // (the toast's icon). Every ink is checked on every ground it can sit on,
@@ -16,6 +17,15 @@ function luminance(hex) {
 function contrast(a, b) {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/** `top` at `alpha` laid over the opaque `under`, as a hex colour. */
+function over(top, alpha, under) {
+  const ch = (hex, i) => parseInt(hex.slice(i, i + 2), 16);
+  return `#${[1, 3, 5]
+    .map((i) => Math.round(ch(top, i) * alpha + ch(under, i) * (1 - alpha)))
+    .map((c) => c.toString(16).padStart(2, "0"))
+    .join("")}`;
 }
 
 const GROUNDS = ["editor", "standard", "elevated", "surface", "hover"];
@@ -61,6 +71,19 @@ for (const theme of [NIGHT, DAY]) {
         });
       }
     }
+
+    // The pill: on the sheet in a note, hovered there too; the Search chip, on
+    // the palette, never takes the hover ground.
+    it("a tag pill's words read on its grounds", () => {
+      const key = theme.name === "night" ? "night" : "day";
+      const pills = [
+        over(theme.ACCENT.primary, TAG_PILL_ALPHA[key], theme.BG.editor),
+        over(theme.ACCENT.primary, TAG_PILL_HOVER_ALPHA[key], theme.BG.editor),
+        over(theme.ACCENT.primary, TAG_PILL_ALPHA[key], theme.BG.elevated),
+      ];
+      for (const pill of pills)
+        expect(contrast(theme.ACCENT.tagText, pill)).toBeGreaterThanOrEqual(4.5);
+    });
 
     it("a destructive label reads on a button", () => {
       // Light's button is transparent: it sits on the dialog's elevated ground.
