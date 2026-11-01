@@ -82,6 +82,7 @@ import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { wholeBlocksCopy } from "../utils/clipboardCopy";
 import { fromTouch } from "../utils/touch";
 import { isTodoKey, todoFlip } from "../utils/todoToggle";
+import { editedSurface, shedStyleResidue } from "../utils/styleResidue";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -414,6 +415,26 @@ const EditorArea = memo(
         el.removeEventListener("mousedown", onPress, true);
         setMathTarget(null);
       };
+    }, [activeNote, hasNote, editorRef, sourceView, blockRefs]);
+
+    // Chromium's copied look (a deleted code span's font and grey, as
+    // `<font>` and a styled `<span>` on the next text typed) is unwrapped
+    // where it appears. The read-back already takes it as plain text, so this
+    // listener, which runs before the block's or field's own, changes no byte.
+    useEffect(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      const onInput = (e) => {
+        if (e.isComposing) return;
+        const textRootOf = (blockEl) => {
+          const type = blockEl.getAttribute("data-block-type");
+          if (!type || !isEditableBlock({ type })) return null;
+          return blockRefs.current[blockEl.getAttribute("data-block-id")] ?? null;
+        };
+        shedStyleResidue(editedSurface(window.getSelection()?.anchorNode ?? null, textRootOf));
+      };
+      el.addEventListener("input", onInput);
+      return () => el.removeEventListener("input", onInput);
     }, [activeNote, hasNote, editorRef, sourceView, blockRefs]);
 
     // The spelling underline is the app's (useSpellingMarks), so Chromium's

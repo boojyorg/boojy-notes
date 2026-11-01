@@ -12,6 +12,7 @@ import {
   withCell,
 } from "../utils/tableShape";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
+import { fieldTextAfterTyping } from "../utils/typedFormatting";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
 import TableHandles from "./TableHandles";
@@ -221,9 +222,11 @@ export default memo(function TableBlock({
   // and focus only.
   const handleCellInput = useCallback(
     (e, rowIdx, colIdx) => {
-      onUpdateTableCell(noteId, blockIndex, rowIdx, colIdx, domNodeToMarkdown(e.currentTarget));
+      // A typed closing marker is painted here, as a text block paints it.
+      const text = fieldTextAfterTyping(e.currentTarget, e.nativeEvent, noteTitleSet);
+      onUpdateTableCell(noteId, blockIndex, rowIdx, colIdx, text);
     },
-    [noteId, blockIndex, onUpdateTableCell],
+    [noteId, blockIndex, onUpdateTableCell, noteTitleSet],
   );
 
   const focusCell = useCallback(
