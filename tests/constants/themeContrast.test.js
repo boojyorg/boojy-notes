@@ -29,7 +29,6 @@ for (const theme of [NIGHT, DAY]) {
       "ACCENT.text": theme.ACCENT.text,
       "SEMANTIC.error": theme.SEMANTIC.error,
       link: theme.link.color,
-      wikilink: theme.wikilink.color,
     };
     const glyphs = { "SEMANTIC.warning": theme.SEMANTIC.warning };
 

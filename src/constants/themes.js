@@ -75,8 +75,8 @@ export const NIGHT = {
   overlay: (a) => `rgba(255,255,255,${a})`,
   // Inline formatting colors
   inlineCode: { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.1)" },
-  link: { color: "#6ea8d8", underline: "rgba(110,168,216,0.3)", hoverBg: "rgba(110,168,216,0.06)" },
-  wikilink: { color: "#9CC9CE", underline: "rgba(156,201,206,0.3)" },
+  // One link ink for the web and for notes: the ↗ tells them apart.
+  link: { color: "#9CC9CE", underline: "rgba(156,201,206,0.3)", hoverBg: "rgba(156,201,206,0.06)" },
   wikilinkBroken: {
     color: "rgba(255,255,255,0.4)",
     underline: "rgba(255,255,255,0.2)",
@@ -183,8 +183,8 @@ export const DAY = {
   },
   overlay: (a) => `rgba(0,0,0,${a})`,
   inlineCode: { bg: "rgba(0,0,0,0.06)", border: "rgba(0,0,0,0.1)" },
-  link: { color: "#2266AA", underline: "rgba(34,102,170,0.3)", hoverBg: "rgba(34,102,170,0.06)" },
-  wikilink: { color: "#2A737D", underline: "rgba(42,115,125,0.3)" },
+  // One link ink for the web and for notes: the ↗ tells them apart.
+  link: { color: "#2A737D", underline: "rgba(42,115,125,0.3)", hoverBg: "rgba(42,115,125,0.06)" },
   wikilinkBroken: {
     color: "rgba(0,0,0,0.35)",
     underline: "rgba(0,0,0,0.15)",
