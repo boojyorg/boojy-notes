@@ -51,6 +51,16 @@ Prism.languages.mermaid = {
   operator: /-\.->|==>|-->>|->>|-->|---|--|->/,
 };
 
+/**
+ * Prism names a Markdown fence's body `code-block`, the app's own code block
+ * class, so a fence shown inside a `markdown` block wore the block's border
+ * and padding (and shifted off its textarea). Renamed where it is made.
+ */
+Prism.hooks.add("wrap", (env) => {
+  const at = env.classes.indexOf("code-block");
+  if (at !== -1) env.classes[at] = "fence-body";
+});
+
 function resolveGrammar(lang) {
   const key = LANG_ALIAS[lang] || lang;
   return Prism.languages[key] ? { grammar: Prism.languages[key], name: key } : null;
