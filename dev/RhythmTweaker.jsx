@@ -45,6 +45,11 @@ const PRESETS = [
   // Between the two, where each was judged wrong: v1's space above a heading
   // was too much, v2's space below it too little. The default since 2026-09-24.
   { name: "v3", values: { ...DEFAULT_RHYTHM } },
+  // Code block padding, being judged 2026-11-01: the top keeps the toolbar's row (28),
+  // so "even" matches the bottom to it; "overlay" is Obsidian's and GitHub's,
+  // even and tight, the toolbar over a long first line while it shows.
+  { name: "code even", values: { ...DEFAULT_RHYTHM, codePadTop: 28, codePadBottom: 28 } },
+  { name: "code overlay", values: { ...DEFAULT_RHYTHM, codePadTop: 16, codePadBottom: 16 } },
 ];
 const matches = (a, b) => Object.keys(b).every((k) => a[k] === b[k]);
 
@@ -55,6 +60,8 @@ const CONTROLS = [
   { key: "headingAbove", label: "Above heading (H2)", min: 8, max: 64, step: 2, unit: "px" },
   { key: "headingBelow", label: "Below heading (H2)", min: 0, max: 24, step: 1, unit: "px" },
   { key: "blockGap", label: "Code, table, callout", min: 0, max: 32, step: 1, unit: "px" },
+  { key: "codePadTop", label: "Inside code, top", min: 8, max: 40, step: 1, unit: "px" },
+  { key: "codePadBottom", label: "Inside code, bottom", min: 8, max: 40, step: 1, unit: "px" },
   { key: "measure", label: "Line length", min: 30, max: 50, step: 0.5, unit: "em" },
 ];
 
