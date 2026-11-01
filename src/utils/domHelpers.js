@@ -88,17 +88,30 @@ export const INLINE_MATH_CLASS = "inline-math";
 export const isMathAtom = (node) =>
   node?.nodeType === Node.ELEMENT_NODE && node.classList.contains(INLINE_MATH_CLASS);
 /**
- * A TreeWalker filter that leaves out what an inline formula draws: Find and
- * the search tint read the text, and a formula's text is its source, not KaTeX's glyphs.
+ * A backslash escape (`\*`): one sealed element showing the symbol alone,
+ * read back with its backslash (`nodeToMarkdown`). A formula's caret rules,
+ * none of its panel.
  */
-export const outsideMath = {
+export const ESCAPE_CLASS = "md-escape";
+/** Whether `node` is a sealed inline element: a formula or an escape, one character each. */
+export const isSealedAtom = (node) =>
+  node?.nodeType === Node.ELEMENT_NODE &&
+  (node.classList.contains(INLINE_MATH_CLASS) || node.classList.contains(ESCAPE_CLASS));
+const SEALED_SELECTOR = `.${INLINE_MATH_CLASS}, .${ESCAPE_CLASS}`;
+/**
+ * A TreeWalker filter that leaves out what a sealed element holds: Find and
+ * the search tint read the text, a formula's text is its source, not KaTeX's
+ * glyphs, and an escape's symbol is not text Replace may edit (its backslash
+ * would be left on whatever replaced it).
+ */
+export const outsideAtoms = {
   acceptNode: (node) =>
-    node.parentElement?.closest(`.${INLINE_MATH_CLASS}`)
+    node.parentElement?.closest(SEALED_SELECTOR)
       ? NodeFilter.FILTER_REJECT
       : NodeFilter.FILTER_ACCEPT,
 };
-/** Whether `node` sits inside an inline formula, where nothing is a character of the text. */
-const inMath = (node) => !!node.parentElement?.closest(`.${INLINE_MATH_CLASS}`);
+/** Whether `node` sits inside a sealed element, where nothing is a character of the text. */
+const inAtom = (node) => !!node.parentElement?.closest(SEALED_SELECTOR);
 
 /**
  * The caret anchor: a `<span class="caret-anchor">` holding one zero-width
@@ -173,8 +186,8 @@ export function caretLength(el) {
   let node;
   while ((node = walker.nextNode())) {
     if (node.nodeType === Node.TEXT_NODE) {
-      if (!isIcon(node) && !inMath(node)) n += visibleText(node).length;
-    } else if ((isBr(node) && !isTrailingBr(node, el)) || isMathAtom(node)) {
+      if (!isIcon(node) && !inAtom(node)) n += visibleText(node).length;
+    } else if ((isBr(node) && !isTrailingBr(node, el)) || isSealedAtom(node)) {
       n++;
     }
   }
@@ -334,8 +347,8 @@ export function caretOffsetAt(el, node, offset) {
         }
       }
     }
-    // A formula before the caret is one character, whatever it draws.
-    for (const atom of el.querySelectorAll(`.${INLINE_MATH_CLASS}`)) {
+    // A sealed element before the caret is one character, whatever it draws.
+    for (const atom of el.querySelectorAll(SEALED_SELECTOR)) {
       if (range.comparePoint(atom, atom.childNodes.length) === 0)
         pos += 1 - atom.textContent.length;
     }
@@ -478,7 +491,7 @@ export function caretRangeAt(el, pos = 0) {
     } else if (pos === 0) {
       const link = leadingLink(el);
       if (link) anchorBeforeLink(range, link);
-      else if (isMathAtom(el.firstChild)) range.setStartBefore(el.firstChild);
+      else if (isSealedAtom(el.firstChild)) range.setStartBefore(el.firstChild);
       else range.setStart(el.firstChild, 0);
     } else {
       let remaining = pos;
@@ -487,8 +500,8 @@ export function caretRangeAt(el, pos = 0) {
         placed = false;
       while ((textNode = walker.nextNode())) {
         if (textNode.nodeType === Node.ELEMENT_NODE) {
-          // A formula is one character: the caret goes before or after it, never in.
-          if (isMathAtom(textNode)) {
+          // A sealed element is one character: the caret goes before or after it, never in.
+          if (isSealedAtom(textNode)) {
             if (remaining <= 1) {
               if (remaining === 0) range.setStartBefore(textNode);
               else range.setStartAfter(textNode);
@@ -511,7 +524,7 @@ export function caretRangeAt(el, pos = 0) {
           continue;
         }
         // Skip decorative icon text nodes (↗ inside links) and what a formula draws
-        if (isIcon(textNode) || inMath(textNode)) continue;
+        if (isIcon(textNode) || inAtom(textNode)) continue;
         const visibleLength = visibleText(textNode).length;
         if (remaining <= visibleLength) {
           const link = enclosingLink(textNode, el);

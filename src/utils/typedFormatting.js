@@ -15,8 +15,14 @@
 // The DOM half lives here rather than in domHelpers because it reads the
 // Markdown either side of the caret through crossBlockEdit, which imports
 // domHelpers itself.
-import { makeCaretAnchor, getCaretOffset, placeCaret } from "./domHelpers";
-import { inlineMarkdownToHtml, nodeToMarkdown } from "./inlineFormatting";
+import {
+  ESCAPE_CLASS,
+  caretOffsetAt,
+  makeCaretAnchor,
+  getCaretOffset,
+  placeCaret,
+} from "./domHelpers";
+import { ESCAPABLE_RE, inlineMarkdownToHtml, nodeToMarkdown } from "./inlineFormatting";
 import { markdownAfter, markdownBefore } from "./crossBlockEdit";
 
 /**
@@ -24,8 +30,8 @@ import { markdownAfter, markdownBefore } from "./crossBlockEdit";
  * `*x*`, and `**x**` is tried before `*x*`. Each carries the character class
  * its content may not hold (the marker's own character: a run that contains
  * its marker is left for the renderer to decide at the next repaint), what
- * may not precede the opener beyond a backslash, and what may not follow the
- * closer. The star rules keep the first closing star of `**bold*` from being
+ * may not precede the opener beyond an escaping backslash, and what may not
+ * follow the closer. The star rules keep the first closing star of `**bold*` from being
  * an italic close; the underscore rules are CommonMark's intraword rule
  * (`snake_case_` is not emphasis, and neither is `_a_b`).
  */
@@ -106,13 +112,30 @@ const FORMS = [
   const content = `(?:[^\\s${c}]|[^\\s${c}][^${c}]*[^\\s${c}])`;
   return {
     ...form,
-    regex: new RegExp(`(?<![\\\\${form.noPrev}])${m}(${content})${m}$`),
+    // The opener may not follow its own character, nor an odd run of
+    // backslashes (it is escaped); after `\\\\`, an escaped backslash, it opens.
+    regex: new RegExp(
+      `(?<![${form.noPrev}])(?<!(?:^|[^\\\\])\\\\(?:\\\\\\\\)*)${m}(${content})${m}$`,
+    ),
     next: new RegExp(`^[${form.noNext}]`),
   };
 });
 
 /** The characters a typed insertion must be for the trigger to look at all. */
 const MARKER_CHARS = new Set(["*", "_", "~", "=", "`", "$"]);
+
+/**
+ * Whether `before` (the Markdown up to the caret) ends in an escape: an
+ * escapable symbol after an odd run of backslashes, so `\\*` (an escaped
+ * backslash, then a star) is not one. The renderer pairs them the same way,
+ * left to right. Pure.
+ */
+export function endsInEscape(before) {
+  if (before.length < 2 || !ESCAPABLE_RE.test(before[before.length - 1])) return false;
+  let run = 0;
+  for (let i = before.length - 2; i >= 0 && before[i] === "\\"; i--) run++;
+  return run % 2 === 1;
+}
 
 /**
  * The formatting run that the text before the caret has just closed, or null.
@@ -170,11 +193,15 @@ function enclosingFormat(node, root) {
 export function typedFormatHit(el, native) {
   if (!el || !native || native.inputType !== "insertText" || native.isComposing) return null;
   const data = native.data;
-  if (typeof data !== "string" || data.length !== 1 || !MARKER_CHARS.has(data)) return null;
+  if (typeof data !== "string" || data.length !== 1) return null;
+  if (!MARKER_CHARS.has(data) && !ESCAPABLE_RE.test(data)) return null;
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
   const { anchorNode: node, anchorOffset: offset } = sel;
   if (!node || !el.contains(node)) return null;
+  const escaped = typedEscapeHit(el, node, offset);
+  if (escaped) return escaped;
+  if (!MARKER_CHARS.has(data)) return null;
   if (enclosingFormat(node, el)) return null;
   const before = markdownBefore(el, node, offset);
   const after = markdownAfter(el, node, offset);
@@ -195,6 +222,59 @@ export function typedFormatHit(el, native) {
 }
 
 /**
+ * A typed escape (`\\` then `*`): sealed at once, as the renderer would draw
+ * it at the next repaint, with no byte changed. Read in the text node typed
+ * into (the Markdown before a caret inside bold ends in the bold's closing
+ * marker), so a backslash in another node does not count: before a sealed
+ * `\\` it is an escaped one, and the symbol after it is a symbol. Inside
+ * bold or italic too, never in a code span or a link, where the renderer
+ * leaves an escape as written.
+ */
+function typedEscapeHit(el, node, offset) {
+  if (node.nodeType !== Node.TEXT_NODE || !endsInEscape(node.data.slice(0, offset))) return null;
+  for (let n = node.parentNode; n && n !== el; n = n.parentNode) {
+    if (n.nodeName === "CODE" || n.nodeName === "A" || n.classList?.contains("wikilink"))
+      return null;
+  }
+  return {
+    kind: "escape",
+    tag: "SPAN",
+    cls: ESCAPE_CLASS,
+    rewritten: false,
+    visibleCaret: getCaretOffset(el),
+  };
+}
+
+/**
+ * Paint `el` from `text` and put the caret after the escape just typed: the
+ * sealed element ending one caret position short of where the caret stood
+ * (its backslash and symbol were two characters, it is one), wherever it
+ * sits. Verified as a run's paint is; unmatched, the previous DOM and caret
+ * come back.
+ */
+function paintTypedEscape(el, hit, text, noteTitles) {
+  const saved = el.innerHTML;
+  el.innerHTML = inlineMarkdownToHtml(text, noteTitles);
+  for (const atom of el.querySelectorAll(`.${ESCAPE_CLASS}`)) {
+    const parent = atom.parentNode;
+    const index = Array.prototype.indexOf.call(parent.childNodes, atom);
+    if (caretOffsetAt(el, parent, index + 1) !== hit.visibleCaret - 1) continue;
+    const anchor = makeCaretAnchor();
+    atom.after(anchor);
+    const range = document.createRange();
+    range.setStart(anchor.firstChild, 1);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return true;
+  }
+  el.innerHTML = saved;
+  if (hit.visibleCaret >= 0) placeCaret(el, hit.visibleCaret);
+  return false;
+}
+
+/**
  * Paint `el` from `text` and park the caret just after the element the run
  * became. The element is found by its Markdown prefix: the first direct child
  * at which the accumulated Markdown equals the text before the caret (with
@@ -207,6 +287,7 @@ export function typedFormatHit(el, native) {
  * reads it. Returns whether the run was painted.
  */
 export function paintTypedFormat(el, hit, text, noteTitles) {
+  if (hit.kind === "escape") return paintTypedEscape(el, hit, text, noteTitles);
   const saved = el.innerHTML;
   el.innerHTML = inlineMarkdownToHtml(text, noteTitles);
   const target = hit.head + hit.canonicalRun;

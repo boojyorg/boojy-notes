@@ -111,7 +111,10 @@ app's, made through state.**
   read by renderer, completion, search and filter. `extractAllTags` skips code, frontmatter,
   URLs and link addresses. The pill shows from the first letter. A space or
   punctuation typed at a pill's end lands outside it (`caretOutOfTagEnd`). `tag-pill.spec.ts`.
-- A backslash escape is shown as written. Bare URLs autolink in prose only (GitHub's trailing
+- **A backslash escape is its symbol alone, sealed** (`md-escape`): one caret character, read
+  back with its backslash; any ASCII punctuation (`ESCAPABLE_RE`); `\` then a symbol typed seals
+  it. As written in code, addresses and wikilinks. `escapes.spec.ts`.
+- Bare URLs autolink in prose only (GitHub's trailing
   punctuation rule); `<url>` is text. **`LINK_DEST` is the one reading of a link destination.**
 
 ## Typed inline formatting converts on the closing marker, and changes no bytes

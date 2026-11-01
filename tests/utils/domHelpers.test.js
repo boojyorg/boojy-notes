@@ -920,3 +920,18 @@ describe("showSpaceBeforeCaret — a repainted line-end space keeps its place", 
     expect(el.innerHTML).toBe("end ");
   });
 });
+
+describe("a sealed escape", () => {
+  const esc = (ch) => `<span class="md-escape" contenteditable="false">${ch}</span>`;
+
+  it("is one caret position, and the caret goes before or after it, never in", () => {
+    const el = editable(`a${esc("*")}b${esc("*")}`);
+    expect(caretLength(el)).toBe(4);
+    for (let pos = 0; pos <= 4; pos++) {
+      placeCaret(el, pos);
+      expect(getCaretOffset(el), `pos ${pos}`).toBe(pos);
+      const node = window.getSelection().anchorNode;
+      expect(node.parentElement?.classList.contains("md-escape"), `pos ${pos}`).toBe(false);
+    }
+  });
+});
