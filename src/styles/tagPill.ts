@@ -8,8 +8,8 @@ import type { Theme } from "../hooks/useTheme";
  * pill is CSS on the span the renderer already draws. Inline padding never
  * grows the line box.
  */
-export const TAG_PILL_PADDING = "1px 5px";
-export const TAG_PILL_RADIUS = 6;
+export const TAG_PILL_PADDING = "2px 8px";
+export const TAG_PILL_RADIUS = 999;
 export const TAG_PILL_FONT = "0.92em";
 /** Ground alpha by theme name (`day` / `night`), rest and hover. */
 export const TAG_PILL_ALPHA = { day: 0.14, night: 0.22 } as const;
