@@ -282,7 +282,8 @@ it; a new one starts open. Its ⤢ views it full size in the image's room (`Ligh
   widest row; only an explicit column operation pads (`tableShape.ts`).
 - **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
   (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, wherever
-  they move. New and tidied tables are lined up. `table-preservation.spec.ts`.
+  they move; an edited one fitting a lined-up header takes its columns. New and tidied
+  tables are lined up. `table-preservation.spec.ts`.
 - **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root (the
   scroller clips); a carried row passes a neighbour at its middle; one write, on drop.
   `table-handles.spec.ts`. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column (`⌘⇧←/→`
@@ -323,4 +324,5 @@ it; a new one starts open. Its ⤢ views it full size in the image's room (`Ligh
   (`vscode-editor-data`). One line: sanitised nodes via `insertNode`. `rich-paste.spec.ts`.
 - **The DOM read-back is verbatim; only marked scaffolding is dropped** (`walkNode`). A link
   turns bare only as the editor's own unchanged `bare-url` autolink; a typed U+00A0 is a space
-  unless the block held one (`settleTypedSpaces`). `domRoundTrip.test.js`, `typed-spaces.spec.ts`.
+  unless the block held one (`settleTypedSpaces`). Chromium's copied styling is unwrapped
+  (`shedStyleResidue`). `domRoundTrip.test.js`, `typed-spaces.spec.ts`, `style-residue.spec.ts`.

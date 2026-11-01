@@ -8,8 +8,10 @@ import {
   alignedRow,
   alignedSeparator,
   columnWidths,
+  headerWidthsIfLinedUp,
   isAligned,
   neededWidths,
+  rowFits,
   separatorStyle,
 } from "./tableAlign";
 import { MAX_INDENT } from "./blockKinds";
@@ -504,8 +506,18 @@ export function blocksToMarkdown(blocks) {
             : undefined;
           const sameWidths =
             !!source && widths.length === floor.length && widths.every((w, i) => w === floor[i]);
-          const freshRow = (r) =>
-            aligned ? alignedRow(escaped[r], widths, aligns) : writeRow(rows[r]);
+          // A table lined up but for a row that sticks out (one long cell)
+          // is no aligned table, so its untouched rows keep their lines; an
+          // edited row that fits the header's columns is still padded to
+          // them, to sit with its neighbours. A plainly written table stays plain.
+          const looseWidths =
+            source && !aligned ? headerWidthsIfLinedUp(source.header, source.separator) : null;
+          const freshRow = (r) => {
+            if (aligned) return alignedRow(escaped[r], widths, aligns);
+            if (looseWidths && rowFits(escaped[r], looseWidths))
+              return alignedRow(escaped[r], looseWidths, aligns);
+            return writeRow(rows[r]);
+          };
           // Every row, the header included, takes the first unused source line
           // holding its cells, so a row inserted, deleted or moved (into the
           // header's place too) leaves the others as written. Each row is

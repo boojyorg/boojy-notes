@@ -653,6 +653,43 @@ describe("a table keeps the lines it was written with (2026-09-24)", () => {
       "| tea  | ok   |",
     ]);
   });
+
+  // A table lined up but for one long row is not aligned, so its untouched
+  // rows keep their lines; an edited row that fits the header's columns still
+  // sits with its neighbours. A plainly written table stays plain.
+  const loose = [
+    "| You want   | You type    |",
+    "| ---------- | ----------- |",
+    "| Heading    | `# Heading` |",
+    "| Code block | three backticks above and below |",
+    "| Tag        | `#tag`      |",
+  ].join("\n");
+
+  it("an edited row that fits a nearly lined-up table's columns is padded to them", () => {
+    const out = edit(loose, (t) => ({ rows: withCell(t.rows, 3, 1, "tag") }));
+    expect(out).toEqual([
+      "| You want   | You type    |",
+      "| ---------- | ----------- |",
+      "| Heading    | `# Heading` |",
+      "| Code block | three backticks above and below |",
+      "| Tag        | tag         |",
+    ]);
+  });
+
+  it("an edited row too wide for those columns is written plainly, moving no other line", () => {
+    const out = edit(loose, (t) => ({ rows: withCell(t.rows, 3, 1, "a much longer cell") }));
+    expect(out.slice(0, 4)).toEqual(loose.split("\n").slice(0, 4));
+    expect(out[4]).toBe("| Tag | a much longer cell |");
+  });
+
+  it("a plainly written table stays plain when a row is edited", () => {
+    const plain = "| Name | Age |\n| --- | --- |\n| Bo | 3 |";
+    expect(edit(plain, (t) => ({ rows: withCell(t.rows, 1, 1, "4") }))).toEqual([
+      "| Name | Age |",
+      "| --- | --- |",
+      "| Bo | 4 |",
+    ]);
+  });
 });
 
 describe("paragraph whitespace preservation (preservation fix, 2026-08)", () => {
