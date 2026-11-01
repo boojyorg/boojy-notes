@@ -30,6 +30,7 @@ export const NIGHT = {
   ACCENT: {
     primary: MARK, // marks and fills: the one teal, shared with DAY
     text: "#9CC9CE", // accent as ink on the ground: misty, 9:1 on the sheet
+    tagText: "#9CC9CE", // ink on the tag pill: 6.2:1 on its rest ground, 4.8:1 on hover
     onAccent: ON_MARK,
   },
   SEMANTIC: {
@@ -146,6 +147,7 @@ export const DAY = {
   ACCENT: {
     primary: MARK, // marks and fills: the one teal, shared with NIGHT
     text: "#2A737D", // accent as ink on the ground: 5.5:1 on the sheet, 4.6:1 on a selected row
+    tagText: "#24666F", // ink on the tag pill, a step deeper for its stronger ground: 5.4:1, 5.1:1 on hover
     onAccent: ON_MARK,
   },
   SEMANTIC: {
