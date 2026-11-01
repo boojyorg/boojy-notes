@@ -47,6 +47,22 @@ for (const theme of [NIGHT, DAY]) {
       }
     }
 
+    it("the Markdown view's list marker reads on the sheet", () => {
+      expect(contrast(theme.sourceView.list, theme.BG.editor)).toBeGreaterThanOrEqual(4.5);
+    });
+
+    // Code is read on the code block's ground and, in the Markdown view, on the sheet.
+    for (const [token, ink] of Object.entries(theme.syntax)) {
+      for (const [ground, bg] of [
+        ["BG.editor", theme.BG.editor],
+        ["codeBlockBg", theme.codeBlockBg],
+      ]) {
+        it(`syntax.${token} reads on ${ground}`, () => {
+          expect(contrast(ink, bg)).toBeGreaterThanOrEqual(4.5);
+        });
+      }
+    }
+
     it("a destructive label reads on a button", () => {
       // Light's button is transparent: it sits on the dialog's elevated ground.
       const button = theme.button.bg === "transparent" ? theme.BG.elevated : theme.button.bg;

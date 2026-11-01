@@ -108,8 +108,10 @@ export const NIGHT = {
   lightbox: { scrim: "rgba(0,0,0,0.88)", ink: "#F4F4F5", hover: "rgba(255,255,255,0.12)" },
   /** A viewed PDF's paper, under its drawing: white in both themes, as the file is. */
   pageGround: "#FFFFFF",
+  /** The Markdown view's list and task markers: plum, apart from the accent's teal. */
+  sourceView: { list: "#C7A8DA" },
   syntax: {
-    comment: "#808080",
+    comment: "#838383", // 4.5:1 on the sheet, where the Markdown view shows code
     punctuation: "#ACABAA",
     property: "#FF9E64",
     string: "#9ECE6A",
@@ -212,10 +214,13 @@ export const DAY = {
   lightbox: { scrim: "rgba(0,0,0,0.88)", ink: "#F4F4F5", hover: "rgba(255,255,255,0.12)" },
   /** A viewed PDF's paper, under its drawing: white in both themes, as the file is. */
   pageGround: "#FFFFFF",
+  /** The Markdown view's list and task markers: plum, apart from the accent's teal. */
+  sourceView: { list: "#80508F" },
   syntax: {
-    comment: "#8090A0",
+    // Comment and property darkened to read at 4.5:1 on the code block's ground.
+    comment: "#5F6B78",
     punctuation: "#4A5468",
-    property: "#B85C20",
+    property: "#A65218",
     string: "#3A7A20",
     operator: "#1A7090",
     keyword: "#6840A8",

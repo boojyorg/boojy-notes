@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
-import Prism from "prismjs";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import CodeLangMenu from "./CodeLangMenu";
 import { canonicalLang, sameLang } from "../utils/codeLanguage";
+import { highlightCode } from "../utils/codeHighlight";
 import Menu, { pointAnchor } from "./Menu";
 import {
   CheckIcon,
@@ -16,28 +16,12 @@ import {
 import DiagramView from "./DiagramView";
 import DiagramLightbox from "./DiagramLightbox";
 import { Tooltip, useTooltip } from "./Tooltip";
-import "prismjs/components/prism-javascript";
-import "prismjs/components/prism-typescript";
-import "prismjs/components/prism-python";
-import "prismjs/components/prism-css";
-import "prismjs/components/prism-json";
-import "prismjs/components/prism-bash";
-import "prismjs/components/prism-sql";
-import "prismjs/components/prism-markup";
-// C++ extends C, so C loads first; Markdown and LaTeX bring their own `md` and `tex`.
-import "prismjs/components/prism-c";
-import "prismjs/components/prism-cpp";
-import "prismjs/components/prism-csharp";
-import "prismjs/components/prism-java";
-import "prismjs/components/prism-latex";
-import "prismjs/components/prism-markdown";
-import "prismjs/components/prism-r";
 
 /**
  * The languages offered, Plain text then alphabetical: one editorial exception,
  * because Plain text is the absence of a language, and a mechanical rule for every
  * language added after it. Each is a
- * Prism grammar imported above; adding a row means adding its grammar.
+ * Prism grammar imported in `utils/codeHighlight`; adding a row means adding its grammar there.
  */
 const LANGUAGES = [
   { value: "", label: "Plain text" },
@@ -58,55 +42,9 @@ const LANGUAGES = [
   { value: "typescript", label: "TypeScript" },
 ];
 
-// Map common aliases to Prism grammar keys
-const LANG_ALIAS = {
-  js: "javascript",
-  ts: "typescript",
-  py: "python",
-  sh: "bash",
-  shell: "bash",
-  zsh: "bash",
-  htm: "markup",
-  html: "markup",
-  xml: "markup",
-  svg: "markup",
-  "c++": "cpp",
-  "c#": "csharp",
-};
-
-/**
- * Mermaid's source in the editor's syntax colours: a few token kinds, enough
- * to read a flowchart by (Prism has no grammar of its own for it).
- */
-Prism.languages.mermaid = {
-  comment: /%%.*/,
-  keyword:
-    /\b(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|pie|mindmap|journey|gitGraph|timeline|subgraph|end|participant|actor|title|section|note|loop|alt|else)\b/,
-  constant: /\b(?:TD|TB|LR|RL|BT)\b/,
-  string: /\[[^\]\n]*\]|\([^)\n]*\)|\{[^}\n]*\}|\|[^|\n]*\|/,
-  operator: /-\.->|==>|-->>|->>|-->|---|--|->/,
-};
-
-function resolveGrammar(lang) {
-  const key = LANG_ALIAS[lang] || lang;
-  return Prism.languages[key] ? { grammar: Prism.languages[key], name: key } : null;
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function highlight(text, langKey) {
-  const resolved = resolveGrammar(langKey);
-  if (resolved) {
-    return Prism.highlight(text, resolved.grammar, resolved.name);
-  }
-  return escapeHtml(text);
-}
-
 // The highlight overlay: each line wrapped in a span.
 function overlayHtml(text, langKey) {
-  return highlight(text, langKey)
+  return highlightCode(text, langKey)
     .split("\n")
     .map((lineHtml) => `<span class="code-line">${lineHtml}</span>`)
     .join("");

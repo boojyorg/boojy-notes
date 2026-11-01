@@ -47,10 +47,11 @@ describe("SourceView", () => {
     expect(getByTestId("source-view")).toHaveAttribute("data-editor");
   });
 
-  it("paints the markers muted under the field", () => {
+  it("paints each marker in its role's ink under the field", () => {
     const { container } = mountView("# Title\n- item");
     const layer = container.querySelector(".source-layer");
-    expect(layer?.querySelectorAll(".md-mark")).toHaveLength(2);
+    expect(layer?.querySelector(".md-hmark")?.textContent).toBe("# ");
+    expect(layer?.querySelector(".md-list")?.textContent).toBe("- ");
     expect(layer?.textContent).toBe("# Title\n- item");
   });
 

@@ -98,7 +98,7 @@ const URL_TRAILING = ".,;:!?]'\"}>";
  * `<https://example.com>` links `https://example.com` and shows the brackets
  * as the text they are.
  */
-function trimBareUrl(url) {
+export function trimBareUrl(url) {
   let end = url.length;
   let open = 0;
   let close = 0;
