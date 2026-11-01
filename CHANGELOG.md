@@ -2,8 +2,14 @@
 
 ## Unreleased
 
+## v0.20.0 — 2026-11-01
+
 ### Improvements
 
+- **Code between backticks shows exactly what you typed** — Anything inside `` ` `` marks now reads literally, in paragraphs, table cells and callouts, as Obsidian shows it: `` `**bold**` `` shows the stars, `` `[[Note]]` `` is no link. Backtick runs follow the Markdown standard, so ``` `` `code` `` ``` shows its inner backticks. A code span you don't touch keeps its exact spelling in the file, an edited one changes only what you changed, and spaces inside code are no longer squeezed together. Bold, italic and the other formats don't apply inside code; ⌘E still turns it off.
+- **Spelling on a Mac respects your languages** — A word is underlined only when every language in your Mac's language list rejects it, so a short English item in a mixed note, or a Spanish word in an English sentence, is no longer marked wrong, and a misspelling no longer slips through by being read as another language. Right-click suggestions come from the sentence's own language first.
+- **Quieter marks, one link colour** — A ticked to-do's line through is half as strong, so the words stay readable; `~~struck~~` text keeps its full line. Links to notes now have a solid underline, like web links, in the same teal; the ↗ beside a web link is easier to see and sits next to the last letter. A dashed grey underline now means only a link to a note that doesn't exist.
+- **Formatting typed in a table or callout converts at once** — Typing the closing `**`, `*`, `~~`, `==` or `` ` `` in a table cell or a callout turns the text bold, italic and so on straight away, as it does in a paragraph.
 - **The Markdown view is easier to scan** — Show Markdown now colours a note by what each part is, the way a code editor does but in Boojy's own calm palette: a heading's `#` in teal with the words in bold, list and to-do markers in plum, links, wikilinks and tags in teal as they are in the formatted view, quotes in a softer grey, and code inside a fence in its language's colours. Each computer's own monospace font is used (SF Mono on a Mac, Cascadia Mono on Windows), with the lines a little closer together. Code comments in the light theme, and in the code blocks' own colours, are now dark enough to read comfortably.
 - **Backslash escapes look like what they mean** — A line such as `\*not italic\*` now shows as plain stars around the words, the way Obsidian and other Markdown apps show it, while the file keeps its backslashes. Each escaped symbol behaves as one character: the arrow keys step over it, Backspace removes it whole, and typing `\` then a symbol makes one. This covers every punctuation mark, so a line you typed as `- not a list` inside a paragraph also reads back without the backslash Boojy saves in front of it.
 - **Back and Forward return you to your place** — Going back or forward to a note (← →, ⌘[ ⌘]) puts you where you were: the same part of the page, and the text cursor too if it was on screen, so you can keep typing. Each visit keeps its own place. Opening a note from the sidebar, Search or a link works as before. A note you'd left in the Markdown view opens at the top.
@@ -15,6 +21,10 @@
 
 ### Fixes
 
+- **Formatting ends with its text** — Deleting all of some bold (or italic, code…) text and typing on no longer makes the new words bold too, on screen or in the file. Deleting part of it, or typing over a selection, keeps the formatting as before. ⌘B right after deleting bold text now turns bold on rather than off.
+- **Every undo changes something** — After typing, pausing and pressing Enter, one ⌘Z could seem to do nothing. Enter splitting a line and Backspace joining two are now one undo step each.
+- **Retyping deleted code is plain text** — Deleting a code span's text and typing on no longer shows the new words in the code look.
+- **Edited table rows line up** — In a table lined up but for one long row, a row you edit is padded to the columns like its neighbours. A plainly written table stays plain.
 - **The Markdown view keeps your place** — Scrolled down a note and switched to Show Markdown, the view could jump to the top of the note instead of staying where you were. It happened when a code block or a heading was at the top of the window. Now the same part of the note stays where it was, both ways.
 - **Menus that scroll stay still under the pointer** — In the code block's language menu, moving the pointer onto a row half hidden at the top or bottom no longer slides the list. The arrow keys still scroll it to follow the highlight.
 - **Two names for one file** — When a note's file also had a second name (a hard link) and another app deleted one name, Boojy could take the other note for the deleted one moved, and write its text there. Notes are now told apart exactly.
