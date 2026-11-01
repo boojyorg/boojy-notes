@@ -119,6 +119,9 @@ app's, made through state.**
 
 ## Typed inline formatting converts on the closing marker, and changes no bytes
 
+- **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the caret is set
+  again, so the next letters take its own place's formatting, never a deleted run's.
+  Overtyping a selection keeps its style. `typing-style.spec.ts`.
 - A format becomes its element when its closing marker is typed; the literal run *is* the
   Markdown, so it is a repaint and Cmd+Z is typing undo.
 - **A code span is literal** (`codeSpans.js`): nothing in it is drawn;
