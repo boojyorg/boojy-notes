@@ -3,7 +3,7 @@ import { launchApp, SETTLE_MS, sleep, waitForFile } from "./harness";
 
 /**
  * A note's frontmatter shows as its properties: rows you can read, open by
- * default, folded per note and remembered, and the YAML itself behind Edit as YAML.
+ * default, folded per note and remembered, and the YAML itself behind a value the rows can't show.
  * Showing them changes no byte; the YAML field writes exactly what is typed;
  * YAML the rows can't read opens as YAML.
  */
@@ -58,8 +58,7 @@ test("the YAML field writes what is typed, and YAML the rows can't read opens as
   const h = await launchApp({ "Film.md": NOTE, "Broken.md": BROKEN });
   try {
     await h.openNote("Film");
-    await h.page.locator(".props").hover();
-    await h.page.getByRole("button", { name: "Edit as YAML" }).click();
+    await h.page.locator(`${value("source")} button`).click();
     const field = h.page.locator(".props-yaml-field");
     await expect(field).toBeVisible();
     await field.evaluate((el: HTMLTextAreaElement) => {

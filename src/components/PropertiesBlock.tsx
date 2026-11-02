@@ -429,9 +429,9 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     },
   ];
 
-  const toggleYaml = () => {
-    if (!read.ok) return;
-    setAsYaml((on) => !on);
+  // YAML opens from a value the rows can't show (or its icon's menu); this is the way back.
+  const backToRows = () => {
+    setAsYaml(false);
     setUnsafe(false);
     setEditing(null);
   };
@@ -487,7 +487,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                 type="button"
                 className="props-action props-back"
                 aria-label="Back to properties"
-                onClick={toggleYaml}
+                onClick={backToRows}
               >
                 <SourceViewIcon />
                 <span data-label="Back to properties" />
@@ -563,15 +563,6 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
             >
               <PlusIcon />
               <span data-label="Add property" />
-            </button>
-            <button
-              type="button"
-              className="props-action props-to-yaml"
-              aria-label="Edit as YAML"
-              onClick={toggleYaml}
-            >
-              <SourceViewIcon />
-              <span data-label="Edit as YAML" />
             </button>
           </div>
         ))}

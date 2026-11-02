@@ -1062,10 +1062,10 @@ ${tagPillCss(theme)}
         .props:focus-within .props-chev, html.is-phone .props-chev { opacity: 1; }
         /* Add property: a row of the rows' own grid, shown as the tools are (on hover or focus),
            and always when there is nothing else to show. */
-        /* The section's two actions share its last row: Add property in the icon and name
-           columns, Edit as YAML at the values; both shown on hover or focus. */
+        /* Add property: a row of the rows' own grid, shown on hover or focus,
+           and always when there is nothing else to show. */
         .props-add {
-          grid-column: 1 / 3; display: grid; grid-template-columns: subgrid; align-items: center;
+          grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
           height: 30px; margin: 0 -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent;
           font: inherit; font-size: 13.5px; color: ${theme.TEXT.secondary}; cursor: pointer; text-align: left;
           opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
@@ -1078,18 +1078,17 @@ ${tagPillCss(theme)}
           font: inherit; font-size: 13.5px; color: ${theme.TEXT.secondary}; cursor: pointer;
         }
         .props-action svg { width: 15px; height: 15px; flex: none; }
-        .props-to-yaml { opacity: 0; pointer-events: none; transition: opacity var(--motion-fast); }
         /* In YAML the way back is always shown, under the field. */
         .props-back { margin-top: 6px; }
-        .props:focus-within :is(.props-add, .props-to-yaml), .props[data-empty] :is(.props-add, .props-to-yaml),
+        .props:focus-within .props-add, .props[data-empty] .props-add,
         .props[data-picking] .props-add {
           opacity: 1; pointer-events: auto;
         }
         .props[data-picking] .props-add { background: ${theme.BG.hover}; }
-        /* No hover on the phone: the actions are always there to tap. */
-        html.is-phone :is(.props-add, .props-to-yaml) { height: 40px; opacity: 1; pointer-events: auto; }
+        /* No hover on the phone: Add property is always there to tap. */
+        html.is-phone .props-add { height: 40px; opacity: 1; pointer-events: auto; }
         @media (hover: hover) {
-          .props:hover :is(.props-add, .props-to-yaml, .props-chev) { opacity: 1; pointer-events: auto; }
+          .props:hover :is(.props-add, .props-chev) { opacity: 1; pointer-events: auto; }
           :is(.props-add, .props-action):hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
           .props-title:hover { background: ${theme.BG.surface}; }
           .props-row:hover { background: ${theme.BG.surface}; }
