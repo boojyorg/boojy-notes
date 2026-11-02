@@ -486,20 +486,22 @@ export const removeItem = (key: string, i: number, was: string): Change => {
 };
 
 /**
- * A new last item, written as the list's own last one is: after the separator
- * its last two items share in a flow list (`, ` when it has fewer), on a new
- * line with the last item's prefix in a block one.
+ * A new item at place `at` (the end when `at` is the length or more), written
+ * as the list writes its own: after the separator its neighbours share in a
+ * flow list (`, ` when it has one item), on a line with its neighbour's prefix
+ * in a block one.
  */
-export const appendItem = (key: string, v: string): Change => {
+export const insertItem = (key: string, at: number, v: string): Change => {
   let after: string[] = [];
   return {
     key,
     apply: (text, p) => {
       if (!p.editable || (p.type !== "list" && p.type !== null)) return null;
-      after = [...(Array.isArray(p.shown) ? p.shown : []), v];
+      const items = Array.isArray(p.shown) ? p.shown : [];
       const ranges = p.list?.items ?? [];
-      const last = ranges[ranges.length - 1];
-      if (!p.list || !last) {
+      const i = Math.min(Math.max(at, 0), ranges.length);
+      after = [...items.slice(0, i), v, ...items.slice(i)];
+      if (!p.list || !ranges.length) {
         if (p.list?.flow) {
           // `[]` or `[ ]`: just inside the bracket.
           const open = text.indexOf("[", p.valueRange[0]) + 1;
@@ -507,17 +509,33 @@ export const appendItem = (key: string, v: string): Change => {
         }
         return writeValue(text, p, listOut(text, p, after));
       }
+      const n = ranges.length;
       if (p.list.flow) {
-        const sep = ranges.length > 1 ? text.slice(ranges[ranges.length - 2].to, last.from) : ", ";
-        return text.slice(0, last.to) + sep + yamlText(v, undefined, true) + text.slice(last.to);
+        const spelled = yamlText(v, undefined, true);
+        // The separator beside the new item: its left neighbours', else the first pair's.
+        const pair = i > 0 && i < n ? i - 1 : i === n ? n - 2 : 0;
+        const sep = n > 1 ? text.slice(ranges[pair].to, ranges[pair + 1].from) : ", ";
+        if (i === n)
+          return text.slice(0, ranges[n - 1].to) + sep + spelled + text.slice(ranges[n - 1].to);
+        return text.slice(0, ranges[i].from) + spelled + sep + text.slice(ranges[i].from);
       }
-      const prefix = text.slice(lineStart(text, last.from), last.from);
-      const line = `\n${prefix}${yamlText(v, undefined, false)}`;
-      return text.slice(0, last.to) + line + text.slice(last.to);
+      const spelled = yamlText(v, undefined, false);
+      // Right under the item before it (a blank line after that one stays after the new one).
+      if (i > 0) {
+        const prev = ranges[i - 1];
+        const prefix = text.slice(lineStart(text, prev.from), prev.from);
+        return `${text.slice(0, prev.to)}\n${prefix}${spelled}${text.slice(prev.to)}`;
+      }
+      const ls = lineStart(text, ranges[0].from);
+      const prefix = text.slice(ls, ranges[0].from);
+      return `${text.slice(0, ls)}${prefix}${spelled}\n${text.slice(ls)}`;
     },
     expect: (p) => p.type === "list" && sameItems(p.shown, after),
   };
 };
+
+/** A new last item. */
+export const appendItem = (key: string, v: string): Change => insertItem(key, Infinity, v);
 
 /** Removing the last property, when no newline ends the text, takes the newline before it too. */
 const lastWithoutNewline = (text: string, p: Property) =>

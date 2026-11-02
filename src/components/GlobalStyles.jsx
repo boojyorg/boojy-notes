@@ -1,6 +1,6 @@
 import { useTheme } from "../hooks/useTheme";
 import { TAG_PILL_RADIUS, tagPillCss, tagPillGround } from "../styles/tagPill";
-import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W } from "../constants/layout";
+import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W, TOUCH } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
@@ -1094,8 +1094,10 @@ ${tagPillCss(theme)}
           .props-row:hover { background: ${theme.BG.surface}; }
           .props-row[data-editing]:hover { background: ${theme.BG.hover}; }
           .props-icon:hover { color: ${theme.TEXT.primary}; }
-          .props-x:hover { opacity: 1; }
-          .props-tag:hover { background: ${tagPillGround(theme, true)}; }
+          .props-x:hover { color: ${theme.TEXT.primary}; }
+          .props-tag .props-x:hover { color: inherit; opacity: 1; }
+          .props-item:not(.props-tag):not([data-editing]):hover { background: ${theme.BG.hover}; }
+          .props-tag:not([data-editing]):hover { background: ${tagPillGround(theme, true)}; }
         }
         .props-rows {
           /* The name column is as wide as the names (at least 136px, at most 240px), sized by
@@ -1144,9 +1146,10 @@ ${tagPillCss(theme)}
           border: 0; background: none; padding: 0; font: inherit; color: ${theme.ACCENT.text};
           text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
         }
+        /* × removes its item: quiet, beside the text, never a target of its own on the line. */
         .props-x {
-          border: 0; background: none; padding: 0 0 0 4px; margin-right: -2px; font: inherit; font-size: 13px;
-          line-height: 1; color: inherit; opacity: 0.55; cursor: pointer;
+          border: 0; background: none; padding: 0 2px 0 4px; font: inherit; font-size: 13px;
+          line-height: 1; color: ${theme.TEXT.muted}; cursor: pointer;
         }
         .props-confirm { padding: 6px 8px 4px; max-width: 264px; }
         .props-confirm p { margin: 0; font-size: 12.5px; line-height: 1.45; color: ${theme.TEXT.secondary}; }
@@ -1157,15 +1160,41 @@ ${tagPillCss(theme)}
         }
         .props-muted { color: ${theme.TEXT.muted}; }
         .props-empty::before { content: "Empty"; color: ${theme.TEXT.muted}; }
-        /* One pill shape: the text's tag pill (styles/tagPill), its tokens shared;
-           a list's items wear it in neutral. */
-        .props-pill {
-          display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
-          border-radius: ${TAG_PILL_RADIUS}px; font-size: 0.92em; background: ${theme.overlay(0.06)};
+        /* A list: each item is its text and its ×, one unit that never wraps apart (the text
+           inside a long one may). Plain text; a tag keeps the text's own pill. The unused space
+           after the items is the list's own: a press there adds one. */
+        .props-list { flex: 1; min-width: 0; align-self: stretch; column-gap: 2px; row-gap: 2px; }
+        .props-item {
+          display: inline-flex; align-items: center; max-width: 100%; min-height: 24px;
+          border-radius: ${TAG_PILL_RADIUS}px; padding: 0 2px 0 6px; margin-left: -6px; margin-right: 4px;
           color: ${theme.TEXT.primary};
         }
-        .props-tag { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.tagText}; cursor: pointer; }
+        .props-item-text {
+          all: unset; min-width: 0; overflow-wrap: anywhere; cursor: text;
+        }
+        .props-item:has(.props-item-text:focus-visible) { box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
+        /* Picked by Backspace, next to go: the selection's own band. */
+        .props-item[data-armed] { background: ${bandFill(theme.ACCENT.primary, theme.name)}; }
+        /* The item being edited is a field: the sheet's own ground in the darker edited row. */
+        .props-item[data-editing] { padding-right: 6px; background: ${theme.BG.editor}; }
+        .props-item[data-editing] .props-input { field-sizing: content; min-width: 4ch; flex: 0 1 auto; max-width: 100%; }
+        .props-tag {
+          height: 22px; padding: 0 2px 0 8px; margin-left: 0; font-size: 0.92em;
+          background: ${tagPillGround(theme)}; color: ${theme.ACCENT.tagText};
+        }
+        .props-tag .props-x { color: inherit; opacity: 0.6; }
+        .props-tag[data-editing] { padding-right: 8px; background: ${tagPillGround(theme)}; }
+        .props-tag .props-input { color: inherit; }
+        .props-tag[data-armed] { box-shadow: inset 0 0 0 1.5px ${theme.ACCENT.tagText}; }
         .props-tag::before { content: "#"; }
+        .props-list > .props-input { flex: 1 1 8ch; }
+        .props-empty-add { all: unset; cursor: text; }
+        .props-empty-add:focus-visible { outline: 2px solid var(--boojy-focus-ring); outline-offset: 2px; border-radius: 4px; }
+        /* The phone: the list always ends with a finger's width of its own space (a tap there
+           adds), drawn as nothing; it takes a line of its own only when the last one is full. */
+        html.is-phone .props-list:not(:has(.props-input))::after { content: ""; flex: 1 0 ${TOUCH}px; height: 24px; }
+        /* The phone: a hold is the item's menu, never a text selection. */
+        html.is-phone .props-item { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         .props-check {
           display: flex; align-items: center; justify-content: center; width: 16px; height: 16px;
           padding: 0; border: 0; background: transparent; cursor: pointer;

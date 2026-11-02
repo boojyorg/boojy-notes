@@ -2,6 +2,7 @@ import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   appendItem,
+  insertItem,
   type Change,
   conversion,
   nameProblem,
@@ -324,10 +325,21 @@ describe("one list item: only its own bytes change", () => {
     ).toBe("aliases: [Episode V, 'Empire!']\n");
   });
 
+  it("an item inserted between two is written as its neighbours are", () => {
+    const B = "cast:\n  - a\n  - b\nx: 1\n";
+    expect(run(B, insertItem("cast", 1, "new"))).toBe("cast:\n  - a\n  - new\n  - b\nx: 1\n");
+    expect(run(B, insertItem("cast", 0, "new"))).toBe("cast:\n  - new\n  - a\n  - b\nx: 1\n");
+    const F = "tags: [ a ,  b ,c ]\n";
+    expect(run(F, insertItem("tags", 1, "new"))).toBe("tags: [ a ,  new ,  b ,c ]\n");
+    expect(run(F, insertItem("tags", 0, "new"))).toBe("tags: [ new ,  a ,  b ,c ]\n");
+    expect(run("tags: [a]\n", insertItem("tags", 0, "new"))).toBe("tags: [new, a]\n");
+  });
+
   it("a blank line between items stays", () => {
     const G = "cast:\n  - a\n\n  - b\nnext: 1\n";
     expect(run(G, replaceItem("cast", 0, "a", "A"))).toBe("cast:\n  - A\n\n  - b\nnext: 1\n");
     expect(run(G, removeItem("cast", 1, "b"))).toBe("cast:\n  - a\n\nnext: 1\n");
+    expect(run(G, insertItem("cast", 1, "new"))).toBe("cast:\n  - a\n  - new\n\n  - b\nnext: 1\n");
   });
 
   it("a repeated item: the one at its place changes", () => {
@@ -399,7 +411,7 @@ describe("one list item, for any list and any edit: every other byte stays", () 
             ? replaceItem("list", i, items[i], v)
             : op === 1
               ? removeItem("list", i, items[i])
-              : appendItem("list", v);
+              : insertItem("list", pick % (items.length + 1), v);
         const out = run(t, change);
         expect(out).not.toBe(false);
         if (out === null) return;
@@ -408,7 +420,11 @@ describe("one list item, for any list and any edit: every other byte stays", () 
             ? items.map((s, j) => (j === i ? v : s))
             : op === 1
               ? items.filter((_, j) => j !== i)
-              : [...items, v];
+              : [
+                  ...items.slice(0, pick % (items.length + 1)),
+                  v,
+                  ...items.slice(pick % (items.length + 1)),
+                ];
         expect(prop(out, "list").shown).toEqual(want);
         expect(out.startsWith("before: 1\nlist:")).toBe(true);
         expect(out.endsWith("\nafter: 2\n")).toBe(true);

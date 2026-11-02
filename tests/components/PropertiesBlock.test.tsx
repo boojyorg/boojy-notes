@@ -89,7 +89,13 @@ const row = (c: HTMLElement, key: string) =>
 const value = (c: HTMLElement, key: string) =>
   row(c, key).querySelector(".props-value") as HTMLElement;
 const pills = (c: HTMLElement, key: string) =>
-  [...row(c, key).querySelectorAll(".props-pill")].map((p) => p.firstChild?.textContent);
+  [...row(c, key).querySelectorAll(".props-item-text")].map((p) => p.textContent);
+const itemText = (c: HTMLElement, key: string, i: number) =>
+  row(c, key).querySelector(`.props-item-text[data-index="${i}"]`) as HTMLElement;
+const itemMenuRow = (label: string) =>
+  [...document.querySelectorAll('[data-testid="property-item-menu"] [role^="menuitem"]')].find(
+    (el) => el.textContent?.trim() === label,
+  ) as HTMLElement;
 const input = (c: HTMLElement) => c.querySelector(".props-input") as HTMLInputElement;
 const iconLabel = (c: HTMLElement, key: string) =>
   row(c, key).querySelector(".props-icon")?.getAttribute("aria-label");
@@ -228,6 +234,86 @@ describe("PropertiesBlock: editing in place", () => {
     );
     fireEvent.keyDown(input(c), { key: "Enter" });
     expect(input(c)).toBeNull();
+  });
+
+  it("a click on an item edits it in place: Enter saves and opens the next, Escape cancels", () => {
+    const { container: c, text } = setup();
+    fireEvent.click(itemText(c, "cast", 0));
+    expect(input(c).value).toBe("Mark Hamill");
+    fireEvent.change(input(c), { target: { value: "Mark Hamil" } });
+    fireEvent.keyDown(input(c), { key: "Escape" });
+    expect(input(c)).toBeNull();
+    expect(text()).toBe(TEXT);
+    fireEvent.click(itemText(c, "cast", 0));
+    fireEvent.change(input(c), { target: { value: "Mark Hamil" } });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(text()).toBe(TEXT.replace("[Mark Hamill,", "[Mark Hamil,"));
+    // A new, empty item now waits after it; Enter on it, empty, closes it.
+    expect(input(c).value).toBe("");
+    fireEvent.change(input(c), { target: { value: "Carrie" } });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(text()).toBe(
+      TEXT.replace("[Mark Hamill, Harrison Ford]", "[Mark Hamil, Carrie, Harrison Ford]"),
+    );
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(input(c)).toBeNull();
+  });
+
+  it("an item emptied and saved goes; a comma is text in a list", () => {
+    const { container: c, text } = setup();
+    fireEvent.click(itemText(c, "cast", 1));
+    fireEvent.change(input(c), { target: { value: "" } });
+    fireEvent.blur(input(c));
+    expect(text()).toBe(TEXT.replace("[Mark Hamill, Harrison Ford]", "[Mark Hamill]"));
+    fireEvent.click(row(c, "cast").querySelector(".props-list") as HTMLElement);
+    fireEvent.change(input(c), { target: { value: "Fisher, Carrie" } });
+    fireEvent.keyDown(input(c), { key: "," });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(text()).toBe(
+      TEXT.replace("[Mark Hamill, Harrison Ford]", '[Mark Hamill, "Fisher, Carrie"]'),
+    );
+  });
+
+  it("Backspace in an empty new item picks the item before it, and a second removes it", () => {
+    const { container: c, text } = setup();
+    fireEvent.click(row(c, "cast").querySelector(".props-list") as HTMLElement);
+    fireEvent.keyDown(input(c), { key: "Backspace" });
+    expect(row(c, "cast").querySelector("[data-armed]")?.textContent).toMatch(/^Harrison Ford/);
+    expect(text()).toBe(TEXT);
+    // Typing lets it go.
+    fireEvent.change(input(c), { target: { value: "x" } });
+    expect(row(c, "cast").querySelector("[data-armed]")).toBeNull();
+    fireEvent.change(input(c), { target: { value: "" } });
+    fireEvent.keyDown(input(c), { key: "Backspace" });
+    fireEvent.keyDown(input(c), { key: "Backspace" });
+    expect(text()).toBe(TEXT.replace("[Mark Hamill, Harrison Ford]", "[Mark Hamill]"));
+    expect(input(c)).not.toBeNull();
+  });
+
+  it("a tag ends at a space or a comma, a typed # is the pill's, and a tag must read as one", () => {
+    const { container: c, text } = setup();
+    fireEvent.click(row(c, "tags").querySelector(".props-list") as HTMLElement);
+    fireEvent.change(input(c), { target: { value: "#scifi" } });
+    expect(input(c).value).toBe("scifi");
+    fireEvent.keyDown(input(c), { key: " " });
+    expect(text()).toBe(TEXT.replace("tags: [starwars]", "tags: [starwars, scifi]"));
+    fireEvent.change(input(c), { target: { value: "9lives" } });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(row(c, "tags").querySelector(".props-error")?.textContent).toMatch(
+      /starts with a letter/,
+    );
+    expect(text()).toBe(TEXT.replace("tags: [starwars]", "tags: [starwars, scifi]"));
+  });
+
+  it("an empty list says Empty and adds from it; a focused item's Delete removes it", () => {
+    const { container: c, text, getByRole } = setup("cast: []\ntags: [a, b]");
+    fireEvent.click(getByRole("button", { name: "Add to cast" }));
+    fireEvent.change(input(c), { target: { value: "Mark" } });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(text()).toBe("cast: [Mark]\ntags: [a, b]");
+    fireEvent.keyDown(input(c), { key: "Escape" });
+    fireEvent.keyDown(itemText(c, "tags", 0), { key: "Delete" });
+    expect(text()).toBe("cast: [Mark]\ntags: [b]");
   });
 
   it("an edit to a property changed outside meanwhile is set aside, with Restore", () => {
@@ -377,22 +463,16 @@ describe("PropertiesBlock: folding and the YAML", () => {
 });
 
 describe("PropertiesBlock: a tag is the text's tag", () => {
-  it("a tag pill opens Search for that tag, and doesn't start an edit", () => {
+  it("a tag's click edits it; its menu holds Search for it", () => {
     const onTagClick = vi.fn();
-    const block = { id: "fm", type: "frontmatter", text: "tags: [starwars, demo]" } as Block;
-    const { container: c } = render(
-      <PropertiesBlock
-        block={block}
-        noteId="n1"
-        blockIndex={0}
-        syncGen={0}
-        onUpdateText={() => {}}
-        onTagClick={onTagClick}
-      />,
-    );
-    fireEvent.click(c.querySelector('[data-tag="demo"]') as HTMLElement);
+    const { container: c } = setup("tags: [starwars, demo]", "n1", { onTagClick });
+    fireEvent.click(itemText(c, "tags", 1));
+    expect(input(c).value).toBe("demo");
+    expect(onTagClick).not.toHaveBeenCalled();
+    fireEvent.keyDown(input(c), { key: "Escape" });
+    fireEvent.contextMenu(itemText(c, "tags", 1));
+    fireEvent.click(itemMenuRow("Search for #demo"));
     expect(onTagClick).toHaveBeenCalledWith("demo");
-    expect(c.querySelector(".props-input")).toBeNull();
   });
 });
 
