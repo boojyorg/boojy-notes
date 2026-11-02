@@ -3,7 +3,7 @@ import { launchApp, SETTLE_MS, sleep, waitForFile } from "./harness";
 
 /**
  * A note's frontmatter shows as its properties: rows you can read, open by
- * default, folded per note and remembered, and the YAML itself behind `</>`.
+ * default, folded per note and remembered, and the YAML itself behind Edit as YAML.
  * Showing them changes no byte; the YAML field writes exactly what is typed;
  * YAML the rows can't read opens as YAML.
  */

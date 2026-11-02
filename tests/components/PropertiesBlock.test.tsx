@@ -339,7 +339,16 @@ describe("PropertiesBlock: folding and the YAML", () => {
     expect(setup(TEXT, "n2").container.querySelectorAll(".props-row").length).toBeGreaterThan(0);
   });
 
-  it("</> shows the YAML as a field that commits what is typed", () => {
+  it("folding with a field focused hands focus to the title, never to nothing", () => {
+    const { container: c } = setup();
+    fireEvent.click(value(c, "title").querySelector("button") as HTMLElement);
+    expect(document.activeElement).toBe(input(c));
+    fireEvent.click(c.querySelector(".props-title") as HTMLElement);
+    expect(c.querySelectorAll(".props-row")).toHaveLength(0);
+    expect(document.activeElement).toBe(c.querySelector(".props-title"));
+  });
+
+  it("Edit as YAML shows the YAML as a field that commits what is typed", () => {
     const { container: c, getByRole, onText } = setup();
     fireEvent.click(getByRole("button", { name: "Edit as YAML" }));
     const field = c.querySelector(".props-yaml-field") as HTMLTextAreaElement;

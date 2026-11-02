@@ -13,6 +13,7 @@ import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import type { Block, NoteData } from "../types/notes";
 import { readNoteIds, withNoteId, writeNoteIds } from "../utils/noteIdLists";
 import { registerBlockOpener } from "../utils/blockOpen";
+import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
 import { placeCaret } from "../utils/domHelpers";
 import {
   addProperty,
@@ -145,6 +146,10 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   const read = readProperties(text);
   const [folded, setFolded] = useState(() => readNoteIds(FOLDED_PROPERTIES_KEY).includes(noteId));
   const [asYaml, setAsYaml] = useState(false);
+  // Unfolded by hand this visit: what opens fades in (a note opening never animates).
+  const [arrived, setArrived] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLButtonElement>(null);
   const [unsafe, setUnsafe] = useState(false);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -256,17 +261,24 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     }
   };
 
+  // The rows come and go at once (a hidden field must never keep focus); only
+  // the blocks below glide to their new place, as a dropped block's do.
   const toggleFold = useCallback(() => {
-    setFolded((was) => {
-      writeNoteIds(
-        FOLDED_PROPERTIES_KEY,
-        withNoteId(readNoteIds(FOLDED_PROPERTIES_KEY), noteId, !was),
-      );
-      return !was;
-    });
+    const section = sectionRef.current;
+    const editor = section?.closest("[data-block-id]")?.parentElement ?? null;
+    const places = measureBlockPlaces(editor);
+    if (section?.contains(document.activeElement) && document.activeElement !== titleRef.current)
+      titleRef.current?.focus({ preventScroll: true });
+    writeNoteIds(
+      FOLDED_PROPERTIES_KEY,
+      withNoteId(readNoteIds(FOLDED_PROPERTIES_KEY), noteId, !folded),
+    );
+    setFolded(!folded);
+    setArrived(folded);
     setEditing(null);
     setMenu(null);
-  }, [noteId]);
+    settleBlocks(editor, places);
+  }, [noteId, folded]);
 
   const startEdit = (p: Property, part: "value" | "name", caret: number | null) => {
     const draft =
@@ -426,7 +438,9 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
 
   return (
     <section
+      ref={sectionRef}
       className="props"
+      data-arrived={arrived ? "" : undefined}
       data-properties=""
       data-folded={folded ? "" : undefined}
       data-yaml={yamlView ? "" : undefined}
@@ -442,6 +456,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
       <div className="props-head">
         <button
           type="button"
+          ref={titleRef}
           className="props-title"
           data-label="Properties"
           aria-label="Properties"

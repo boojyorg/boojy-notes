@@ -1055,6 +1055,10 @@ ${tagPillCss(theme)}
         }
         .props-chev svg { width: 14px; height: 14px; transition: transform var(--motion-fast); }
         .props[data-folded] .props-chev svg { transform: rotate(-90deg); }
+        /* Unfolded by hand, the rows (or the YAML) fade in while the note below glides down. */
+        .props[data-arrived] :is(.props-rows, .props-yaml) {
+          animation: motion-fade-in var(--motion-enter) var(--ease-enter) backwards;
+        }
         .props:focus-within .props-chev, html.is-phone .props-chev { opacity: 1; }
         /* Add property: a row of the rows' own grid, shown as the tools are (on hover or focus),
            and always when there is nothing else to show. */
