@@ -29,6 +29,15 @@ export interface Property {
   /** The property's own lines in the text, [start, end): its key line to the next key's. */
   start: number;
   end: number;
+  /** Where its name is written, and the colon after it. */
+  keyRange: [number, number];
+  colon: number;
+  /** Where its value is written; empty, the point just after the colon. */
+  valueRange: [number, number];
+  /** The quote a text value is written in, kept when it is rewritten. */
+  quote?: '"' | "'";
+  /** An editable list: `[a, b]` (flow) or `- a` lines, each item's source span and line prefix. */
+  list?: { flow: boolean; items: Array<{ from: number; to: number }>; prefix: string };
 }
 
 export type ReadResult = { ok: true; props: Property[] } | { ok: false; reason: string };
@@ -120,8 +129,19 @@ function read(text: string): ReadResult {
       end = prev;
     }
     const fixed = (FIXED_KEYS as readonly string[]).includes(name) ? (name as FixedKey) : undefined;
-    const base = { key: name, fixed, start, end };
     const keyEnd = key.range?.[1] ?? start;
+    const colon = text.indexOf(":", keyEnd);
+    const node = value as Node | null;
+    const [vFrom, vTo] = node?.range ?? [colon + 1, colon + 1];
+    const base = {
+      key: name,
+      fixed,
+      start,
+      end,
+      keyRange: [key.range?.[0] ?? start, keyEnd] as [number, number],
+      colon,
+      valueRange: (vTo > vFrom ? [vFrom, vTo] : [colon + 1, colon + 1]) as [number, number],
+    };
     if (value === null || (isScalar(value) && value.value === null && plainScalar(value, text))) {
       props.push({ ...base, type: null, editable: true, shown: null });
     } else if (isScalar(value)) {
@@ -136,7 +156,9 @@ function read(text: string): ReadResult {
             : multiline
               ? (value.value as string).trim().replace(/\s*\n\s*/g, " ")
               : sourceLine(value, text, keyEnd);
-      props.push({ ...base, type: editable ? type : "text", editable, shown });
+      const quote =
+        value.type === "QUOTE_DOUBLE" ? '"' : value.type === "QUOTE_SINGLE" ? "'" : undefined;
+      props.push({ ...base, type: editable ? type : "text", editable, shown, quote });
     } else if (isSeq(value)) {
       const scalars = value.items.every(
         (item) => isScalar(item) && plainScalar(item, text) && !item.commentBefore && !item.comment,
@@ -145,11 +167,34 @@ function read(text: string): ReadResult {
       const shown = editable
         ? value.items.map((item) => sourceOf(item as Scalar, text))
         : sourceLine(value, text, keyEnd);
-      props.push({ ...base, type: editable ? "list" : null, editable, shown });
+      const items = value.items.map((item) => {
+        const [from, to] = (item as Node).range ?? [0, 0];
+        return { from, to };
+      });
+      const first = items[0];
+      const list = {
+        flow: !!value.flow,
+        items,
+        prefix: !value.flow && first ? text.slice(lineStart(text, first.from), first.from) : "  - ",
+      };
+      const valueRange: [number, number] =
+        value.flow || !items.length ? base.valueRange : [colon + 1, items[items.length - 1].to];
+      props.push({
+        ...base,
+        valueRange,
+        type: editable ? "list" : null,
+        editable,
+        shown,
+        list: editable ? list : undefined,
+      });
     } else {
       // A map, an alias, anything else: shown as written, changed only as YAML.
-      const node = value as Node;
-      props.push({ ...base, type: null, editable: false, shown: sourceLine(node, text, keyEnd) });
+      props.push({
+        ...base,
+        type: null,
+        editable: false,
+        shown: sourceLine(value as Node, text, keyEnd),
+      });
     }
   }
   return { ok: true, props };
@@ -190,4 +235,276 @@ export function shownDate(value: string, locale = "en-GB"): string {
   if (Number.isNaN(date.getTime()) || date.getMonth() !== +mo - 1) return value;
   const day = date.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
   return h ? `${day}, ${h}:${mi}` : day;
+}
+
+// ---------------------------------------------------------------------------
+// Changing properties. Never through the library's own writer, which would
+// reformat the whole block: each change splices one property's own text, and
+// is read back before it may stand (`runChange`).
+
+const NUMBER_RE = /^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/;
+/** Words YAML 1.1 (Obsidian's reader) takes for true, false or nothing: never written bare as text. */
+const YAML11_WORD_RE = /^(y|n|yes|no|on|off|true|false|null|~)$/i;
+
+/** True when `s` is a number as YAML reads one. */
+export const isNumber = (s: string) => NUMBER_RE.test(s.trim());
+
+/** `s` written bare reads back as exactly `s`, as text, in YAML and in Obsidian. */
+function plainSafe(s: string, inFlow: boolean): boolean {
+  if (!s || s !== s.trim() || YAML11_WORD_RE.test(s)) return false;
+  if (inFlow && /[,[\]{}]/.test(s)) return false;
+  if (DATE_RE.test(s) || DATETIME_RE.test(s)) return false;
+  const doc = parseDocument(`k: ${s}`);
+  if (doc.errors.length || !isMap(doc.contents) || doc.contents.items.length !== 1) return false;
+  const v = doc.contents.items[0].value;
+  return isScalar(v) && v.type === "PLAIN" && v.value === s && !v.comment;
+}
+
+/** Text as YAML writes it: bare when that reads back the same, else in its quotes. */
+export function yamlText(s: string, quote?: '"' | "'", inFlow = false): string {
+  if (!quote && plainSafe(s, inFlow)) return s;
+  if (quote === "'") return `'${s.replace(/'/g, "''")}'`;
+  return JSON.stringify(s);
+}
+
+/** A property's value, rewritten: `out` empty clears it, a leading newline is a block list. */
+function writeValue(text: string, p: Property, out: string): string {
+  const fromColon =
+    out === "" || out.startsWith("\n") || p.type === null || (p.list && !p.list.flow);
+  const from = fromColon ? p.colon + 1 : p.valueRange[0];
+  const lead = fromColon && out !== "" && !out.startsWith("\n") ? " " : "";
+  return text.slice(0, from) + lead + out + text.slice(p.valueRange[1]);
+}
+
+/** A list's value as written: untouched items keep their spelling; empty is `[]`. */
+function listOut(text: string, p: Property, items: string[]): string {
+  if (!items.length) return "[]";
+  // An item already in the list keeps its own spelling, once.
+  const kept = (p.list?.items ?? []).map((it) => ({
+    src: text.slice(it.from, it.to),
+    used: false,
+  }));
+  const shown = Array.isArray(p.shown) ? p.shown : [];
+  const spell = (v: string, inFlow: boolean) => {
+    const i = shown.findIndex((s, j) => s === v && !kept[j]?.used);
+    if (i >= 0 && kept[i]) {
+      kept[i].used = true;
+      return kept[i].src;
+    }
+    return yamlText(v, undefined, inFlow);
+  };
+  if (p.list?.flow) return `[${items.map((v) => spell(v, true)).join(", ")}]`;
+  const prefix = p.list?.prefix ?? "  - ";
+  return items.map((v) => `\n${prefix}${spell(v, false)}`).join("");
+}
+
+/** One change to a frontmatter block: what it does, and what the property must read as after it. */
+export interface Change {
+  key: string;
+  /** The property's name after the change (a rename). */
+  newKey?: string;
+  apply: (text: string, p: Property) => string | null;
+  /** The changed property as it must read back; absent for Remove. */
+  expect?: (p: Property) => boolean;
+}
+
+/**
+ * A change run on the latest text: the new text, null when there is nothing
+ * to do (the property is gone, or not one the rows can change), or false when
+ * the result would not be safe to write. Safe is: it still reads as
+ * properties, the changed one reads as intended, every other property reads
+ * as it did, and every byte outside the property's own lines is unchanged.
+ */
+export function runChange(text: string, change: Change): string | null | false {
+  const before = readProperties(text);
+  if (!before.ok) return null;
+  const p = before.props.find((q) => q.key === change.key);
+  if (!p) return null;
+  const after = change.apply(text, p);
+  if (after === null || after === text) return null;
+  const read = readProperties(after);
+  if (!read.ok) return false;
+  const head = text.slice(0, lastWithoutNewline(text, p) ? p.start - 1 : p.start);
+  if (!after.startsWith(head) || !after.endsWith(text.slice(p.end))) return false;
+  const others = (props: Property[], skip: string) =>
+    JSON.stringify(props.filter((q) => q.key !== skip).map((q) => [q.key, q.type, q.shown]));
+  const newKey = change.newKey ?? change.key;
+  if (others(before.props, change.key) !== others(read.props, newKey)) return false;
+  const changed = read.props.find((q) => q.key === newKey);
+  if (change.expect ? !changed || !change.expect(changed) : changed) return false;
+  return after;
+}
+
+const sameItems = (a: unknown, b: string[]) =>
+  Array.isArray(a) && a.length === b.length && a.every((v, i) => v === b[i]);
+
+/** The property's text value. */
+export const setText = (key: string, s: string): Change => ({
+  key,
+  apply: (text, p) =>
+    p.editable ? writeValue(text, p, s === "" ? "" : yamlText(s, p.quote)) : null,
+  expect: (p) => (s === "" ? p.shown === null : p.type === "text" && p.shown === s),
+});
+
+/** A value of another type, written as it reads: a number, a date, a date and time. */
+export const setTyped = (key: string, type: "number" | "date" | "datetime", s: string): Change => ({
+  key,
+  apply: (text, p) => (p.editable ? writeValue(text, p, s) : null),
+  expect: (p) => (s === "" ? p.shown === null : p.type === type && p.shown === s),
+});
+
+/** A value whose type the writing doesn't decide: it is what it reads as. */
+export const setUntyped = (key: string, s: string): Change => ({
+  key,
+  apply: (text, p) =>
+    p.editable
+      ? writeValue(text, p, s === "" ? "" : plainSafe(s, false) || isNumber(s) ? s : yamlText(s))
+      : null,
+  expect: (p) => (s === "" ? p.shown === null : p.shown === s),
+});
+
+export const setCheckbox = (key: string, on: boolean): Change => ({
+  key,
+  apply: (text, p) => (p.editable ? writeValue(text, p, String(on)) : null),
+  expect: (p) => p.type === "checkbox" && p.shown === on,
+});
+
+/** The list's items: untouched ones keep their spelling, flow stays flow, block stays block. */
+export const setList = (key: string, items: string[]): Change => ({
+  key,
+  apply: (text, p) => (p.editable ? writeValue(text, p, listOut(text, p, items)) : null),
+  expect: (p) => p.type === "list" && sameItems(p.shown, items),
+});
+
+/** Removing the last property, when no newline ends the text, takes the newline before it too. */
+const lastWithoutNewline = (text: string, p: Property) =>
+  p.end === text.length && p.start > 0 && !text.endsWith("\n");
+
+export const removeProperty = (key: string): Change => ({
+  key,
+  apply: (text, p) =>
+    text.slice(0, lastWithoutNewline(text, p) ? p.start - 1 : p.start) + text.slice(p.end),
+});
+
+/** Whether `name` can be a property's name here: plain, and not another's. */
+export function nameProblem(text: string, from: string, name: string): string | null {
+  const n = name.trim();
+  if (!n) return "A property needs a name.";
+  if (!plainSafe(n, false) || /[:#]/.test(n) || n === "<<")
+    return "Use letters, numbers, spaces, - or _.";
+  const read = readProperties(text);
+  if (
+    read.ok &&
+    read.props.some((q) => q.key !== from && q.key.toLowerCase() === n.toLowerCase())
+  ) {
+    return `Another property is already called “${n}”.`;
+  }
+  return null;
+}
+
+export const renameProperty = (from: string, to: string): Change => ({
+  key: from,
+  newKey: to.trim(),
+  apply: (text, p) =>
+    nameProblem(text, from, to)
+      ? null
+      : text.slice(0, p.keyRange[0]) + to.trim() + text.slice(p.keyRange[1]),
+  expect: () => true,
+});
+
+/** What a type change keeps, or what it loses: `loss` is null when nothing is lost. */
+export interface Conversion {
+  change: Change;
+  loss: string | null;
+}
+
+const quoted = (s: string) => `“${s}”`;
+
+/** Changing a property's type: the value converted where it fits, else cleared, and what that costs. */
+export function conversion(p: Property, to: PropType): Conversion {
+  const k = p.key;
+  const items = Array.isArray(p.shown) ? p.shown : null;
+  const s =
+    typeof p.shown === "string" ? p.shown : typeof p.shown === "boolean" ? String(p.shown) : null;
+  const what = items
+    ? items.length === 1
+      ? quoted(items[0])
+      : `The ${items.length} items`
+    : s !== null
+      ? quoted(s)
+      : "";
+  const plural = !!items && items.length !== 1;
+  const isnt = plural ? "aren't" : "isn't";
+  const cleared = (as: string): Conversion => ({
+    change: clearAs(k, to),
+    loss: `${what} ${isnt} ${as}, so ${plural ? "they" : "it"} will be cleared.`,
+  });
+  const empty = p.shown === null || (items !== null && items.length === 0);
+  if (empty) return { change: clearAs(k, to), loss: null };
+  const one = items?.length === 1 ? items[0] : s;
+  switch (to) {
+    case "text": {
+      if (items) {
+        const joined = items.join(", ");
+        const loss = items.some((i) => i.includes(","))
+          ? `Joined, they read ${quoted(joined)}, which can't be split back into the same items.`
+          : null;
+        return { change: setText(k, joined), loss };
+      }
+      return { change: setText(k, s as string), loss: null };
+    }
+    case "list":
+      return { change: setList(k, items ?? [s as string]), loss: null };
+    case "number": {
+      if (
+        p.type === "checkbox" ||
+        p.type === "date" ||
+        p.type === "datetime" ||
+        one === null ||
+        !isNumber(one)
+      ) {
+        return cleared("a number");
+      }
+      const n = String(Number(one));
+      return {
+        change: setTyped(k, "number", n),
+        loss: n === one ? null : `${quoted(one)} will become ${n}.`,
+      };
+    }
+    case "checkbox":
+      if (one !== null && /^(true|false)$/i.test(one) && !plural) {
+        return { change: setCheckbox(k, one.toLowerCase() === "true"), loss: null };
+      }
+      return {
+        change: setCheckbox(k, false),
+        loss: `${what} ${isnt} true or false, so ${plural ? "they" : "it"} will be cleared and the box left unticked.`,
+      };
+    case "date":
+      if (one !== null && DATE_RE.test(one))
+        return { change: setTyped(k, "date", one), loss: null };
+      if (one !== null && DATETIME_RE.test(one)) {
+        return {
+          change: setTyped(k, "date", one.slice(0, 10)),
+          loss: `The time ${one.slice(11, 16)} will be dropped.`,
+        };
+      }
+      return cleared("a date");
+    case "datetime":
+      if (one !== null && DATETIME_RE.test(one))
+        return { change: setTyped(k, "datetime", one), loss: null };
+      if (one !== null && DATE_RE.test(one))
+        return { change: setTyped(k, "datetime", `${one}T00:00`), loss: null };
+      return cleared("a date and time");
+  }
+}
+
+/** A property emptied in a type's own empty form: an unticked box, an empty list, else nothing. */
+function clearAs(key: string, to: PropType): Change {
+  if (to === "checkbox") return setCheckbox(key, false);
+  if (to === "list") return setList(key, []);
+  return {
+    key,
+    apply: (text, p) => (p.editable ? writeValue(text, p, "") : null),
+    expect: (p) => p.shown === null,
+  };
 }

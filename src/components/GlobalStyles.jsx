@@ -1068,20 +1068,59 @@ ${tagPillCss(theme)}
           .props-title:hover { background: ${theme.BG.surface}; }
           .props-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
           .props-tool[aria-pressed="true"]:hover { background: ${tagPillGround(theme, true)}; color: ${theme.ACCENT.text}; }
+          .props-row:hover { background: ${theme.BG.surface}; }
+          .props-row[data-editing]:hover { background: ${theme.BG.hover}; }
+          .props-icon:hover { color: ${theme.TEXT.primary}; }
+          .props-x:hover { opacity: 1; }
         }
         .props-rows {
           display: grid; grid-template-columns: 20px fit-content(140px) minmax(0, 1fr);
           column-gap: 12px; margin-top: 2px; font-size: 14px;
         }
+        /* A row is one thing: tinted whole on hover, a step darker while it is edited. */
         .props-row {
           grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start;
-          min-height: 30px; border-radius: 6px;
+          min-height: 30px; border-radius: 6px; margin: 0 -6px; padding: 0 6px;
         }
-        .props-icon { display: flex; align-items: center; justify-content: center; height: 30px; color: ${theme.TEXT.muted}; }
+        .props-row[data-editing] { background: ${theme.BG.hover}; }
+        .props-icon {
+          display: flex; align-items: center; justify-content: center; width: 20px; height: 30px;
+          padding: 0; border: 0; background: transparent; color: ${theme.TEXT.muted}; cursor: pointer;
+          border-radius: 5px; position: relative;
+        }
+        .props-icon[aria-expanded="true"] { color: ${theme.TEXT.primary}; }
         .props-name {
-          color: ${theme.TEXT.muted}; font-size: 13.5px; line-height: 30px;
+          color: ${theme.TEXT.muted}; font: inherit; font-size: 13.5px; line-height: 30px; height: 30px;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          border: 0; background: transparent; padding: 0; text-align: left; cursor: text;
         }
+        .props-name-edit { cursor: auto; }
+        .props-val {
+          all: unset; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+          max-width: 100%; min-height: 24px; cursor: text; user-select: text;
+        }
+        .props-input {
+          all: unset; box-sizing: border-box; flex: 1; min-width: 8ch; height: 24px; line-height: 24px;
+          font: inherit; color: ${theme.TEXT.primary}; user-select: text;
+        }
+        .props-name-edit .props-input { width: 100%; font-size: 13.5px; height: 30px; }
+        .props-input::placeholder { color: ${theme.TEXT.muted}; }
+        .props-input[type="date"], .props-input[type="datetime-local"] { flex: none; }
+        .props-error { width: 100%; font-size: 12px; line-height: 1.4; color: ${theme.SEMANTIC.error}; }
+        .props-notice {
+          grid-column: 1 / -1; margin: 0 0 4px; font-size: 12.5px; color: ${theme.TEXT.secondary};
+        }
+        .props-restore {
+          border: 0; background: none; padding: 0; font: inherit; color: ${theme.ACCENT.text};
+          text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+        }
+        .props-x {
+          border: 0; background: none; padding: 0 0 0 4px; margin-right: -2px; font: inherit; font-size: 13px;
+          line-height: 1; color: inherit; opacity: 0.55; cursor: pointer;
+        }
+        .props-confirm { padding: 6px 8px 4px; max-width: 264px; }
+        .props-confirm p { margin: 0; font-size: 12.5px; line-height: 1.45; color: ${theme.TEXT.secondary}; }
+        .props-confirm .props-confirm-title { font-size: 13px; font-weight: 600; color: ${theme.TEXT.primary}; margin-bottom: 2px; }
         .props-value {
           min-width: 0; min-height: 30px; box-sizing: border-box; display: flex; flex-wrap: wrap;
           align-items: center; gap: 4px; padding: 3px 0; line-height: 24px; color: ${theme.TEXT.primary}; overflow-wrap: anywhere;
@@ -1094,7 +1133,7 @@ ${tagPillCss(theme)}
           border-radius: 6px; font-size: 13px; background: ${theme.overlay(0.06)}; color: ${theme.TEXT.primary};
         }
         .props-tag { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.text}; }
-        .props-cb { width: 14px; height: 14px; margin: 0; accent-color: ${theme.ACCENT.primary}; }
+        .props-cb { width: 14px; height: 14px; margin: 0; accent-color: ${theme.ACCENT.primary}; cursor: pointer; }
         .props-yaml-field {
           display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px 12px;
           resize: none; overflow: hidden; border-radius: 8px; outline: none;

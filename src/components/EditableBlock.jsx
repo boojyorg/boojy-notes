@@ -145,6 +145,7 @@ const EditableBlock = memo(
     onImageDragPress,
     onImageCopyImage,
     onUpdateBlockProperty,
+    onEditFrontmatter,
     onFileOpen,
     onFileOpenDefault,
     onFileShowInFolder,
@@ -344,6 +345,7 @@ const EditableBlock = memo(
           syncGen={syncGen}
           noteDataRef={noteDataRef}
           onUpdateText={onUpdateText}
+          onEditFrontmatter={onEditFrontmatter}
         />,
         null,
         null,

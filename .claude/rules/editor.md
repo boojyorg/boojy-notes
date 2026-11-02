@@ -249,6 +249,11 @@ never holds a byte sequence the syntax cannot.**
   written through rows it can't read. The YAML field is a real field, kept literal. Folding is
   per note, on this device. Never moved (`reorderFloor`). `properties-view.spec.ts`,
   `frontmatter-order.spec.ts`.
+- **A row edit is one `editFrontmatter` commit** that splices only that property's text, run
+  by name on the latest text and read back first (`runChange`), else refused and the YAML
+  opens. Icon: type menu (a loss asks; Keep is the default); name renames; value edits. Its
+  text is React's to paint (`haveEditorBlockRenderChanges`). An outside change to the property
+  being edited sets the draft aside, with Restore. `properties.spec.ts`.
 
 ## Code blocks
 

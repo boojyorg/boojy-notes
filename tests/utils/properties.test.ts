@@ -1,5 +1,21 @@
+import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { type Property, readProperties } from "../../src/utils/properties";
+import {
+  type Change,
+  conversion,
+  nameProblem,
+  removeProperty,
+  renameProperty,
+  runChange,
+  setCheckbox,
+  setList,
+  setText,
+  setTyped,
+  setUntyped,
+  yamlText,
+  type Property,
+  readProperties,
+} from "../../src/utils/properties";
 
 const props = (text: string): Property[] => {
   const r = readProperties(text);
@@ -157,5 +173,214 @@ describe("shownDate", () => {
     expect(shownDate("2026-12-01T20:30")).toBe("1 Dec 2026, 20:30");
     expect(shownDate("2026-02-30")).toBe("2026-02-30");
     expect(shownDate("soon")).toBe("soon");
+  });
+});
+
+const run = (text: string, change: Change) => runChange(text, change);
+const prop = (text: string, key: string) => {
+  const r = readProperties(text);
+  if (!r.ok) throw new Error(r.reason);
+  return r.props.find((p) => p.key === key)!;
+};
+
+describe("changing one property rewrites only its own text", () => {
+  const T =
+    '# Imported\ntitle: Empire # the sequel\nyear: 1980\ncast:\n  - Mark Hamill\n  - "Harrison Ford"\ntags: [a, "b, c"]\nrating:\nend: x\n';
+
+  it("text keeps a trailing comment, and quotes only what would read as something else", () => {
+    expect(run(T, setText("title", "Return"))).toBe(T.replace("Empire #", "Return #"));
+    expect(run(T, setText("title", "1999"))).toBe(T.replace("Empire #", '"1999" #'));
+    expect(run(T, setText("title", "yes"))).toBe(T.replace("Empire #", '"yes" #'));
+    expect(run(T, setText("title", "#tag"))).toBe(T.replace("Empire #", '"#tag" #'));
+    expect(run(T, setText("title", "a: b"))).toBe(T.replace("Empire #", '"a: b" #'));
+    expect(run(T, setText("title", "[[Note]]"))).toBe(T.replace("Empire #", '"[[Note]]" #'));
+  });
+
+  it("a quoted value keeps its quotes", () => {
+    const q = "a: 'it''s'\nb: \"x\"\n";
+    expect(run(q, setText("a", "that's"))).toBe("a: 'that''s'\nb: \"x\"\n");
+    expect(run(q, setText("b", "y"))).toBe("a: 'it''s'\nb: \"y\"\n");
+  });
+
+  it("an empty value is filled after the colon, and cleared back to it", () => {
+    expect(run(T, setTyped("rating", "number", "4"))).toBe(T.replace("rating:\n", "rating: 4\n"));
+    expect(run(T, setText("title", ""))).toBe(
+      T.replace("title: Empire # the sequel", "title: # the sequel"),
+    );
+  });
+
+  it("numbers, dates and tick boxes are written as they read", () => {
+    expect(run(T, setTyped("year", "number", "1981"))).toBe(T.replace("1980", "1981"));
+    const d = "when: 2026-12-01\nok: true\n";
+    expect(run(d, setTyped("when", "date", "2027-01-02"))).toBe("when: 2027-01-02\nok: true\n");
+    expect(run(d, setCheckbox("ok", false))).toBe("when: 2026-12-01\nok: false\n");
+  });
+
+  it("a value with no type yet is what it reads as", () => {
+    expect(run("r:\n", setUntyped("r", "4"))).toBe("r: 4\n");
+    expect(run("r:\n", setUntyped("r", "calm"))).toBe("r: calm\n");
+    expect(run("r:\n", setUntyped("r", "no"))).toBe('r: "no"\n');
+  });
+
+  it("a block list keeps its prefix and its items' spelling; a flow list stays flow", () => {
+    expect(run(T, setList("cast", ["Mark Hamill", "Harrison Ford", "Carrie Fisher"]))).toBe(
+      T.replace('  - "Harrison Ford"\n', '  - "Harrison Ford"\n  - Carrie Fisher\n'),
+    );
+    expect(run(T, setList("cast", ["Harrison Ford"]))).toBe(T.replace("  - Mark Hamill\n", ""));
+    expect(run(T, setList("tags", ["a", "b, c", "d"]))).toBe(
+      T.replace('tags: [a, "b, c"]', 'tags: [a, "b, c", d]'),
+    );
+    expect(run(T, setList("cast", []))).toBe(
+      T.replace('cast:\n  - Mark Hamill\n  - "Harrison Ford"\n', "cast: []\n"),
+    );
+  });
+
+  it("remove takes the property's lines and nothing else, comments above the next key staying", () => {
+    expect(run(T, removeProperty("cast"))).toBe(
+      T.replace('cast:\n  - Mark Hamill\n  - "Harrison Ford"\n', ""),
+    );
+    expect(run(T, removeProperty("title"))).toBe(T.replace("title: Empire # the sequel\n", ""));
+    expect(run("a: 1\n# keep\nb: 2\n", removeProperty("a"))).toBe("# keep\nb: 2\n");
+    // The block's text holds no final newline: removing its last line leaves none either.
+    expect(run("# keep\nb: 2", removeProperty("b"))).toBe("# keep");
+    expect(run("a: 1\nb: 2", removeProperty("b"))).toBe("a: 1");
+  });
+
+  it("rename changes the name only, and refuses one already used or not plain", () => {
+    expect(run(T, renameProperty("year", "released"))).toBe(
+      T.replace("year: 1980", "released: 1980"),
+    );
+    expect(run(T, renameProperty("year", "Title"))).toBeNull();
+    expect(nameProblem(T, "year", "title")).toMatch(/already called/);
+    expect(nameProblem(T, "year", "a: b")).toMatch(/Use letters/);
+    expect(nameProblem(T, "year", " ")).toMatch(/needs a name/);
+  });
+
+  it("nothing is written for a property that is gone, read-only, or YAML that doesn't read", () => {
+    expect(run(T, setText("missing", "x"))).toBeNull();
+    expect(run("src:\n  a: 1\n", setText("src", "x"))).toBeNull();
+    expect(run("tags: [a", setText("tags", "x"))).toBeNull();
+  });
+
+  it("a change whose result wouldn't read back as intended is refused, not written", () => {
+    const bad: Change = {
+      key: "year",
+      apply: (t) => t.replace("year: 1980", "year: [1980"),
+      expect: () => true,
+    };
+    expect(run(T, bad)).toBe(false);
+    const spill: Change = {
+      key: "year",
+      apply: (t) => t.replace("end: x", "end: y"),
+      expect: () => true,
+    };
+    expect(run(T, spill)).toBe(false);
+  });
+});
+
+describe("conversion: what a type change keeps, and what it would lose", () => {
+  const T =
+    'episode: "05"\nyear: 1980\ntitle: Empire\nwhen: 2026-12-01T20:30\nday: 2026-12-01\ncast: [a, b, c]\none: [7]\nok: true\nr:\n';
+  const conv = (key: string, to: Parameters<typeof conversion>[1]) => {
+    const c = conversion(prop(T, key), to);
+    return { loss: c.loss, text: run(T, c.change) };
+  };
+
+  it("lossless changes say nothing and apply as they are", () => {
+    expect(conv("year", "text")).toEqual({
+      loss: null,
+      text: T.replace("year: 1980", 'year: "1980"'),
+    });
+    expect(conv("cast", "text")).toEqual({
+      loss: null,
+      text: T.replace("cast: [a, b, c]", "cast: a, b, c"),
+    });
+    expect(conv("title", "list")).toEqual({
+      loss: null,
+      text: T.replace("title: Empire", "title:\n  - Empire"),
+    });
+    expect(conv("day", "datetime").text).toBe(
+      T.replace("day: 2026-12-01", "day: 2026-12-01T00:00"),
+    );
+    expect(conv("one", "number").text).toBe(T.replace("one: [7]", "one: 7"));
+    expect(conv("r", "checkbox").text).toBe(T.replace("r:\n", "r: false\n"));
+    expect(conv("r", "list").text).toBe(T.replace("r:\n", "r: []\n"));
+  });
+
+  it("lossy changes say what they lose", () => {
+    expect(conv("episode", "number")).toEqual({
+      loss: "“05” will become 5.",
+      text: T.replace('episode: "05"', "episode: 5"),
+    });
+    expect(conv("title", "number").loss).toBe("“Empire” isn't a number, so it will be cleared.");
+    expect(conv("title", "number").text).toBe(T.replace("title: Empire", "title:"));
+    expect(conv("cast", "number").loss).toBe(
+      "The 3 items aren't a number, so they will be cleared.",
+    );
+    expect(conv("title", "checkbox").loss).toMatch(
+      /isn't true or false, so it will be cleared and the box left unticked/,
+    );
+    expect(conv("when", "date")).toEqual({
+      loss: "The time 20:30 will be dropped.",
+      text: T.replace("2026-12-01T20:30", "2026-12-01"),
+    });
+    expect(conv("ok", "date").loss).toBe("“true” isn't a date, so it will be cleared.");
+  });
+
+  it("a list whose items hold commas asks before joining", () => {
+    const t = 'tags: ["a, b", c]\n';
+    expect(conversion(prop(t, "tags"), "text").loss).toMatch(/can't be split back/);
+  });
+});
+
+describe("yamlText", () => {
+  it("is bare only when bare reads back as the same text", () => {
+    expect(yamlText("hello world")).toBe("hello world");
+    expect(yamlText(" pad")).toBe('" pad"');
+    expect(yamlText("Off")).toBe('"Off"');
+    expect(yamlText("2026-12-01")).toBe('"2026-12-01"');
+    expect(yamlText("a, b", undefined, true)).toBe('"a, b"');
+    expect(yamlText('say "hi"')).toBe('say "hi"');
+  });
+});
+
+describe("runChange, for any frontmatter and any change: only the property's own lines", () => {
+  const key = fc.stringMatching(/^[a-z][a-z0-9_]{0,6}$/);
+  const scalar = fc.oneof(
+    fc.stringMatching(/^[A-Za-z][A-Za-z ,:#'"-]{0,10}$/),
+    fc.integer({ min: 0, max: 3000 }).map(String),
+    fc.constantFrom("true", "false", "2026-12-01", "05", "yes", "~", ""),
+  );
+  const line = fc.tuple(
+    key,
+    fc.oneof(
+      scalar.map((s) => ` ${s}`),
+      fc
+        .array(scalar, { maxLength: 3 })
+        .map((xs) => xs.map((x) => `\n  - ${JSON.stringify(x)}`).join("")),
+    ),
+  );
+  const doc = fc
+    .uniqueArray(line, { selector: ([k]) => k, minLength: 1, maxLength: 5 })
+    .map((ls) => ls.map(([k, v]) => `${k}:${v}`).join("\n") + "\n");
+
+  it("never changes a byte outside the touched property, and the value reads back", () => {
+    fc.assert(
+      fc.property(doc, fc.nat(), fc.string({ maxLength: 12 }), (text, pick, value) => {
+        const r = readProperties(text);
+        fc.pre(r.ok && r.props.length > 0);
+        if (!r.ok) return;
+        const p = r.props[pick % r.props.length];
+        fc.pre(p.editable);
+        const v = value.replace(/[\n\r\t\u0000-\u001f\u007f-\u00a0\u2028\u2029\ufeff]/g, "").trim();
+        const out = runChange(text, setText(p.key, v));
+        if (out === null || out === false) return;
+        expect(out.startsWith(text.slice(0, p.start))).toBe(true);
+        expect(out.endsWith(text.slice(p.end))).toBe(true);
+        const back = prop(out, p.key);
+        expect(back.shown).toBe(v === "" ? null : v);
+      }),
+      { numRuns: 300 },
+    );
   });
 });
