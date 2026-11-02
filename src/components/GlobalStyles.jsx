@@ -1145,11 +1145,15 @@ ${tagPillCss(theme)}
           border: 0; background: none; padding: 0; font: inherit; color: ${theme.ACCENT.text};
           text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
         }
-        /* × removes its item: quiet, beside the text, never a target of its own on the line. */
+        /* × removes its item: quiet, beside the text. Its box is a fixed 14×13 (a stray press
+           next to it must not delete); the glyph inside is drawn larger and takes no press. */
         .props-x {
-          border: 0; background: none; padding: 0 2px 0 4px; font: inherit; font-size: 13px;
-          line-height: 1; color: ${theme.TEXT.muted}; cursor: pointer;
+          display: inline-flex; align-items: center; justify-content: center; flex: none;
+          box-sizing: border-box; width: 14px; height: 13px; padding: 0 0 0 3px; margin-left: 1px;
+          border: 0; background: none; font: inherit; line-height: 1; color: ${theme.TEXT.muted};
+          cursor: pointer; overflow: visible;
         }
+        .props-x span { font-size: 17px; line-height: 13px; pointer-events: none; }
         .props-confirm { padding: 6px 8px 4px; max-width: 264px; }
         .props-confirm p { margin: 0; font-size: 12.5px; line-height: 1.45; color: ${theme.TEXT.secondary}; }
         .props-confirm .props-confirm-title { font-size: 13px; font-weight: 600; color: ${theme.TEXT.primary}; margin-bottom: 2px; }
@@ -1176,7 +1180,7 @@ ${tagPillCss(theme)}
         .props-item[data-armed] { background: ${bandFill(theme.ACCENT.primary, theme.name)}; }
         .props-item[data-editing] .props-input { field-sizing: content; min-width: 4ch; flex: 0 1 auto; max-width: 100%; }
         .props-tag {
-          height: 22px; padding: 0 2px 0 8px; margin-left: 0; font-size: 0.92em;
+          height: 22px; padding: 0 5px 0 8px; margin-left: 0; font-size: 0.92em;
           background: ${tagPillGround(theme)}; color: ${theme.ACCENT.tagText};
         }
         .props-tag .props-x { color: inherit; opacity: 0.6; }

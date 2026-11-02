@@ -867,7 +867,7 @@ function PropertyRow(r: RowProps) {
         r.onRemoveItem(i);
       }}
     >
-      ×
+      <span aria-hidden="true">×</span>
     </button>
   );
   // Each item is its text (a click edits it) and its × (removes it), kept together on a line.
