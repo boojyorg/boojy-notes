@@ -32,7 +32,7 @@ test("properties open as rows, fold, stay folded after a restart, and showing th
     await h.openNote("Film");
     await expect(h.page.locator(value("title"))).toHaveText("Quoted: with colon");
     await expect(h.page.locator(value("year"))).toHaveText("1980");
-    await expect(h.page.locator(`${value("favourite")} input[type=checkbox]`)).toBeChecked();
+    await expect(h.page.locator(`${value("favourite")} [role=checkbox]`)).toBeChecked();
     await expect(h.page.locator(`${value("tags")} .props-tag`)).toHaveText(/^research/);
     await expect(h.page.locator(value("source"))).toHaveText("site: imdb");
 

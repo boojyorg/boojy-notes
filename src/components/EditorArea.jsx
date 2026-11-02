@@ -1586,6 +1586,7 @@ const EditorArea = memo(
                               onImageCopyImage={handleImageCopyImage}
                               onUpdateBlockProperty={updateBlockProperty}
                               onEditFrontmatter={editFrontmatter}
+                              onTagClick={onTagClick}
                               onFileOpen={handleFileOpen}
                               onFileOpenDefault={handleFileOpenDefault}
                               onFileShowInFolder={handleFileShowInFolder}

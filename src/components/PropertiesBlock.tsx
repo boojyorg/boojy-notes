@@ -31,6 +31,7 @@ import {
 } from "../utils/properties";
 import { ChevronDownIcon, PropertyTypeIcon, SourceViewIcon, TrashIcon } from "./Icons";
 import Menu, { type MenuAnchor, type MenuItem, rectAnchor } from "./Menu";
+import TickBox from "./TickBox";
 import { Tooltip, useTooltip } from "./Tooltip";
 
 /** The notes whose Properties section is folded on this device; open is the default. */
@@ -118,6 +119,9 @@ interface PropertiesBlockProps {
   noteDataRef?: RefObject<NoteData>;
   onUpdateText: (noteId: string, blockIndex: number, text: string) => void;
   onEditFrontmatter?: (noteId: string, blockId: string, change: Change) => "ok" | "none" | "unsafe";
+  /** A tag pill's click: Search filtered by that tag, as a `#tag` in the text does. */
+  onTagClick?: (tag: string) => void;
+  accentColor?: string;
 }
 
 /**
@@ -443,6 +447,8 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                 }}
                 onList={(items) => commit(setList(p.key, items))}
                 onCheck={(on) => commit(setCheckbox(p.key, on))}
+                onTagClick={props.onTagClick}
+                accentColor={props.accentColor}
               />
             ))}
           </div>
@@ -492,6 +498,8 @@ interface RowProps {
   onRestore: () => void;
   onList: (items: string[]) => void;
   onCheck: (on: boolean) => void;
+  onTagClick?: (tag: string) => void;
+  accentColor?: string;
 }
 
 /** One property: its type icon (the menu), its name (rename) and its value (edit). */
@@ -503,9 +511,16 @@ function PropertyRow(r: RowProps) {
   const label = UNUSED_TIP[p.key] ?? TYPE_LABEL[r.icon] ?? "";
   const items = Array.isArray(p.shown) ? p.shown : [];
 
+  const isTags = p.fixed === "tags";
+  // A tag is the text's own pill, `#` and all, and opens Search as one does
+  // (the list's click reads it); the file keeps the name bare.
   const pills = items.map((item, i) => (
-    // biome-ignore lint/suspicious/noArrayIndexKey: a list may repeat an item
-    <span key={i} className={p.fixed === "tags" ? "props-pill props-tag" : "props-pill"}>
+    <span
+      // biome-ignore lint/suspicious/noArrayIndexKey: a list may repeat an item
+      key={i}
+      className={isTags ? "props-pill props-tag" : "props-pill"}
+      data-tag={isTags ? item : undefined}
+    >
       {item}
       <button
         type="button"
@@ -531,14 +546,19 @@ function PropertyRow(r: RowProps) {
       </button>
     );
   } else if (r.type === "checkbox") {
+    // The to-do's own tick box: one look and one feel wherever a box is ticked.
+    const on = p.shown === true;
     value = (
-      <input
-        type="checkbox"
-        className="props-cb"
-        checked={p.shown === true}
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={on}
         aria-label={p.key}
-        onChange={(e) => r.onCheck(e.target.checked)}
-      />
+        className="checkbox-hit props-check"
+        onClick={() => r.onCheck(!on)}
+      >
+        <TickBox checked={on} accentColor={r.accentColor} />
+      </button>
     );
   } else if (r.type === "list") {
     value =
@@ -580,7 +600,11 @@ function PropertyRow(r: RowProps) {
           role="button"
           tabIndex={0}
           aria-label={`Edit ${p.key}`}
-          onClick={() => r.onEdit("value", null)}
+          onClick={(e) => {
+            const tag = (e.target as HTMLElement).closest<HTMLElement>("[data-tag]");
+            if (tag?.dataset.tag && r.onTagClick) r.onTagClick(tag.dataset.tag);
+            else r.onEdit("value", null);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();

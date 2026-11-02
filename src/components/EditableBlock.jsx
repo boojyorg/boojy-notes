@@ -11,6 +11,7 @@ import { imageDisplayWidth, imageNoWidthFields, imageWidthFields } from "../util
 import { isElectron, isPhone } from "../utils/platform";
 import CodeBlock from "./CodeBlock";
 import PropertiesBlock from "./PropertiesBlock";
+import TickBox, { TICK_BOX_SIZE } from "./TickBox";
 import CalloutBlock from "./CalloutBlock";
 import TableBlock from "./TableBlock";
 import ImageBlock from "./blocks/ImageBlock";
@@ -36,7 +37,7 @@ if (typeof window !== "undefined") {
 
 /** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
 const CHECKBOX_LINE_HEIGHT = 1.6;
-const CHECKBOX_SIZE = 16;
+const CHECKBOX_SIZE = TICK_BOX_SIZE;
 const INDENT_PX = 24;
 /**
  * Every list item's marker takes one column, then the air, then the text: a
@@ -146,6 +147,7 @@ const EditableBlock = memo(
     onImageCopyImage,
     onUpdateBlockProperty,
     onEditFrontmatter,
+    onTagClick,
     onFileOpen,
     onFileOpenDefault,
     onFileShowInFolder,
@@ -153,7 +155,7 @@ const EditableBlock = memo(
     onNavigateToNote,
   }) {
     const { theme } = useTheme();
-    const { TEXT, ACCENT } = theme;
+    const { TEXT } = theme;
     const rhythm = useRhythm();
     const elRef = useRef(null);
     // The root of a block that has no text of its own, or that keeps its text
@@ -346,6 +348,8 @@ const EditableBlock = memo(
           noteDataRef={noteDataRef}
           onUpdateText={onUpdateText}
           onEditFrontmatter={onEditFrontmatter}
+          onTagClick={onTagClick}
+          accentColor={accentColor}
         />,
         null,
         null,
@@ -599,36 +603,7 @@ const EditableBlock = memo(
               userSelect: "none",
             }}
           >
-            <div
-              className="checkbox-box"
-              aria-hidden="true"
-              style={{
-                width: CHECKBOX_SIZE,
-                height: CHECKBOX_SIZE,
-                borderRadius: 3.5,
-                boxSizing: "border-box",
-                flexShrink: 0,
-                border: block.checked ? `1.5px solid ${accentColor}` : `1.5px solid ${TEXT.muted}`,
-                background: block.checked ? accentColor : "transparent",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                {/* Drawn, not faded: the stroke's dash offset runs (GlobalStyles). */}
-                <path
-                  className="checkbox-tick"
-                  data-checked={block.checked ? "true" : "false"}
-                  pathLength="1"
-                  d="M2 5L4.2 7.2L8 3"
-                  stroke={ACCENT.onAccent}
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
+            <TickBox checked={!!block.checked} accentColor={accentColor} />
           </div>
           <span
             ref={elRef}

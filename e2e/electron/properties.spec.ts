@@ -40,7 +40,7 @@ test("each edit writes only its property's text, and one ⌘Z takes it back", as
     // And the row shows it: the rows are React's to paint, after every commit.
     await expect(h.page.locator(`${row("title")} .props-value`)).toHaveText("Return of the Jedi");
 
-    await h.page.locator(`${row("favourite")} input[type=checkbox]`).click();
+    await h.page.locator(`${row("favourite")} [role=checkbox]`).click();
     const ticked = titled.replace("favourite: true", "favourite: false");
     await waitForFile(file, (t) => t === ticked, { label: "the box unticked" });
 

@@ -112,7 +112,9 @@ describe("PropertiesBlock: rows", () => {
     ]);
     expect(value(c, "title").textContent).toBe("The Empire Strikes Back");
     expect(value(c, "watched").textContent).toBe("1 Dec 2026");
-    expect((row(c, "favourite").querySelector("input") as HTMLInputElement).checked).toBe(true);
+    expect(
+      row(c, "favourite").querySelector('[role="checkbox"]')?.getAttribute("aria-checked"),
+    ).toBe("true");
     expect(pills(c, "cast")).toEqual(["Mark Hamill", "Harrison Ford"]);
     expect(row(c, "tags").querySelector(".props-tag")).not.toBeNull();
     expect(row(c, "rating").querySelector(".props-empty")).not.toBeNull();
@@ -181,7 +183,7 @@ describe("PropertiesBlock: editing in place", () => {
 
   it("the tick box ticks", () => {
     const { container: c, text } = setup();
-    fireEvent.click(row(c, "favourite").querySelector("input") as HTMLElement);
+    fireEvent.click(row(c, "favourite").querySelector('[role="checkbox"]') as HTMLElement);
     expect(text()).toBe(TEXT.replace("favourite: true", "favourite: false"));
   });
 
@@ -313,5 +315,25 @@ describe("PropertiesBlock: folding and the YAML", () => {
     const { container: c } = setup();
     fireEvent.click(value(c, "source").querySelector("button") as HTMLElement);
     expect(c.querySelector(".props-yaml-field")).not.toBeNull();
+  });
+});
+
+describe("PropertiesBlock: a tag is the text's tag", () => {
+  it("a tag pill opens Search for that tag, and doesn't start an edit", () => {
+    const onTagClick = vi.fn();
+    const block = { id: "fm", type: "frontmatter", text: "tags: [starwars, demo]" } as Block;
+    const { container: c } = render(
+      <PropertiesBlock
+        block={block}
+        noteId="n1"
+        blockIndex={0}
+        syncGen={0}
+        onUpdateText={() => {}}
+        onTagClick={onTagClick}
+      />,
+    );
+    fireEvent.click(c.querySelector('[data-tag="demo"]') as HTMLElement);
+    expect(onTagClick).toHaveBeenCalledWith("demo");
+    expect(c.querySelector(".props-input")).toBeNull();
   });
 });

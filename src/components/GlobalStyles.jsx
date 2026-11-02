@@ -1,5 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
-import { tagPillCss, tagPillGround } from "../styles/tagPill";
+import { TAG_PILL_RADIUS, tagPillCss, tagPillGround } from "../styles/tagPill";
 import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
@@ -1040,11 +1040,11 @@ ${tagPillCss(theme)}
         /* A note's properties (PropertiesBlock): rows on the sheet, never a box;
            only the YAML field is boxed, as code. Chrome words are CSS, so Find
            never meets them. */
-        .props { margin: 2px 0 16px; }
+        .props { margin: 2px 0 26px; }
         .props-head { display: flex; align-items: center; gap: 2px; height: 28px; }
         .props-title {
           border: 0; background: transparent; cursor: pointer; padding: 2px 6px; margin-left: -6px;
-          border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4;
+          border-radius: 6px; font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.4;
           color: ${theme.TEXT.secondary};
         }
         .props-title::before { content: attr(data-label); }
@@ -1072,6 +1072,7 @@ ${tagPillCss(theme)}
           .props-row[data-editing]:hover { background: ${theme.BG.hover}; }
           .props-icon:hover { color: ${theme.TEXT.primary}; }
           .props-x:hover { opacity: 1; }
+          .props-tag:hover { background: ${tagPillGround(theme, true)}; }
         }
         .props-rows {
           display: grid; grid-template-columns: 20px fit-content(140px) minmax(0, 1fr);
@@ -1128,12 +1129,19 @@ ${tagPillCss(theme)}
         .props-num { font-variant-numeric: tabular-nums; }
         .props-muted { color: ${theme.TEXT.muted}; }
         .props-empty::before { content: "Empty"; color: ${theme.TEXT.muted}; }
+        /* One pill shape: the text's tag pill (styles/tagPill), its tokens shared;
+           a list's items wear it in neutral. */
         .props-pill {
-          display: inline-flex; align-items: center; gap: 2px; height: 22px; padding: 0 7px;
-          border-radius: 6px; font-size: 13px; background: ${theme.overlay(0.06)}; color: ${theme.TEXT.primary};
+          display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
+          border-radius: ${TAG_PILL_RADIUS}px; font-size: 0.92em; background: ${theme.overlay(0.06)};
+          color: ${theme.TEXT.primary};
         }
-        .props-tag { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.text}; }
-        .props-cb { width: 14px; height: 14px; margin: 0; accent-color: ${theme.ACCENT.primary}; cursor: pointer; }
+        .props-tag { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.tagText}; cursor: pointer; }
+        .props-tag::before { content: "#"; }
+        .props-check {
+          display: flex; align-items: center; justify-content: center; width: 16px; height: 16px;
+          padding: 0; border: 0; background: transparent; cursor: pointer;
+        }
         .props-yaml-field {
           display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px 12px;
           resize: none; overflow: hidden; border-radius: 8px; outline: none;
