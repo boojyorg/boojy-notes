@@ -374,6 +374,17 @@ describe("PropertiesBlock: editing in place", () => {
 });
 
 describe("PropertiesBlock: the type menu", () => {
+  it("the row a menu is about is marked while it is open", () => {
+    const { container: c } = setup();
+    fireEvent.click(row(c, "year").querySelector(".props-icon") as HTMLElement);
+    expect(row(c, "year").hasAttribute("data-menu")).toBe(true);
+    expect(row(c, "title").hasAttribute("data-menu")).toBe(false);
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: "Escape" });
+    fireEvent.contextMenu(itemText(c, "cast", 0));
+    expect(row(c, "cast").hasAttribute("data-menu")).toBe(true);
+    expect(row(c, "year").hasAttribute("data-menu")).toBe(false);
+  });
+
   it("lists the six types with the current one ticked, then Remove", () => {
     const { container: c } = setup();
     fireEvent.click(row(c, "year").querySelector(".props-icon") as HTMLElement);

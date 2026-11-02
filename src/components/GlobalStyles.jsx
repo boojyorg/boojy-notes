@@ -1098,7 +1098,7 @@ ${tagPillCss(theme)}
           :is(.props-add, .props-action):hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
           .props-title:hover { background: ${theme.BG.surface}; }
           .props-row:hover { background: ${theme.BG.surface}; }
-          .props-row[data-editing]:hover { background: ${theme.BG.hover}; }
+          .props-row:is([data-editing], [data-menu]):hover { background: ${theme.BG.hover}; }
           .props-icon:hover { color: ${theme.TEXT.primary}; }
           .props-x:hover { color: ${theme.TEXT.primary}; opacity: 1; }
           .props-tag .props-x:hover { color: inherit; opacity: 1; }
@@ -1116,7 +1116,8 @@ ${tagPillCss(theme)}
           grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start;
           min-height: 30px; border-radius: 6px; margin: 0 -6px; padding: 0 6px;
         }
-        .props-row[data-editing] { background: ${theme.BG.hover}; }
+        /* Edited, or the row its open menu is about: the selected ground. */
+        .props-row:is([data-editing], [data-menu]) { background: ${theme.BG.hover}; }
         .props-icon {
           display: flex; align-items: center; justify-content: center; width: 20px; height: 30px;
           padding: 0; border: 0; background: transparent; color: ${theme.TEXT.secondary}; cursor: pointer;

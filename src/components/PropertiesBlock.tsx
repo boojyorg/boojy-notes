@@ -645,6 +645,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                 editing={editing?.key === p.key ? editing : null}
                 notice={notice?.key === p.key ? notice : null}
                 menuOpen={menu?.key === p.key}
+                itemMenuOpen={itemMenu?.key === p.key}
                 onEdit={(part, caret) => startEdit(p, part, caret)}
                 onDraft={(draft) =>
                   setEditing((ed) => ed && { ...ed, draft, error: undefined, armed: false })
@@ -779,6 +780,8 @@ interface RowProps {
   editing: Editing | null;
   notice: Editing | null;
   menuOpen: boolean;
+  /** A list item's menu is open: the row wears the selected ground, as with its type menu. */
+  itemMenuOpen: boolean;
   onEdit: (part: "value" | "name", caret: number | null) => void;
   onDraft: (draft: string) => void;
   onFinish: () => void;
@@ -1034,6 +1037,7 @@ function PropertyRow(r: RowProps) {
       className="props-row"
       data-key={p.key}
       data-editing={editing ? "" : undefined}
+      data-menu={r.menuOpen || r.itemMenuOpen ? "" : undefined}
       onContextMenu={(e) => {
         if ((e.target as HTMLElement).closest("input")) return;
         e.preventDefault();
