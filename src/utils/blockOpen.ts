@@ -5,23 +5,29 @@
  * arrives with the next render). A request for a block not yet mounted waits
  * for it, and is taken once.
  */
-type Opener = (what?: string) => void;
+/** What to open, and where it was asked from (the block the caret goes back to). */
+export interface OpenRequest {
+  what?: string;
+  from?: string;
+}
+type Opener = (request: OpenRequest) => void;
 const openers = new Map<string, Opener>();
-const pending = new Map<string, string | undefined>();
+const pending = new Map<string, OpenRequest>();
 
-export function openBlock(blockId: string, what?: string): void {
+export function openBlock(blockId: string, what?: string, from?: string): void {
+  const request = { what, from };
   const open = openers.get(blockId);
-  if (open) open(what);
-  else pending.set(blockId, what);
+  if (open) open(request);
+  else pending.set(blockId, request);
 }
 
 /** A mounted block's way in; returns its removal. */
 export function registerBlockOpener(blockId: string, open: Opener): () => void {
   openers.set(blockId, open);
-  if (pending.has(blockId)) {
-    const what = pending.get(blockId);
+  const request = pending.get(blockId);
+  if (request) {
     pending.delete(blockId);
-    open(what);
+    open(request);
   }
   return () => {
     if (openers.get(blockId) === open) openers.delete(blockId);

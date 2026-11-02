@@ -172,7 +172,7 @@ export function useSlashCommands({
       const first = blocks[0];
       if (first?.type === "frontmatter") {
         clearSlashText();
-        openBlock(first.id, "add");
+        openBlock(first.id, "add", block.id);
         return;
       }
       const section = {
@@ -185,7 +185,7 @@ export function useSlashCommands({
         blks[blockIndex] = { ...blks[blockIndex], text: "" };
         blks.splice(0, 0, section);
       });
-      openBlock(section.id, "add-new");
+      openBlock(section.id, "add-new", block.id);
       return;
     }
 

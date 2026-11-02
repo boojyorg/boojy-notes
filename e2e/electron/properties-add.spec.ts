@@ -81,6 +81,11 @@ test("Add property in a section that has some adds after them; Escape adds nothi
     await slashProperties(h);
     await h.page.keyboard.press("Escape");
     await expect(h.page.locator(".props")).toHaveCount(0);
+    // The caret is back on the line the command was typed on: typing goes on there.
+    await h.page.keyboard.type("Typed after.");
+    await waitForFile(h.vault.file("Plain.md"), (t) => t.includes("Typed after."), {
+      label: "the keys typed after Escape reach the note",
+    });
     await sleep(SETTLE_MS);
     expect(h.vault.read("Plain.md")).not.toContain("---");
     expect(h.pageErrors).toEqual([]);

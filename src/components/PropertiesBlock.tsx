@@ -13,6 +13,7 @@ import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import type { Block, NoteData } from "../types/notes";
 import { readNoteIds, withNoteId, writeNoteIds } from "../utils/noteIdLists";
 import { registerBlockOpener } from "../utils/blockOpen";
+import { placeCaret } from "../utils/domHelpers";
 import {
   addProperty,
   type Change,
@@ -152,7 +153,12 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   // remembered on this device by name (`propertyTypes`).
   const [chosen, setChosen] = useState<Record<string, PropType>>(readPropertyTypes);
   // Add property's picker; `fresh` when `/properties` made the section for it.
-  const [picker, setPicker] = useState<{ anchor: MenuAnchor; fresh: boolean } | null>(null);
+  // `from`: the block `/properties` was typed in, where a cancel puts the caret back.
+  const [picker, setPicker] = useState<{
+    anchor: MenuAnchor;
+    fresh: boolean;
+    from?: string;
+  } | null>(null);
   const addRef = useRef<HTMLButtonElement>(null);
 
   // YAML the rows can't read opens as YAML, and stays so once mended, so
@@ -202,7 +208,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   // `/properties` asks this block, perhaps before it is mounted, for its picker.
   useEffect(
     () =>
-      registerBlockOpener(block.id, (what) => {
+      registerBlockOpener(block.id, ({ what, from }) => {
         if (what !== "add" && what !== "add-new") return;
         setFolded((was) => {
           if (was)
@@ -215,7 +221,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
         setAsYaml(false);
         requestAnimationFrame(() => {
           if (addRef.current)
-            setPicker({ anchor: rectAnchor(addRef.current), fresh: what === "add-new" });
+            setPicker({ anchor: rectAnchor(addRef.current), fresh: what === "add-new", from });
         });
       }),
     [block.id, noteId],
@@ -237,8 +243,17 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   };
   const closePicker = () => {
     const fresh = picker?.fresh;
+    const from = picker?.from;
     setPicker(null);
     if (fresh && !text.trim()) props.onRemoveEmpty?.(noteId, block.id);
+    // Cancelled, the caret goes back to the line `/properties` was typed on,
+    // so the next keys go where they were going (they were lost before).
+    // At once, in the Escape's own keystroke: a frame later, keys typed in
+    // that frame went nowhere.
+    if (from) {
+      const line = document.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(from)}"]`);
+      if (line) placeCaret(line, 0, { reveal: false });
+    }
   };
 
   const toggleFold = useCallback(() => {

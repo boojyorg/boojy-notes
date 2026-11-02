@@ -306,7 +306,7 @@ describe("/properties: the note's properties, at the top", () => {
       { id: "block-1", type: "p", text: "" },
     ]);
     registerBlockOpener("new-1", opened)();
-    expect(opened).toHaveBeenCalledWith("add-new");
+    expect(opened).toHaveBeenCalledWith({ what: "add-new", from: "block-1" });
   });
 
   it("opens the picker of a section the note already has, adding no second one", async () => {
@@ -320,7 +320,7 @@ describe("/properties: the note's properties, at the top", () => {
     await t.run(PROPS, 1);
     expect(t.blocks().map((b) => b.type)).toEqual(["frontmatter", "p"]);
     expect(t.blocks()[1].text).toBe("");
-    expect(opened).toHaveBeenCalledWith("add");
+    expect(opened).toHaveBeenCalledWith({ what: "add", from: "block-1" });
     off();
   });
 });
