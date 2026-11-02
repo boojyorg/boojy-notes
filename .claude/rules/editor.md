@@ -259,6 +259,9 @@ never holds a byte sequence the syntax cannot.**
   item, Enter saves and opens the next, unused space adds; no add control. Empty-field Backspace
   picks, then removes. A tag's click edits it; Search is in its menu (right-click, a hold, which
   `useHoldToGrab` leaves to the section). `property-lists.spec.ts`.
+- **The title's menu** (right-click, Shift+F10, a hold): Show Markdown (⌘/'s own path) and
+  Remove all properties, the whole block, fences and comments, in one commit (`removeFrontmatter`).
+  `properties-view.spec.ts`.
 - **Add property and `/properties`** (`PropertyPicker`): tags, names other notes use, or one's
   own, then its type; written last in the type's empty form. An empty value's type is this
   device's (`propertyTypes`), never the vault's. `/properties` makes the section at the top, and

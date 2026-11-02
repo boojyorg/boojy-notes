@@ -148,6 +148,8 @@ const EditableBlock = memo(
     onUpdateBlockProperty,
     onEditFrontmatter,
     onRemoveEmptyFrontmatter,
+    onRemoveFrontmatter,
+    onShowMarkdown,
     onTagClick,
     onFileOpen,
     onFileOpenDefault,
@@ -350,6 +352,8 @@ const EditableBlock = memo(
           onUpdateText={onUpdateText}
           onEditFrontmatter={onEditFrontmatter}
           onRemoveEmpty={onRemoveEmptyFrontmatter}
+          onRemoveAll={onRemoveFrontmatter}
+          onShowMarkdown={onShowMarkdown}
           onTagClick={onTagClick}
           accentColor={accentColor}
         />,

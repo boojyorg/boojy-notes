@@ -50,7 +50,7 @@ import {
 import Menu, { type MenuAnchor, type MenuItem, rectAnchor } from "./Menu";
 import TickBox from "./TickBox";
 import PropertyPicker from "./PropertyPicker";
-import { Tooltip, useTooltip } from "./Tooltip";
+import { shortcutLabel, Tooltip, useTooltip } from "./Tooltip";
 
 /** The notes whose Properties section is folded on this device; open is the default. */
 export const FOLDED_PROPERTIES_KEY = "boojy-folded-properties";
@@ -148,6 +148,10 @@ interface PropertiesBlockProps {
   onEditFrontmatter?: (noteId: string, blockId: string, change: Change) => "ok" | "none" | "unsafe";
   /** Takes away a frontmatter block left with no text (a cancelled `/properties`). */
   onRemoveEmpty?: (noteId: string, blockId: string) => void;
+  /** Takes away the whole frontmatter block, whatever it holds: one undo. */
+  onRemoveAll?: (noteId: string, blockId: string) => void;
+  /** The note's Markdown view, as ⌘/ switches to it. */
+  onShowMarkdown?: () => void;
   /** A tag pill's click: Search filtered by that tag, as a `#tag` in the text does. */
   onTagClick?: (tag: string) => void;
   accentColor?: string;
@@ -175,6 +179,8 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [notice, setNotice] = useState<Editing | null>(null);
+  // The section's own menu, from its title: Show Markdown, Remove all properties.
+  const [sectionMenu, setSectionMenu] = useState<MenuAnchor | null>(null);
   // A list item's own menu: Edit, Search for a tag, Remove.
   const [itemMenu, setItemMenu] = useState<{ key: string; i: number; anchor: MenuAnchor } | null>(
     null,
@@ -569,6 +575,38 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     },
   ];
 
+  const openSectionMenu = (el: Element) => {
+    setEditing(null);
+    setMenu(null);
+    setItemMenu(null);
+    setSectionMenu(rectAnchor(el));
+  };
+  const sectionMenuItems: MenuItem[] = [
+    ...(props.onShowMarkdown
+      ? [
+          {
+            label: "Show Markdown",
+            icon: <SourceViewIcon size={16} />,
+            hint: shortcutLabel({ key: "/" }),
+            action: () => {
+              setSectionMenu(null);
+              props.onShowMarkdown?.();
+            },
+          },
+        ]
+      : []),
+    {
+      label: "Remove all properties",
+      icon: <TrashIcon />,
+      danger: true,
+      rule: !!props.onShowMarkdown,
+      action: () => {
+        setSectionMenu(null);
+        props.onRemoveAll?.(noteId, block.id);
+      },
+    },
+  ];
+
   // YAML opens from a value the rows can't show (or its icon's menu); this is the way back.
   const backToRows = () => {
     setAsYaml(false);
@@ -601,7 +639,21 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
           data-label="Properties"
           aria-label="Properties"
           aria-expanded={!folded}
+          data-menu={sectionMenu ? "" : undefined}
           onClick={toggleFold}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.boojyPhoneAPI?.holdFelt();
+            openSectionMenu(e.currentTarget);
+          }}
+          onKeyDown={(e) => {
+            if ((e.shiftKey && e.key === "F10") || e.key === "ContextMenu") {
+              e.preventDefault();
+              e.stopPropagation();
+              openSectionMenu(e.currentTarget);
+            }
+          }}
         >
           <span className="props-chev" aria-hidden="true">
             <FoldChevronIcon />
@@ -754,6 +806,18 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
           }
           items={menu.confirm ? confirmItems(menuProp, menu.confirm) : menuItems(menuProp, menu)}
           onClose={() => setMenu(null)}
+        />
+      )}
+      {sectionMenu && (
+        <Menu
+          label="Properties"
+          idPrefix="properties-menu-item"
+          testId="properties-menu"
+          anchor={sectionMenu}
+          gapY={4}
+          minWidth={220}
+          items={sectionMenuItems}
+          onClose={() => setSectionMenu(null)}
         />
       )}
       {itemMenu && itemMenuProp && listOf(itemMenuProp)[itemMenu.i] !== undefined && (

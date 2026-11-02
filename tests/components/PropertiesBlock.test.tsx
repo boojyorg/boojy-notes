@@ -385,6 +385,25 @@ describe("PropertiesBlock: the type menu", () => {
     expect(row(c, "year").hasAttribute("data-menu")).toBe(false);
   });
 
+  it("the title's menu: Show Markdown, and Remove all properties", () => {
+    const onRemoveAll = vi.fn();
+    const onShowMarkdown = vi.fn();
+    const { container: c } = setup(TEXT, "n1", { onRemoveAll, onShowMarkdown });
+    const title = c.querySelector(".props-title") as HTMLElement;
+    fireEvent.contextMenu(title);
+    expect(title.hasAttribute("data-menu")).toBe(true);
+    const item = (label: string) =>
+      [...document.querySelectorAll('[data-testid="properties-menu"] [role^="menuitem"]')].find(
+        (el) => el.textContent?.includes(label),
+      ) as HTMLElement;
+    fireEvent.click(item("Show Markdown"));
+    expect(onShowMarkdown).toHaveBeenCalledOnce();
+    expect(title.hasAttribute("data-menu")).toBe(false);
+    fireEvent.keyDown(title, { key: "F10", shiftKey: true });
+    fireEvent.click(item("Remove all properties"));
+    expect(onRemoveAll).toHaveBeenCalledWith("n1", "fm");
+  });
+
   it("lists the six types with the current one ticked, then Remove", () => {
     const { container: c } = setup();
     fireEvent.click(row(c, "year").querySelector(".props-icon") as HTMLElement);

@@ -1054,6 +1054,8 @@ ${tagPillCss(theme)}
           color: ${theme.TEXT.primary}; display: inline-flex; align-items: center; gap: 3px;
         }
         .props-title::before { content: attr(data-label); }
+        /* Its menu open, the title wears the selected ground, as a row does for its own. */
+        .props-title[data-menu] { background: ${theme.BG.hover}; }
         /* The fold chevron is part of the title, shown with the tools (hover, focus); always on the phone. */
         .props-chev {
           display: inline-flex; color: ${theme.TEXT.secondary};
@@ -1065,7 +1067,7 @@ ${tagPillCss(theme)}
         .props[data-arrived] :is(.props-rows, .props-yaml) {
           animation: motion-fade-in var(--motion-enter) var(--ease-enter) backwards;
         }
-        .props:focus-within .props-chev, html.is-phone .props-chev { opacity: 1; }
+        .props:focus-within .props-chev, html.is-phone .props-chev, .props-title[data-menu] .props-chev { opacity: 1; }
         /* Add property: a row of the rows' own grid, shown as the tools are (on hover or focus),
            and always when there is nothing else to show. */
         /* Add property: a row of the rows' own grid, shown on hover or focus,
@@ -1097,6 +1099,7 @@ ${tagPillCss(theme)}
           .props:hover :is(.props-add, .props-chev) { opacity: 1; pointer-events: auto; }
           :is(.props-add, .props-action):hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
           .props-title:hover { background: ${theme.BG.surface}; }
+          .props-title[data-menu]:hover { background: ${theme.BG.hover}; }
           .props-row:hover { background: ${theme.BG.surface}; }
           .props-row:is([data-editing], [data-menu]):hover { background: ${theme.BG.hover}; }
           .props-icon:hover { color: ${theme.TEXT.primary}; }
