@@ -14,7 +14,10 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 
-import PropertiesBlock, { FOLDED_PROPERTIES_KEY } from "../../src/components/PropertiesBlock";
+import PropertiesBlock, {
+  FOLDED_PROPERTIES_KEY,
+  numberTyping,
+} from "../../src/components/PropertiesBlock";
 import type { Block } from "../../src/types/notes";
 import { type Change, runChange } from "../../src/utils/properties";
 
@@ -161,13 +164,17 @@ describe("PropertiesBlock: editing in place", () => {
     expect(onText).not.toHaveBeenCalled();
   });
 
-  it("a number refuses what isn't one, and says so", () => {
-    const { container: c, onText } = setup();
+  it("a number field takes only digits, one point and a leading minus", () => {
+    const { container: c, text } = setup();
     fireEvent.click(value(c, "year").querySelector("button") as HTMLElement);
-    fireEvent.change(input(c), { target: { value: "soon" } });
+    fireEvent.change(input(c), { target: { value: "19a8x.2.5" } });
+    expect(input(c).value).toBe("198.25");
+    fireEvent.change(input(c), { target: { value: "-" } });
     fireEvent.keyDown(input(c), { key: "Enter" });
     expect(c.querySelector(".props-error")?.textContent).toMatch(/Numbers only/);
-    expect(onText).not.toHaveBeenCalled();
+    fireEvent.change(input(c), { target: { value: "1981" } });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(text()).toBe(TEXT.replace("year: 1980", "year: 1981"));
   });
 
   it("the name renames, and refuses a name already used", () => {
@@ -335,5 +342,19 @@ describe("PropertiesBlock: a tag is the text's tag", () => {
     fireEvent.click(c.querySelector('[data-tag="demo"]') as HTMLElement);
     expect(onTagClick).toHaveBeenCalledWith("demo");
     expect(c.querySelector(".props-input")).toBeNull();
+  });
+});
+
+describe("numberTyping", () => {
+  it.each([
+    ["19.2", "19.2"],
+    ["19.a", "19."],
+    ["22ria2", "222"],
+    ["-4.5", "-4.5"],
+    ["4-5", "45"],
+    ["1.2.3", "1.23"],
+    ["abc", ""],
+  ])("%s → %s", (typed, kept) => {
+    expect(numberTyping(typed)).toBe(kept);
   });
 });

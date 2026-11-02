@@ -623,7 +623,7 @@ function PropertyRow(r: RowProps) {
         type={r.type === "date" ? "date" : r.type === "datetime" ? "datetime-local" : "text"}
         inputMode={r.type === "number" ? "decimal" : undefined}
         placeholder="Empty"
-        onDraft={r.onDraft}
+        onDraft={r.type === "number" ? (v) => r.onDraft(numberTyping(v)) : r.onDraft}
         onKey={(e) => scalarKeys(e, editing, r)}
         onBlur={r.onFinish}
       />
@@ -731,6 +731,16 @@ function PropertyRow(r: RowProps) {
       )}
     </div>
   );
+}
+
+/**
+ * A number field takes only what a number is made of: digits, one point and
+ * a leading minus. A letter typed or pasted is simply not taken.
+ */
+export function numberTyping(v: string): string {
+  const sign = v.trimStart().startsWith("-") ? "-" : "";
+  const [whole, ...rest] = v.replace(/[^\d.]/g, "").split(".");
+  return sign + whole + (rest.length ? `.${rest.join("")}` : "");
 }
 
 /** Enter commits, Escape cancels, and ⌘Z cancels a changed draft before it undoes the note. */
