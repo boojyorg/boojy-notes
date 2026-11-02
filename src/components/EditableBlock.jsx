@@ -10,7 +10,7 @@ import { baselineFromTop } from "../utils/typeBaseline";
 import { imageDisplayWidth, imageNoWidthFields, imageWidthFields } from "../utils/imageSize";
 import { isElectron, isPhone } from "../utils/platform";
 import CodeBlock from "./CodeBlock";
-import FrontmatterBlock from "./FrontmatterBlock";
+import PropertiesBlock from "./PropertiesBlock";
 import CalloutBlock from "./CalloutBlock";
 import TableBlock from "./TableBlock";
 import ImageBlock from "./blocks/ImageBlock";
@@ -336,7 +336,18 @@ const EditableBlock = memo(
     }
 
     if (block.type === "frontmatter") {
-      return wholeRoot(<FrontmatterBlock block={block} />, null, null);
+      return wholeRoot(
+        <PropertiesBlock
+          block={block}
+          noteId={noteId}
+          blockIndex={blockIndex}
+          syncGen={syncGen}
+          noteDataRef={noteDataRef}
+          onUpdateText={onUpdateText}
+        />,
+        null,
+        null,
+      );
     }
 
     if (block.type === "callout") {
@@ -661,7 +672,8 @@ const EditableBlock = memo(
       (prev.block.text === next.block.text ||
         (prev.block.type !== "code" &&
           prev.block.type !== "callout" &&
-          prev.block.type !== "math")) &&
+          prev.block.type !== "math" &&
+          prev.block.type !== "frontmatter")) &&
       prev.block.rows === next.block.rows &&
       prev.block.target === next.block.target &&
       prev.block.heading === next.block.heading &&

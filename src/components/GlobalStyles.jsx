@@ -1037,47 +1037,73 @@ ${tagPillCss(theme)}
           background: ${theme.ACCENT.primary}08 !important;
           border-style: dashed !important;
         }
-        /* Frontmatter block styles */
-        .frontmatter-block {
-          border-radius: 8px;
-          border: 1px solid ${theme.BG.divider};
-          background: ${theme.frontmatter};
-          margin: 8px 0;
-          overflow: hidden;
-        }
-        .frontmatter-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 8px 12px;
-          cursor: pointer;
-          font-size: 12px;
-          color: ${theme.TEXT.muted};
-          transition: color var(--motion-fast);
-        }
-        @media (hover: hover) {
-          .frontmatter-header:hover { color: ${theme.TEXT.secondary}; }
-        }
-        /* Grows in when mounted open and shrinks away before it unmounts, on the
-           small clock, as a diagram's code does. */
-        .frontmatter-reveal {
-          display: grid;
-          grid-template-rows: 0fr;
-          transition: grid-template-rows var(--motion-enter) var(--ease-enter);
-        }
-        .frontmatter-reveal[data-open] { grid-template-rows: 1fr; }
-        @starting-style { .frontmatter-reveal[data-open] { grid-template-rows: 0fr; } }
-        .frontmatter-clip { min-height: 0; overflow: hidden; }
-        @media (prefers-reduced-motion: reduce) { .frontmatter-reveal { transition: none; } }
-        .frontmatter-body {
-          padding: 8px 12px;
-          border-top: 1px solid ${theme.BG.divider};
-          font-family: 'SF Mono', 'Fira Code', monospace;
-          font-size: 12px;
-          line-height: 1.6;
+        /* A note's properties (PropertiesBlock): rows on the sheet, never a box;
+           only the YAML field is boxed, as code. Chrome words are CSS, so Find
+           never meets them. */
+        .props { margin: 2px 0 16px; }
+        .props-head { display: flex; align-items: center; gap: 2px; height: 28px; }
+        .props-title {
+          border: 0; background: transparent; cursor: pointer; padding: 2px 6px; margin-left: -6px;
+          border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4;
           color: ${theme.TEXT.secondary};
-          white-space: pre-wrap;
         }
+        .props-title::before { content: attr(data-label); }
+        .props-tools {
+          margin-left: auto; display: flex;
+          opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
+        }
+        .props:focus-within .props-tools, .props[data-yaml] .props-tools { opacity: 1; pointer-events: auto; }
+        .props-tool {
+          display: inline-flex; align-items: center; justify-content: center; height: 26px; min-width: 26px;
+          padding: 0 5px; border: 0; border-radius: 6px; background: transparent; color: ${theme.TEXT.muted};
+          cursor: pointer;
+        }
+        .props-tool svg { width: 15px; height: 15px; flex: none; }
+        .props-tool[aria-pressed="true"] { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.text}; }
+        .props-tool[aria-disabled="true"] { cursor: default; }
+        .props-chev svg { transition: transform var(--motion-fast); }
+        .props[data-folded] .props-chev svg { transform: rotate(-90deg); }
+        @media (hover: hover) {
+          .props:hover .props-tools { opacity: 1; pointer-events: auto; }
+          .props-title:hover { background: ${theme.BG.surface}; }
+          .props-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
+          .props-tool[aria-pressed="true"]:hover { background: ${tagPillGround(theme, true)}; color: ${theme.ACCENT.text}; }
+        }
+        .props-rows {
+          display: grid; grid-template-columns: 20px fit-content(140px) minmax(0, 1fr);
+          column-gap: 12px; margin-top: 2px; font-size: 14px;
+        }
+        .props-row {
+          grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start;
+          min-height: 30px; border-radius: 6px;
+        }
+        .props-icon { display: flex; align-items: center; justify-content: center; height: 30px; color: ${theme.TEXT.muted}; }
+        .props-name {
+          color: ${theme.TEXT.muted}; font-size: 13.5px; line-height: 30px;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .props-value {
+          min-width: 0; min-height: 30px; box-sizing: border-box; display: flex; flex-wrap: wrap;
+          align-items: center; gap: 4px; padding: 3px 0; line-height: 24px; color: ${theme.TEXT.primary}; overflow-wrap: anywhere;
+        }
+        .props-num { font-variant-numeric: tabular-nums; }
+        .props-muted { color: ${theme.TEXT.muted}; }
+        .props-empty::before { content: "Empty"; color: ${theme.TEXT.muted}; }
+        .props-pill {
+          display: inline-flex; align-items: center; gap: 2px; height: 22px; padding: 0 7px;
+          border-radius: 6px; font-size: 13px; background: ${theme.overlay(0.06)}; color: ${theme.TEXT.primary};
+        }
+        .props-tag { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.text}; }
+        .props-cb { width: 14px; height: 14px; margin: 0; accent-color: ${theme.ACCENT.primary}; }
+        .props-yaml-field {
+          display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px 12px;
+          resize: none; overflow: hidden; border-radius: 8px; outline: none;
+          background: ${theme.codeBlockBg}; border: 1px solid ${theme.codeBlockBorder}; color: ${theme.TEXT.primary};
+          font: 13px/1.6 'SF Mono', Menlo, 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace;
+          white-space: pre; overflow-x: auto; tab-size: 2;
+        }
+        .props-yaml-field:focus { border-color: ${theme.codeBlockBorderFocus}; }
+        .props-note { margin: 6px 0 0; font-size: 12.5px; color: ${theme.TEXT.secondary}; }
         /* Settings and setup: hover lifts ink, focus is the inset ring
            (settings/SettingsPrimitives.jsx). */
         ${settingsStyles(theme)}

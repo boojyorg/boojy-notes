@@ -320,3 +320,17 @@ describe("EditableBlock", () => {
     expect(el).toBeInTheDocument();
   });
 });
+
+describe("EditableBlock: properties", () => {
+  // A properties change is a commit, not a sync: the section must repaint on
+  // its text alone, or an edit made through the rows would never show.
+  it("repaints the properties when the frontmatter's text changes, with no sync bump", () => {
+    const block = { id: "fm", type: "frontmatter", text: "year: 1980" };
+    // Everything else the same, so only the text could ask for the render.
+    const same = { noteTitleSet: new Set() };
+    const { container, rerender } = render(<EditableBlock {...baseProps(block, same)} />);
+    expect(container.querySelector(".props-value")?.textContent).toBe("1980");
+    rerender(<EditableBlock {...baseProps({ ...block, text: "year: 1981" }, same)} />);
+    expect(container.querySelector(".props-value")?.textContent).toBe("1981");
+  });
+});

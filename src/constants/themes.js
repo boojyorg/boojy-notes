@@ -86,7 +86,6 @@ export const NIGHT = {
   },
   mark: { bg: "rgba(143, 193, 198, 0.4)" },
   calloutIconHover: "rgba(255,255,255,0.06)",
-  frontmatter: "rgba(255,255,255,0.02)",
   codeSelection: "rgba(255,255,255,0.12)",
   caretColor: "#fff",
   /** Settings' bordered buttons: a step above the elevated ground so an enabled
@@ -195,7 +194,6 @@ export const DAY = {
   },
   mark: { bg: "rgba(143, 193, 198, 0.35)" },
   calloutIconHover: "rgba(0,0,0,0.06)",
-  frontmatter: "rgba(0,0,0,0.02)",
   codeSelection: "rgba(0,0,0,0.12)",
   caretColor: "#14110F",
   button: { bg: "transparent", border: "#DCDCDC" },

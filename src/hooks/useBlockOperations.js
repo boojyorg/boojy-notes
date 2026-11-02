@@ -39,10 +39,12 @@ export function useBlockOperations({
 
   // What a field reads back is settled against what the block holds: a
   // non-breaking space Chromium typed becomes the space it was
-  // (settleTypedSpaces). A code block's textarea types what it is given,
-  // Option+Space included, and code is kept literal.
+  // (settleTypedSpaces). A code block's textarea and the properties' YAML
+  // type what they are given, Option+Space included, kept literal.
   const settledText = (block, newText) =>
-    block.type === "code" ? newText : settleTypedSpaces(newText, block.text);
+    block.type === "code" || block.type === "frontmatter"
+      ? newText
+      : settleTypedSpaces(newText, block.text);
   const updateBlockText = (noteId, blockIndex, newText) =>
     typeIntoBlock(noteId, blockIndex, (block) => ({ text: settledText(block, newText) }));
 

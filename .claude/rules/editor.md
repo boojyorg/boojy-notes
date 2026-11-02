@@ -163,7 +163,6 @@ through state.**
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (no item changes
   parent; `moveStep`). `list-move.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (UI scale).
-- **Frontmatter is never moved** (`reorderFloor`). `frontmatter-order.spec.ts`.
 - **Every root the grip can show beside is in `blockRefs`**; media, code and callout register
   via `wholeRef`, not `elRef` (its repaint paints over the wrapper).
 
@@ -242,6 +241,14 @@ never holds a byte sequence the syntax cannot.**
 - **A field repaints only when it doesn't hold the ref's latest text** (`useOwnedField`);
   structural operations reshape the block as the ref holds it.
 - The serializer enforces the syntax: a cell's newline is `<br>`, a callout title's a space.
+
+## Properties
+
+- **Frontmatter is the note's properties** (`PropertiesBlock`), read with `yaml`
+  (`readProperties`), never written by it. YAML the rows can't read opens as YAML; nothing is
+  written through rows it can't read. The YAML field is a real field, kept literal. Folding is
+  per note, on this device. Never moved (`reorderFloor`). `properties-view.spec.ts`,
+  `frontmatter-order.spec.ts`.
 
 ## Code blocks
 

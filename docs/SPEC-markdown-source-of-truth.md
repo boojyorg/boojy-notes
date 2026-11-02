@@ -104,7 +104,8 @@ that plainly rather than pretending otherwise.
 Allowed *because markdown can express them*:
 
 - All current block types: `p`, `h1`–`h6`, `bullet`, `numbered`, `checkbox`, `blockquote`,
-  `code`, `math`, `callout`, `table`, `image`, `file`, `embed`, `spacer`, `frontmatter`.
+  `code`, `math`, `callout`, `table`, `image`, `file`, `embed`, `spacer`, `frontmatter` (shown
+  as the note's properties; the YAML is read, never rewritten by a library).
 - **Block reorder** — dragging a block up/down = reordering lines in the `.md` file. Never
   across the frontmatter: it is the file's head, nothing is reordered above it and it is never
   moved into the body, because its `---` on line 1 is what makes it frontmatter to every reader.
