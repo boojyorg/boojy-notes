@@ -1056,41 +1056,38 @@ ${tagPillCss(theme)}
         .props-chev svg { width: 14px; height: 14px; transition: transform var(--motion-fast); }
         .props[data-folded] .props-chev svg { transform: rotate(-90deg); }
         .props:focus-within .props-chev, html.is-phone .props-chev { opacity: 1; }
-        .props-tools {
-          margin-left: auto; display: flex;
-          opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
-        }
-        .props:focus-within .props-tools, .props[data-yaml] .props-tools { opacity: 1; pointer-events: auto; }
         /* Add property: a row of the rows' own grid, shown as the tools are (on hover or focus),
            and always when there is nothing else to show. */
+        /* The section's two actions share its last row: Add property in the icon and name
+           columns, Edit as YAML at the values; both shown on hover or focus. */
         .props-add {
-          grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
+          grid-column: 1 / 3; display: grid; grid-template-columns: subgrid; align-items: center;
           height: 30px; margin: 0 -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent;
           font: inherit; font-size: 13.5px; color: ${theme.TEXT.secondary}; cursor: pointer; text-align: left;
           opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
         }
         .props-add svg { width: 15px; height: 15px; justify-self: center; }
-        .props-add span::before { content: attr(data-label); }
-        .props:focus-within .props-add, .props[data-empty] .props-add, .props[data-picking] .props-add {
+        .props-add span::before, .props-action span::before { content: attr(data-label); }
+        .props-action {
+          display: inline-flex; align-items: center; gap: 8px; justify-self: start; height: 30px;
+          margin: 0 -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent;
+          font: inherit; font-size: 13.5px; color: ${theme.TEXT.secondary}; cursor: pointer;
+        }
+        .props-action svg { width: 15px; height: 15px; flex: none; }
+        .props-to-yaml { opacity: 0; pointer-events: none; transition: opacity var(--motion-fast); }
+        /* In YAML the way back is always shown, under the field. */
+        .props-back { margin-top: 6px; }
+        .props:focus-within :is(.props-add, .props-to-yaml), .props[data-empty] :is(.props-add, .props-to-yaml),
+        .props[data-picking] .props-add {
           opacity: 1; pointer-events: auto;
         }
         .props[data-picking] .props-add { background: ${theme.BG.hover}; }
-        /* No hover on the phone: Add property is always there to tap. */
-        html.is-phone .props-add { height: 40px; opacity: 1; pointer-events: auto; }
-        .props-tool {
-          display: inline-flex; align-items: center; justify-content: center; height: 26px; min-width: 26px;
-          padding: 0 5px; border: 0; border-radius: 6px; background: transparent; color: ${theme.TEXT.muted};
-          cursor: pointer;
-        }
-        .props-tool svg { width: 15px; height: 15px; flex: none; }
-        .props-tool[aria-pressed="true"] { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.text}; }
-        .props-tool[aria-disabled="true"] { cursor: default; }
+        /* No hover on the phone: the actions are always there to tap. */
+        html.is-phone :is(.props-add, .props-to-yaml) { height: 40px; opacity: 1; pointer-events: auto; }
         @media (hover: hover) {
-          .props:hover :is(.props-tools, .props-add, .props-chev) { opacity: 1; pointer-events: auto; }
-          .props-add:hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
+          .props:hover :is(.props-add, .props-to-yaml, .props-chev) { opacity: 1; pointer-events: auto; }
+          :is(.props-add, .props-action):hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
           .props-title:hover { background: ${theme.BG.surface}; }
-          .props-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
-          .props-tool[aria-pressed="true"]:hover { background: ${tagPillGround(theme, true)}; color: ${theme.ACCENT.text}; }
           .props-row:hover { background: ${theme.BG.surface}; }
           .props-row[data-editing]:hover { background: ${theme.BG.hover}; }
           .props-icon:hover { color: ${theme.TEXT.primary}; }

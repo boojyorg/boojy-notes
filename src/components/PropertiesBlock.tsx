@@ -417,9 +417,12 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     },
   ];
 
-  const yamlBtn = useRef<HTMLButtonElement>(null);
-  const yamlTip = useTooltip();
-  const yamlLabel = yamlView ? "Back to properties" : "Edit as YAML";
+  const toggleYaml = () => {
+    if (!read.ok) return;
+    setAsYaml((on) => !on);
+    setUnsafe(false);
+    setEditing(null);
+  };
 
   return (
     <section
@@ -449,43 +452,33 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
             <FoldChevronIcon />
           </span>
         </button>
-        {!folded && (
-          <span className="props-tools">
-            <button
-              ref={yamlBtn}
-              type="button"
-              className="props-tool"
-              aria-label={yamlLabel}
-              aria-pressed={yamlView}
-              aria-disabled={!read.ok || undefined}
-              {...yamlTip.handlers}
-              onClick={() => {
-                if (!read.ok) return;
-                setAsYaml((on) => !on);
-                setUnsafe(false);
-                setEditing(null);
-              }}
-            >
-              <SourceViewIcon />
-            </button>
-            {yamlTip.shown && (
-              <Tooltip label={yamlLabel} anchor={yamlBtn.current} placement="below" />
-            )}
-          </span>
-        )}
       </div>
       {!folded &&
         (yamlView ? (
-          <YamlField
-            {...props}
-            notice={
-              !read.ok
-                ? "These properties can't be shown as rows, so they're shown as YAML."
-                : unsafe
-                  ? "Boojy couldn't make that change safely. Edit it here as YAML."
-                  : null
-            }
-          />
+          <>
+            <YamlField
+              {...props}
+              notice={
+                !read.ok
+                  ? "These properties can't be shown as rows, so they're shown as YAML."
+                  : unsafe
+                    ? "Boojy couldn't make that change safely. Edit it here as YAML."
+                    : null
+              }
+            />
+            {/* YAML the rows can't read has no rows to go back to. */}
+            {read.ok && (
+              <button
+                type="button"
+                className="props-action props-back"
+                aria-label="Back to properties"
+                onClick={toggleYaml}
+              >
+                <SourceViewIcon />
+                <span data-label="Back to properties" />
+              </button>
+            )}
+          </>
         ) : (
           <div className="props-rows">
             {propsNow.map((p) => (
@@ -555,6 +548,15 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
             >
               <PlusIcon />
               <span data-label="Add property" />
+            </button>
+            <button
+              type="button"
+              className="props-action props-to-yaml"
+              aria-label="Edit as YAML"
+              onClick={toggleYaml}
+            >
+              <SourceViewIcon />
+              <span data-label="Edit as YAML" />
             </button>
           </div>
         ))}

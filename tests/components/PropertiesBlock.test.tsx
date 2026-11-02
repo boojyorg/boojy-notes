@@ -349,13 +349,12 @@ describe("PropertiesBlock: folding and the YAML", () => {
   });
 
   it("YAML the rows can't read opens as YAML, says so, and shows no rows", () => {
-    const { container: c, getByRole } = setup("tags: [a");
+    const { container: c, queryByRole } = setup("tags: [a");
     expect((c.querySelector(".props-yaml-field") as HTMLTextAreaElement).value).toBe("tags: [a");
     expect(c.querySelector(".props-note")?.textContent).toMatch(/can't be shown as rows/);
     expect(c.querySelectorAll(".props-row")).toHaveLength(0);
-    expect(getByRole("button", { name: "Back to properties" }).getAttribute("aria-disabled")).toBe(
-      "true",
-    );
+    // No rows to go back to, so no way back is offered.
+    expect(queryByRole("button", { name: "Back to properties" })).toBeNull();
   });
 
   it("a value the rows can't change opens the YAML", () => {
