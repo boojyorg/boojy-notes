@@ -1,6 +1,7 @@
 import type { Block, NoteData } from "../types/notes";
 import { findCodeSpans } from "./codeSpans";
 import { LINK_DEST } from "./linkDestination";
+import { propertyValue } from "./properties";
 import { vaultNotes } from "./vaultNotes";
 
 /**
@@ -26,12 +27,13 @@ export const TAG_CHAR_RE = /^[\p{L}\p{M}\p{N}_/-]$/u;
 export const tagKey = (tag: string) => tag.normalize("NFC").toLowerCase();
 
 /**
- * Where tags may come from: ordinary prose. Code blocks, frontmatter and
- * anything that is not text (an image, a file, a divider) are not tag
- * sources, and inside prose an inline code span, a bare URL and a link's
- * address are dropped before the grammar runs, so `color: #fff` in a fence,
+ * Where `#tags` may come from: ordinary prose. Code blocks, frontmatter and
+ * anything that is not text (an image, a file, a divider) are not prose, and
+ * inside prose an inline code span, a bare URL and a link's address are
+ * dropped before the grammar runs, so `color: #fff` in a fence,
  * `` `#include` `` and `example.com/page#top` never become tags. Search still
- * reads all of that as text; that is a separate question.
+ * reads all of that as text; that is a separate question. Frontmatter's own
+ * tags are its `tags:` property (`frontmatterTags`).
  */
 export function tagSourceText(block: Block): string[] {
   switch (block.type) {
@@ -71,6 +73,38 @@ export function tagsInText(text: string): string[] {
   return out;
 }
 
+const WHOLE_TAG_RE = new RegExp(`^${TAG_BODY}$`, "u");
+const frontmatterTagCache = new WeakMap<object, string[]>();
+
+/**
+ * The tags a frontmatter block carries, as Obsidian reads them: `tags:` as a
+ * list, or one string of names split on commas and spaces, each with or
+ * without a leading `#`. A name counts only if the one grammar reads it whole,
+ * so nothing is a tag here that `#name` in prose would not be. Cached per
+ * block: an unchanged block keeps its identity across commits.
+ */
+export function frontmatterTags(block: Block): string[] {
+  const cached = frontmatterTagCache.get(block);
+  if (cached) return cached;
+  const value = propertyValue(block.text ?? "", "tags");
+  const names =
+    typeof value === "string" ? value.split(/[\s,]+/) : Array.isArray(value) ? value : [];
+  const tags: string[] = [];
+  for (const name of names) {
+    if (typeof name !== "string") continue;
+    const bare = name.trim().replace(/^#/, "");
+    if (WHOLE_TAG_RE.test(bare)) tags.push(bare);
+  }
+  frontmatterTagCache.set(block, tags);
+  return tags;
+}
+
+/** Every tag one block carries, as written. */
+function blockTags(block: Block): string[] {
+  if (block.type === "frontmatter") return frontmatterTags(block);
+  return tagSourceText(block).flatMap(tagsInText);
+}
+
 export interface TagEntry {
   /** The spelling seen first; the rows show it. */
   tag: string;
@@ -87,16 +121,14 @@ export function extractAllTags(noteData: NoteData | null | undefined): Map<strin
     const blocks = note?.content?.blocks;
     if (!blocks) continue;
     for (const block of blocks) {
-      for (const text of tagSourceText(block)) {
-        for (const tag of tagsInText(text)) {
-          const key = tagKey(tag);
-          let entry = tags.get(key);
-          if (!entry) {
-            entry = { tag, noteIds: new Set() };
-            tags.set(key, entry);
-          }
-          entry.noteIds.add(noteId);
+      for (const tag of blockTags(block)) {
+        const key = tagKey(tag);
+        let entry = tags.get(key);
+        if (!entry) {
+          entry = { tag, noteIds: new Set() };
+          tags.set(key, entry);
         }
+        entry.noteIds.add(noteId);
       }
     }
   }

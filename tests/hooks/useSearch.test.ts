@@ -93,6 +93,27 @@ describe("useSearch", () => {
     expect(ids(result)).toEqual([]);
   });
 
+  it("a note tagged only in its frontmatter is found by the tag filter", () => {
+    const withProps: NoteData = {
+      ...data,
+      d: {
+        title: "Delta",
+        folder: null,
+        content: {
+          title: "Delta",
+          blocks: [
+            { id: "fm", type: "frontmatter", text: "tags: [work]" } as Block,
+            p("b-d", "plain"),
+          ],
+        },
+        lastModified: 4,
+      } as never,
+    };
+    const { result } = setup(withProps);
+    act(() => result.current.setTagFilter("work", ""));
+    expect(ids(result)).toEqual(["d", "c", "a"]);
+  });
+
   it("the folder filter takes the folder and its subfolders, combines with the tag, and clears", () => {
     const inF = (title: string, text: string, folder: string | null, t: number) =>
       ({ ...(note(title, text, t) as object), folder }) as never;
