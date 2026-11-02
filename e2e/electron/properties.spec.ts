@@ -141,3 +141,33 @@ test("an outside change to the property being edited is never written over", asy
     await h.close();
   }
 });
+
+test("found in review: spaces kept on a blur, an anchor's holder kept, a vanished row's draft kept", async () => {
+  const SPACED = '---\ntitle: "  A  "\n---\nBody.\n';
+  const ANCHORED = "---\nsource: &value one\ncopy: *value\n---\nBody.\n";
+  const h = await launchApp({ "Spaced.md": SPACED, "Anchored.md": ANCHORED, "Film.md": NOTE });
+  try {
+    await h.openNote("Spaced");
+    await h.page.locator(`${row("title")} .props-val`).click();
+    await h.page.locator("[data-block-type='p']").first().click();
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Spaced.md"), "opening and leaving writes nothing").toBe(SPACED);
+
+    await h.openNote("Anchored");
+    await h.page.locator(`${row("source")} .props-icon`).click();
+    await h.page.getByRole("menuitem", { name: "Remove" }).click();
+    await expect(h.page.locator(".props-note")).toContainText("couldn't make that change safely");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Anchored.md"), "no dangling alias written").toBe(ANCHORED);
+
+    await h.openNote("Film");
+    await h.page.locator(`${row("title")} .props-val`).click();
+    await h.page.keyboard.press(`${MOD}+a`);
+    await h.page.keyboard.type("Mine");
+    h.vault.write("Film.md", NOTE.replace("title:", "renamed:"));
+    await expect(h.page.locator(".props-notice[data-lost]")).toContainText("It read “Mine”");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
