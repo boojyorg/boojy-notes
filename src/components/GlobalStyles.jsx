@@ -1045,9 +1045,17 @@ ${tagPillCss(theme)}
         .props-title {
           border: 0; background: transparent; cursor: pointer; padding: 2px 6px; margin-left: -6px;
           border-radius: 6px; font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.4;
-          color: ${theme.TEXT.primary};
+          color: ${theme.TEXT.primary}; display: inline-flex; align-items: center; gap: 3px;
         }
         .props-title::before { content: attr(data-label); }
+        /* The fold chevron is part of the title, shown with the tools (hover, focus); always on the phone. */
+        .props-chev {
+          display: inline-flex; color: ${theme.TEXT.muted};
+          opacity: 0; transition: opacity var(--motion-fast);
+        }
+        .props-chev svg { width: 14px; height: 14px; transition: transform var(--motion-fast); }
+        .props[data-folded] .props-chev svg { transform: rotate(-90deg); }
+        .props:focus-within .props-chev, html.is-phone .props-chev { opacity: 1; }
         .props-tools {
           margin-left: auto; display: flex;
           opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
@@ -1077,10 +1085,8 @@ ${tagPillCss(theme)}
         .props-tool svg { width: 15px; height: 15px; flex: none; }
         .props-tool[aria-pressed="true"] { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.text}; }
         .props-tool[aria-disabled="true"] { cursor: default; }
-        .props-chev svg { transition: transform var(--motion-fast); }
-        .props[data-folded] .props-chev svg { transform: rotate(-90deg); }
         @media (hover: hover) {
-          .props:hover :is(.props-tools, .props-add) { opacity: 1; pointer-events: auto; }
+          .props:hover :is(.props-tools, .props-add, .props-chev) { opacity: 1; pointer-events: auto; }
           .props-add:hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
           .props-title:hover { background: ${theme.BG.surface}; }
           .props-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
@@ -1149,7 +1155,6 @@ ${tagPillCss(theme)}
           min-width: 0; min-height: 30px; box-sizing: border-box; display: flex; flex-wrap: wrap;
           align-items: center; gap: 4px; padding: 3px 0; line-height: 24px; color: ${theme.TEXT.primary}; overflow-wrap: anywhere;
         }
-        .props-num { font-variant-numeric: tabular-nums; }
         .props-muted { color: ${theme.TEXT.muted}; }
         .props-empty::before { content: "Empty"; color: ${theme.TEXT.muted}; }
         /* One pill shape: the text's tag pill (styles/tagPill), its tokens shared;

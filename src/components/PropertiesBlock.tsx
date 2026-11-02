@@ -418,9 +418,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   ];
 
   const yamlBtn = useRef<HTMLButtonElement>(null);
-  const foldBtn = useRef<HTMLButtonElement>(null);
   const yamlTip = useTooltip();
-  const foldTip = useTooltip();
   const yamlLabel = yamlView ? "Back to properties" : "Edit as YAML";
 
   return (
@@ -446,7 +444,11 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
           aria-label="Properties"
           aria-expanded={!folded}
           onClick={toggleFold}
-        />
+        >
+          <span className="props-chev" aria-hidden="true">
+            <ChevronDownIcon />
+          </span>
+        </button>
         {!folded && (
           <span className="props-tools">
             <button
@@ -470,20 +472,6 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
               <Tooltip label={yamlLabel} anchor={yamlBtn.current} placement="below" />
             )}
           </span>
-        )}
-        <button
-          ref={foldBtn}
-          type="button"
-          className="props-tool props-chev"
-          aria-label={folded ? "Show properties" : "Hide properties"}
-          aria-expanded={!folded}
-          {...foldTip.handlers}
-          onClick={toggleFold}
-        >
-          <ChevronDownIcon />
-        </button>
-        {foldTip.shown && (
-          <Tooltip label={folded ? "Show" : "Hide"} anchor={foldBtn.current} placement="below" />
         )}
       </div>
       {!folded &&
@@ -776,7 +764,7 @@ function PropertyRow(r: RowProps) {
         ) : dated ? (
           shownDate(shown)
         ) : r.type === "number" ? (
-          <span className="props-num">{shown}</span>
+          shown
         ) : (
           shown
         )}

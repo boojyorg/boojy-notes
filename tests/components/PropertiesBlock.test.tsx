@@ -330,7 +330,7 @@ describe("PropertiesBlock: the type menu", () => {
 describe("PropertiesBlock: folding and the YAML", () => {
   it("folds to its header, unmounting the rows, and remembers it per note", () => {
     const { container: c } = setup();
-    fireEvent.click(c.querySelector(".props-chev") as HTMLElement);
+    fireEvent.click(c.querySelector(".props-title") as HTMLElement);
     expect(c.querySelectorAll(".props-row")).toHaveLength(0);
     expect(JSON.parse(localStorage.getItem(FOLDED_PROPERTIES_KEY) as string)).toEqual(["n1"]);
     cleanup();
