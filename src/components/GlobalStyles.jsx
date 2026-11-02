@@ -1,5 +1,11 @@
 import { useTheme } from "../hooks/useTheme";
-import { REMOVE_X_ALPHA, TAG_PILL_RADIUS, tagPillCss, tagPillGround } from "../styles/tagPill";
+import {
+  REMOVE_X_ALPHA,
+  TAG_PILL_RADIUS,
+  TAG_PILL_TEXT_LIFT,
+  tagPillCss,
+  tagPillGround,
+} from "../styles/tagPill";
 import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W, TOUCH } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
@@ -1169,7 +1175,7 @@ ${tagPillCss(theme)}
         .props-list { flex: 1; min-width: 0; align-self: stretch; column-gap: 2px; row-gap: 2px; }
         .props-item {
           display: inline-flex; align-items: center; max-width: 100%; min-height: 24px;
-          border-radius: ${TAG_PILL_RADIUS}px; padding: 0 2px 0 6px; margin-left: -6px; margin-right: 4px;
+          border-radius: ${TAG_PILL_RADIUS}px; padding: 0 2px 0 6px; margin-left: -6px; margin-right: 6px;
           color: ${theme.TEXT.primary};
         }
         .props-item-text {
@@ -1180,10 +1186,12 @@ ${tagPillCss(theme)}
         .props-item[data-armed] { background: ${bandFill(theme.ACCENT.primary, theme.name)}; }
         .props-item[data-editing] .props-input { field-sizing: content; min-width: 4ch; flex: 0 1 auto; max-width: 100%; }
         .props-tag {
-          height: 22px; padding: 0 5px 0 8px; margin-left: 0; font-size: 0.92em;
+          height: 22px; padding: 0 5px 0 8px; margin-left: 0; margin-right: 4px; font-size: 0.92em;
           background: ${tagPillGround(theme)}; color: ${theme.ACCENT.tagText};
         }
         .props-tag .props-x { color: inherit; opacity: ${REMOVE_X_ALPHA.tag}; }
+        /* The words sit half a pixel high, as the text's own pill sets them; the × stays centred. */
+        .props-tag :is(.props-item-text, .props-input) { position: relative; top: -${TAG_PILL_TEXT_LIFT}px; }
         .props-tag[data-editing] { background: ${tagPillGround(theme)}; }
         .props-tag .props-input { color: inherit; }
         .props-tag[data-armed] { box-shadow: inset 0 0 0 1.5px ${theme.ACCENT.tagText}; }

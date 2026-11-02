@@ -8,7 +8,13 @@ import type { Theme } from "../hooks/useTheme";
  * pill is CSS on the span the renderer already draws. Inline padding never
  * grows the line box.
  */
-export const TAG_PILL_PADDING = "2px 8px";
+/**
+ * Half a pixel more below than above: the text box keeps room for descenders that `#`,
+ * capitals and most lowercase never use, so evenly padded, the letters sat 0.5px low.
+ */
+export const TAG_PILL_PADDING = "1.5px 8px 2.5px";
+/** The same lift inside a pill whose box is fixed and centred (a tag in Properties). */
+export const TAG_PILL_TEXT_LIFT = 0.5;
 export const TAG_PILL_RADIUS = 999;
 export const TAG_PILL_FONT = "0.92em";
 /** Ground alpha by theme name (`day` / `night`), rest and hover. */
