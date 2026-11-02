@@ -106,7 +106,8 @@ test("a type picked is named in its row and written once; Escape writes nothing"
       .click();
     const name = h.page.locator("[data-draft] input");
     await expect(name).toBeFocused();
-    await expect(name).toHaveValue("date");
+    await expect(name).toHaveValue("");
+    await expect(name).toHaveAttribute("placeholder", "date");
     await sleep(SETTLE_MS);
     // `/properties` has made the (empty) section; the row not yet named has written nothing.
     expect(h.vault.read("Film.md"), "nothing written for a row not yet named").not.toContain(
@@ -127,7 +128,7 @@ test("a type picked is named in its row and written once; Escape writes nothing"
       .getByTestId("property-picker")
       .getByRole("option", { name: "Text", exact: true })
       .click();
-    await expect(h.page.locator("[data-draft] input")).toHaveValue("text");
+    await expect(h.page.locator("[data-draft] input")).toHaveAttribute("placeholder", "text");
     const before = h.vault.read("Film.md");
     await h.page.keyboard.press("Escape");
     await expect(h.page.locator("[data-draft]")).toHaveCount(0);
@@ -138,6 +139,65 @@ test("a type picked is named in its row and written once; Escape writes nothing"
     await h.page.locator("[data-block-type='p']").first().click();
     await h.page.keyboard.press(`${MOD}+z`);
     await waitForFile(file, (t) => !t.includes("watched"), { label: "one undo" });
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("`---` on a note's first line opens Properties; ⌘Z gives the dashes back; lower down it's a divider", async () => {
+  const h = await launchApp({ "Film.md": BODY });
+  const file = h.vault.file("Film.md");
+  try {
+    await h.openNote("Film");
+    const first = h.page.locator("[data-block-type='p']").first();
+    await first.click();
+    await h.page.keyboard.press("Meta+ArrowLeft");
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.press("ArrowUp");
+    await h.page.keyboard.type("---");
+    await h.page.keyboard.press("Enter");
+    await expect(h.page.getByTestId("property-picker")).toBeVisible();
+    await h.page.getByTestId("property-picker").getByRole("option", { name: "Tags" }).click();
+    await h.page.keyboard.type("film");
+    await h.page.keyboard.press("Enter");
+    await waitForFile(file, (t) => t.startsWith("---\ntags: [film]\n---\n"), {
+      label: "the section, from three dashes",
+    });
+    await h.page.keyboard.press("Escape");
+
+    // Lower down, three dashes are a divider, as ever.
+    await h.page.locator("[data-block-type='p']").last().click();
+    await h.page.keyboard.press("Meta+ArrowRight");
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.type("---");
+    await h.page.keyboard.press("Enter");
+    await expect(h.page.locator("[data-block-type='spacer']")).toHaveCount(1);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("`--- ` on the first line, then Escape, gives the dashes back, and typing goes on", async () => {
+  const h = await launchApp({ "Film.md": BODY });
+  const file = h.vault.file("Film.md");
+  try {
+    await h.openNote("Film");
+    await h.page.locator("[data-block-type='p']").first().click();
+    await h.page.keyboard.press("Meta+ArrowLeft");
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.press("ArrowUp");
+    await h.page.keyboard.type("--- ");
+    await expect(h.page.getByTestId("property-picker")).toBeVisible();
+    await h.page.keyboard.press("Escape");
+    await expect(h.page.locator(".props")).toHaveCount(0);
+    await expect(h.page.locator("[data-block-type='p']").first()).toHaveText("---");
+    // The caret is after the dashes: what is typed next follows them.
+    await h.page.keyboard.type("x");
+    await waitForFile(file, (t) => t.startsWith("---x\n"), {
+      label: "the dashes back, typing after them",
+    });
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

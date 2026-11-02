@@ -146,11 +146,15 @@ const DRAFT_NAME: Record<PropType, string> = {
 /** A property being added: on screen, named in its row, written only once it has its name. */
 interface Draft {
   type: PropType;
+  /** What is typed; empty, the property takes `fallback`, shown in grey until then. */
   name: string;
+  fallback: string;
   error?: string;
   /** From a fresh `/properties`: dropped, the empty section goes too and the caret goes back. */
   fresh?: boolean;
   from?: string;
+  /** What the line that asked held (`---`), given back if nothing is added. */
+  literal?: string;
 }
 
 interface MenuState {
@@ -168,7 +172,11 @@ interface PropertiesBlockProps {
   onUpdateText: (noteId: string, blockIndex: number, text: string) => void;
   onEditFrontmatter?: (noteId: string, blockId: string, change: Change) => "ok" | "none" | "unsafe";
   /** Takes away a frontmatter block left with no text (a cancelled `/properties`). */
-  onRemoveEmpty?: (noteId: string, blockId: string) => void;
+  onRemoveEmpty?: (
+    noteId: string,
+    blockId: string,
+    restore?: { blockId: string; text: string },
+  ) => void;
   /** Takes away the whole frontmatter block, whatever it holds: one undo. */
   onRemoveAll?: (noteId: string, blockId: string) => void;
   /** The note's Markdown view, as ⌘/ switches to it. */
@@ -215,6 +223,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     anchor: MenuAnchor;
     fresh: boolean;
     from?: string;
+    literal?: string;
   } | null>(null);
   const addRef = useRef<HTMLButtonElement>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -266,7 +275,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   // `/properties` asks this block, perhaps before it is mounted, for its picker.
   useEffect(
     () =>
-      registerBlockOpener(block.id, ({ what, from }) => {
+      registerBlockOpener(block.id, ({ what, from, literal }) => {
         if (what !== "add" && what !== "add-new") return;
         setFolded((was) => {
           if (was)
@@ -279,7 +288,12 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
         setAsYaml(false);
         requestAnimationFrame(() => {
           if (addRef.current)
-            setPicker({ anchor: rectAnchor(addRef.current), fresh: what === "add-new", from });
+            setPicker({
+              anchor: rectAnchor(addRef.current),
+              fresh: what === "add-new",
+              from,
+              literal,
+            });
         });
       }),
     [block.id, noteId],
@@ -289,7 +303,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   const choosePicked = (name: string, type: PropType | null) => {
     setPicker(null);
     if (commit(addProperty(name, type)) !== "ok") {
-      leaveFresh(picker?.fresh, picker?.from);
+      leaveFresh(picker?.fresh, picker?.from, picker?.literal);
       return;
     }
     if (type) setChosen(rememberPropertyType(name, type));
@@ -305,19 +319,27 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   };
   const closePicker = () => {
     setPicker(null);
-    leaveFresh(picker?.fresh, picker?.from);
+    leaveFresh(picker?.fresh, picker?.from, picker?.literal);
   };
   /** A fresh `/properties` left with nothing added: the section goes, the caret back where it was. */
-  const leaveFresh = (fresh?: boolean, from?: string) => {
-    if (fresh && !text.trim()) props.onRemoveEmpty?.(noteId, block.id);
-    // Cancelled, the caret goes back to the line `/properties` was typed on,
-    // so the next keys go where they were going (they were lost before).
-    // At once, in the Escape's own keystroke: a frame later, keys typed in
-    // that frame went nowhere.
-    if (from) {
-      const line = document.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(from)}"]`);
-      if (line) placeCaret(line, 0, { reveal: false });
+  const leaveFresh = (fresh?: boolean, from?: string, literal?: string) => {
+    const line = from
+      ? document.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(from)}"]`)
+      : null;
+    const giveBack = !!(fresh && !text.trim() && literal && from && line);
+    // The `---` that asked for it is the line's again: written into the line as typing would
+    // be, and committed with the section's going, in one commit.
+    if (giveBack && line && literal) line.textContent = literal;
+    if (fresh && !text.trim()) {
+      if (giveBack && from && literal)
+        props.onRemoveEmpty?.(noteId, block.id, { blockId: from, text: literal });
+      else props.onRemoveEmpty?.(noteId, block.id);
     }
+    // Cancelled, the caret goes back to the line `/properties` was typed on
+    // (after the dashes it gives back), so the next keys go where they were
+    // going. At once, in the Escape's own keystroke: a frame later, keys typed
+    // in that frame went nowhere.
+    if (line) placeCaret(line, giveBack && literal ? literal.length : 0, { reveal: false });
   };
 
   // A type picked: its row appears, named after it and ready to be renamed; nothing is written
@@ -325,16 +347,18 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   const pickType = (type: PropType) => {
     setDraft({
       type,
-      name: freeName(text, DRAFT_NAME[type]),
+      name: "",
+      fallback: freeName(text, DRAFT_NAME[type]),
       fresh: picker?.fresh,
       from: picker?.from,
+      literal: picker?.literal,
     });
     setPicker(null);
     setEditing(null);
   };
   /** The draft, written; false (it says why) when its name can't be one. */
   const commitDraft = (d: Draft): boolean => {
-    const name = d.name.trim();
+    const name = d.name.trim() || d.fallback;
     const problem = nameProblem(text, "", name);
     if (problem) {
       setDraft({ ...d, error: problem });
@@ -346,7 +370,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   };
   const dropDraft = (d: Draft) => {
     setDraft(null);
-    leaveFresh(d.fresh, d.from);
+    leaveFresh(d.fresh, d.from, d.literal);
   };
 
   // The rows come and go at once (a hidden field must never keep focus); only
@@ -822,7 +846,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                 onCancel={() => dropDraft(draft)}
                 onLeave={() => {
                   // A press elsewhere adds it, as a field's blur saves; a name that can't be one goes.
-                  if (nameProblem(text, "", draft.name.trim())) dropDraft(draft);
+                  if (nameProblem(text, "", draft.name.trim() || draft.fallback)) dropDraft(draft);
                   else commitDraft(draft);
                 }}
               />
@@ -1245,7 +1269,7 @@ function PropertyRow(r: RowProps) {
   );
 }
 
-/** The property being added: its type's icon, its name selected to be typed over, no value yet. */
+/** The property being added: its type's icon, its name to type (its default in grey), no value yet. */
 function DraftRow({
   draft,
   onName,
@@ -1264,7 +1288,6 @@ function DraftRow({
   const settled = useRef(false);
   useLayoutEffect(() => {
     ref.current?.focus({ preventScroll: true });
-    ref.current?.select();
   }, []);
   return (
     <div className="props-row" data-editing="" data-draft="">
@@ -1276,6 +1299,7 @@ function DraftRow({
           ref={ref}
           className="props-input"
           value={draft.name}
+          placeholder={draft.fallback}
           spellCheck={false}
           autoComplete="off"
           enterKeyHint="next"

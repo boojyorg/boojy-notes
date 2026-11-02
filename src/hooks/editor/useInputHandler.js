@@ -11,6 +11,7 @@ import {
   TYPED_IMAGE_RE,
   TYPED_TABLE_RE,
   lineKind,
+  opensProperties,
   typedBlockType,
   typedFenceLang,
   typedTableColumns,
@@ -119,6 +120,13 @@ export function useInputHandler({
       // A formula's source opens in its panel, the caret in it.
       if (typedType === "math") {
         openMathBlock(noteId, blockIndex);
+        return;
+      }
+      // `--- ` on the first line of a note without properties opens them, as
+      // `/properties` does (one commit, so ⌘Z brings the dashes back).
+      if (typedType === "spacer" && opensProperties(text, blockIndex, currentBlock.type)) {
+        const command = SLASH_COMMANDS.find((c) => c.type === "frontmatter");
+        if (command) executeSlashCommand(noteId, blockIndex, command, { literal: "---" });
         return;
       }
       // A divider holds no text and takes no caret, so it ends in a fresh

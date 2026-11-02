@@ -21,6 +21,8 @@ import { type MenuAnchor, menuSurface } from "./Menu";
 const PICKER_W = 248;
 const ROW_H = 30;
 const MAX_NAMES = 6;
+/** The list's most, under the field, before it scrolls: about nine rows. */
+const LIST_MAX_H = 296;
 const TYPES: PropType[] = ["text", "list", "number", "checkbox", "date", "datetime"];
 const TYPE_LABEL: Record<PropType, string> = {
   text: "Text",
@@ -56,31 +58,34 @@ export function pickRows(
   const typed = query.trim();
   const q = typed.toLowerCase();
   const has = (n: string) => have.has(n.toLowerCase());
-  const matches = (n: string) => !q || n.toLowerCase().includes(q);
+  // A name matches at its start or a word's: `c` finds cast, not source.
+  const matches = (n: string) => {
+    const l = n.toLowerCase();
+    return !q || l.startsWith(q) || l.split(/[\s_\-/.]+/).some((w) => w.startsWith(q));
+  };
   const rows: PickRow[] = [];
-  if (!has("tags") && matches("tags")) rows.push({ kind: "tags" });
   if (!q) {
+    if (!has("tags")) rows.push({ kind: "tags" });
     for (const type of TYPES) rows.push({ kind: "type", type, name: "" });
     return rows;
   }
-  for (const n of names.filter((n) => !has(n.name) && matches(n.name)).slice(0, MAX_NAMES))
-    rows.push({
-      kind: "name",
-      name: n.name,
-      type: n.type ?? types[n.name] ?? null,
-      count: n.count,
-    });
-  if (q === "tags" || has(q)) {
-    if (!rows.length) rows.push({ kind: "note", text: "This note already has that property" });
-    return rows;
-  }
-  const why = problem(typed);
-  if (why) {
-    rows.push({ kind: "note", text: why });
-    return rows;
-  }
-  if (!names.some((n) => n.name.toLowerCase() === q)) rows.push({ kind: "add", name: typed });
-  for (const type of TYPES) rows.push({ kind: "type", type, name: typed });
+  const vault = names.filter((n) => !has(n.name) && matches(n.name));
+  const exact = vault.find((n) => n.name.toLowerCase() === q);
+  const nameRow = (n: VaultName): PickRow => ({
+    kind: "name",
+    name: n.name,
+    type: n.type ?? types[n.name] ?? null,
+    count: n.count,
+  });
+  const why = q === "tags" || has(q) ? null : problem(typed);
+  // First, what Enter does: the name other notes use, if it is exactly that; else the typed one.
+  if (exact) rows.push(nameRow(exact));
+  else if (q !== "tags" && !has(q) && !why) rows.push({ kind: "add", name: typed });
+  if (!has("tags") && matches("tags")) rows.push({ kind: "tags" });
+  for (const n of vault.filter((n) => n !== exact).slice(0, MAX_NAMES)) rows.push(nameRow(n));
+  if (has(q)) rows.push({ kind: "note", text: "This note already has that property" });
+  else if (why) rows.push({ kind: "note", text: why });
+  else if (q !== "tags") for (const type of TYPES) rows.push({ kind: "type", type, name: typed });
   return rows;
 }
 
@@ -123,6 +128,7 @@ export default function PropertyPicker({
   const [selected, setSelected] = useState(-1);
   const menuRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const rows: PickRow[] = useMemo(
     () => pickRows(query, have, names, types, problem),
@@ -168,6 +174,10 @@ export default function PropertyPicker({
     do i = i < 0 ? (by > 0 ? 0 : n - 1) : (i + by + n) % n;
     while (!pickable(rows[i]));
     setSelected(i);
+    // The list scrolls under the field: the picked row is kept in view.
+    requestAnimationFrame(() =>
+      listRef.current?.querySelector(`#property-pick-${i}`)?.scrollIntoView({ block: "nearest" }),
+    );
   };
 
   const onKey = (e: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -178,8 +188,9 @@ export default function PropertyPicker({
       onClose();
     } else if (e.key === "Enter") {
       e.preventDefault();
-      // Nothing picked: Enter adds the typed name as it is.
-      choose(selected >= 0 ? rows[selected] : rows.find((r) => r.kind === "add"));
+      // Nothing picked: Enter does the first row, once something is typed (the typed name,
+      // or the name other notes use that it is exactly).
+      choose(selected >= 0 ? rows[selected] : query.trim() ? rows.find(pickable) : undefined);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       step(1);
@@ -235,7 +246,12 @@ export default function PropertyPicker({
         }}
       />
       <div style={{ height: 1, background: BG.divider, margin: "0 6px" }} />
-      <div role="listbox" aria-label="Properties to add" style={{ padding: MENU_PAD }}>
+      <div
+        ref={listRef}
+        role="listbox"
+        aria-label="Properties to add"
+        style={{ padding: MENU_PAD, maxHeight: LIST_MAX_H, overflowY: "auto" }}
+      >
         {rows.map((row, i) => {
           if (row.kind === "note")
             return (
@@ -327,7 +343,7 @@ export default function PropertyPicker({
                     {row.count === 1 ? "1 note" : `${row.count} notes`}
                   </span>
                 )}
-                {row.kind === "add" && (selected < 0 || active) && (
+                {i === rows.findIndex(pickable) && typed && (selected < 0 || active) && (
                   <span
                     aria-hidden="true"
                     style={{ flex: "none", fontSize: 12, color: TEXT.muted }}

@@ -247,9 +247,10 @@ export function useBlockOperations({
    * The note's frontmatter block goes, fences, properties and comments alike:
    * one commit, so one ⌘Z brings it all back (Remove all properties).
    * `onlyIfEmpty`: only a block with no text at all (a `/properties` left
-   * with nothing added).
+   * with nothing added). `restore`: `{ blockId, text }`, the line that asked
+   * for it given back its text in the same commit (`---` cancelled is `---`).
    */
-  const removeFrontmatter = (noteId, blockId, { onlyIfEmpty = false } = {}) =>
+  const removeFrontmatter = (noteId, blockId, { onlyIfEmpty = false, restore } = {}) =>
     commitNoteData(
       editBlocks(noteId, (blocks) => {
         const block = blocks[0];
@@ -257,10 +258,12 @@ export function useBlockOperations({
         if (onlyIfEmpty && (block.text ?? "").trim()) return false;
         blocks.splice(0, 1);
         if (!blocks.length) blocks.push({ id: genBlockId(), type: "p", text: "" });
+        const back = restore && blocks.findIndex((b) => b.id === restore.blockId);
+        if (back >= 0) blocks[back] = { ...blocks[back], text: restore.text };
       }),
     );
-  const removeEmptyFrontmatter = (noteId, blockId) =>
-    removeFrontmatter(noteId, blockId, { onlyIfEmpty: true });
+  const removeEmptyFrontmatter = (noteId, blockId, restore) =>
+    removeFrontmatter(noteId, blockId, { onlyIfEmpty: true, restore });
 
   const updateBlockProperty = (noteId, blockIndex, updates) =>
     commitNoteData(patchBlock(noteId, blockIndex, updates));

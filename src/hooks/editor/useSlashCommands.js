@@ -185,7 +185,7 @@ export function useSlashCommands({
         blks[blockIndex] = { ...blks[blockIndex], text: "" };
         blks.splice(0, 0, section);
       });
-      openBlock(section.id, "add-new", block.id);
+      openBlock(section.id, "add-new", block.id, opts.literal);
       return;
     }
 

@@ -263,9 +263,11 @@ never holds a byte sequence the syntax cannot.**
   Remove all properties, the whole block, fences and comments, in one commit (`removeFrontmatter`).
   `properties-view.spec.ts`.
 - **Add property and `/properties`** (`PropertyPicker`): types first (tags, then the six), the
-  same in every note; names other notes use only when typed, with their type and count. A type
-  picked is a draft row named after it (`freeName`), written once on Enter, Tab or a press
-  elsewhere; Escape writes nothing. A typed name: Enter adds it with no type (its value
+  same in every note; names other notes use only when typed (a name's or a word's start), with
+  their type and count, under Enter's own row; the list scrolls. A type picked is a draft row,
+  its name to type over the type's in grey (`freeName`), written once on Enter, Tab or a press
+  elsewhere; Escape writes nothing. `---` on a note's first line opens it (`opensProperties`);
+  cancelled, the dashes come back. A typed name: Enter adds it with no type (its value
   decides), or one is picked under "Or pick its type". Nothing is picked as it opens. Written
   last in the type's empty form. An empty value's type is this
   device's (`propertyTypes`), never the vault's. `/properties` makes the section at the top, and

@@ -546,11 +546,11 @@ describe("PropertiesBlock: Add property", () => {
         (r) => r.textContent === "Number",
       ) as HTMLElement,
     );
-    // A row named after its type, the name selected to be typed over; nothing written yet.
+    // A row whose name is to type, its type's in grey until then; nothing written yet.
     const name = c.querySelector("[data-draft] input") as HTMLInputElement;
-    expect(name.value).toBe("number");
+    expect(name.value).toBe("");
+    expect(name.placeholder).toBe("number");
     expect(document.activeElement).toBe(name);
-    expect([name.selectionStart, name.selectionEnd]).toEqual([0, 6]);
     expect(text()).toBe("title: A");
     fireEvent.change(name, { target: { value: "mood" } });
     fireEvent.keyDown(name, { key: "Enter" });
@@ -576,15 +576,20 @@ describe("PropertiesBlock: Add property", () => {
     fireEvent.keyDown(pick("Text"), { key: "Escape" });
     expect(c.querySelector("[data-draft]")).toBeNull();
     expect(text()).toBe("title: A\ndate: 2026-01-01");
+    // Enter with nothing typed takes the grey name; a taken one gets a number.
+    const plain = pick("Text");
+    fireEvent.keyDown(plain, { key: "Enter" });
+    expect(text()).toBe("title: A\ndate: 2026-01-01\ntext:");
+    fireEvent.keyDown(input(c), { key: "Escape" });
     const name = pick("Date");
-    expect(name.value).toBe("date 2");
+    expect(name.placeholder).toBe("date 2");
     fireEvent.change(name, { target: { value: "title" } });
     fireEvent.keyDown(name, { key: "Enter" });
     expect(c.querySelector("[data-draft] .props-error")?.textContent).toMatch(/already called/);
-    expect(text()).toBe("title: A\ndate: 2026-01-01");
+    expect(text()).toBe("title: A\ndate: 2026-01-01\ntext:");
     fireEvent.change(name, { target: { value: "watched" } });
     fireEvent.blur(name);
-    expect(text()).toBe("title: A\ndate: 2026-01-01\nwatched:");
+    expect(text()).toBe("title: A\ndate: 2026-01-01\ntext:\nwatched:");
   });
 
   it("finds names other notes use as typed, with their type and how many use them", () => {
@@ -602,9 +607,10 @@ describe("PropertiesBlock: Add property", () => {
     // Nothing is picked as it opens.
     expect(picker().querySelector('[aria-selected="true"]')).toBeNull();
     fireEvent.change(field(), { target: { value: "rat" } });
+    // Enter's row first (the typed name), then the names that match.
     expect(rowsOf()).toEqual([
-      "rating2 notes",
       "Add “rat”↵",
+      "rating2 notes",
       "Text",
       "List",
       "Number",
@@ -613,9 +619,39 @@ describe("PropertiesBlock: Add property", () => {
       "Date & time",
     ]);
     fireEvent.keyDown(field(), { key: "ArrowDown" });
+    fireEvent.keyDown(field(), { key: "ArrowDown" });
     fireEvent.keyDown(field(), { key: "Enter" });
     expect(text()).toBe("title: A\nrating:");
     expect(iconLabel(c, "rating")).toBe("rating: Number. Change type");
+  });
+
+  it("a name matches at a word's start, and one typed exactly comes first, Enter adding it", () => {
+    const other = {
+      title: "o",
+      folder: null,
+      content: {
+        title: "o",
+        blocks: [
+          {
+            id: "x",
+            type: "frontmatter",
+            text: "created: 2026-01-01\nsource: x\ndate seen: 2026-01-02",
+          },
+        ],
+      },
+    };
+    const { container: c, text } = setup("title: A", "n1", {
+      noteDataRef: { current: { other } } as never,
+    });
+    fireEvent.click(c.querySelector(".props-add") as HTMLElement);
+    fireEvent.change(field(), { target: { value: "s" } });
+    // source and "date seen" (a word's start); never a letter inside a word.
+    expect(rowsOf().slice(0, 3)).toEqual(["Add “s”↵", "date seen1 note", "source1 note"]);
+    fireEvent.change(field(), { target: { value: "created" } });
+    expect(rowsOf()[0]).toBe("created1 note↵");
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(text()).toBe("title: A\ncreated:");
+    expect(iconLabel(c, "created")).toBe("created: Date. Change type");
   });
 
   it("a typed name: Enter adds it with no type, its value deciding; or one is picked below", () => {

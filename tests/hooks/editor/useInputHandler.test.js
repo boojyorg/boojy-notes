@@ -150,13 +150,31 @@ describe("useInputHandler", () => {
   });
 
   it("opens a divider on --- and a space, however long the run", () => {
+    // Below the note's first line: there, `---` is the properties' fence (next test).
+    deps.blockRefs.current.b2 = mockEl;
     mockEl.textContent = "--- ";
     const { result } = renderHook(() => useInputHandler(deps));
-    result.current.handleBlockInput("note-1", 0);
-    expect(deps.openDivider).toHaveBeenCalledWith("note-1", 0);
+    result.current.handleBlockInput("note-1", 1);
+    expect(deps.openDivider).toHaveBeenCalledWith("note-1", 1);
 
     deps.openDivider.mockClear();
     mockEl.textContent = "---------- ";
+    result.current.handleBlockInput("note-1", 1);
+    expect(deps.openDivider).toHaveBeenCalledWith("note-1", 1);
+  });
+
+  it("opens properties on --- and a space on the note's first line; a longer run is a divider", () => {
+    mockEl.textContent = "--- ";
+    const { result } = renderHook(() => useInputHandler(deps));
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.openDivider).not.toHaveBeenCalled();
+    expect(deps.executeSlashCommand).toHaveBeenCalledWith(
+      "note-1",
+      0,
+      expect.objectContaining({ type: "frontmatter" }),
+      { literal: "---" },
+    );
+    mockEl.textContent = "---- ";
     result.current.handleBlockInput("note-1", 0);
     expect(deps.openDivider).toHaveBeenCalledWith("note-1", 0);
   });

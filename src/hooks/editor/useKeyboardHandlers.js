@@ -29,6 +29,7 @@ import {
   bareFenceLang,
   bareTableColumns,
   isBareDivider,
+  opensProperties,
   isBareMath,
 } from "../../utils/blockTriggers";
 import { measureBlockPlaces, settleBlocks } from "../../utils/blockSettle";
@@ -199,6 +200,13 @@ export function useKeyboardHandlers({
         if (isBareMath(text)) {
           el.innerHTML = "<br>";
           openMathBlock(noteId, blockIndex);
+          return;
+        }
+        // `---` and Enter on the first line of a note without properties opens them.
+        if (opensProperties(text, blockIndex, blockType)) {
+          el.innerHTML = "<br>";
+          const command = SLASH_COMMANDS.find((c) => c.type === "frontmatter");
+          if (command) executeSlashCommand(noteId, blockIndex, command, { literal: "---" });
           return;
         }
         if (isBareDivider(text)) {
