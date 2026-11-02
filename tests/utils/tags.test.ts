@@ -3,6 +3,7 @@ import {
   TAG_CHAR_RE,
   TAG_TAIL_RE,
   extractAllTags,
+  frontmatterTags,
   nestTags,
   tagKey,
   tagRows,
@@ -54,7 +55,7 @@ describe("extractAllTags", () => {
         blocks: [
           { id: "1", type: "p", text: "prose #work and #Work" },
           { id: "2", type: "code", text: "color: #fff; #include" },
-          { id: "3", type: "frontmatter", text: "tags: #meta" },
+          { id: "3", type: "frontmatter", text: "title: #notatag\ntags: [meta]" },
           { id: "4", type: "table", rows: [["#cell", "x"]] },
           { id: "5", type: "callout", title: "#calltitle", text: "#callbody" },
         ],
@@ -67,15 +68,43 @@ describe("extractAllTags", () => {
     } as never,
   };
 
-  it("reads prose, table cells and callouts, never code or frontmatter", () => {
+  it("reads prose, table cells, callouts and frontmatter's tags, never code or other properties", () => {
     const tags = extractAllTags(data);
-    expect([...tags.keys()].sort()).toEqual(["callbody", "calltitle", "cell", "work"]);
+    expect([...tags.keys()].sort()).toEqual(["callbody", "calltitle", "cell", "meta", "work"]);
   });
 
   it("merges case variants under one key, keeping the first spelling, and counts notes", () => {
     const rows = tagRows(extractAllTags(data));
     expect(rows[0]).toEqual({ tag: "work", count: 2 });
     expect(extractAllTags(data).get("work")!.noteIds).toEqual(new Set(["a", "b"]));
+  });
+});
+
+describe("frontmatterTags: the tags property, as Obsidian reads it", () => {
+  const fm = (text: string) => frontmatterTags({ id: "f", type: "frontmatter", text } as never);
+
+  it("reads a flow list, a block list and a string of names", () => {
+    expect(fm("tags: [demo, obsidian]")).toEqual(["demo", "obsidian"]);
+    expect(fm("tags:\n  - demo\n  - uni/lectures")).toEqual(["demo", "uni/lectures"]);
+    expect(fm("tags: demo, obsidian  café")).toEqual(["demo", "obsidian", "café"]);
+  });
+
+  it("takes a leading # or none, and keeps only what the tag grammar reads whole", () => {
+    expect(fm('tags: ["#demo", "two words", "9lives", "ok-1"]')).toEqual(["demo", "ok-1"]);
+  });
+
+  it("reads nothing from another key, a map, a number, or YAML that does not read", () => {
+    expect(fm("tag: demo\ntopics: [demo]")).toEqual([]);
+    expect(fm("tags:\n  demo: 1")).toEqual([]);
+    expect(fm("tags: 5")).toEqual([]);
+    expect(fm("tags: [demo")).toEqual([]);
+    expect(fm("tags: [a]\ntags: [b]")).toEqual([]);
+    expect(fm("")).toEqual([]);
+  });
+
+  it("answers an unchanged block from its cache", () => {
+    const block = { id: "f", type: "frontmatter", text: "tags: [demo]" } as never;
+    expect(frontmatterTags(block)).toBe(frontmatterTags(block));
   });
 });
 
