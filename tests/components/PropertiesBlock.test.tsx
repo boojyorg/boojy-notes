@@ -259,6 +259,18 @@ describe("PropertiesBlock: editing in place", () => {
     expect(input(c)).toBeNull();
   });
 
+  it("an item being edited keeps its ×, which removes it without saving the draft", () => {
+    const { container: c, text } = setup();
+    fireEvent.click(itemText(c, "cast", 0));
+    fireEvent.change(input(c), { target: { value: "Half-typed" } });
+    const x = row(c, "cast").querySelector('[aria-label="Remove Mark Hamill"]') as HTMLElement;
+    expect(x).not.toBeNull();
+    fireEvent.mouseDown(x);
+    fireEvent.click(x);
+    expect(text()).toBe(TEXT.replace("[Mark Hamill, Harrison Ford]", "[Harrison Ford]"));
+    expect(input(c)).toBeNull();
+  });
+
   it("an item emptied and saved goes; a comma is text in a list", () => {
     const { container: c, text } = setup();
     fireEvent.click(itemText(c, "cast", 1));

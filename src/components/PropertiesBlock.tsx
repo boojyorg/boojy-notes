@@ -852,6 +852,24 @@ function PropertyRow(r: RowProps) {
       }}
     />
   );
+  // An item's ×, there while it is edited too: it removes the item, never saving the draft first
+  // (the press keeps the field's focus, so no blur saves it).
+  const removeX = (item: string, i: number) => (
+    <button
+      type="button"
+      className="props-x"
+      tabIndex={-1}
+      aria-label={`Remove ${item}`}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (listEdit?.item === i) settled.current = true;
+        r.onRemoveItem(i);
+      }}
+    >
+      ×
+    </button>
+  );
   // Each item is its text (a click edits it) and its × (removes it), kept together on a line.
   const itemNodes: ReactNode[] = items.map((item, i) =>
     listEdit?.item === i ? (
@@ -862,6 +880,7 @@ function PropertyRow(r: RowProps) {
         data-editing=""
       >
         {listField}
+        {removeX(item, i)}
       </span>
     ) : (
       <span
@@ -913,19 +932,7 @@ function PropertyRow(r: RowProps) {
         >
           {item}
         </button>
-        <button
-          type="button"
-          className="props-x"
-          tabIndex={-1}
-          aria-label={`Remove ${item}`}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={(e) => {
-            e.stopPropagation();
-            r.onRemoveItem(i);
-          }}
-        >
-          ×
-        </button>
+        {removeX(item, i)}
       </span>
     ),
   );

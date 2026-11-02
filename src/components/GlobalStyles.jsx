@@ -1096,7 +1096,6 @@ ${tagPillCss(theme)}
           .props-icon:hover { color: ${theme.TEXT.primary}; }
           .props-x:hover { color: ${theme.TEXT.primary}; }
           .props-tag .props-x:hover { color: inherit; opacity: 1; }
-          .props-item:not(.props-tag):not([data-editing]):hover { background: ${theme.BG.hover}; }
           .props-tag:not([data-editing]):hover { background: ${tagPillGround(theme, true)}; }
         }
         .props-rows {
@@ -1175,15 +1174,13 @@ ${tagPillCss(theme)}
         .props-item:has(.props-item-text:focus-visible) { box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
         /* Picked by Backspace, next to go: the selection's own band. */
         .props-item[data-armed] { background: ${bandFill(theme.ACCENT.primary, theme.name)}; }
-        /* The item being edited is a field: the sheet's own ground in the darker edited row. */
-        .props-item[data-editing] { padding-right: 6px; background: ${theme.BG.editor}; }
         .props-item[data-editing] .props-input { field-sizing: content; min-width: 4ch; flex: 0 1 auto; max-width: 100%; }
         .props-tag {
           height: 22px; padding: 0 2px 0 8px; margin-left: 0; font-size: 0.92em;
           background: ${tagPillGround(theme)}; color: ${theme.ACCENT.tagText};
         }
         .props-tag .props-x { color: inherit; opacity: 0.6; }
-        .props-tag[data-editing] { padding-right: 8px; background: ${tagPillGround(theme)}; }
+        .props-tag[data-editing] { background: ${tagPillGround(theme)}; }
         .props-tag .props-input { color: inherit; }
         .props-tag[data-armed] { box-shadow: inset 0 0 0 1.5px ${theme.ACCENT.tagText}; }
         .props-tag::before { content: "#"; }
