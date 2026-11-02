@@ -33,7 +33,7 @@ import {
   shownDate,
 } from "../utils/properties";
 import { namesInOtherNotes, readPropertyTypes, rememberPropertyType } from "../utils/propertyTypes";
-import { ChevronDownIcon, PlusIcon, PropertyTypeIcon, SourceViewIcon, TrashIcon } from "./Icons";
+import { FoldChevronIcon, PlusIcon, PropertyTypeIcon, SourceViewIcon, TrashIcon } from "./Icons";
 import Menu, { type MenuAnchor, type MenuItem, rectAnchor } from "./Menu";
 import TickBox from "./TickBox";
 import PropertyPicker from "./PropertyPicker";
@@ -446,7 +446,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
           onClick={toggleFold}
         >
           <span className="props-chev" aria-hidden="true">
-            <ChevronDownIcon />
+            <FoldChevronIcon />
           </span>
         </button>
         {!folded && (

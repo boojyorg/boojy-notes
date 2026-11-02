@@ -1050,7 +1050,7 @@ ${tagPillCss(theme)}
         .props-title::before { content: attr(data-label); }
         /* The fold chevron is part of the title, shown with the tools (hover, focus); always on the phone. */
         .props-chev {
-          display: inline-flex; color: ${theme.TEXT.muted};
+          display: inline-flex; color: ${theme.TEXT.secondary};
           opacity: 0; transition: opacity var(--motion-fast);
         }
         .props-chev svg { width: 14px; height: 14px; transition: transform var(--motion-fast); }
