@@ -356,6 +356,11 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
       data-folded={folded ? "" : undefined}
       data-yaml={yamlView ? "" : undefined}
       aria-label="Properties"
+      // The section's fields own their input: it never reaches the editor's
+      // own handlers, which would read it as typing in the note and take the
+      // selection out of the field (only one Backspace was taken).
+      onInput={(e) => e.stopPropagation()}
+      onBeforeInput={(e) => e.stopPropagation()}
     >
       <div className="props-head">
         <button
@@ -690,7 +695,7 @@ function PropertyRow(r: RowProps) {
         <Tooltip label={label} anchor={iconRef.current} placement="below" />
       )}
       {editing?.part === "name" ? (
-        <span className="props-name props-name-edit">
+        <span className="props-name-edit">
           <Field
             editing={editing}
             className="props-input"

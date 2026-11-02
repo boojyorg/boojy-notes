@@ -48,8 +48,12 @@ test("each edit writes only its property's text, and one ⌘Z takes it back", as
     const cast = ticked.replace("  - Mark Hamill\n", "");
     await waitForFile(file, (t) => t === cast, { label: "the item gone, the other's line kept" });
 
+    // Several Backspaces, as a person renames: each one is taken (only the first was, once).
     await h.page.locator(`${row("year")} .props-name`).click();
     await h.page.keyboard.press(`${MOD}+a`);
+    await h.page.keyboard.press("ArrowRight");
+    for (let i = 0; i < 4; i++) await h.page.keyboard.press("Backspace");
+    await expect(h.page.locator(`${row("year")} .props-input`)).toHaveValue("");
     await h.page.keyboard.type("released");
     await h.page.keyboard.press("Enter");
     const renamed = cast.replace("year: 1980", "released: 1980");

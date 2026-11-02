@@ -46,4 +46,17 @@ describe("forgetDeletedStyle", () => {
     expect(forgetDeletedStyle(input("deleteContentBackward"))).toBe(false);
     expect(collapse).not.toHaveBeenCalled();
   });
+
+  // Regression: a property's name field took one Backspace, then no keys at
+  // all: the document's selection, outside the field, was collapsed again.
+  it("leaves a native text field's deletion to the field", () => {
+    caret();
+    const collapse = vi.spyOn(Selection.prototype, "collapse");
+    for (const tag of ["input", "textarea"]) {
+      const field = document.createElement(tag);
+      const e = { inputType: "deleteContentBackward", isComposing: false, target: field };
+      expect(forgetDeletedStyle(e as unknown as InputEvent)).toBe(false);
+    }
+    expect(collapse).not.toHaveBeenCalled();
+  });
 });

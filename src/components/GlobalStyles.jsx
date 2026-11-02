@@ -1075,11 +1075,12 @@ ${tagPillCss(theme)}
           .props-tag:hover { background: ${tagPillGround(theme, true)}; }
         }
         .props-rows {
-          /* The name column is a fixed width, as Obsidian's: editing a name never moves the values. */
-          display: grid; grid-template-columns: 20px 150px minmax(0, 1fr);
+          /* The name column is as wide as the names (at least 136px, at most 240px), sized by
+             the names alone: a field being typed into never widens it and moves the values. */
+          display: grid; grid-template-columns: 20px fit-content(240px) minmax(0, 1fr);
           column-gap: 12px; margin-top: 2px; font-size: 14px;
         }
-        html.is-phone .props-rows { grid-template-columns: 20px 110px minmax(0, 1fr); }
+        html.is-phone .props-rows { grid-template-columns: 20px fit-content(140px) minmax(0, 1fr); }
         /* A row is one thing: tinted whole on hover, a step darker while it is edited. */
         .props-row {
           grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start;
@@ -1094,11 +1095,12 @@ ${tagPillCss(theme)}
         .props-icon[aria-expanded="true"] { color: ${theme.TEXT.primary}; }
         .props-name {
           color: ${theme.TEXT.secondary}; font: inherit; font-size: 13.5px; line-height: 30px; height: 30px;
-          min-width: 0;
+          min-width: 136px; max-width: 100%;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
           border: 0; background: transparent; padding: 0; text-align: left; cursor: text;
         }
-        .props-name-edit { cursor: auto; }
+        .props-name-edit { display: flex; align-items: center; min-width: 136px; height: 30px; }
+        html.is-phone :is(.props-name, .props-name-edit) { min-width: 100px; }
         .props-val {
           all: unset; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
           max-width: 100%; min-height: 24px; cursor: text; user-select: text;
@@ -1107,7 +1109,8 @@ ${tagPillCss(theme)}
           all: unset; box-sizing: border-box; flex: 1; min-width: 8ch; height: 24px; line-height: 24px;
           font: inherit; color: ${theme.TEXT.primary}; user-select: text;
         }
-        .props-name-edit .props-input { width: 100%; font-size: 13.5px; height: 30px; }
+        /* Width 0 to the column, all of it once laid out. */
+        .props-name-edit .props-input { width: 0; min-width: 100%; font-size: 13.5px; height: 30px; }
         .props-input::placeholder { color: ${theme.TEXT.muted}; }
         .props-input[type="date"], .props-input[type="datetime-local"] { flex: none; }
         .props-error { width: 100%; font-size: 12px; line-height: 1.4; color: ${theme.SEMANTIC.error}; }
