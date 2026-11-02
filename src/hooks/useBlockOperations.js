@@ -9,6 +9,7 @@ import { getAPI } from "../services/apiProvider";
 import { addsFiles } from "../utils/platform";
 import { OUTSIDE_ADDS_NO_FILES } from "../utils/vaultNotes";
 import { editBlocks, patchBlock } from "../utils/editBlocks";
+import { runChange } from "../utils/properties";
 import { settleTypedSpaces } from "../utils/inlineFormatting";
 import { openMathSource } from "../utils/mathOpen";
 import { LINE_KIND_TYPES, LIST_TYPES, MAX_INDENT } from "../utils/blockKinds";
@@ -39,10 +40,12 @@ export function useBlockOperations({
 
   // What a field reads back is settled against what the block holds: a
   // non-breaking space Chromium typed becomes the space it was
-  // (settleTypedSpaces). A code block's textarea types what it is given,
-  // Option+Space included, and code is kept literal.
+  // (settleTypedSpaces). A code block's textarea and the properties' YAML
+  // type what they are given, Option+Space included, kept literal.
   const settledText = (block, newText) =>
-    block.type === "code" ? newText : settleTypedSpaces(newText, block.text);
+    block.type === "code" || block.type === "frontmatter"
+      ? newText
+      : settleTypedSpaces(newText, block.text);
   const updateBlockText = (noteId, blockIndex, newText) =>
     typeIntoBlock(noteId, blockIndex, (block) => ({ text: settledText(block, newText) }));
 
@@ -204,6 +207,40 @@ export function useBlockOperations({
       }),
     );
     return ids;
+  };
+
+  /**
+   * One change to the note's properties: one commit, one undo entry, run on
+   * the frontmatter's latest text by the property's name, so an edit from
+   * disk meanwhile is never written over. A change that would not read back
+   * as intended is refused ("unsafe") and nothing is written. When nothing is
+   * left, not even a comment, the block goes, fences and all.
+   * Returns "ok", "none" (nothing to do) or "unsafe".
+   */
+  const editFrontmatter = (noteId, blockId, change) => {
+    let outcome = "none";
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        const block = blocks[0];
+        if (block?.id !== blockId || block.type !== "frontmatter") return false;
+        const text = runChange(block.text ?? "", change);
+        if (text === false) outcome = "unsafe";
+        if (typeof text !== "string") return false;
+        outcome = "ok";
+        if (!text.trim()) {
+          blocks.splice(0, 1);
+          if (!blocks.length) blocks.push({ id: genBlockId(), type: "p", text: "" });
+          return;
+        }
+        const { empty: _wasEmpty, ...source } = block.frontmatterSource ?? {};
+        blocks[0] = {
+          ...block,
+          text,
+          frontmatterSource: Object.keys(source).length ? source : undefined,
+        };
+      }),
+    );
+    return outcome;
   };
 
   const updateBlockProperty = (noteId, blockIndex, updates) =>
@@ -475,6 +512,7 @@ export function useBlockOperations({
     deleteBlockRange,
     duplicateBlockRange,
     updateBlockProperty,
+    editFrontmatter,
     saveAndInsertFiles,
     flipCheck,
     checkTodos,

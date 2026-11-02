@@ -504,3 +504,63 @@ describe("useBlockOperations", () => {
     });
   });
 });
+
+describe("editFrontmatter: one change to the note's properties", () => {
+  const props = (text, source) => ({
+    ...frontmatter(text),
+    ...(source ? { frontmatterSource: source } : {}),
+  });
+
+  it("rewrites the property in one commit and answers ok", async () => {
+    const { setText } = await import("../../src/utils/properties");
+    const fm = props("title: A\nyear: 1980");
+    const { result, noteId, getNoteData, commitNoteData } = setup([fm, paragraph("body")]);
+    let outcome;
+    act(() => {
+      outcome = result.current.editFrontmatter(noteId, fm.id, setText("title", "B"));
+    });
+    expect(outcome).toBe("ok");
+    expect(commitNoteData).toHaveBeenCalledTimes(1);
+    expect(getNoteData()[noteId].content.blocks[0].text).toBe("title: B\nyear: 1980");
+  });
+
+  it("removing the last property takes the fences with it, unless a comment is left", async () => {
+    const { removeProperty } = await import("../../src/utils/properties");
+    const bare = props("title: A");
+    const a = setup([bare, paragraph("body")]);
+    act(() => a.result.current.editFrontmatter(a.noteId, bare.id, removeProperty("title")));
+    expect(a.getNoteData()[a.noteId].content.blocks.map((b) => b.type)).toEqual(["p"]);
+
+    const commented = props("# Imported\ntitle: A");
+    const b = setup([commented, paragraph("body")]);
+    act(() => b.result.current.editFrontmatter(b.noteId, commented.id, removeProperty("title")));
+    expect(b.getNoteData()[b.noteId].content.blocks[0]).toMatchObject({
+      type: "frontmatter",
+      text: "# Imported",
+    });
+  });
+
+  it("filling an empty frontmatter drops its empty mark, so the text is written", async () => {
+    const { setText } = await import("../../src/utils/properties");
+    const fm = props("r:", { empty: true });
+    const { result, noteId, getNoteData } = setup([fm]);
+    act(() => result.current.editFrontmatter(noteId, fm.id, setText("r", "x")));
+    expect(getNoteData()[noteId].content.blocks[0].frontmatterSource).toBeUndefined();
+  });
+
+  it("a change that would not read back safely writes nothing and answers unsafe", () => {
+    const fm = props("year: 1980\nend: x");
+    const { result, noteId, getNoteData } = setup([fm]);
+    const before = getNoteData();
+    let outcome;
+    act(() => {
+      outcome = result.current.editFrontmatter(noteId, fm.id, {
+        key: "year",
+        apply: (t) => t.replace("end: x", "end: y"),
+        expect: () => true,
+      });
+    });
+    expect(outcome).toBe("unsafe");
+    expect(getNoteData()).toBe(before);
+  });
+});

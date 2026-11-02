@@ -34,6 +34,15 @@ describe("haveEditorBlockRenderChanges", () => {
   // Picking Warning on a Note callout changed state and nothing on screen
   // (review 2026-09-07, §3.8): the type, and the default title that follows
   // it, are painted by React, not by the field.
+  // A properties edit is a commit of the frontmatter's text, and its rows are
+  // React's: skipped here, the row kept the old value on screen while the new
+  // one was written to the file.
+  it("repaints a note's properties when the frontmatter's text changes", () => {
+    const previous = [{ id: "fm", type: "frontmatter" as const, text: "title: A" }];
+    const next = [{ id: "fm", type: "frontmatter" as const, text: "title: B" }];
+    expect(haveEditorBlockRenderChanges(previous, next)).toBe(true);
+  });
+
   it("repaints a callout whose type or title changed", () => {
     const note = [
       { id: "c", type: "callout" as const, text: "b", calloutType: "note", title: "Note" },

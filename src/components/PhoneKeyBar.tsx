@@ -119,7 +119,9 @@ export default function PhoneKeyBar({
       const sel = window.getSelection();
       const root = editorRef.current;
       const node = sel?.anchorNode ?? null;
-      const inside = !!(sel && root && node && root.contains(node));
+      // A note's properties are fields of their own: nothing on the bar acts there.
+      const inProperties = !!document.activeElement?.closest("[data-properties]");
+      const inside = !!(sel && root && node && root.contains(node)) && !inProperties;
       setInText(inside);
       if (!inside || !sel) return;
       const now = readActive(sel, pending);

@@ -16,6 +16,10 @@
  */
 export function forgetDeletedStyle(e: InputEvent): boolean {
   if (e.isComposing || !e.inputType?.startsWith("delete")) return false;
+  // A native text field (a property, the YAML, a code block's textarea) owns
+  // its caret: the document's selection is outside it, and collapsing that
+  // took the field's caret away after one deletion.
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return false;
   const sel = window.getSelection();
   if (!sel?.rangeCount || !sel.isCollapsed || !sel.anchorNode) return false;
   sel.collapse(sel.anchorNode, sel.anchorOffset);
