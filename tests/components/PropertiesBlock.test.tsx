@@ -156,6 +156,22 @@ describe("PropertiesBlock: editing in place", () => {
     expect(input(c)).toBeNull();
   });
 
+  it("opening a value and leaving it changes nothing, even with spaces at its ends", () => {
+    const { container: c, onText } = setup('title: "  A  "');
+    fireEvent.click(value(c, "title").querySelector("button") as HTMLElement);
+    expect(input(c).value).toBe("  A  ");
+    fireEvent.blur(input(c));
+    expect(onText).not.toHaveBeenCalled();
+  });
+
+  it("text is written as typed, spaces and all", () => {
+    const { container: c, text } = setup("title: A");
+    fireEvent.click(value(c, "title").querySelector("button") as HTMLElement);
+    fireEvent.change(input(c), { target: { value: " B " } });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(text()).toBe('title: " B "');
+  });
+
   it("Escape and ⌘Z on a changed draft leave the file as it was", () => {
     const { container: c, onText } = setup();
     fireEvent.click(value(c, "title").querySelector("button") as HTMLElement);
@@ -228,6 +244,26 @@ describe("PropertiesBlock: editing in place", () => {
     expect(input(c).value).toBe("Mine");
     fireEvent.keyDown(input(c), { key: "Enter" });
     expect(text()).toBe(TEXT.replace("The Empire Strikes Back", "Mine"));
+  });
+
+  it("an edit whose property is renamed outside keeps the draft in reach", () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.assign(navigator, { clipboard: { writeText } });
+    const { container: c } = setup();
+    fireEvent.click(value(c, "title").querySelector("button") as HTMLElement);
+    fireEvent.change(input(c), { target: { value: "Mine" } });
+    fromDisk(TEXT.replace("title:", "renamed:"));
+    const lost = c.querySelector(".props-notice[data-lost]") as HTMLElement;
+    expect(lost.textContent).toMatch(
+      /Your edit to “title” wasn't saved: it was renamed or removed outside Boojy\. It read “Mine”/,
+    );
+    fireEvent.click(
+      [...lost.querySelectorAll("button")].find(
+        (b) => b.textContent === "Copy my edit",
+      ) as HTMLElement,
+    );
+    expect(writeText).toHaveBeenCalledWith("Mine");
+    expect(c.querySelector(".props-notice[data-lost]")).toBeNull();
   });
 
   it("an edit survives a change to another property from outside", () => {

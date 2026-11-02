@@ -404,3 +404,16 @@ describe("addProperty: a new property, last, in its type's empty form", () => {
     expect(runChange("a: 1", addProperty("b: c", "text"))).toBeNull();
   });
 });
+
+describe("anchors and aliases", () => {
+  it("YAML whose alias has lost its anchor doesn't read as rows", () => {
+    expect(readProperties("copy: *gone").ok).toBe(false);
+  });
+
+  it("removing the property that holds an anchor another one uses is refused, not written", () => {
+    const text = "source: &value one\ncopy: *value\nend: x";
+    expect(runChange(text, removeProperty("source"))).toBe(false);
+    expect(runChange(text, removeProperty("end"))).toBe("source: &value one\ncopy: *value");
+    expect(runChange(text, removeProperty("copy"))).toBe("source: &value one\nend: x");
+  });
+});

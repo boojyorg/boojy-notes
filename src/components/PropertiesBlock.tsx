@@ -290,10 +290,17 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
       commit(renameProperty(p.key, ed.draft));
       return true;
     }
-    const v = ed.draft.trim();
     const type = typeOf(p, chosen);
     const was =
       p.shown === null ? "" : String(p.shown).slice(0, type === "datetime" ? 16 : undefined);
+    // An untouched field is no edit: compared as it stands, so a value with
+    // spaces at its ends is never rewritten by opening it and leaving.
+    if (ed.draft === was) {
+      setEditing(null);
+      return true;
+    }
+    // Text is kept as typed, spaces and all; the other types are trimmed.
+    const v = type === "text" ? ed.draft : ed.draft.trim();
     if (v === was) {
       setEditing(null);
       return true;
@@ -510,6 +517,28 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                 accentColor={props.accentColor}
               />
             ))}
+            {notice && !propsNow.some((q) => q.key === notice.key) && (
+              // The row the draft was for is gone (renamed or removed outside):
+              // the draft stays in reach here, never silently dropped.
+              <p className="props-notice" data-lost="">
+                {notice.part === "name"
+                  ? `Your new name “${notice.draft}” wasn't saved: “${notice.key}” was renamed or removed outside Boojy.`
+                  : `Your edit to “${notice.key}” wasn't saved: it was renamed or removed outside Boojy. It read “${notice.draft}”.`}{" "}
+                <button
+                  type="button"
+                  className="props-restore"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(notice.draft).catch(() => {});
+                    setNotice(null);
+                  }}
+                >
+                  Copy my edit
+                </button>{" "}
+                <button type="button" className="props-restore" onClick={() => setNotice(null)}>
+                  Dismiss
+                </button>
+              </p>
+            )}
             <button
               ref={addRef}
               type="button"

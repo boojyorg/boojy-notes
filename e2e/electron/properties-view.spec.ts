@@ -73,6 +73,9 @@ test("the YAML field writes what is typed, and YAML the rows can't read opens as
       (t) => t === NOTE.replace("year: 1980\n", "year: 1980\nrating: 4\n"),
       { label: "the typed line, and nothing else changed" },
     );
+    // Back to the rows, which show what was typed, not what the note held before.
+    await h.page.getByRole("button", { name: "Back to properties" }).click();
+    await expect(h.page.locator(`.props-row[data-key="rating"] .props-value`)).toHaveText("4");
 
     await h.openNote("Broken");
     await expect(h.page.locator(".props-yaml-field")).toHaveValue("tags: [a");

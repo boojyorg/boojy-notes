@@ -100,6 +100,16 @@ export function readProperties(text: string): ReadResult {
 function read(text: string): ReadResult {
   const doc = parseDocument(text);
   if (doc.errors.length) return { ok: false, reason: doc.errors[0].message.split("\n")[0] };
+  // Parsed is not enough: an alias whose anchor is gone (`*x` with no `&x`)
+  // parses, but does not resolve, so no reader can take it.
+  try {
+    doc.toJS();
+  } catch (e) {
+    return {
+      ok: false,
+      reason: e instanceof Error ? e.message.split("\n")[0] : "The YAML doesn't resolve.",
+    };
+  }
   if (doc.contents === null) return { ok: true, props: [] };
   if (!isMap(doc.contents))
     return { ok: false, reason: "The properties aren't a list of names and values." };
