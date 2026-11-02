@@ -28,6 +28,10 @@ interface EditorRenderBlock {
  * structure around a field: a table's rows, a code block's language, a
  * callout's type and the title that follows a type change.
  *
+ * A note's properties are rows React paints from the frontmatter's text, so
+ * a change to that text is React's to paint (its YAML field is a field, and
+ * `useOwnedField` leaves it alone when it already holds the text).
+ *
  * A media block has no field of its own, so React paints all of it: a resized
  * image's width, a replaced image's src. Left out, the block would keep the
  * props it had, and the *next* resize would read its start size from those.
@@ -49,6 +53,10 @@ export function haveEditorBlockRenderChanges(
       previousBlock.indent !== nextBlock.indent ||
       previousBlock.checked !== nextBlock.checked
     ) {
+      return true;
+    }
+
+    if (previousBlock.type === "frontmatter" && previousBlock.text !== nextBlock.text) {
       return true;
     }
 
