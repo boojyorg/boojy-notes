@@ -599,24 +599,52 @@ describe("PropertiesBlock: Add property", () => {
       } as never,
     });
     fireEvent.click(c.querySelector(".props-add") as HTMLElement);
-    // Not offered until asked for.
-    expect(rowsOf()).not.toContain("rating2 notes");
+    // Nothing is picked as it opens.
+    expect(picker().querySelector('[aria-selected="true"]')).toBeNull();
     fireEvent.change(field(), { target: { value: "rat" } });
-    expect(rowsOf()).toEqual(["rating2 notes", "Add “rat”"]);
+    expect(rowsOf()).toEqual([
+      "rating2 notes",
+      "Add “rat”↵",
+      "Text",
+      "List",
+      "Number",
+      "Checkbox",
+      "Date",
+      "Date & time",
+    ]);
+    fireEvent.keyDown(field(), { key: "ArrowDown" });
     fireEvent.keyDown(field(), { key: "Enter" });
     expect(text()).toBe("title: A\nrating:");
     expect(iconLabel(c, "rating")).toBe("rating: Number. Change type");
   });
 
-  it("a typed name nobody uses asks its type", () => {
+  it("a typed name: Enter adds it with no type, its value deciding; or one is picked below", () => {
     const { container: c, text } = setup("title: A");
-    fireEvent.click(c.querySelector(".props-add") as HTMLElement);
-    fireEvent.change(field(), { target: { value: "mood" } });
-    expect(rowsOf()).toEqual(["Add “mood”"]);
-    fireEvent.keyDown(field(), { key: "Enter" });
-    expect(rowsOf()).toEqual(["Text", "List", "Number", "Checkbox", "Date", "Date & time"]);
+    const add = (name: string) => {
+      fireEvent.click(c.querySelector(".props-add") as HTMLElement);
+      fireEvent.change(field(), { target: { value: name } });
+    };
+    add("mood");
     fireEvent.keyDown(field(), { key: "Enter" });
     expect(text()).toBe("title: A\nmood:");
+    fireEvent.change(input(c), { target: { value: "4" } });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(text()).toBe("title: A\nmood: 4");
+    expect(iconLabel(c, "mood")).toBe("mood: Number. Change type");
+
+    add("cast");
+    const asList = [...picker().querySelectorAll('[role="option"]')].find(
+      (r) => r.getAttribute("aria-label") === "Add “cast” as List",
+    ) as HTMLElement;
+    fireEvent.click(asList);
+    expect(text()).toBe("title: A\nmood: 4\ncast: []");
+
+    // A name that can't be one says why, and offers nothing to add.
+    add("a: b");
+    expect(rowsOf()).toEqual([]);
+    expect(picker().textContent).toContain("Use letters, numbers, spaces, - or _.");
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(text()).toBe("title: A\nmood: 4\ncast: []");
   });
 
   it("Escape leaves the note as it was; a section /properties made is taken away again", async () => {

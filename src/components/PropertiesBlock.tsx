@@ -285,10 +285,14 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     [block.id, noteId],
   );
 
-  const choosePicked = (name: string, type: PropType) => {
+  // A property by name: of a type, or (null) with none yet, its value deciding what it is.
+  const choosePicked = (name: string, type: PropType | null) => {
     setPicker(null);
-    if (commit(addProperty(name, type)) !== "ok") return;
-    setChosen(rememberPropertyType(name, type));
+    if (commit(addProperty(name, type)) !== "ok") {
+      leaveFresh(picker?.fresh, picker?.from);
+      return;
+    }
+    if (type) setChosen(rememberPropertyType(name, type));
     if (type !== "checkbox") {
       setEditing({
         key: name,
@@ -847,6 +851,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
           types={chosen}
           onChoose={choosePicked}
           onPickType={pickType}
+          problem={(n) => nameProblem(text, "", n)}
           onClose={closePicker}
         />
       )}

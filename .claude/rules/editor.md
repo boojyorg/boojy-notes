@@ -265,8 +265,9 @@ never holds a byte sequence the syntax cannot.**
 - **Add property and `/properties`** (`PropertyPicker`): types first (tags, then the six), the
   same in every note; names other notes use only when typed, with their type and count. A type
   picked is a draft row named after it (`freeName`), written once on Enter, Tab or a press
-  elsewhere; Escape writes nothing. A typed new name asks its type. Written last in the type's
-  empty form. An empty value's type is this
+  elsewhere; Escape writes nothing. A typed name: Enter adds it with no type (its value
+  decides), or one is picked under "Or pick its type". Nothing is picked as it opens. Written
+  last in the type's empty form. An empty value's type is this
   device's (`propertyTypes`), never the vault's. `/properties` makes the section at the top, and
   one left with nothing added goes again. `properties-add.spec.ts`.
 

@@ -4,7 +4,8 @@ import { launchApp, MOD, SETTLE_MS, sleep, waitForFile } from "./harness";
 /**
  * Adding properties. `/properties` makes the section at the top of a note that
  * has none and opens Add property. A type picked names its row in place and is
- * written once, on Enter (Escape writes nothing); a typed name takes a type; the
+ * written once, on Enter (Escape writes nothing); a typed name is added on Enter
+ * with no type (its value decides), or as a type picked under it; the
  * type of a value left empty is remembered on this device, through a restart.
  * A picker closed with nothing chosen leaves no section behind.
  */
@@ -30,9 +31,8 @@ test("/properties adds the section and a property of one's own; an empty one kee
     await h.openNote("Film");
     await slashProperties(h);
     await h.page.keyboard.type("mood");
-    await h.page.keyboard.press("Enter");
-    await h.page.keyboard.press("ArrowDown");
-    await h.page.keyboard.press("ArrowDown");
+    // Below the typed name, its type picked: down past Add, Text and List to Number.
+    for (let i = 0; i < 4; i++) await h.page.keyboard.press("ArrowDown");
     await h.page.keyboard.press("Enter");
     await expect(h.page.locator(`${row("mood")} .props-input`)).toBeFocused();
     await h.page.keyboard.press("Escape");
@@ -72,8 +72,7 @@ test("Add property in a section that has some adds after them; Escape adds nothi
     await h.page.locator(".props").hover();
     await h.page.getByRole("button", { name: "Add property" }).click();
     await h.page.keyboard.type("seen");
-    await h.page.keyboard.press("Enter");
-    await h.page.getByRole("option", { name: "Checkbox" }).click();
+    await h.page.getByRole("option", { name: "Add “seen” as Checkbox" }).click();
     await waitForFile(file, (t) => t === `---\ntitle: A # kept\nseen: false\n---\n${BODY}`, {
       label: "the box added last, unticked",
     });

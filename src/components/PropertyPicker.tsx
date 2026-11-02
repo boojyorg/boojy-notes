@@ -34,39 +34,53 @@ const TYPE_LABEL: Record<PropType, string> = {
 export type PickRow =
   | { kind: "tags" }
   | { kind: "name"; name: string; type: PropType | null; count: number }
-  | { kind: "type"; type: PropType }
-  | { kind: "custom"; name: string };
+  | { kind: "add"; name: string }
+  | { kind: "type"; type: PropType; name: string }
+  | { kind: "note"; text: string };
 
 /**
  * What the picker offers. Empty, the same rows in every note: tags (when the
- * note has none), then the six types, each a new property of its own. Typed
- * into, the names other notes use that match (with the type they write and
- * how many use them), the types whose label matches, and the typed name as a
- * new one. Pure, so the rule can be read alone.
+ * note has none), then the six types, each a new property named in its row.
+ * Typed into: tags if it matches, the names other notes use that match (with
+ * the type they write and how many use them), then the typed name itself,
+ * added with no type (its value decides) or, below, as one of the six. A name
+ * that can't be one says why. Pure, so the rule can be read alone.
  */
 export function pickRows(
   query: string,
   have: ReadonlySet<string>,
   names: readonly VaultName[],
   types: Record<string, PropType>,
+  problem: (name: string) => string | null = () => null,
 ): PickRow[] {
-  const q = query.trim().toLowerCase();
+  const typed = query.trim();
+  const q = typed.toLowerCase();
   const has = (n: string) => have.has(n.toLowerCase());
   const matches = (n: string) => !q || n.toLowerCase().includes(q);
   const rows: PickRow[] = [];
   if (!has("tags") && matches("tags")) rows.push({ kind: "tags" });
-  if (q) {
-    for (const n of names.filter((n) => !has(n.name) && matches(n.name)).slice(0, MAX_NAMES))
-      rows.push({
-        kind: "name",
-        name: n.name,
-        type: n.type ?? types[n.name] ?? null,
-        count: n.count,
-      });
+  if (!q) {
+    for (const type of TYPES) rows.push({ kind: "type", type, name: "" });
+    return rows;
   }
-  for (const type of TYPES) if (matches(TYPE_LABEL[type])) rows.push({ kind: "type", type });
-  const exact = q === "tags" || names.some((n) => n.name.toLowerCase() === q);
-  if (q && !exact && !has(q)) rows.push({ kind: "custom", name: query.trim() });
+  for (const n of names.filter((n) => !has(n.name) && matches(n.name)).slice(0, MAX_NAMES))
+    rows.push({
+      kind: "name",
+      name: n.name,
+      type: n.type ?? types[n.name] ?? null,
+      count: n.count,
+    });
+  if (q === "tags" || has(q)) {
+    if (!rows.length) rows.push({ kind: "note", text: "This note already has that property" });
+    return rows;
+  }
+  const why = problem(typed);
+  if (why) {
+    rows.push({ kind: "note", text: why });
+    return rows;
+  }
+  if (!names.some((n) => n.name.toLowerCase() === q)) rows.push({ kind: "add", name: typed });
+  for (const type of TYPES) rows.push({ kind: "type", type, name: typed });
   return rows;
 }
 
@@ -76,8 +90,10 @@ interface PropertyPickerProps {
   have: ReadonlySet<string>;
   names: readonly VaultName[];
   types: Record<string, PropType>;
-  /** A property by name and type: tags, a name other notes use, or a typed name once typed. */
-  onChoose: (name: string, type: PropType) => void;
+  /** Why a typed name can't be a property's (`nameProblem`), or null. */
+  problem?: (name: string) => string | null;
+  /** A property by name: its type, or null for one its value will decide. */
+  onChoose: (name: string, type: PropType | null) => void;
   /** A new property of this type, its name still to give (the section's draft row). */
   onPickType: (type: PropType) => void;
   onClose: () => void;
@@ -85,15 +101,17 @@ interface PropertyPickerProps {
 
 /**
  * Add property: a field and a list in one small surface, the menus' own. A
- * type first (the property is named in its row), or a name found by typing;
- * a typed name nobody uses then asks its type. Keys: arrows, Enter, Escape;
- * a press outside closes it.
+ * type first (the property is named in its row), or a name typed: added as
+ * it is, its value deciding its type, or with one picked below. Nothing is
+ * picked until the arrows or the pointer pick it; Enter on a typed name adds
+ * it. A press outside closes it.
  */
 export default function PropertyPicker({
   anchor,
   have,
   names,
   types,
+  problem,
   onChoose,
   onPickType,
   onClose,
@@ -101,28 +119,24 @@ export default function PropertyPicker({
   const { theme } = useTheme();
   const { TEXT, BG } = theme;
   const [query, setQuery] = useState("");
-  /** A typed name nobody uses, whose type is being chosen: the second step. */
-  const [naming, setNaming] = useState<string | null>(null);
-  const [selected, setSelected] = useState(0);
+  // Nothing is picked until the arrows or the pointer pick it.
+  const [selected, setSelected] = useState(-1);
   const menuRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement>(null);
 
   const rows: PickRow[] = useMemo(
-    () =>
-      naming === null
-        ? pickRows(query, have, names, types)
-        : TYPES.map((type): PickRow => ({ kind: "type", type })),
-    [naming, query, have, names, types],
+    () => pickRows(query, have, names, types, problem),
+    [query, have, names, types, problem],
   );
+  const pickable = (r: PickRow | undefined) => !!r && r.kind !== "note";
   const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4, reflowKey: rows.length });
   useExitGhost(menuRef);
 
   useLayoutEffect(() => {
     fieldRef.current?.focus({ preventScroll: true });
   }, []);
-  // A new query or step starts at the first row.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the query and the step are the signal
-  useEffect(() => setSelected(0), [query, naming]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the query is the signal
+  useEffect(() => setSelected(-1), [query]);
 
   // A press outside closes it; one that began before it opened is the press that opened it.
   const close = useRef(onClose);
@@ -139,17 +153,21 @@ export default function PropertyPicker({
   }, []);
 
   const choose = (row: PickRow | undefined) => {
-    if (!row) return;
+    if (!row || row.kind === "note") return;
     if (row.kind === "tags") onChoose("tags", "list");
     else if (row.kind === "type") {
-      if (naming === null) onPickType(row.type);
-      else onChoose(naming.trim(), row.type);
-    } else if (row.kind === "name" && row.type) onChoose(row.name, row.type);
-    else {
-      // A name with no type yet (or a typed one): its type next.
-      setNaming(row.name);
-      requestAnimationFrame(() => fieldRef.current?.focus());
-    }
+      if (row.name) onChoose(row.name, row.type);
+      else onPickType(row.type);
+    } else onChoose(row.name, row.kind === "name" ? row.type : null);
+  };
+
+  const step = (by: 1 | -1) => {
+    const n = rows.length;
+    if (!rows.some(pickable)) return;
+    let i = selected;
+    do i = i < 0 ? (by > 0 ? 0 : n - 1) : (i + by + n) % n;
+    while (!pickable(rows[i]));
+    setSelected(i);
   };
 
   const onKey = (e: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -160,17 +178,18 @@ export default function PropertyPicker({
       onClose();
     } else if (e.key === "Enter") {
       e.preventDefault();
-      choose(rows[selected]);
-    } else if (e.key === "ArrowDown" && rows.length) {
+      // Nothing picked: Enter adds the typed name as it is.
+      choose(selected >= 0 ? rows[selected] : rows.find((r) => r.kind === "add"));
+    } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelected((i) => Math.min(rows.length - 1, i + 1));
-    } else if (e.key === "ArrowUp" && rows.length) {
+      step(1);
+    } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setSelected((i) => Math.max(0, i - 1));
+      step(-1);
     }
   };
 
-  const typedName = naming ?? "";
+  const typed = query.trim();
   return (
     <div
       ref={menuRef}
@@ -193,13 +212,14 @@ export default function PropertyPicker({
     >
       <input
         ref={fieldRef}
-        value={naming === null ? query : typedName}
-        placeholder={naming === null ? "Find or name a property" : "Name"}
-        aria-label={naming === null ? "Find or name a property" : "Property name"}
+        value={query}
+        placeholder="Find or name a property"
+        aria-label="Find or name a property"
+        aria-activedescendant={selected >= 0 ? `property-pick-${selected}` : undefined}
         spellCheck={false}
         autoComplete="off"
         enterKeyHint="done"
-        onChange={(e) => (naming === null ? setQuery(e.target.value) : setNaming(e.target.value))}
+        onChange={(e) => setQuery(e.target.value)}
         onKeyDown={onKey}
         style={{
           display: "block",
@@ -216,12 +236,13 @@ export default function PropertyPicker({
       />
       <div style={{ height: 1, background: BG.divider, margin: "0 6px" }} />
       <div role="listbox" aria-label="Properties to add" style={{ padding: MENU_PAD }}>
-        {naming !== null && (
-          <div style={{ padding: "4px 8px 2px", fontSize: 12, color: TEXT.muted }}>
-            Type for “{typedName.trim()}”
-          </div>
-        )}
         {rows.map((row, i) => {
+          if (row.kind === "note")
+            return (
+              <div key="note" style={{ padding: "6px 8px 8px", fontSize: 12, color: TEXT.muted }}>
+                {row.text}
+              </div>
+            );
           const active = i === selected;
           const icon =
             row.kind === "tags"
@@ -239,17 +260,21 @@ export default function PropertyPicker({
                 : row.kind === "name"
                   ? row.name
                   : `Add “${row.name}”`;
+          // What a screen reader hears: a type row under a typed name adds that name as it.
+          const spoken =
+            row.kind === "type" && row.name
+              ? `Add “${row.name}” as ${TYPE_LABEL[row.type]}`
+              : undefined;
           const key =
-            row.kind === "type" || row.kind === "tags"
-              ? `${row.kind}:${row.kind === "type" ? row.type : ""}`
-              : `${row.kind}:${row.name}`;
-          // The names other notes use, under their heading; the types under theirs once both show.
+            row.kind === "type"
+              ? `type:${row.type}`
+              : `${row.kind}:${"name" in row ? row.name : ""}`;
           const firstOfKind = rows.findIndex((r) => r.kind === row.kind) === i;
           const heading =
-            firstOfKind && naming === null && row.kind === "name"
+            firstOfKind && row.kind === "name"
               ? "In other notes"
-              : firstOfKind && naming === null && row.kind === "type" && query.trim()
-                ? "New"
+              : firstOfKind && row.kind === "type" && typed
+                ? "Or pick its type"
                 : null;
           return (
             <Fragment key={key}>
@@ -259,12 +284,15 @@ export default function PropertyPicker({
                 </div>
               )}
               <div
+                id={`property-pick-${i}`}
                 role="option"
                 aria-selected={active}
+                aria-label={spoken}
                 data-testid={`pick-${row.kind}`}
                 onMouseMove={(e) => {
                   if (!fromTouch(e) && !active) setSelected(i);
                 }}
+                onMouseLeave={() => setSelected(-1)}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => choose(row)}
                 style={{
@@ -299,15 +327,18 @@ export default function PropertyPicker({
                     {row.count === 1 ? "1 note" : `${row.count} notes`}
                   </span>
                 )}
+                {row.kind === "add" && (selected < 0 || active) && (
+                  <span
+                    aria-hidden="true"
+                    style={{ flex: "none", fontSize: 12, color: TEXT.muted }}
+                  >
+                    ↵
+                  </span>
+                )}
               </div>
             </Fragment>
           );
         })}
-        {rows.length === 0 && (
-          <div style={{ padding: "6px 8px 8px", fontSize: 12, color: TEXT.muted }}>
-            This note already has that property
-          </div>
-        )}
       </div>
     </div>
   );
