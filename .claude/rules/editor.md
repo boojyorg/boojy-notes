@@ -262,8 +262,11 @@ never holds a byte sequence the syntax cannot.**
 - **The title's menu** (right-click, Shift+F10, a hold): Show Markdown (⌘/'s own path) and
   Remove all properties, the whole block, fences and comments, in one commit (`removeFrontmatter`).
   `properties-view.spec.ts`.
-- **Add property and `/properties`** (`PropertyPicker`): tags, names other notes use, or one's
-  own, then its type; written last in the type's empty form. An empty value's type is this
+- **Add property and `/properties`** (`PropertyPicker`): types first (tags, then the six), the
+  same in every note; names other notes use only when typed, with their type and count. A type
+  picked is a draft row named after it (`freeName`), written once on Enter, Tab or a press
+  elsewhere; Escape writes nothing. A typed new name asks its type. Written last in the type's
+  empty form. An empty value's type is this
   device's (`propertyTypes`), never the vault's. `/properties` makes the section at the top, and
   one left with nothing added goes again. `properties-add.spec.ts`.
 

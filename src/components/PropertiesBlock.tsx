@@ -19,6 +19,7 @@ import {
   addProperty,
   type Change,
   conversion,
+  freeName,
   isNumber,
   nameProblem,
   type Property,
@@ -132,6 +133,26 @@ interface Editing {
 const TAG_NAME_RE = new RegExp(`^${TAG_BODY}$`, "u");
 const listOf = (p: Property) => (Array.isArray(p.shown) ? p.shown : []);
 
+/** A new property's name until it is given one: its type's, in lower case (a date's either way). */
+const DRAFT_NAME: Record<PropType, string> = {
+  text: "text",
+  list: "list",
+  number: "number",
+  checkbox: "checkbox",
+  date: "date",
+  datetime: "date",
+};
+
+/** A property being added: on screen, named in its row, written only once it has its name. */
+interface Draft {
+  type: PropType;
+  name: string;
+  error?: string;
+  /** From a fresh `/properties`: dropped, the empty section goes too and the caret goes back. */
+  fresh?: boolean;
+  from?: string;
+}
+
 interface MenuState {
   key: string;
   anchor: MenuAnchor;
@@ -196,6 +217,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     from?: string;
   } | null>(null);
   const addRef = useRef<HTMLButtonElement>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
 
   // YAML the rows can't read opens as YAML, and stays so once mended, so
   // mending it never swaps the field away under the caret.
@@ -278,9 +300,11 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     }
   };
   const closePicker = () => {
-    const fresh = picker?.fresh;
-    const from = picker?.from;
     setPicker(null);
+    leaveFresh(picker?.fresh, picker?.from);
+  };
+  /** A fresh `/properties` left with nothing added: the section goes, the caret back where it was. */
+  const leaveFresh = (fresh?: boolean, from?: string) => {
     if (fresh && !text.trim()) props.onRemoveEmpty?.(noteId, block.id);
     // Cancelled, the caret goes back to the line `/properties` was typed on,
     // so the next keys go where they were going (they were lost before).
@@ -290,6 +314,35 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
       const line = document.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(from)}"]`);
       if (line) placeCaret(line, 0, { reveal: false });
     }
+  };
+
+  // A type picked: its row appears, named after it and ready to be renamed; nothing is written
+  // until the name is given (Enter, Tab, or a press elsewhere), so ⌘Z takes it back in one.
+  const pickType = (type: PropType) => {
+    setDraft({
+      type,
+      name: freeName(text, DRAFT_NAME[type]),
+      fresh: picker?.fresh,
+      from: picker?.from,
+    });
+    setPicker(null);
+    setEditing(null);
+  };
+  /** The draft, written; false (it says why) when its name can't be one. */
+  const commitDraft = (d: Draft): boolean => {
+    const name = d.name.trim();
+    const problem = nameProblem(text, "", name);
+    if (problem) {
+      setDraft({ ...d, error: problem });
+      return false;
+    }
+    setDraft(null);
+    choosePicked(name, d.type);
+    return true;
+  };
+  const dropDraft = (d: Draft) => {
+    setDraft(null);
+    leaveFresh(d.fresh, d.from);
   };
 
   // The rows come and go at once (a hidden field must never keep focus); only
@@ -757,6 +810,19 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                 </button>
               </p>
             )}
+            {draft && (
+              <DraftRow
+                draft={draft}
+                onName={(name) => setDraft((d) => d && { ...d, name, error: undefined })}
+                onCommit={() => commitDraft(draft)}
+                onCancel={() => dropDraft(draft)}
+                onLeave={() => {
+                  // A press elsewhere adds it, as a field's blur saves; a name that can't be one goes.
+                  if (nameProblem(text, "", draft.name.trim())) dropDraft(draft);
+                  else commitDraft(draft);
+                }}
+              />
+            )}
             <button
               ref={addRef}
               type="button"
@@ -780,6 +846,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
           names={namesInOtherNotes(props.noteDataRef?.current, noteId)}
           types={chosen}
           onChoose={choosePicked}
+          onPickType={pickType}
           onClose={closePicker}
         />
       )}
@@ -1169,6 +1236,70 @@ function PropertyRow(r: RowProps) {
           </button>
         </p>
       )}
+    </div>
+  );
+}
+
+/** The property being added: its type's icon, its name selected to be typed over, no value yet. */
+function DraftRow({
+  draft,
+  onName,
+  onCommit,
+  onCancel,
+  onLeave,
+}: {
+  draft: Draft;
+  onName: (name: string) => void;
+  onCommit: () => boolean;
+  onCancel: () => void;
+  onLeave: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  // Enter, Tab or Escape has settled it: the blur its unmounting may bring does nothing more.
+  const settled = useRef(false);
+  useLayoutEffect(() => {
+    ref.current?.focus({ preventScroll: true });
+    ref.current?.select();
+  }, []);
+  return (
+    <div className="props-row" data-editing="" data-draft="">
+      <span className="props-icon" aria-hidden="true">
+        <PropertyTypeIcon type={draft.type} />
+      </span>
+      <span className="props-name-edit">
+        <input
+          ref={ref}
+          className="props-input"
+          value={draft.name}
+          spellCheck={false}
+          autoComplete="off"
+          enterKeyHint="next"
+          aria-label="New property's name"
+          aria-invalid={draft.error ? true : undefined}
+          onChange={(e) => onName(e.target.value)}
+          onKeyDown={(e) => {
+            if (
+              (e.key === "Enter" || (e.key === "Tab" && !e.shiftKey)) &&
+              !e.nativeEvent.isComposing
+            ) {
+              e.preventDefault();
+              settled.current = onCommit();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              settled.current = true;
+              onCancel();
+            }
+          }}
+          onBlur={() => {
+            if (!settled.current) onLeave();
+          }}
+        />
+      </span>
+      <span className="props-value">
+        <span className="props-empty" />
+        {draft.error && <span className="props-error">{draft.error}</span>}
+      </span>
     </div>
   );
 }

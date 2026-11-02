@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { launchApp, SETTLE_MS, sleep, waitForFile } from "./harness";
+import { launchApp, MOD, SETTLE_MS, sleep, waitForFile } from "./harness";
 
 /**
  * Adding properties. `/properties` makes the section at the top of a note that
- * has none and opens Add property; a name of one's own takes a type, and the
+ * has none and opens Add property. A type picked names its row in place and is
+ * written once, on Enter (Escape writes nothing); a typed name takes a type; the
  * type of a value left empty is remembered on this device, through a restart.
  * A picker closed with nothing chosen leaves no section behind.
  */
@@ -88,6 +89,56 @@ test("Add property in a section that has some adds after them; Escape adds nothi
     });
     await sleep(SETTLE_MS);
     expect(h.vault.read("Plain.md")).not.toContain("---");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a type picked is named in its row and written once; Escape writes nothing", async () => {
+  const h = await launchApp({ "Film.md": BODY });
+  const file = h.vault.file("Film.md");
+  try {
+    await h.openNote("Film");
+    await slashProperties(h);
+    await h.page
+      .getByTestId("property-picker")
+      .getByRole("option", { name: "Date", exact: true })
+      .click();
+    const name = h.page.locator("[data-draft] input");
+    await expect(name).toBeFocused();
+    await expect(name).toHaveValue("date");
+    await sleep(SETTLE_MS);
+    // `/properties` has made the (empty) section; the row not yet named has written nothing.
+    expect(h.vault.read("Film.md"), "nothing written for a row not yet named").not.toContain(
+      "date",
+    );
+    await h.page.keyboard.type("watched");
+    await h.page.keyboard.press("Enter");
+    await waitForFile(file, (t) => t.startsWith("---\nwatched:\n---\n"), {
+      label: "one line, named",
+    });
+    // The value is next: the date field.
+    await expect(h.page.locator(`${row("watched")} .props-input`)).toBeFocused();
+    await h.page.keyboard.press("Escape");
+
+    await h.page.locator(".props").hover();
+    await h.page.getByRole("button", { name: "Add property" }).click();
+    await h.page
+      .getByTestId("property-picker")
+      .getByRole("option", { name: "Text", exact: true })
+      .click();
+    await expect(h.page.locator("[data-draft] input")).toHaveValue("text");
+    const before = h.vault.read("Film.md");
+    await h.page.keyboard.press("Escape");
+    await expect(h.page.locator("[data-draft]")).toHaveCount(0);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Film.md"), "Escape writes nothing").toBe(before);
+
+    // One ⌘Z takes the whole property back (the section with it).
+    await h.page.locator("[data-block-type='p']").first().click();
+    await h.page.keyboard.press(`${MOD}+z`);
+    await waitForFile(file, (t) => !t.includes("watched"), { label: "one undo" });
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

@@ -36,6 +36,25 @@ describe("namesInOtherNotes", () => {
   };
 
   it("lists other notes' names, most used first, then A–Z; never tags, aliases or cssclasses", () => {
-    expect(namesInOtherNotes(data, "me")).toEqual(["status", "director", "rating"]);
+    expect(namesInOtherNotes(data, "me").map((n) => n.name)).toEqual([
+      "status",
+      "director",
+      "rating",
+    ]);
+  });
+
+  it("gives each name the type most notes write it as, and how many notes use it", () => {
+    const more: NoteData = {
+      ...data,
+      d: note("rating: good\nwhen: 2026-01-02\ncast: [a]"),
+      e: note("rating: 5\nwhen:\ncast:\n  - b"),
+    };
+    const byName = Object.fromEntries(namesInOtherNotes(more, "me").map((n) => [n.name, n]));
+    expect(byName.rating).toEqual({ name: "rating", type: "number", count: 3 });
+    expect(byName.when).toEqual({ name: "when", type: "date", count: 2 });
+    expect(byName.cast).toEqual({ name: "cast", type: "list", count: 2 });
+    expect(namesInOtherNotes({ x: note("empty:") }, "me")).toEqual([
+      { name: "empty", type: null, count: 1 },
+    ]);
   });
 });

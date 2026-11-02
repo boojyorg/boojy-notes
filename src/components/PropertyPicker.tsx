@@ -13,6 +13,7 @@ import { useExitGhost } from "../hooks/useExitGhost";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { useTheme } from "../hooks/useTheme";
 import type { PropType } from "../utils/properties";
+import type { VaultName } from "../utils/propertyTypes";
 import { fromTouch } from "../utils/touch";
 import { PlusIcon, PropertyTypeIcon } from "./Icons";
 import { type MenuAnchor, menuSurface } from "./Menu";
@@ -31,33 +32,41 @@ const TYPE_LABEL: Record<PropType, string> = {
 };
 
 export type PickRow =
-  | { kind: "name"; name: string; type: PropType | null; label: string }
-  | { kind: "custom"; name: string }
-  | { kind: "type"; type: PropType };
+  | { kind: "tags" }
+  | { kind: "name"; name: string; type: PropType | null; count: number }
+  | { kind: "type"; type: PropType }
+  | { kind: "custom"; name: string };
 
 /**
- * What the picker offers for what is typed: tags when the note has none, the
- * names other notes use (with the type this device remembers for them, else
- * none), then a property of one's own. Pure, so the rule can be read alone.
+ * What the picker offers. Empty, the same rows in every note: tags (when the
+ * note has none), then the six types, each a new property of its own. Typed
+ * into, the names other notes use that match (with the type they write and
+ * how many use them), the types whose label matches, and the typed name as a
+ * new one. Pure, so the rule can be read alone.
  */
 export function pickRows(
   query: string,
   have: ReadonlySet<string>,
-  names: readonly string[],
+  names: readonly VaultName[],
   types: Record<string, PropType>,
 ): PickRow[] {
   const q = query.trim().toLowerCase();
   const has = (n: string) => have.has(n.toLowerCase());
   const matches = (n: string) => !q || n.toLowerCase().includes(q);
   const rows: PickRow[] = [];
-  if (!has("tags") && matches("tags"))
-    rows.push({ kind: "name", name: "tags", type: "list", label: "tags" });
-  for (const n of names.filter((n) => !has(n) && matches(n)).slice(0, MAX_NAMES)) {
-    rows.push({ kind: "name", name: n, type: types[n] ?? null, label: n });
+  if (!has("tags") && matches("tags")) rows.push({ kind: "tags" });
+  if (q) {
+    for (const n of names.filter((n) => !has(n.name) && matches(n.name)).slice(0, MAX_NAMES))
+      rows.push({
+        kind: "name",
+        name: n.name,
+        type: n.type ?? types[n.name] ?? null,
+        count: n.count,
+      });
   }
-  const exact = q === "tags" || names.some((n) => n.toLowerCase() === q);
-  if (!q) rows.push({ kind: "custom", name: "" });
-  else if (!exact && !has(q)) rows.push({ kind: "custom", name: query.trim() });
+  for (const type of TYPES) if (matches(TYPE_LABEL[type])) rows.push({ kind: "type", type });
+  const exact = q === "tags" || names.some((n) => n.name.toLowerCase() === q);
+  if (q && !exact && !has(q)) rows.push({ kind: "custom", name: query.trim() });
   return rows;
 }
 
@@ -65,17 +74,20 @@ interface PropertyPickerProps {
   anchor: MenuAnchor;
   /** The note's own property names, lower-cased. */
   have: ReadonlySet<string>;
-  names: readonly string[];
+  names: readonly VaultName[];
   types: Record<string, PropType>;
+  /** A property by name and type: tags, a name other notes use, or a typed name once typed. */
   onChoose: (name: string, type: PropType) => void;
+  /** A new property of this type, its name still to give (the section's draft row). */
+  onPickType: (type: PropType) => void;
   onClose: () => void;
 }
 
 /**
  * Add property: a field and a list in one small surface, the menus' own. A
- * name first (tags, one other notes use, or one's own), then its type when
- * that isn't already known. Keys: arrows, Enter, Escape; a press outside
- * closes it.
+ * type first (the property is named in its row), or a name found by typing;
+ * a typed name nobody uses then asks its type. Keys: arrows, Enter, Escape;
+ * a press outside closes it.
  */
 export default function PropertyPicker({
   anchor,
@@ -83,12 +95,13 @@ export default function PropertyPicker({
   names,
   types,
   onChoose,
+  onPickType,
   onClose,
 }: PropertyPickerProps) {
   const { theme } = useTheme();
   const { TEXT, BG } = theme;
   const [query, setQuery] = useState("");
-  /** The name whose type is being chosen: the second step. */
+  /** A typed name nobody uses, whose type is being chosen: the second step. */
   const [naming, setNaming] = useState<string | null>(null);
   const [selected, setSelected] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -98,7 +111,7 @@ export default function PropertyPicker({
     () =>
       naming === null
         ? pickRows(query, have, names, types)
-        : TYPES.map((type) => ({ kind: "type" as const, type })),
+        : TYPES.map((type): PickRow => ({ kind: "type", type })),
     [naming, query, have, names, types],
   );
   const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4, reflowKey: rows.length });
@@ -127,16 +140,13 @@ export default function PropertyPicker({
 
   const choose = (row: PickRow | undefined) => {
     if (!row) return;
-    if (row.kind === "type") {
-      const name = (naming ?? "").trim();
-      if (!name) {
-        fieldRef.current?.focus();
-        return;
-      }
-      onChoose(name, row.type);
-    } else if (row.kind === "name" && row.type) {
-      onChoose(row.name, row.type);
-    } else {
+    if (row.kind === "tags") onChoose("tags", "list");
+    else if (row.kind === "type") {
+      if (naming === null) onPickType(row.type);
+      else onChoose(naming.trim(), row.type);
+    } else if (row.kind === "name" && row.type) onChoose(row.name, row.type);
+    else {
+      // A name with no type yet (or a typed one): its type next.
       setNaming(row.name);
       requestAnimationFrame(() => fieldRef.current?.focus());
     }
@@ -184,7 +194,7 @@ export default function PropertyPicker({
       <input
         ref={fieldRef}
         value={naming === null ? query : typedName}
-        placeholder={naming === null ? "Find or name a property" : "Name it"}
+        placeholder={naming === null ? "Find or name a property" : "Name"}
         aria-label={naming === null ? "Find or name a property" : "Property name"}
         spellCheck={false}
         autoComplete="off"
@@ -208,37 +218,44 @@ export default function PropertyPicker({
       <div role="listbox" aria-label="Properties to add" style={{ padding: MENU_PAD }}>
         {naming !== null && (
           <div style={{ padding: "4px 8px 2px", fontSize: 12, color: TEXT.muted }}>
-            {typedName.trim() ? `Type for “${typedName.trim()}”` : "Name it, then choose a type"}
+            Type for “{typedName.trim()}”
           </div>
         )}
         {rows.map((row, i) => {
           const active = i === selected;
           const icon =
-            row.kind === "type"
-              ? row.type
-              : row.kind === "name"
-                ? row.name === "tags"
-                  ? "tags"
-                  : (row.type ?? "untyped")
-                : null;
+            row.kind === "tags"
+              ? "tags"
+              : row.kind === "type"
+                ? row.type
+                : row.kind === "name"
+                  ? (row.type ?? "untyped")
+                  : null;
           const label =
-            row.kind === "type"
-              ? TYPE_LABEL[row.type]
-              : row.kind === "name"
-                ? row.label
-                : row.name
-                  ? `Add “${row.name}”`
-                  : "Custom property";
-          // The other notes' names under their heading, which tags (offered to every note) stays above.
-          const firstOther =
-            row.kind === "name" &&
-            row.name !== "tags" &&
-            rows.findIndex((r) => r.kind === "name" && r.name !== "tags") === i;
+            row.kind === "tags"
+              ? "Tags"
+              : row.kind === "type"
+                ? TYPE_LABEL[row.type]
+                : row.kind === "name"
+                  ? row.name
+                  : `Add “${row.name}”`;
+          const key =
+            row.kind === "type" || row.kind === "tags"
+              ? `${row.kind}:${row.kind === "type" ? row.type : ""}`
+              : `${row.kind}:${row.name}`;
+          // The names other notes use, under their heading; the types under theirs once both show.
+          const firstOfKind = rows.findIndex((r) => r.kind === row.kind) === i;
+          const heading =
+            firstOfKind && naming === null && row.kind === "name"
+              ? "In other notes"
+              : firstOfKind && naming === null && row.kind === "type" && query.trim()
+                ? "New"
+                : null;
           return (
-            <Fragment key={row.kind === "type" ? row.type : `${row.kind}:${row.name}`}>
-              {firstOther && (
+            <Fragment key={key}>
+              {heading && (
                 <div style={{ padding: "6px 8px 2px", fontSize: 12, color: TEXT.muted }}>
-                  Used in other notes
+                  {heading}
                 </div>
               )}
               <div
@@ -267,10 +284,21 @@ export default function PropertyPicker({
                   {icon ? <PropertyTypeIcon type={icon} size={16} /> : <PlusIcon />}
                 </span>
                 <span
-                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
                 >
                   {label}
                 </span>
+                {row.kind === "name" && (
+                  <span style={{ flex: "none", fontSize: 12, color: TEXT.muted }}>
+                    {row.count === 1 ? "1 note" : `${row.count} notes`}
+                  </span>
+                )}
               </div>
             </Fragment>
           );
