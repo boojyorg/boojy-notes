@@ -42,13 +42,14 @@ describe("SLASH_COMMANDS", () => {
       "table",
       "file",
       "embed",
+      "frontmatter",
     ]);
     for (const cmd of SLASH_COMMANDS) {
       expect(validTypes.has(cmd.type)).toBe(true);
     }
   });
 
-  it("keeps Text, deeper headings, maths, diagram, callout, file and embed off the opening screen", () => {
+  it("keeps Text, deeper headings, maths, diagram, callout, file, properties and embed off the opening screen", () => {
     const advanced = SLASH_COMMANDS.filter((c) => c.advanced).map((c) => c.id);
     expect(advanced).toEqual([
       "text",
@@ -59,8 +60,14 @@ describe("SLASH_COMMANDS", () => {
       "diagram",
       "callout",
       "file",
+      "properties",
       "embed",
     ]);
+  });
+
+  it("finds Properties when it is typed: the note's properties, not a block in the line", () => {
+    expect(filterSlashCommands("prop").map((c) => c.id)).toEqual(["properties"]);
+    expect(SLASH_COMMANDS.find((c) => c.id === "properties")?.type).toBe("frontmatter");
   });
 
   it("finds Diagram when it is typed, a code block in mermaid", () => {

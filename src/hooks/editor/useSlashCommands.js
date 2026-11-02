@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { getAPI } from "../../services/apiProvider";
 import { genBlockId } from "../../utils/storage";
 import { hasOwnField } from "../../utils/domHelpers";
+import { openBlock } from "../../utils/blockOpen";
 import { openMathSource } from "../../utils/mathOpen";
 import { insertedImageWidth } from "../../utils/imageSize";
 import { editBlocks } from "../../utils/editBlocks";
@@ -160,6 +161,31 @@ export function useSlashCommands({
         calloutType: command.calloutType || "note",
         title: "",
       });
+      return;
+    }
+
+    // Properties belong to the note, not the line: the section at the top
+    // (made, in the same commit as the slash text is cleared, when the note
+    // has none) opens its Add property picker. A made one left with nothing
+    // added goes again (PropertiesBlock).
+    if (command.type === "frontmatter") {
+      const first = blocks[0];
+      if (first?.type === "frontmatter") {
+        clearSlashText();
+        openBlock(first.id, "add");
+        return;
+      }
+      const section = {
+        id: genBlockId(),
+        type: "frontmatter",
+        text: "",
+        frontmatterSource: { empty: true },
+      };
+      updateBlocks((blks) => {
+        blks[blockIndex] = { ...blks[blockIndex], text: "" };
+        blks.splice(0, 0, section);
+      });
+      openBlock(section.id, "add-new");
       return;
     }
 

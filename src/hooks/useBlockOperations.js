@@ -243,6 +243,19 @@ export function useBlockOperations({
     return outcome;
   };
 
+  /** A frontmatter block with no text at all goes (a `/properties` left with nothing added). */
+  const removeEmptyFrontmatter = (noteId, blockId) =>
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        const block = blocks[0];
+        if (block?.id !== blockId || block.type !== "frontmatter" || (block.text ?? "").trim()) {
+          return false;
+        }
+        blocks.splice(0, 1);
+        if (!blocks.length) blocks.push({ id: genBlockId(), type: "p", text: "" });
+      }),
+    );
+
   const updateBlockProperty = (noteId, blockIndex, updates) =>
     commitNoteData(patchBlock(noteId, blockIndex, updates));
 
@@ -513,6 +526,7 @@ export function useBlockOperations({
     duplicateBlockRange,
     updateBlockProperty,
     editFrontmatter,
+    removeEmptyFrontmatter,
     saveAndInsertFiles,
     flipCheck,
     checkTodos,

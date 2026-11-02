@@ -243,6 +243,7 @@ const EditorArea = memo(
       updateTableRows,
       updateBlockProperty,
       editFrontmatter,
+      removeEmptyFrontmatter,
       detectActiveFormats,
       applyFormat,
       deleteBlockRange,
@@ -1586,6 +1587,7 @@ const EditorArea = memo(
                               onImageCopyImage={handleImageCopyImage}
                               onUpdateBlockProperty={updateBlockProperty}
                               onEditFrontmatter={editFrontmatter}
+                              onRemoveEmptyFrontmatter={removeEmptyFrontmatter}
                               onTagClick={onTagClick}
                               onFileOpen={handleFileOpen}
                               onFileOpenDefault={handleFileOpenDefault}

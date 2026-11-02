@@ -287,3 +287,40 @@ describe("useSlashCommands — inserted at a place (the phone bar's)", () => {
     expect(divider.focusBlockId.current).toBe(divider.blocks()[2].id);
   });
 });
+
+describe("/properties: the note's properties, at the top", () => {
+  const PROPS = { id: "properties", label: "Properties", type: "frontmatter" };
+
+  it("makes the section first, in the same commit that clears the slash, and asks it for its picker", async () => {
+    const opened = vi.fn();
+    const { registerBlockOpener } = await import("../../../src/utils/blockOpen");
+    const t = setup([
+      { id: "a", type: "p", text: "First." },
+      { id: "block-1", type: "p", text: "/prop" },
+    ]);
+    await t.run(PROPS, 1);
+    expect(t.commitNoteData).toHaveBeenCalledTimes(1);
+    expect(t.blocks()).toEqual([
+      { id: "new-1", type: "frontmatter", text: "", frontmatterSource: { empty: true } },
+      { id: "a", type: "p", text: "First." },
+      { id: "block-1", type: "p", text: "" },
+    ]);
+    registerBlockOpener("new-1", opened)();
+    expect(opened).toHaveBeenCalledWith("add-new");
+  });
+
+  it("opens the picker of a section the note already has, adding no second one", async () => {
+    const opened = vi.fn();
+    const { registerBlockOpener } = await import("../../../src/utils/blockOpen");
+    const off = registerBlockOpener("fm", opened);
+    const t = setup([
+      { id: "fm", type: "frontmatter", text: "title: A" },
+      { id: "block-1", type: "p", text: "/prop" },
+    ]);
+    await t.run(PROPS, 1);
+    expect(t.blocks().map((b) => b.type)).toEqual(["frontmatter", "p"]);
+    expect(t.blocks()[1].text).toBe("");
+    expect(opened).toHaveBeenCalledWith("add");
+    off();
+  });
+});

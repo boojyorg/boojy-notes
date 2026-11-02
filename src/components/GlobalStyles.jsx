@@ -1053,6 +1053,22 @@ ${tagPillCss(theme)}
           opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
         }
         .props:focus-within .props-tools, .props[data-yaml] .props-tools { opacity: 1; pointer-events: auto; }
+        /* Add property: a row of the rows' own grid, shown as the tools are (on hover or focus),
+           and always when there is nothing else to show. */
+        .props-add {
+          grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
+          height: 30px; margin: 0 -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent;
+          font: inherit; font-size: 13.5px; color: ${theme.TEXT.secondary}; cursor: pointer; text-align: left;
+          opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
+        }
+        .props-add svg { width: 15px; height: 15px; justify-self: center; }
+        .props-add span::before { content: attr(data-label); }
+        .props:focus-within .props-add, .props[data-empty] .props-add, .props[data-picking] .props-add {
+          opacity: 1; pointer-events: auto;
+        }
+        .props[data-picking] .props-add { background: ${theme.BG.hover}; }
+        /* No hover on the phone: Add property is always there to tap. */
+        html.is-phone .props-add { height: 40px; opacity: 1; pointer-events: auto; }
         .props-tool {
           display: inline-flex; align-items: center; justify-content: center; height: 26px; min-width: 26px;
           padding: 0 5px; border: 0; border-radius: 6px; background: transparent; color: ${theme.TEXT.muted};
@@ -1064,7 +1080,8 @@ ${tagPillCss(theme)}
         .props-chev svg { transition: transform var(--motion-fast); }
         .props[data-folded] .props-chev svg { transform: rotate(-90deg); }
         @media (hover: hover) {
-          .props:hover .props-tools { opacity: 1; pointer-events: auto; }
+          .props:hover :is(.props-tools, .props-add) { opacity: 1; pointer-events: auto; }
+          .props-add:hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
           .props-title:hover { background: ${theme.BG.surface}; }
           .props-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
           .props-tool[aria-pressed="true"]:hover { background: ${tagPillGround(theme, true)}; color: ${theme.ACCENT.text}; }

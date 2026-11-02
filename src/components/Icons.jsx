@@ -109,6 +109,7 @@ import {
   Strikethrough as LuStrikethrough,
   Sun as LuSun,
   Table as LuTable,
+  TableProperties as LuTableProperties,
   Tags as LuTags,
   TextAlignCenter as LuTextAlignCenter,
   TextAlignEnd as LuTextAlignEnd,
@@ -329,6 +330,7 @@ const SLASH_GLYPHS = {
   info: LuInfo,
   paperclip: LuPaperclip,
   link: LuLink,
+  properties: LuTableProperties,
 };
 
 /**

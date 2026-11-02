@@ -384,3 +384,23 @@ describe("runChange, for any frontmatter and any change: only the property's own
     );
   });
 });
+
+describe("addProperty: a new property, last, in its type's empty form", () => {
+  it("adds after everything else, which stays byte for byte", async () => {
+    const { addProperty } = await import("../../src/utils/properties");
+    expect(runChange("title: A # c", addProperty("rating", "number"))).toBe(
+      "title: A # c\nrating:",
+    );
+    expect(runChange("title: A\n", addProperty("seen", "checkbox"))).toBe("title: A\nseen: false");
+    expect(runChange("# only a comment", addProperty("cast", "list"))).toBe(
+      "# only a comment\ncast: []",
+    );
+    expect(runChange("", addProperty("tags", "list"))).toBe("tags: []");
+  });
+
+  it("refuses a name the note already has, or one that isn't plain", async () => {
+    const { addProperty } = await import("../../src/utils/properties");
+    expect(runChange("Title: A", addProperty("title", "text"))).toBeNull();
+    expect(runChange("a: 1", addProperty("b: c", "text"))).toBeNull();
+  });
+});

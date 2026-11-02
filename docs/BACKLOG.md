@@ -127,7 +127,7 @@ the test its rule names when it is built.
   compatibility, below).
 - **The Obsidian extensions, explicitly.** Drawn and edited: wikilinks and aliases,
   `[[Note#Heading]]`, embeds with a size (`#page=`: a file card that opens that page), callouts,
-  `==highlight==`, `#tags`, frontmatter (collapsed), maths, Mermaid. **Preserved only**, byte for
+  `==highlight==`, `#tags`, frontmatter (as properties), maths, Mermaid. **Preserved only**, byte for
   byte and shown as text: footnotes, `%%comments%%`, task states beyond `[ ]`/`[x]`, `^block-id`,
   HTML, reference-style links, plugin syntax. The spec takes this list when the work lands.
 
@@ -495,9 +495,8 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 - **Someday (Tyr, 2026-09-30), each as Obsidian does it:** footnotes drawn; unlinked mentions
   under the backlinks; a linked note previewed on hover; moving a selection into a new note,
-  leaving a link; emoji by `:name:`; smart quotes and arrows (never in code); a plain editor for
-  the frontmatter block (Obsidian's Properties); the Mac Share menu, through the
-  `boojy-notes://` link.
+  leaving a link; emoji by `:name:`; smart quotes and arrows (never in code); the Mac Share
+  menu, through the `boojy-notes://` link.
 - **Folder colours and icons** (2026-09-30: about 25 icons and 8 colours). Colour the folder
   glyph, keep the label and row neutral; Light and Dark variants; selection never colour-only;
   a reset to the default. Catalogue undecided (a first set from Lucide is one option). Kept in
