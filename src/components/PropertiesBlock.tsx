@@ -42,6 +42,7 @@ import {
   PencilIcon,
   PlusIcon,
   PropertyTypeIcon,
+  RemoveItemIcon,
   SearchIcon,
   SourceViewIcon,
   TrashIcon,
@@ -867,7 +868,7 @@ function PropertyRow(r: RowProps) {
         r.onRemoveItem(i);
       }}
     >
-      <span aria-hidden="true">×</span>
+      <RemoveItemIcon />
     </button>
   );
   // Each item is its text (a click edits it) and its × (removes it), kept together on a line.

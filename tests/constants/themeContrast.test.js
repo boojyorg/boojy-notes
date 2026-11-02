@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NIGHT, DAY } from "../../src/constants/themes.js";
-import { TAG_PILL_ALPHA, TAG_PILL_HOVER_ALPHA } from "../../src/styles/tagPill";
+import { REMOVE_X_ALPHA, TAG_PILL_ALPHA, TAG_PILL_HOVER_ALPHA } from "../../src/styles/tagPill";
 
 // WCAG 2 contrast: 4.5:1 for words, 3:1 for a glyph that carries meaning
 // (the toast's icon). Every ink is checked on every ground it can sit on,
@@ -83,6 +83,22 @@ for (const theme of [NIGHT, DAY]) {
       ];
       for (const pill of pills)
         expect(contrast(theme.ACCENT.tagText, pill)).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it("a property item's × shows beside it, and a tag's on its pill", () => {
+      const key = theme.name === "night" ? "night" : "day";
+      for (const ground of ["editor", "surface", "hover"]) {
+        const g = theme.BG[ground];
+        expect(contrast(over(theme.TEXT.muted, REMOVE_X_ALPHA.item, g), g)).toBeGreaterThanOrEqual(
+          3,
+        );
+      }
+      for (const alpha of [TAG_PILL_ALPHA[key], TAG_PILL_HOVER_ALPHA[key]]) {
+        const pill = over(theme.ACCENT.primary, alpha, theme.BG.editor);
+        expect(
+          contrast(over(theme.ACCENT.tagText, REMOVE_X_ALPHA.tag, pill), pill),
+        ).toBeGreaterThanOrEqual(3);
+      }
     });
 
     it("a destructive label reads on a button", () => {

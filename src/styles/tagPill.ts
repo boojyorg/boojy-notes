@@ -15,6 +15,13 @@ export const TAG_PILL_FONT = "0.92em";
 export const TAG_PILL_ALPHA = { day: 0.3, night: 0.22 } as const;
 export const TAG_PILL_HOVER_ALPHA = { day: 0.4, night: 0.32 } as const;
 
+/**
+ * The × that removes a list item or a tag, as a share of its ink (muted beside a list item,
+ * the tag's own on a pill): the lightest each can be and still show at 3:1 on its lowest
+ * ground (a hovered row; the hovered pill). `themeContrast.test.js`.
+ */
+export const REMOVE_X_ALPHA = { item: 0.8, tag: 0.75 } as const;
+
 const key = (theme: Theme) => (theme.name === "night" ? "night" : "day");
 
 export function tagPillGround(theme: Theme, hover = false): string {

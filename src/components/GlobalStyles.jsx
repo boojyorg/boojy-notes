@@ -1,5 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
-import { TAG_PILL_RADIUS, tagPillCss, tagPillGround } from "../styles/tagPill";
+import { REMOVE_X_ALPHA, TAG_PILL_RADIUS, tagPillCss, tagPillGround } from "../styles/tagPill";
 import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W, TOUCH } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
@@ -1094,7 +1094,7 @@ ${tagPillCss(theme)}
           .props-row:hover { background: ${theme.BG.surface}; }
           .props-row[data-editing]:hover { background: ${theme.BG.hover}; }
           .props-icon:hover { color: ${theme.TEXT.primary}; }
-          .props-x:hover { color: ${theme.TEXT.primary}; }
+          .props-x:hover { color: ${theme.TEXT.primary}; opacity: 1; }
           .props-tag .props-x:hover { color: inherit; opacity: 1; }
           .props-tag:not([data-editing]):hover { background: ${tagPillGround(theme, true)}; }
         }
@@ -1151,9 +1151,9 @@ ${tagPillCss(theme)}
           display: inline-flex; align-items: center; justify-content: center; flex: none;
           box-sizing: border-box; width: 14px; height: 13px; padding: 0 0 0 3px; margin-left: 1px;
           border: 0; background: none; font: inherit; line-height: 1; color: ${theme.TEXT.muted};
-          cursor: pointer; overflow: visible;
+          cursor: pointer; overflow: visible; opacity: ${REMOVE_X_ALPHA.item};
         }
-        .props-x span { font-size: 17px; line-height: 13px; pointer-events: none; }
+        .props-x svg { flex: none; pointer-events: none; }
         .props-confirm { padding: 6px 8px 4px; max-width: 264px; }
         .props-confirm p { margin: 0; font-size: 12.5px; line-height: 1.45; color: ${theme.TEXT.secondary}; }
         .props-confirm .props-confirm-title { font-size: 13px; font-weight: 600; color: ${theme.TEXT.primary}; margin-bottom: 2px; }
@@ -1183,7 +1183,7 @@ ${tagPillCss(theme)}
           height: 22px; padding: 0 5px 0 8px; margin-left: 0; font-size: 0.92em;
           background: ${tagPillGround(theme)}; color: ${theme.ACCENT.tagText};
         }
-        .props-tag .props-x { color: inherit; opacity: 0.6; }
+        .props-tag .props-x { color: inherit; opacity: ${REMOVE_X_ALPHA.tag}; }
         .props-tag[data-editing] { background: ${tagPillGround(theme)}; }
         .props-tag .props-input { color: inherit; }
         .props-tag[data-armed] { box-shadow: inset 0 0 0 1.5px ${theme.ACCENT.tagText}; }
