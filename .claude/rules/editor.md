@@ -266,8 +266,9 @@ never holds a byte sequence the syntax cannot.**
   same in every note; names other notes use only when typed (a name's or a word's start), with
   their type and count, under Enter's own row; the list scrolls. A type picked is a draft row,
   its name to type over the type's in grey (`freeName`), written once on Enter, Tab or a press
-  elsewhere; Escape writes nothing. `---` on a note's first line opens it (`opensProperties`);
-  cancelled, the dashes come back. A typed name: Enter adds it with no type (its value
+  elsewhere; Escape writes nothing. `---` on a note's first line opens it as the third dash is
+  typed (`opensProperties`; Obsidian's habit, and the one marker that doesn't wait for its space:
+  it takes no argument and can only be the fence there); cancelled, the dashes come back. A typed name: Enter adds it with no type (its value
   decides), or one is picked under "Or pick its type". Nothing is picked as it opens. Written
   last in the type's empty form. An empty value's type is this
   device's (`propertyTypes`), never the vault's. `/properties` makes the section at the top, and

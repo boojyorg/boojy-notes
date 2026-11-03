@@ -163,6 +163,27 @@ describe("useInputHandler", () => {
     expect(deps.openDivider).toHaveBeenCalledWith("note-1", 1);
   });
 
+  it("opens properties as the third dash is typed on the note's first line; never from text alone", () => {
+    const { result } = renderHook(() => useInputHandler(deps));
+    const dash = { inputType: "insertText", data: "-", isComposing: false };
+    mockEl.textContent = "---";
+    // The dashes given back, or pasted: no dash typed, nothing opens.
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.executeSlashCommand).not.toHaveBeenCalled();
+    result.current.handleBlockInput("note-1", 0, dash);
+    expect(deps.executeSlashCommand).toHaveBeenCalledWith(
+      "note-1",
+      0,
+      expect.objectContaining({ type: "frontmatter" }),
+      { literal: "---" },
+    );
+    // Below the first line, three dashes wait for their space, as a divider.
+    deps.executeSlashCommand.mockClear();
+    deps.blockRefs.current.b2 = mockEl;
+    result.current.handleBlockInput("note-1", 1, dash);
+    expect(deps.executeSlashCommand).not.toHaveBeenCalled();
+  });
+
   it("opens properties on --- and a space on the note's first line; a longer run is a divider", () => {
     mockEl.textContent = "--- ";
     const { result } = renderHook(() => useInputHandler(deps));
