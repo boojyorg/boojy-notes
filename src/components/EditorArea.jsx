@@ -669,13 +669,19 @@ const EditorArea = memo(
         setBlockMenu(null);
         if (!heldIdsRef.current.includes(id)) setSelectedBlockId(id);
       },
-      // Under the held block and its nested items, never on them.
+      // Under the run the menu acts on (the held block and its nested items,
+      // or the selection the hold kept), never on it: a block it covered
+      // would be one its Delete or Turn into changes unseen.
       onRelease: (id) => {
         const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
         const i = blocks.findIndex((b) => b.id === id);
-        const rootOf = (b) => blockRefs.current[b?.id]?.closest?.("[data-block-id]");
-        const first = rootOf(blocks[i])?.getBoundingClientRect();
-        const last = rootOf(blocks[subtreeEnd(blocks, i)])?.getBoundingClientRect();
+        const run = heldIdsRef.current;
+        const kept = run.includes(id);
+        const firstId = kept ? run[0] : blocks[i]?.id;
+        const lastId = kept ? run[run.length - 1] : blocks[subtreeEnd(blocks, i)]?.id;
+        const rootOf = (bid) => blockRefs.current[bid]?.closest?.("[data-block-id]");
+        const first = rootOf(firstId)?.getBoundingClientRect();
+        const last = rootOf(lastId)?.getBoundingClientRect();
         if (i < 0 || !first || !last) return;
         setBlockMenu({
           top: first.top,
