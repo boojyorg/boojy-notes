@@ -13,6 +13,7 @@ import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import type { Block, NoteData } from "../types/notes";
 import { readNoteIds, withNoteId, writeNoteIds } from "../utils/noteIdLists";
 import { registerBlockOpener } from "../utils/blockOpen";
+import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
 import { placeCaret } from "../utils/domHelpers";
 import {
   addProperty,
@@ -33,7 +34,7 @@ import {
   shownDate,
 } from "../utils/properties";
 import { namesInOtherNotes, readPropertyTypes, rememberPropertyType } from "../utils/propertyTypes";
-import { ChevronDownIcon, PlusIcon, PropertyTypeIcon, SourceViewIcon, TrashIcon } from "./Icons";
+import { FoldChevronIcon, PlusIcon, PropertyTypeIcon, SourceViewIcon, TrashIcon } from "./Icons";
 import Menu, { type MenuAnchor, type MenuItem, rectAnchor } from "./Menu";
 import TickBox from "./TickBox";
 import PropertyPicker from "./PropertyPicker";
@@ -145,6 +146,10 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   const read = readProperties(text);
   const [folded, setFolded] = useState(() => readNoteIds(FOLDED_PROPERTIES_KEY).includes(noteId));
   const [asYaml, setAsYaml] = useState(false);
+  // Unfolded by hand this visit: what opens fades in (a note opening never animates).
+  const [arrived, setArrived] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLButtonElement>(null);
   const [unsafe, setUnsafe] = useState(false);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -256,17 +261,24 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     }
   };
 
+  // The rows come and go at once (a hidden field must never keep focus); only
+  // the blocks below glide to their new place, as a dropped block's do.
   const toggleFold = useCallback(() => {
-    setFolded((was) => {
-      writeNoteIds(
-        FOLDED_PROPERTIES_KEY,
-        withNoteId(readNoteIds(FOLDED_PROPERTIES_KEY), noteId, !was),
-      );
-      return !was;
-    });
+    const section = sectionRef.current;
+    const editor = section?.closest("[data-block-id]")?.parentElement ?? null;
+    const places = measureBlockPlaces(editor);
+    if (section?.contains(document.activeElement) && document.activeElement !== titleRef.current)
+      titleRef.current?.focus({ preventScroll: true });
+    writeNoteIds(
+      FOLDED_PROPERTIES_KEY,
+      withNoteId(readNoteIds(FOLDED_PROPERTIES_KEY), noteId, !folded),
+    );
+    setFolded(!folded);
+    setArrived(folded);
     setEditing(null);
     setMenu(null);
-  }, [noteId]);
+    settleBlocks(editor, places);
+  }, [noteId, folded]);
 
   const startEdit = (p: Property, part: "value" | "name", caret: number | null) => {
     const draft =
@@ -417,15 +429,18 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     },
   ];
 
-  const yamlBtn = useRef<HTMLButtonElement>(null);
-  const foldBtn = useRef<HTMLButtonElement>(null);
-  const yamlTip = useTooltip();
-  const foldTip = useTooltip();
-  const yamlLabel = yamlView ? "Back to properties" : "Edit as YAML";
+  // YAML opens from a value the rows can't show (or its icon's menu); this is the way back.
+  const backToRows = () => {
+    setAsYaml(false);
+    setUnsafe(false);
+    setEditing(null);
+  };
 
   return (
     <section
+      ref={sectionRef}
       className="props"
+      data-arrived={arrived ? "" : undefined}
       data-properties=""
       data-folded={folded ? "" : undefined}
       data-yaml={yamlView ? "" : undefined}
@@ -441,63 +456,44 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
       <div className="props-head">
         <button
           type="button"
+          ref={titleRef}
           className="props-title"
           data-label="Properties"
           aria-label="Properties"
           aria-expanded={!folded}
           onClick={toggleFold}
-        />
-        {!folded && (
-          <span className="props-tools">
-            <button
-              ref={yamlBtn}
-              type="button"
-              className="props-tool"
-              aria-label={yamlLabel}
-              aria-pressed={yamlView}
-              aria-disabled={!read.ok || undefined}
-              {...yamlTip.handlers}
-              onClick={() => {
-                if (!read.ok) return;
-                setAsYaml((on) => !on);
-                setUnsafe(false);
-                setEditing(null);
-              }}
-            >
-              <SourceViewIcon />
-            </button>
-            {yamlTip.shown && (
-              <Tooltip label={yamlLabel} anchor={yamlBtn.current} placement="below" />
-            )}
-          </span>
-        )}
-        <button
-          ref={foldBtn}
-          type="button"
-          className="props-tool props-chev"
-          aria-label={folded ? "Show properties" : "Hide properties"}
-          aria-expanded={!folded}
-          {...foldTip.handlers}
-          onClick={toggleFold}
         >
-          <ChevronDownIcon />
+          <span className="props-chev" aria-hidden="true">
+            <FoldChevronIcon />
+          </span>
         </button>
-        {foldTip.shown && (
-          <Tooltip label={folded ? "Show" : "Hide"} anchor={foldBtn.current} placement="below" />
-        )}
       </div>
       {!folded &&
         (yamlView ? (
-          <YamlField
-            {...props}
-            notice={
-              !read.ok
-                ? "These properties can't be shown as rows, so they're shown as YAML."
-                : unsafe
-                  ? "Boojy couldn't make that change safely. Edit it here as YAML."
-                  : null
-            }
-          />
+          <>
+            <YamlField
+              {...props}
+              notice={
+                !read.ok
+                  ? "These properties can't be shown as rows, so they're shown as YAML."
+                  : unsafe
+                    ? "Boojy couldn't make that change safely. Edit it here as YAML."
+                    : null
+              }
+            />
+            {/* YAML the rows can't read has no rows to go back to. */}
+            {read.ok && (
+              <button
+                type="button"
+                className="props-action props-back"
+                aria-label="Back to properties"
+                onClick={backToRows}
+              >
+                <SourceViewIcon />
+                <span data-label="Back to properties" />
+              </button>
+            )}
+          </>
         ) : (
           <div className="props-rows">
             {propsNow.map((p) => (
@@ -776,7 +772,7 @@ function PropertyRow(r: RowProps) {
         ) : dated ? (
           shownDate(shown)
         ) : r.type === "number" ? (
-          <span className="props-num">{shown}</span>
+          shown
         ) : (
           shown
         )}

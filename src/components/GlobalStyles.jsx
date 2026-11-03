@@ -1045,15 +1045,24 @@ ${tagPillCss(theme)}
         .props-title {
           border: 0; background: transparent; cursor: pointer; padding: 2px 6px; margin-left: -6px;
           border-radius: 6px; font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.4;
-          color: ${theme.TEXT.primary};
+          color: ${theme.TEXT.primary}; display: inline-flex; align-items: center; gap: 3px;
         }
         .props-title::before { content: attr(data-label); }
-        .props-tools {
-          margin-left: auto; display: flex;
-          opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
+        /* The fold chevron is part of the title, shown with the tools (hover, focus); always on the phone. */
+        .props-chev {
+          display: inline-flex; color: ${theme.TEXT.secondary};
+          opacity: 0; transition: opacity var(--motion-fast);
         }
-        .props:focus-within .props-tools, .props[data-yaml] .props-tools { opacity: 1; pointer-events: auto; }
+        .props-chev svg { width: 14px; height: 14px; transition: transform var(--motion-fast); }
+        .props[data-folded] .props-chev svg { transform: rotate(-90deg); }
+        /* Unfolded by hand, the rows (or the YAML) fade in while the note below glides down. */
+        .props[data-arrived] :is(.props-rows, .props-yaml) {
+          animation: motion-fade-in var(--motion-enter) var(--ease-enter) backwards;
+        }
+        .props:focus-within .props-chev, html.is-phone .props-chev { opacity: 1; }
         /* Add property: a row of the rows' own grid, shown as the tools are (on hover or focus),
+           and always when there is nothing else to show. */
+        /* Add property: a row of the rows' own grid, shown on hover or focus,
            and always when there is nothing else to show. */
         .props-add {
           grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
@@ -1062,29 +1071,26 @@ ${tagPillCss(theme)}
           opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
         }
         .props-add svg { width: 15px; height: 15px; justify-self: center; }
-        .props-add span::before { content: attr(data-label); }
-        .props:focus-within .props-add, .props[data-empty] .props-add, .props[data-picking] .props-add {
+        .props-add span::before, .props-action span::before { content: attr(data-label); }
+        .props-action {
+          display: inline-flex; align-items: center; gap: 8px; justify-self: start; height: 30px;
+          margin: 0 -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent;
+          font: inherit; font-size: 13.5px; color: ${theme.TEXT.secondary}; cursor: pointer;
+        }
+        .props-action svg { width: 15px; height: 15px; flex: none; }
+        /* In YAML the way back is always shown, under the field. */
+        .props-back { margin-top: 6px; }
+        .props:focus-within .props-add, .props[data-empty] .props-add,
+        .props[data-picking] .props-add {
           opacity: 1; pointer-events: auto;
         }
         .props[data-picking] .props-add { background: ${theme.BG.hover}; }
         /* No hover on the phone: Add property is always there to tap. */
         html.is-phone .props-add { height: 40px; opacity: 1; pointer-events: auto; }
-        .props-tool {
-          display: inline-flex; align-items: center; justify-content: center; height: 26px; min-width: 26px;
-          padding: 0 5px; border: 0; border-radius: 6px; background: transparent; color: ${theme.TEXT.muted};
-          cursor: pointer;
-        }
-        .props-tool svg { width: 15px; height: 15px; flex: none; }
-        .props-tool[aria-pressed="true"] { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.text}; }
-        .props-tool[aria-disabled="true"] { cursor: default; }
-        .props-chev svg { transition: transform var(--motion-fast); }
-        .props[data-folded] .props-chev svg { transform: rotate(-90deg); }
         @media (hover: hover) {
-          .props:hover :is(.props-tools, .props-add) { opacity: 1; pointer-events: auto; }
-          .props-add:hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
+          .props:hover :is(.props-add, .props-chev) { opacity: 1; pointer-events: auto; }
+          :is(.props-add, .props-action):hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
           .props-title:hover { background: ${theme.BG.surface}; }
-          .props-tool:hover { background: ${theme.BG.hover}; color: ${theme.TEXT.primary}; }
-          .props-tool[aria-pressed="true"]:hover { background: ${tagPillGround(theme, true)}; color: ${theme.ACCENT.text}; }
           .props-row:hover { background: ${theme.BG.surface}; }
           .props-row[data-editing]:hover { background: ${theme.BG.hover}; }
           .props-icon:hover { color: ${theme.TEXT.primary}; }
@@ -1149,7 +1155,6 @@ ${tagPillCss(theme)}
           min-width: 0; min-height: 30px; box-sizing: border-box; display: flex; flex-wrap: wrap;
           align-items: center; gap: 4px; padding: 3px 0; line-height: 24px; color: ${theme.TEXT.primary}; overflow-wrap: anywhere;
         }
-        .props-num { font-variant-numeric: tabular-nums; }
         .props-muted { color: ${theme.TEXT.muted}; }
         .props-empty::before { content: "Empty"; color: ${theme.TEXT.muted}; }
         /* One pill shape: the text's tag pill (styles/tagPill), its tokens shared;

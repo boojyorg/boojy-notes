@@ -330,7 +330,7 @@ describe("PropertiesBlock: the type menu", () => {
 describe("PropertiesBlock: folding and the YAML", () => {
   it("folds to its header, unmounting the rows, and remembers it per note", () => {
     const { container: c } = setup();
-    fireEvent.click(c.querySelector(".props-chev") as HTMLElement);
+    fireEvent.click(c.querySelector(".props-title") as HTMLElement);
     expect(c.querySelectorAll(".props-row")).toHaveLength(0);
     expect(JSON.parse(localStorage.getItem(FOLDED_PROPERTIES_KEY) as string)).toEqual(["n1"]);
     cleanup();
@@ -339,23 +339,34 @@ describe("PropertiesBlock: folding and the YAML", () => {
     expect(setup(TEXT, "n2").container.querySelectorAll(".props-row").length).toBeGreaterThan(0);
   });
 
-  it("</> shows the YAML as a field that commits what is typed", () => {
+  it("folding with a field focused hands focus to the title, never to nothing", () => {
+    const { container: c } = setup();
+    fireEvent.click(value(c, "title").querySelector("button") as HTMLElement);
+    expect(document.activeElement).toBe(input(c));
+    fireEvent.click(c.querySelector(".props-title") as HTMLElement);
+    expect(c.querySelectorAll(".props-row")).toHaveLength(0);
+    expect(document.activeElement).toBe(c.querySelector(".props-title"));
+  });
+
+  it("a value the rows can't show opens the YAML, a field that commits what is typed", () => {
     const { container: c, getByRole, onText } = setup();
-    fireEvent.click(getByRole("button", { name: "Edit as YAML" }));
+    fireEvent.click(value(c, "source").querySelector("button") as HTMLElement);
     const field = c.querySelector(".props-yaml-field") as HTMLTextAreaElement;
     expect(field.value).toBe(TEXT);
     fireEvent.input(field, { target: { value: `${TEXT}\nmood: calm` } });
     expect(onText).toHaveBeenCalledWith(`${TEXT}\nmood: calm`);
+    fireEvent.click(getByRole("button", { name: "Back to properties" }));
+    expect(c.querySelector(".props-yaml-field")).toBeNull();
+    expect(c.querySelectorAll(".props-row").length).toBeGreaterThan(0);
   });
 
   it("YAML the rows can't read opens as YAML, says so, and shows no rows", () => {
-    const { container: c, getByRole } = setup("tags: [a");
+    const { container: c, queryByRole } = setup("tags: [a");
     expect((c.querySelector(".props-yaml-field") as HTMLTextAreaElement).value).toBe("tags: [a");
     expect(c.querySelector(".props-note")?.textContent).toMatch(/can't be shown as rows/);
     expect(c.querySelectorAll(".props-row")).toHaveLength(0);
-    expect(getByRole("button", { name: "Back to properties" }).getAttribute("aria-disabled")).toBe(
-      "true",
-    );
+    // No rows to go back to, so no way back is offered.
+    expect(queryByRole("button", { name: "Back to properties" })).toBeNull();
   });
 
   it("a value the rows can't change opens the YAML", () => {

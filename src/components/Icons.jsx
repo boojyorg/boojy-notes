@@ -146,6 +146,8 @@ const contentIcon =
 export const ChevronDownIcon = contentIcon(LuChevronDown);
 export const ChevronRightIcon = contentIcon(LuChevronRight);
 export const ChevronLeftIcon = contentIcon(LuChevronLeft);
+/** A section's fold control (Properties): chrome, so the navigation stroke. */
+export const FoldChevronIcon = navIcon(LuChevronDown);
 
 // ── Tree items ────────────────────────────────────────────────────────────
 export const FolderIcon = ({ open = false, color = "currentColor", size: sz = ICON_INLINE }) => {
