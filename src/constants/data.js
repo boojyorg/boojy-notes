@@ -79,6 +79,14 @@ export const SLASH_COMMANDS = [
     advanced: true,
   },
   {
+    id: "properties",
+    label: "Properties",
+    hint: "",
+    icon: "properties",
+    type: "frontmatter",
+    advanced: true,
+  },
+  {
     id: "embed",
     label: "Embed note",
     hint: "",

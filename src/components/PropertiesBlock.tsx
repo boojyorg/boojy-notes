@@ -12,7 +12,10 @@ import {
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import type { Block, NoteData } from "../types/notes";
 import { readNoteIds, withNoteId, writeNoteIds } from "../utils/noteIdLists";
+import { registerBlockOpener } from "../utils/blockOpen";
+import { placeCaret } from "../utils/domHelpers";
 import {
+  addProperty,
   type Change,
   conversion,
   isNumber,
@@ -29,9 +32,11 @@ import {
   setUntyped,
   shownDate,
 } from "../utils/properties";
-import { ChevronDownIcon, PropertyTypeIcon, SourceViewIcon, TrashIcon } from "./Icons";
+import { namesInOtherNotes, readPropertyTypes, rememberPropertyType } from "../utils/propertyTypes";
+import { ChevronDownIcon, PlusIcon, PropertyTypeIcon, SourceViewIcon, TrashIcon } from "./Icons";
 import Menu, { type MenuAnchor, type MenuItem, rectAnchor } from "./Menu";
 import TickBox from "./TickBox";
+import PropertyPicker from "./PropertyPicker";
 import { Tooltip, useTooltip } from "./Tooltip";
 
 /** The notes whose Properties section is folded on this device; open is the default. */
@@ -119,6 +124,8 @@ interface PropertiesBlockProps {
   noteDataRef?: RefObject<NoteData>;
   onUpdateText: (noteId: string, blockIndex: number, text: string) => void;
   onEditFrontmatter?: (noteId: string, blockId: string, change: Change) => "ok" | "none" | "unsafe";
+  /** Takes away a frontmatter block left with no text (a cancelled `/properties`). */
+  onRemoveEmpty?: (noteId: string, blockId: string) => void;
   /** A tag pill's click: Search filtered by that tag, as a `#tag` in the text does. */
   onTagClick?: (tag: string) => void;
   accentColor?: string;
@@ -142,8 +149,17 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [notice, setNotice] = useState<Editing | null>(null);
-  // A type chosen for an empty value, which the file can't say yet.
-  const [chosen, setChosen] = useState<Record<string, PropType>>({});
+  // The type chosen for an empty value, which the file can't say yet:
+  // remembered on this device by name (`propertyTypes`).
+  const [chosen, setChosen] = useState<Record<string, PropType>>(readPropertyTypes);
+  // Add property's picker; `fresh` when `/properties` made the section for it.
+  // `from`: the block `/properties` was typed in, where a cancel puts the caret back.
+  const [picker, setPicker] = useState<{
+    anchor: MenuAnchor;
+    fresh: boolean;
+    from?: string;
+  } | null>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
 
   // YAML the rows can't read opens as YAML, and stays so once mended, so
   // mending it never swaps the field away under the caret.
@@ -188,6 +204,57 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     },
     [onEditFrontmatter, noteId, block.id],
   );
+
+  // `/properties` asks this block, perhaps before it is mounted, for its picker.
+  useEffect(
+    () =>
+      registerBlockOpener(block.id, ({ what, from }) => {
+        if (what !== "add" && what !== "add-new") return;
+        setFolded((was) => {
+          if (was)
+            writeNoteIds(
+              FOLDED_PROPERTIES_KEY,
+              withNoteId(readNoteIds(FOLDED_PROPERTIES_KEY), noteId, false),
+            );
+          return false;
+        });
+        setAsYaml(false);
+        requestAnimationFrame(() => {
+          if (addRef.current)
+            setPicker({ anchor: rectAnchor(addRef.current), fresh: what === "add-new", from });
+        });
+      }),
+    [block.id, noteId],
+  );
+
+  const choosePicked = (name: string, type: PropType) => {
+    setPicker(null);
+    if (commit(addProperty(name, type)) !== "ok") return;
+    setChosen(rememberPropertyType(name, type));
+    if (type !== "checkbox") {
+      setEditing({
+        key: name,
+        part: "value",
+        draft: "",
+        start: type === "list" ? "[]" : "null",
+        caret: null,
+      });
+    }
+  };
+  const closePicker = () => {
+    const fresh = picker?.fresh;
+    const from = picker?.from;
+    setPicker(null);
+    if (fresh && !text.trim()) props.onRemoveEmpty?.(noteId, block.id);
+    // Cancelled, the caret goes back to the line `/properties` was typed on,
+    // so the next keys go where they were going (they were lost before).
+    // At once, in the Escape's own keystroke: a frame later, keys typed in
+    // that frame went nowhere.
+    if (from) {
+      const line = document.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(from)}"]`);
+      if (line) placeCaret(line, 0, { reveal: false });
+    }
+  };
 
   const toggleFold = useCallback(() => {
     setFolded((was) => {
@@ -327,7 +394,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
               return;
             }
             setMenu(null);
-            if (p.shown === null) setChosen((c) => ({ ...c, [p.key]: t }));
+            if (p.shown === null) setChosen(rememberPropertyType(p.key, t));
             commit(conv.change);
           },
         }),
@@ -362,6 +429,8 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
       data-properties=""
       data-folded={folded ? "" : undefined}
       data-yaml={yamlView ? "" : undefined}
+      data-empty={read.ok && !propsNow.length ? "" : undefined}
+      data-picking={picker ? "" : undefined}
       aria-label="Properties"
       // The section's fields own their input: it never reaches the editor's
       // own handlers, which would read it as typing in the note and take the
@@ -485,8 +554,32 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                 </button>
               </p>
             )}
+            <button
+              ref={addRef}
+              type="button"
+              className="props-add"
+              aria-label="Add property"
+              aria-expanded={!!picker}
+              onClick={(e) => {
+                if (picker) setPicker(null);
+                else setPicker({ anchor: rectAnchor(e.currentTarget), fresh: false });
+              }}
+            >
+              <PlusIcon />
+              <span data-label="Add property" />
+            </button>
           </div>
         ))}
+      {picker && (
+        <PropertyPicker
+          anchor={picker.anchor}
+          have={new Set(propsNow.map((q) => q.key.toLowerCase()))}
+          names={namesInOtherNotes(props.noteDataRef?.current, noteId)}
+          types={chosen}
+          onChoose={choosePicked}
+          onClose={closePicker}
+        />
+      )}
       {menu && menuProp && (
         <Menu
           key={menu.confirm ? "confirm" : "types"}

@@ -38,14 +38,17 @@ const TEXT = [
 ].join("\n");
 
 /** The block as a note would hold it: each change runs on the latest text, as editFrontmatter does. */
+type Extra = Partial<Parameters<typeof PropertiesBlock>[0]>;
 function Harness({
   initial,
   noteId,
   onText,
+  extra = {},
 }: {
   initial: string;
   noteId: string;
   onText: (t: string) => void;
+  extra?: Extra;
 }) {
   const [text, setText] = useState(initial);
   (Harness as unknown as { set: (t: string) => void }).set = setText;
@@ -56,6 +59,7 @@ function Harness({
       noteId={noteId}
       blockIndex={0}
       syncGen={0}
+      {...extra}
       onUpdateText={(_, __, t) => onText(t)}
       onEditFrontmatter={(_, __, change: Change) => {
         const out = runChange(text, change);
@@ -72,12 +76,12 @@ function Harness({
 const fromDisk = (t: string) =>
   act(() => (Harness as unknown as { set: (t: string) => void }).set(t));
 
-const setup = (text = TEXT, noteId = "n1") => {
+const setup = (text = TEXT, noteId = "n1", extra: Extra = {}) => {
   let latest = text;
   const onText = vi.fn((t: string) => {
     latest = t;
   });
-  const r = render(<Harness initial={text} noteId={noteId} onText={onText} />);
+  const r = render(<Harness initial={text} noteId={noteId} onText={onText} extra={extra} />);
   return { ...r, onText, text: () => latest };
 };
 const row = (c: HTMLElement, key: string) =>
@@ -392,5 +396,62 @@ describe("numberTyping", () => {
     ["abc", ""],
   ])("%s → %s", (typed, kept) => {
     expect(numberTyping(typed)).toBe(kept);
+  });
+});
+
+describe("PropertiesBlock: Add property", () => {
+  const picker = () => document.querySelector('[data-testid="property-picker"]') as HTMLElement;
+  const field = () => picker().querySelector("input") as HTMLInputElement;
+  const rowsOf = () => [...picker().querySelectorAll('[role="option"]')].map((r) => r.textContent);
+
+  it("a name of your own, then its type: added last, its value open to type", () => {
+    const { container: c, text } = setup("title: A");
+    fireEvent.click(c.querySelector(".props-add") as HTMLElement);
+    expect(rowsOf()).toEqual(["tags", "Custom property"]);
+    fireEvent.change(field(), { target: { value: "mood" } });
+    expect(rowsOf()).toEqual(["Add “mood”"]);
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(rowsOf()).toEqual(["Text", "List", "Number", "Checkbox", "Date", "Date & time"]);
+    fireEvent.keyDown(field(), { key: "ArrowDown" });
+    fireEvent.keyDown(field(), { key: "ArrowDown" });
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(text()).toBe("title: A\nmood:");
+    expect(iconLabel(c, "mood")).toBe("mood: Number. Change type");
+    fireEvent.change(input(c), { target: { value: "4" } });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(text()).toBe("title: A\nmood: 4");
+  });
+
+  it("offers names other notes use, with the type this device remembers", () => {
+    localStorage.setItem("boojy-property-types", JSON.stringify({ rating: "number" }));
+    const other = {
+      title: "o",
+      folder: null,
+      content: {
+        title: "o",
+        blocks: [{ id: "x", type: "frontmatter", text: "rating: 3\nstatus: done" }],
+      },
+    };
+    const { container: c, text } = setup("title: A", "n1", {
+      noteDataRef: { current: { other } } as never,
+    });
+    fireEvent.click(c.querySelector(".props-add") as HTMLElement);
+    expect(rowsOf()).toEqual(["tags", "rating", "status", "Custom property"]);
+    fireEvent.change(field(), { target: { value: "rat" } });
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(text()).toBe("title: A\nrating:");
+    expect(iconLabel(c, "rating")).toBe("rating: Number. Change type");
+  });
+
+  it("Escape leaves the note as it was; a section /properties made is taken away again", async () => {
+    const { openBlock } = await import("../../src/utils/blockOpen");
+    const onRemoveEmpty = vi.fn();
+    setup("", "n1", { onRemoveEmpty });
+    act(() => openBlock("fm", "add-new"));
+    await act(() => new Promise((r) => requestAnimationFrame(() => r(undefined))));
+    expect(picker()).not.toBeNull();
+    fireEvent.keyDown(field(), { key: "Escape" });
+    expect(picker()).toBeNull();
+    expect(onRemoveEmpty).toHaveBeenCalledWith("n1", "fm");
   });
 });

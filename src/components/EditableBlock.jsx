@@ -147,6 +147,7 @@ const EditableBlock = memo(
     onImageCopyImage,
     onUpdateBlockProperty,
     onEditFrontmatter,
+    onRemoveEmptyFrontmatter,
     onTagClick,
     onFileOpen,
     onFileOpenDefault,
@@ -348,6 +349,7 @@ const EditableBlock = memo(
           noteDataRef={noteDataRef}
           onUpdateText={onUpdateText}
           onEditFrontmatter={onEditFrontmatter}
+          onRemoveEmpty={onRemoveEmptyFrontmatter}
           onTagClick={onTagClick}
           accentColor={accentColor}
         />,

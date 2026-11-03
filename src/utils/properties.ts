@@ -311,9 +311,13 @@ function listOut(text: string, p: Property, items: string[]): string {
 /** One change to a frontmatter block: what it does, and what the property must read as after it. */
 export interface Change {
   key: string;
+  /** A new property: there is none by this name yet, and `apply` is given none. */
+  adds?: true;
   /** The property's name after the change (a rename). */
   newKey?: string;
   apply: (text: string, p: Property) => string | null;
+  /** For a change that adds: the text with the new property in it. */
+  add?: (text: string) => string | null;
   /** The changed property as it must read back; absent for Remove. */
   expect?: (p: Property) => boolean;
 }
@@ -328,6 +332,7 @@ export interface Change {
 export function runChange(text: string, change: Change): string | null | false {
   const before = readProperties(text);
   if (!before.ok) return null;
+  if (change.adds) return runAdd(text, before.props, change);
   const p = before.props.find((q) => q.key === change.key);
   if (!p) return null;
   const after = change.apply(text, p);
@@ -344,6 +349,42 @@ export function runChange(text: string, change: Change): string | null | false {
   if (change.expect ? !changed || !change.expect(changed) : changed) return false;
   return after;
 }
+
+/** `runChange` for a new property: everything before it stays, byte for byte. */
+function runAdd(text: string, props: Property[], change: Change): string | null | false {
+  if (props.some((q) => q.key.toLowerCase() === change.key.toLowerCase())) return null;
+  const after = change.add?.(text) ?? null;
+  if (after === null) return null;
+  const read = readProperties(after);
+  if (!read.ok || !after.startsWith(text)) return false;
+  const shape = (ps: Property[]) => JSON.stringify(ps.map((q) => [q.key, q.type, q.shown]));
+  if (shape(read.props.filter((q) => q.key !== change.key)) !== shape(props)) return false;
+  const added = read.props.find((q) => q.key === change.key);
+  return added && (!change.expect || change.expect(added)) ? after : false;
+}
+
+/**
+ * A new property, last, in its type's empty form: an unticked box, an empty
+ * list, else nothing after the colon (the type is this device's to remember).
+ */
+export const addProperty = (key: string, type: PropType | null): Change => ({
+  key: key.trim(),
+  adds: true,
+  apply: () => null,
+  add: (text) => {
+    if (nameProblem(text, "", key)) return null;
+    const value = type === "checkbox" ? " false" : type === "list" ? " []" : "";
+    const line = `${key.trim()}:${value}`;
+    if (text === "") return line;
+    return `${text}${text.endsWith("\n") ? "" : "\n"}${line}`;
+  },
+  expect: (p) =>
+    type === "checkbox"
+      ? p.shown === false
+      : type === "list"
+        ? p.type === "list"
+        : p.shown === null,
+});
 
 const sameItems = (a: unknown, b: string[]) =>
   Array.isArray(a) && a.length === b.length && a.every((v, i) => v === b[i]);

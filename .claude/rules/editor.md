@@ -254,6 +254,10 @@ never holds a byte sequence the syntax cannot.**
   opens. Icon: type menu (a loss asks; Keep is the default); name renames; value edits. Its
   text is React's to paint (`haveEditorBlockRenderChanges`). An outside change to the property
   being edited sets the draft aside, with Restore. `properties.spec.ts`.
+- **Add property and `/properties`** (`PropertyPicker`): tags, names other notes use, or one's
+  own, then its type; written last in the type's empty form. An empty value's type is this
+  device's (`propertyTypes`), never the vault's. `/properties` makes the section at the top, and
+  one left with nothing added goes again. `properties-add.spec.ts`.
 
 ## Code blocks
 
