@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { launchApp, MOD, waitForFile } from "./harness";
+import { launchApp, MOD, SETTLE_MS, sleep, waitForFile } from "./harness";
 
 /**
  * A list property is edited an item at a time, and each change reaches the
@@ -103,6 +103,36 @@ test("a tag's menu opens Search for it; a click edits it", async () => {
     await h.page.getByRole("menuitem", { name: "Search for #demo" }).click();
     const dialog = h.page.getByRole("dialog", { name: "Search" });
     await expect(dialog.getByTestId("search-tag-chip")).toHaveText(/#demo/);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("found in review: an untouched item keeps its spaces; another's × keeps the draft", async () => {
+  const SPACED = '---\ncast: ["  Harrison Ford  ", Mark]\n---\nBody.\n';
+  const h = await launchApp({
+    "Film.md": SPACED,
+    "Typo.md": "---\ncast: [Mark, Harison]\n---\nBody.\n",
+  });
+  try {
+    await h.openNote("Film");
+    await h.page.locator(item("cast", 0)).click();
+    await h.page.locator("[data-block-type='p']").first().click();
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Film.md"), "opened and left: nothing written").toBe(SPACED);
+
+    await h.openNote("Typo");
+    await h.page.locator(item("cast", 1)).click();
+    // Harison → Harrison: an r after "Har".
+    await h.page.keyboard.press("Home");
+    for (let i = 0; i < 3; i++) await h.page.keyboard.press("ArrowRight");
+    await h.page.keyboard.type("r");
+    await h.page.locator(`${row("cast")} [aria-label="Remove Mark"]`).click();
+    await h.page.keyboard.press("Enter");
+    await waitForFile(h.vault.file("Typo.md"), (t) => t.includes("cast: [Harrison]"), {
+      label: "Mark gone, the correction kept",
+    });
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

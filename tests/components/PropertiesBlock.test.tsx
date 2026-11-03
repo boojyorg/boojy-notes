@@ -271,6 +271,43 @@ describe("PropertiesBlock: editing in place", () => {
     expect(input(c)).toBeNull();
   });
 
+  it("found in review: an untouched item keeps its spaces; another's × keeps the draft", () => {
+    const { container: c, text } = setup('cast: ["  Harrison Ford  ", Mark]');
+    // Opened and left untouched: nothing is written.
+    fireEvent.click(itemText(c, "cast", 0));
+    expect(input(c).value).toBe("  Harrison Ford  ");
+    fireEvent.blur(input(c));
+    expect(text()).toBe('cast: ["  Harrison Ford  ", Mark]');
+    // Edited, its spaces kept as typed.
+    fireEvent.click(itemText(c, "cast", 0));
+    fireEvent.change(input(c), { target: { value: "  Harrison Ford!  " } });
+    fireEvent.keyDown(input(c), { key: "Escape" });
+    expect(text()).toBe('cast: ["  Harrison Ford  ", Mark]');
+
+    const t2 = setup("cast: [Mark, Harison]", "n2");
+    fireEvent.click(itemText(t2.container, "cast", 1));
+    fireEvent.change(input(t2.container), { target: { value: "Harrison" } });
+    const x = row(t2.container, "cast").querySelector('[aria-label="Remove Mark"]') as HTMLElement;
+    fireEvent.mouseDown(x);
+    fireEvent.click(x);
+    expect(t2.text()).toBe("cast: [Harison]");
+    // The correction is still there, now at the item's new place, and saves.
+    expect(input(t2.container).value).toBe("Harrison");
+    fireEvent.keyDown(input(t2.container), { key: "Enter" });
+    expect(t2.text()).toBe("cast: [Harrison]");
+  });
+
+  it("a list item edited with spaces at its ends keeps them", () => {
+    const { container: c, text } = setup("cast: [Mark]");
+    fireEvent.click(itemText(c, "cast", 0));
+    fireEvent.change(input(c), { target: { value: " Mark " } });
+    fireEvent.keyDown(input(c), { key: "Escape" });
+    fireEvent.click(itemText(c, "cast", 0));
+    fireEvent.change(input(c), { target: { value: " Mark " } });
+    fireEvent.blur(input(c));
+    expect(text()).toBe('cast: [" Mark "]');
+  });
+
   it("an item emptied and saved goes; a comma is text in a list", () => {
     const { container: c, text } = setup();
     fireEvent.click(itemText(c, "cast", 1));
