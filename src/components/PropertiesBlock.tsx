@@ -415,7 +415,16 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     const p = propsNow.find((q) => q.key === ed.key);
     if (!p) return setEditing(null);
     const items = listOf(p);
-    const v = ed.draft.trim();
+    // An untouched item is no edit: compared as it stands, before any trimming, so an item
+    // with spaces at its ends is never rewritten by opening it and leaving.
+    if (ed.item !== undefined && ed.draft === items[ed.item]) {
+      if (next) addAt(p, ed.item + 1);
+      else setEditing(null);
+      return;
+    }
+    // A list's text is kept as typed, spaces and all, as a text value's is; a tag is trimmed
+    // (it can't hold a space). Only spaces is nothing.
+    const v = p.fixed === "tags" ? ed.draft.trim() : ed.draft.trim() ? ed.draft : "";
     if (v && p.fixed === "tags" && !TAG_NAME_RE.test(v)) {
       setEditing({ ...ed, error: "A tag starts with a letter: letters, numbers, - _ and /" });
       return;
@@ -443,10 +452,15 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     const was = listOf(p)[i];
     if (was === undefined) return;
     setItemMenu(null);
-    // A new-item field after it keeps its place among what is left.
+    // An open field in this list keeps its draft and its place among what is left: a new-item
+    // field after it moves up one; another item being edited is reindexed, still open (the ×'s
+    // press keeps its focus), its draft unsaved and untouched. The item being edited, removed,
+    // ends its edit.
     if (editing?.key === p.key && editing.item === undefined && (editing.at ?? 0) > i)
       setEditing({ ...editing, at: (editing.at ?? 0) - 1, armed: false });
-    else if (editing?.key === p.key && editing.item !== undefined) setEditing(null);
+    else if (editing?.key === p.key && editing.item === i) setEditing(null);
+    else if (editing?.key === p.key && editing.item !== undefined && editing.item > i)
+      setEditing({ ...editing, item: editing.item - 1 });
     commit(removeItem(p.key, i, was));
   };
   /** Backspace in an empty new-item field: the first picks the item before it, the second removes it. */
