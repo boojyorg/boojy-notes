@@ -5,6 +5,10 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+    # ready_for_review: a draft runs nothing until it is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
+  # A draft that needs CI (a diagnostic run): `gh workflow run ci.yml --ref <branch>`.
+  workflow_dispatch:
 
 # Read-only: CI checks code and never writes to the repository.
 permissions:
@@ -23,12 +27,18 @@ concurrency:
 # the serial layout: checks and unit tests ~70 s, web E2E ~15 s, Electron ~180 s
 # with two workers; serially that was ~270 s of a ~4.5 min job. Each job
 # installs for itself (a cache hit, ~10 s); nothing is passed between them.
+#
+# The Free plan runs 20 jobs at once across the account, 5 of them macOS, and
+# the Mac jobs are the slowest: a second run overlapping this one queued for
+# up to 12 minutes. So a draft PR runs nothing, and the Windows and macOS unit
+# tests ride on their first Electron shard instead of taking a machine each.
 # The `ci` job at the end is the one status branch protection requires; it
 # only reports whether every job above succeeded.
 
 jobs:
   checks:
     name: checks, types, unit tests
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -55,6 +65,7 @@ jobs:
 
   web-e2e:
     name: web E2E
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -112,6 +123,7 @@ jobs:
   # and a faster one is not. Each shard builds for itself (~5 s).
   electron-e2e:
     name: Electron E2E (${{ matrix.shard }}/6)
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -155,6 +167,7 @@ jobs:
   # rename and `cp -p` save. No Xvfb here: each runner has a desktop.
   electron-desktop:
     name: Electron E2E (${{ matrix.os == 'windows-latest' && 'Windows' || 'macOS' }} ${{ matrix.shard }}/${{ matrix.shards }})
+    if: github.event.pull_request.draft != true
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     strategy:
@@ -190,6 +203,14 @@ jobs:
       - name: Electron core-journey tests
         timeout-minutes: 20
         run: pnpm exec playwright test -c playwright.electron.config.ts --shard=${{ matrix.shard }}/${{ matrix.shards }}
+      # The unit tests' platform branches (a path's separator, `cp -p`, a name
+      # Windows cannot hold) run nowhere else. On shard 1 rather than a runner
+      # of their own; after the Electron step, and even when it failed, so a
+      # red shard still reports both. No coverage gate: the Linux job owns it.
+      - name: Unit tests
+        if: ${{ !cancelled() && matrix.shard == 1 }}
+        timeout-minutes: 10
+        run: pnpm test
       - name: Keep the report of a failed shard
         if: failure()
         uses: actions/upload-artifact@v7
@@ -200,34 +221,11 @@ jobs:
             test-results/electron
           retention-days: 14
 
-  # The unit tests on Windows and macOS: their platform branches (a path's
-  # separator, `cp -p`, a name Windows cannot hold) run nowhere else. No
-  # coverage gate here; the Linux job owns it.
-  unit-desktop:
-    name: unit tests (${{ matrix.os == 'windows-latest' && 'Windows' || 'macOS' }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Test
-        run: pnpm test
-
   # The single status branch protection requires. Runs even when a job above
   # failed or was cancelled, and reports that as a failure of its own.
   ci:
-    needs: [checks, web-e2e, electron-e2e, electron-desktop, unit-desktop]
-    if: always()
+    needs: [checks, web-e2e, electron-e2e, electron-desktop]
+    if: always() && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -237,9 +235,7 @@ jobs:
           echo "web-e2e: ${{ needs.web-e2e.result }}"
           echo "electron-e2e: ${{ needs.electron-e2e.result }}"
           echo "electron-desktop: ${{ needs.electron-desktop.result }}"
-          echo "unit-desktop: ${{ needs.unit-desktop.result }}"
           test "${{ needs.checks.result }}" = success
           test "${{ needs.web-e2e.result }}" = success
           test "${{ needs.electron-e2e.result }}" = success
           test "${{ needs.electron-desktop.result }}" = success
-          test "${{ needs.unit-desktop.result }}" = success

@@ -56,10 +56,10 @@ Rule + one reason. Incidents and measurements are in git; command details in
   `timeout` + three-attempt loop sized to the work, not to patience.
 - **`ci.yml` is side-by-side jobs plus a `ci` summary job**: `checks` (audit, lint, format,
   typecheck, coverage, web build), `web-e2e`, `electron-e2e` in six `fullyParallel` shards,
-  `electron-desktop` (the same suite on Windows and macOS runners) and `unit-desktop`.
-  Branch protection requires the `ci` job name; keep it. More shards stop paying past six;
-  a faster runner doesn't help (the suite waits on debounces). New pushes cancel a PR's run;
-  master runs are never cancelled.
+  `electron-desktop` (Windows, macOS; shard 1 adds unit tests). Branch protection
+  requires the `ci` job; keep it. Shards stop paying past six. **Free runs 5 macOS
+  jobs at once**: add no Mac runner. A draft runs nothing (`gh workflow run ci.yml --ref`);
+  a push cancels a PR's run, never master's.
 - **The gates are `pnpm test:coverage`, the web E2E suite and the Electron suite**, plus
   `pnpm audit --audit-level high`. Coverage counts every file under `src/` and `electron/`;
   thresholds in `vitest.config.js` sit just below actuals: ratchet up, never lower or exclude
