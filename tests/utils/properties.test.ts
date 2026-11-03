@@ -1,11 +1,15 @@
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  appendItem,
+  insertItem,
   type Change,
   conversion,
   nameProblem,
+  removeItem,
   removeProperty,
   renameProperty,
+  replaceItem,
   runChange,
   setCheckbox,
   setList,
@@ -275,6 +279,166 @@ describe("changing one property rewrites only its own text", () => {
       expect: () => true,
     };
     expect(run(T, spill)).toBe(false);
+  });
+});
+
+describe("one list item: only its own bytes change", () => {
+  it("a block list: an edit, a removal and an addition touch one item's line", () => {
+    const B = "cast:\n  - Mark Hamill\n  - Harrison Ford\nyear: 1980\n";
+    expect(run(B, replaceItem("cast", 0, "Mark Hamill", "Mark Hamil"))).toBe(
+      B.replace("Mark Hamill", "Mark Hamil"),
+    );
+    expect(run(B, removeItem("cast", 0, "Mark Hamill"))).toBe(B.replace("  - Mark Hamill\n", ""));
+    expect(run(B, appendItem("cast", "Carrie Fisher"))).toBe(
+      B.replace("Ford\n", "Ford\n  - Carrie Fisher\n"),
+    );
+  });
+
+  it("an unindented list keeps its prefix, and an edited item keeps its quotes", () => {
+    const B = "cast:\n- 'Mark Hamill'\n- \"Harrison Ford\"\nyear: 1980\n";
+    expect(run(B, replaceItem("cast", 1, "Harrison Ford", "Carrie"))).toBe(
+      B.replace('"Harrison Ford"', '"Carrie"'),
+    );
+    expect(run(B, appendItem("cast", "Carrie"))).toBe(B.replace('Ford"\n', 'Ford"\n- Carrie\n'));
+  });
+
+  it("a comma is text: bare in a block list, quoted inside a flow one", () => {
+    expect(run("cast:\n  - a\n", appendItem("cast", "Fisher, Carrie"))).toBe(
+      "cast:\n  - a\n  - Fisher, Carrie\n",
+    );
+    expect(run("aliases: [x]\n", appendItem("aliases", "Fisher, Carrie"))).toBe(
+      'aliases: [x, "Fisher, Carrie"]\n',
+    );
+  });
+
+  it("a flow list keeps its spacing and its line breaks", () => {
+    const F = "tags: [ a ,  b ,c ]\n";
+    expect(run(F, replaceItem("tags", 0, "a", "A"))).toBe("tags: [ A ,  b ,c ]\n");
+    expect(run(F, removeItem("tags", 0, "a"))).toBe("tags: [ b ,c ]\n");
+    expect(run(F, removeItem("tags", 2, "c"))).toBe("tags: [ a ,  b ]\n");
+    expect(run(F, appendItem("tags", "d"))).toBe("tags: [ a ,  b ,c ,d ]\n");
+    const M = "tags: [a,\n  b]\nx: 1\n";
+    expect(run(M, replaceItem("tags", 0, "a", "A"))).toBe("tags: [A,\n  b]\nx: 1\n");
+    expect(run(M, appendItem("tags", "c"))).toBe("tags: [a,\n  b,\n  c]\nx: 1\n");
+    expect(
+      run("aliases: [Episode V, 'Empire']\n", replaceItem("aliases", 1, "Empire", "Empire!")),
+    ).toBe("aliases: [Episode V, 'Empire!']\n");
+  });
+
+  it("an item inserted between two is written as its neighbours are", () => {
+    const B = "cast:\n  - a\n  - b\nx: 1\n";
+    expect(run(B, insertItem("cast", 1, "new"))).toBe("cast:\n  - a\n  - new\n  - b\nx: 1\n");
+    expect(run(B, insertItem("cast", 0, "new"))).toBe("cast:\n  - new\n  - a\n  - b\nx: 1\n");
+    const F = "tags: [ a ,  b ,c ]\n";
+    expect(run(F, insertItem("tags", 1, "new"))).toBe("tags: [ a ,  new ,  b ,c ]\n");
+    expect(run(F, insertItem("tags", 0, "new"))).toBe("tags: [ new ,  a ,  b ,c ]\n");
+    expect(run("tags: [a]\n", insertItem("tags", 0, "new"))).toBe("tags: [new, a]\n");
+  });
+
+  it("a blank line between items stays", () => {
+    const G = "cast:\n  - a\n\n  - b\nnext: 1\n";
+    expect(run(G, replaceItem("cast", 0, "a", "A"))).toBe("cast:\n  - A\n\n  - b\nnext: 1\n");
+    expect(run(G, removeItem("cast", 1, "b"))).toBe("cast:\n  - a\n\nnext: 1\n");
+    expect(run(G, insertItem("cast", 1, "new"))).toBe("cast:\n  - a\n  - new\n\n  - b\nnext: 1\n");
+  });
+
+  it("a repeated item: the one at its place changes", () => {
+    const D = "cast:\n  - a\n  - 'a'\n";
+    expect(run(D, replaceItem("cast", 1, "a", "z"))).toBe("cast:\n  - a\n  - 'z'\n");
+    expect(run(D, removeItem("cast", 0, "a"))).toBe("cast:\n  - 'a'\n");
+  });
+
+  it("the only item leaves an empty list; the last line keeps the text's own ending", () => {
+    expect(run("cast:\n  - a\nx: 1\n", removeItem("cast", 0, "a"))).toBe("cast: []\nx: 1\n");
+    expect(run("cast: [a]\n", removeItem("cast", 0, "a"))).toBe("cast: []\n");
+    expect(run("cast:\n  - a\n  - b", removeItem("cast", 1, "b"))).toBe("cast:\n  - a");
+    expect(run("cast: []\n", appendItem("cast", "a"))).toBe("cast: [a]\n");
+    expect(run("cast:\n", appendItem("cast", "a"))).toBe("cast:\n  - a\n");
+  });
+
+  it("a list that changed since is left alone; a comment in it makes it YAML's", () => {
+    const B = "cast:\n  - a\n  - b\n";
+    expect(run(B, replaceItem("cast", 1, "x", "y"))).toBeNull();
+    expect(run(B, removeItem("cast", 5, "b"))).toBeNull();
+    expect(run("cast:\n  - a\n  # note\n  - b\n", appendItem("cast", "c"))).toBeNull();
+    expect(run("cast:\n  - a # who\n  - b\n", replaceItem("cast", 0, "a", "A"))).toBeNull();
+  });
+});
+
+describe("one list item, for any list and any edit: every other byte stays", () => {
+  const item = fc.oneof(
+    fc.stringMatching(/^[A-Za-z][A-Za-z ,:#'"-]{0,8}[A-Za-z]$/),
+    fc.constantFrom("a", "05", "yes", "x, y"),
+  );
+  const space = fc.constantFrom("", " ", "  ");
+  // A block list (`- ` lines, maybe a blank line between) or a flow one (any spacing, maybe wrapped).
+  const list = fc.oneof(
+    fc
+      .tuple(
+        fc.array(item, { minLength: 1, maxLength: 4 }),
+        fc.constantFrom("  - ", "- "),
+        fc.boolean(),
+      )
+      .map(([xs, prefix, gap]) =>
+        xs.map((x) => `\n${prefix}${JSON.stringify(x)}`).join(gap ? "\n" : ""),
+      ),
+    fc
+      .tuple(
+        fc.array(item, { minLength: 1, maxLength: 4 }),
+        space,
+        space,
+        fc.constantFrom(",", ",\n  "),
+      )
+      .map(
+        ([xs, a, b, sep]) => ` [${a}${xs.map((x) => JSON.stringify(x)).join(`${sep}${b}`)}${a}]`,
+      ),
+  );
+  const text = list.map((v) => `before: 1\nlist:${v}\nafter: 2\n`);
+  const clean = (v: string) =>
+    v.replace(/[\n\r\t\u0000-\u001f\u007f-\u00a0\u2028\u2029\ufeff]/g, "").trim();
+
+  it("an edit, removal or addition reads back, and the other items keep their spelling", () => {
+    fc.assert(
+      fc.property(text, fc.nat(), fc.string({ maxLength: 10 }), fc.nat(2), (t, pick, raw, op) => {
+        const p = prop(t, "list");
+        const items = p.shown as string[];
+        const ranges = p.list?.items ?? [];
+        const i = pick % items.length;
+        const v = clean(raw);
+        fc.pre(v !== "");
+        const change =
+          op === 0
+            ? replaceItem("list", i, items[i], v)
+            : op === 1
+              ? removeItem("list", i, items[i])
+              : insertItem("list", pick % (items.length + 1), v);
+        const out = run(t, change);
+        expect(out).not.toBe(false);
+        if (out === null) return;
+        const want =
+          op === 0
+            ? items.map((s, j) => (j === i ? v : s))
+            : op === 1
+              ? items.filter((_, j) => j !== i)
+              : [
+                  ...items.slice(0, pick % (items.length + 1)),
+                  v,
+                  ...items.slice(pick % (items.length + 1)),
+                ];
+        expect(prop(out, "list").shown).toEqual(want);
+        expect(out.startsWith("before: 1\nlist:")).toBe(true);
+        expect(out.endsWith("\nafter: 2\n")).toBe(true);
+        // Every untouched item's source, in order, is still in the text.
+        const kept = ranges.filter((_, j) => op === 2 || j !== i).map((r) => t.slice(r.from, r.to));
+        let at = 0;
+        for (const src of kept) {
+          const found = out.indexOf(src, at);
+          expect(found).toBeGreaterThanOrEqual(0);
+          at = found + src.length;
+        }
+      }),
+      { numRuns: 400 },
+    );
   });
 });
 

@@ -23,22 +23,34 @@ import {
   nameProblem,
   type Property,
   type PropType,
+  insertItem,
   readProperties,
+  removeItem,
   removeProperty,
   renameProperty,
+  replaceItem,
   setCheckbox,
-  setList,
   setText,
   setTyped,
   setUntyped,
   shownDate,
 } from "../utils/properties";
 import { namesInOtherNotes, readPropertyTypes, rememberPropertyType } from "../utils/propertyTypes";
-import { FoldChevronIcon, PlusIcon, PropertyTypeIcon, SourceViewIcon, TrashIcon } from "./Icons";
+import { TAG_BODY } from "../utils/tags";
+import {
+  FoldChevronIcon,
+  PencilIcon,
+  PlusIcon,
+  PropertyTypeIcon,
+  RemoveItemIcon,
+  SearchIcon,
+  SourceViewIcon,
+  TrashIcon,
+} from "./Icons";
 import Menu, { type MenuAnchor, type MenuItem, rectAnchor } from "./Menu";
 import TickBox from "./TickBox";
 import PropertyPicker from "./PropertyPicker";
-import { Tooltip, useTooltip } from "./Tooltip";
+import { shortcutLabel, Tooltip, useTooltip } from "./Tooltip";
 
 /** The notes whose Properties section is folded on this device; open is the default. */
 export const FOLDED_PROPERTIES_KEY = "boojy-folded-properties";
@@ -109,7 +121,16 @@ interface Editing {
   start: string;
   caret: number | null;
   error?: string;
+  /** A list: the item being edited, or (absent) a new one going in at `at`. */
+  item?: number;
+  at?: number;
+  /** A list's empty new-item field: Backspace has picked the item before it; again removes it. */
+  armed?: boolean;
 }
+
+/** A tag as the grammar reads one (`TAG_RE` without its `#`). */
+const TAG_NAME_RE = new RegExp(`^${TAG_BODY}$`, "u");
+const listOf = (p: Property) => (Array.isArray(p.shown) ? p.shown : []);
 
 interface MenuState {
   key: string;
@@ -127,6 +148,10 @@ interface PropertiesBlockProps {
   onEditFrontmatter?: (noteId: string, blockId: string, change: Change) => "ok" | "none" | "unsafe";
   /** Takes away a frontmatter block left with no text (a cancelled `/properties`). */
   onRemoveEmpty?: (noteId: string, blockId: string) => void;
+  /** Takes away the whole frontmatter block, whatever it holds: one undo. */
+  onRemoveAll?: (noteId: string, blockId: string) => void;
+  /** The note's Markdown view, as ⌘/ switches to it. */
+  onShowMarkdown?: () => void;
   /** A tag pill's click: Search filtered by that tag, as a `#tag` in the text does. */
   onTagClick?: (tag: string) => void;
   accentColor?: string;
@@ -154,6 +179,12 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [notice, setNotice] = useState<Editing | null>(null);
+  // The section's own menu, from its title: Show Markdown, Remove all properties.
+  const [sectionMenu, setSectionMenu] = useState<MenuAnchor | null>(null);
+  // A list item's own menu: Edit, Search for a tag, Remove.
+  const [itemMenu, setItemMenu] = useState<{ key: string; i: number; anchor: MenuAnchor } | null>(
+    null,
+  );
   // The type chosen for an empty value, which the file can't say yet:
   // remembered on this device by name (`propertyTypes`).
   const [chosen, setChosen] = useState<Record<string, PropType>>(readPropertyTypes);
@@ -344,6 +375,109 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     return true;
   };
 
+  // A list is edited an item at a time, each change splicing only that item.
+  const editItem = (p: Property, i: number, caret: number | null) => {
+    setNotice(null);
+    setItemMenu(null);
+    setEditing({
+      key: p.key,
+      part: "value",
+      item: i,
+      draft: listOf(p)[i] ?? "",
+      start: JSON.stringify(p.shown),
+      caret,
+    });
+  };
+  const addAt = (p: Property, at: number) => {
+    setNotice(null);
+    setItemMenu(null);
+    setEditing({
+      key: p.key,
+      part: "value",
+      at,
+      draft: "",
+      start: JSON.stringify(p.shown),
+      caret: null,
+    });
+  };
+  /** A list change; when it can't be made the edit ends (unsafe opens the YAML). */
+  const listCommit = (change: Change) => {
+    const ok = commit(change) === "ok";
+    if (!ok) setEditing(null);
+    return ok;
+  };
+  /**
+   * The draft of a list's field, saved: an item's new text (emptied, it goes),
+   * or a new item. `next` then opens a new item after it, as Enter does in a
+   * list in the note; else the edit ends.
+   */
+  const saveListEdit = (ed: Editing, next: boolean) => {
+    const p = propsNow.find((q) => q.key === ed.key);
+    if (!p) return setEditing(null);
+    const items = listOf(p);
+    // An untouched item is no edit: compared as it stands, before any trimming, so an item
+    // with spaces at its ends is never rewritten by opening it and leaving.
+    if (ed.item !== undefined && ed.draft === items[ed.item]) {
+      if (next) addAt(p, ed.item + 1);
+      else setEditing(null);
+      return;
+    }
+    // A list's text is kept as typed, spaces and all, as a text value's is; a tag is trimmed
+    // (it can't hold a space). Only spaces is nothing.
+    const v = p.fixed === "tags" ? ed.draft.trim() : ed.draft.trim() ? ed.draft : "";
+    if (v && p.fixed === "tags" && !TAG_NAME_RE.test(v)) {
+      setEditing({ ...ed, error: "A tag starts with a letter: letters, numbers, - _ and /" });
+      return;
+    }
+    if (ed.item !== undefined) {
+      const was = items[ed.item];
+      if (was === undefined) return setEditing(null);
+      if (!v) {
+        setEditing(null);
+        listCommit(removeItem(p.key, ed.item, was));
+        return;
+      }
+      if (v !== was && !listCommit(replaceItem(p.key, ed.item, was, v))) return;
+      if (next) addAt(p, ed.item + 1);
+      else setEditing(null);
+      return;
+    }
+    const at = Math.min(ed.at ?? items.length, items.length);
+    if (!v) return setEditing(null);
+    if (!listCommit(insertItem(p.key, at, v))) return;
+    if (next) setEditing({ ...ed, at: at + 1, draft: "", armed: false, error: undefined });
+    else setEditing(null);
+  };
+  const removeAt = (p: Property, i: number) => {
+    const was = listOf(p)[i];
+    if (was === undefined) return;
+    setItemMenu(null);
+    // An open field in this list keeps its draft and its place among what is left: a new-item
+    // field after it moves up one; another item being edited is reindexed, still open (the ×'s
+    // press keeps its focus), its draft unsaved and untouched. The item being edited, removed,
+    // ends its edit.
+    if (editing?.key === p.key && editing.item === undefined && (editing.at ?? 0) > i)
+      setEditing({ ...editing, at: (editing.at ?? 0) - 1, armed: false });
+    else if (editing?.key === p.key && editing.item === i) setEditing(null);
+    else if (editing?.key === p.key && editing.item !== undefined && editing.item > i)
+      setEditing({ ...editing, item: editing.item - 1 });
+    commit(removeItem(p.key, i, was));
+  };
+  /** Backspace in an empty new-item field: the first picks the item before it, the second removes it. */
+  const backspaceList = (ed: Editing) => {
+    const p = propsNow.find((q) => q.key === ed.key);
+    const at = ed.at ?? 0;
+    if (!p || at === 0) return;
+    if (!ed.armed) {
+      setEditing({ ...ed, armed: true });
+      return;
+    }
+    const was = listOf(p)[at - 1];
+    if (was === undefined) return;
+    setEditing({ ...ed, at: at - 1, armed: false });
+    commit(removeItem(p.key, at - 1, was));
+  };
+
   const openMenu = (p: Property, el: Element) => {
     setEditing(null);
     setMenu({ key: p.key, anchor: rectAnchor(el) });
@@ -414,6 +548,32 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
       remove,
     ];
   };
+  const itemMenuProp = itemMenu ? propsNow.find((q) => q.key === itemMenu.key) : undefined;
+  const itemMenuItems = (p: Property, i: number): MenuItem[] => {
+    const item = listOf(p)[i];
+    return [
+      { label: "Edit", icon: <PencilIcon />, action: () => editItem(p, i, null) },
+      ...(p.fixed === "tags" && props.onTagClick
+        ? [
+            {
+              label: `Search for #${item}`,
+              icon: <SearchIcon />,
+              action: () => {
+                setItemMenu(null);
+                props.onTagClick?.(item);
+              },
+            },
+          ]
+        : []),
+      {
+        label: "Remove",
+        icon: <TrashIcon />,
+        danger: true,
+        rule: true,
+        action: () => removeAt(p, i),
+      },
+    ];
+  };
   const confirmItems = (p: Property, confirm: NonNullable<MenuState["confirm"]>): MenuItem[] => [
     {
       label: `Keep as ${TYPE_LABEL[typeOf(p, chosen) ?? "untyped"]}`,
@@ -425,6 +585,38 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
       action: () => {
         setMenu(null);
         commit(confirm.change);
+      },
+    },
+  ];
+
+  const openSectionMenu = (el: Element) => {
+    setEditing(null);
+    setMenu(null);
+    setItemMenu(null);
+    setSectionMenu(rectAnchor(el));
+  };
+  const sectionMenuItems: MenuItem[] = [
+    ...(props.onShowMarkdown
+      ? [
+          {
+            label: "Show Markdown",
+            icon: <SourceViewIcon size={16} />,
+            hint: shortcutLabel({ key: "/" }),
+            action: () => {
+              setSectionMenu(null);
+              props.onShowMarkdown?.();
+            },
+          },
+        ]
+      : []),
+    {
+      label: "Remove all properties",
+      icon: <TrashIcon />,
+      danger: true,
+      rule: !!props.onShowMarkdown,
+      action: () => {
+        setSectionMenu(null);
+        props.onRemoveAll?.(noteId, block.id);
       },
     },
   ];
@@ -461,7 +653,21 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
           data-label="Properties"
           aria-label="Properties"
           aria-expanded={!folded}
+          data-menu={sectionMenu ? "" : undefined}
           onClick={toggleFold}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.boojyPhoneAPI?.holdFelt();
+            openSectionMenu(e.currentTarget);
+          }}
+          onKeyDown={(e) => {
+            if ((e.shiftKey && e.key === "F10") || e.key === "ContextMenu") {
+              e.preventDefault();
+              e.stopPropagation();
+              openSectionMenu(e.currentTarget);
+            }
+          }}
         >
           <span className="props-chev" aria-hidden="true">
             <FoldChevronIcon />
@@ -505,8 +711,11 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                 editing={editing?.key === p.key ? editing : null}
                 notice={notice?.key === p.key ? notice : null}
                 menuOpen={menu?.key === p.key}
+                itemMenuOpen={itemMenu?.key === p.key}
                 onEdit={(part, caret) => startEdit(p, part, caret)}
-                onDraft={(draft) => setEditing((ed) => ed && { ...ed, draft, error: undefined })}
+                onDraft={(draft) =>
+                  setEditing((ed) => ed && { ...ed, draft, error: undefined, armed: false })
+                }
                 onFinish={() => {
                   if (editing) finish(editing);
                 }}
@@ -522,9 +731,21 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                     caret: null,
                   });
                 }}
-                onList={(items) => commit(setList(p.key, items))}
+                onEditItem={(i, caret) => editItem(p, i, caret)}
+                onAddAt={(at) => addAt(p, at)}
+                onSaveList={(next) => {
+                  if (editing) saveListEdit(editing, next);
+                }}
+                onBackspaceList={() => {
+                  if (editing) backspaceList(editing);
+                }}
+                onRemoveItem={(i) => removeAt(p, i)}
+                onItemMenu={(i, el) => {
+                  setEditing(null);
+                  setMenu(null);
+                  setItemMenu({ key: p.key, i, anchor: rectAnchor(el) });
+                }}
                 onCheck={(on) => commit(setCheckbox(p.key, on))}
-                onTagClick={props.onTagClick}
                 accentColor={props.accentColor}
               />
             ))}
@@ -601,6 +822,31 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
           onClose={() => setMenu(null)}
         />
       )}
+      {sectionMenu && (
+        <Menu
+          label="Properties"
+          idPrefix="properties-menu-item"
+          testId="properties-menu"
+          anchor={sectionMenu}
+          gapY={4}
+          minWidth={220}
+          items={sectionMenuItems}
+          onClose={() => setSectionMenu(null)}
+        />
+      )}
+      {itemMenu && itemMenuProp && listOf(itemMenuProp)[itemMenu.i] !== undefined && (
+        <Menu
+          label={`${itemMenuProp.key}: ${listOf(itemMenuProp)[itemMenu.i]}`}
+          idPrefix="property-item-menu-item"
+          testId="property-item-menu"
+          anchor={itemMenu.anchor}
+          gapY={4}
+          minWidth={180}
+          maxWidth={280}
+          items={itemMenuItems(itemMenuProp, itemMenu.i)}
+          onClose={() => setItemMenu(null)}
+        />
+      )}
     </section>
   );
 }
@@ -612,6 +858,8 @@ interface RowProps {
   editing: Editing | null;
   notice: Editing | null;
   menuOpen: boolean;
+  /** A list item's menu is open: the row wears the selected ground, as with its type menu. */
+  itemMenuOpen: boolean;
   onEdit: (part: "value" | "name", caret: number | null) => void;
   onDraft: (draft: string) => void;
   onFinish: () => void;
@@ -619,9 +867,13 @@ interface RowProps {
   onMenu: (el: Element) => void;
   onYaml: () => void;
   onRestore: () => void;
-  onList: (items: string[]) => void;
+  onEditItem: (i: number, caret: number | null) => void;
+  onAddAt: (at: number) => void;
+  onSaveList: (next: boolean) => void;
+  onBackspaceList: () => void;
+  onRemoveItem: (i: number) => void;
+  onItemMenu: (i: number, el: Element) => void;
   onCheck: (on: boolean) => void;
-  onTagClick?: (tag: string) => void;
   accentColor?: string;
 }
 
@@ -635,31 +887,138 @@ function PropertyRow(r: RowProps) {
   const items = Array.isArray(p.shown) ? p.shown : [];
 
   const isTags = p.fixed === "tags";
-  // A tag is the text's own pill, `#` and all, and opens Search as one does
-  // (the list's click reads it); the file keeps the name bare.
-  const pills = items.map((item, i) => (
-    <span
-      // biome-ignore lint/suspicious/noArrayIndexKey: a list may repeat an item
-      key={i}
-      className={isTags ? "props-pill props-tag" : "props-pill"}
-      data-tag={isTags ? item : undefined}
-    >
-      {item}
-      <button
-        type="button"
-        className="props-x"
-        tabIndex={-1}
-        aria-label={`Remove ${item}`}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={(e) => {
+  const listEdit = r.type === "list" && editing?.part === "value" ? editing : null;
+  const newAt =
+    listEdit && listEdit.item === undefined
+      ? Math.min(listEdit.at ?? items.length, items.length)
+      : -1;
+  // Enter or Escape has settled the field: the blur its unmounting may bring saves nothing twice.
+  const settled = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new field is a fresh start
+  useEffect(() => {
+    settled.current = false;
+  }, [listEdit?.item, newAt]);
+  const listField = listEdit && (
+    <Field
+      key="list-field"
+      editing={listEdit}
+      className="props-input props-list-input"
+      placeholder={
+        listEdit.item === undefined && !items.length ? (isTags ? "Add a tag" : "Add an item") : ""
+      }
+      enterKeyHint="next"
+      // A tag is written bare: a `#` typed before it is the pill's, not the name's.
+      onDraft={(v) => r.onDraft(isTags ? v.replace(/^#+/, "") : v)}
+      onKey={(e) => {
+        // A tag can't hold a space or a comma: either ends it, as Enter does.
+        const ends = e.key === "Enter" || (isTags && (e.key === "," || e.key === " "));
+        if (ends && !e.nativeEvent.isComposing) {
+          e.preventDefault();
+          if (!listEdit.draft.trim() && e.key !== "Enter") return;
+          settled.current = true;
+          // Enter on an empty new item closes the field; else it saves and opens the next.
+          r.onSaveList(!!listEdit.draft.trim() || listEdit.item !== undefined);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
           e.stopPropagation();
-          r.onList(items.filter((_, j) => j !== i));
-        }}
+          settled.current = true;
+          r.onCancel();
+        } else if (e.key === "Backspace" && listEdit.item === undefined && !listEdit.draft) {
+          e.preventDefault();
+          r.onBackspaceList();
+        }
+      }}
+      onBlur={() => {
+        if (settled.current) return;
+        r.onSaveList(false);
+      }}
+    />
+  );
+  // An item's ×, there while it is edited too: it removes the item, never saving the draft first
+  // (the press keeps the field's focus, so no blur saves it).
+  const removeX = (item: string, i: number) => (
+    <button
+      type="button"
+      className="props-x"
+      tabIndex={-1}
+      aria-label={`Remove ${item}`}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (listEdit?.item === i) settled.current = true;
+        r.onRemoveItem(i);
+      }}
+    >
+      <RemoveItemIcon />
+    </button>
+  );
+  // Each item is its text (a click edits it) and its × (removes it), kept together on a line.
+  const itemNodes: ReactNode[] = items.map((item, i) =>
+    listEdit?.item === i ? (
+      <span
+        // biome-ignore lint/suspicious/noArrayIndexKey: a list may repeat an item
+        key={i}
+        className={isTags ? "props-item props-tag" : "props-item"}
+        data-editing=""
       >
-        ×
-      </button>
-    </span>
-  ));
+        {listField}
+        {removeX(item, i)}
+      </span>
+    ) : (
+      <span
+        // biome-ignore lint/suspicious/noArrayIndexKey: a list may repeat an item
+        key={i}
+        className={isTags ? "props-item props-tag" : "props-item"}
+        data-armed={listEdit?.armed && newAt === i + 1 ? "" : undefined}
+      >
+        <button
+          type="button"
+          className="props-item-text"
+          data-index={i}
+          onMouseDown={(e) => {
+            caretAt.current = pressOffset(e, e.currentTarget);
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            r.onEditItem(i, caretAt.current);
+            caretAt.current = null;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              r.onEditItem(i, null);
+            } else if (e.key === "Delete" || e.key === "Backspace") {
+              e.preventDefault();
+              const to = e.currentTarget.closest(".props-list");
+              r.onRemoveItem(i);
+              // Focus goes to the item now in its place, else the one before.
+              requestAnimationFrame(() => {
+                const next =
+                  to?.querySelector<HTMLElement>(`.props-item-text[data-index="${i}"]`) ??
+                  to?.querySelector<HTMLElement>(`.props-item-text[data-index="${i - 1}"]`) ??
+                  to?.querySelector<HTMLElement>(".props-empty-add");
+                next?.focus({ preventScroll: true });
+              });
+            } else if ((e.shiftKey && e.key === "F10") || e.key === "ContextMenu") {
+              e.preventDefault();
+              e.stopPropagation();
+              r.onItemMenu(i, e.currentTarget);
+            }
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.boojyPhoneAPI?.holdFelt();
+            r.onItemMenu(i, e.currentTarget);
+          }}
+        >
+          {item}
+        </button>
+        {removeX(item, i)}
+      </span>
+    ),
+  );
+  if (newAt >= 0) itemNodes.splice(newAt, 0, listField);
 
   let value: ReactNode;
   if (!p.editable) {
@@ -684,60 +1043,31 @@ function PropertyRow(r: RowProps) {
       </button>
     );
   } else if (r.type === "list") {
-    value =
-      editing?.part === "value" ? (
-        <>
-          {pills}
-          <Field
-            editing={editing}
-            className="props-input props-list-input"
-            placeholder={items.length ? "" : p.fixed === "tags" ? "Add a tag" : "Add an item"}
-            onDraft={r.onDraft}
-            onKey={(e) => {
-              const v = editing.draft.trim();
-              if (e.key === "Enter" || e.key === ",") {
-                e.preventDefault();
-                if (v) {
-                  r.onList([...items, v]);
-                  r.onDraft("");
-                } else if (e.key === "Enter") r.onCancel();
-              } else if (e.key === "Backspace" && !editing.draft && items.length) {
-                e.preventDefault();
-                r.onList(items.slice(0, -1));
-              } else if (e.key === "Escape") {
-                e.preventDefault();
-                e.stopPropagation();
-                r.onCancel();
-              }
-            }}
-            onBlur={() => {
-              const v = editing.draft.trim();
-              if (v) r.onList([...items, v]);
-              r.onCancel();
-            }}
+    // Unused space in the value adds an item at the end; an item edits itself.
+    value = (
+      <div
+        className="props-val props-list"
+        onMouseDown={(e) => {
+          // A press on the space keeps an open new-item field's focus (and its caret).
+          if (e.target === e.currentTarget && newAt >= 0) e.preventDefault();
+        }}
+        onClick={(e) => {
+          if (e.target !== e.currentTarget || newAt >= 0) return;
+          r.onAddAt(items.length);
+        }}
+      >
+        {items.length || listEdit ? (
+          itemNodes
+        ) : (
+          <button
+            type="button"
+            className="props-empty props-empty-add"
+            aria-label={`Add to ${p.key}`}
+            onClick={() => r.onAddAt(0)}
           />
-        </>
-      ) : (
-        <div
-          className="props-val props-list"
-          role="button"
-          tabIndex={0}
-          aria-label={`Edit ${p.key}`}
-          onClick={(e) => {
-            const tag = (e.target as HTMLElement).closest<HTMLElement>("[data-tag]");
-            if (tag?.dataset.tag && r.onTagClick) r.onTagClick(tag.dataset.tag);
-            else r.onEdit("value", null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              r.onEdit("value", null);
-            }
-          }}
-        >
-          {items.length ? pills : <span className="props-empty" />}
-        </div>
-      );
+        )}
+      </div>
+    );
   } else if (editing?.part === "value") {
     value = (
       <Field
@@ -785,6 +1115,7 @@ function PropertyRow(r: RowProps) {
       className="props-row"
       data-key={p.key}
       data-editing={editing ? "" : undefined}
+      data-menu={r.menuOpen || r.itemMenuOpen ? "" : undefined}
       onContextMenu={(e) => {
         if ((e.target as HTMLElement).closest("input")) return;
         e.preventDefault();
@@ -896,6 +1227,7 @@ function Field({
   type = "text",
   inputMode,
   placeholder,
+  enterKeyHint = "done",
   onDraft,
   onKey,
   onBlur,
@@ -905,6 +1237,7 @@ function Field({
   type?: string;
   inputMode?: "decimal";
   placeholder?: string;
+  enterKeyHint?: "done" | "next";
   onDraft: (draft: string) => void;
   onKey: (e: ReactKeyboardEvent<HTMLInputElement>) => void;
   onBlur: () => void;
@@ -930,7 +1263,7 @@ function Field({
       placeholder={placeholder}
       spellCheck={false}
       autoComplete="off"
-      enterKeyHint="done"
+      enterKeyHint={enterKeyHint}
       aria-label={editing.part === "name" ? `Rename ${editing.key}` : editing.key}
       aria-invalid={editing.error ? true : undefined}
       onChange={(e) => onDraft(e.target.value)}

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { launchApp, SETTLE_MS, sleep, waitForFile } from "./harness";
+import { launchApp, MOD, SETTLE_MS, sleep, waitForFile } from "./harness";
 
 /**
  * A note's frontmatter shows as its properties: rows you can read, open by
@@ -82,6 +82,34 @@ test("the YAML field writes what is typed, and YAML the rows can't read opens as
     await expect(h.page.locator(".props-row")).toHaveCount(0);
     await sleep(SETTLE_MS);
     expect(h.vault.read("Broken.md")).toBe(BROKEN);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("the title's menu removes every property in one undo, or shows the note as Markdown", async () => {
+  const h = await launchApp({ "Film.md": NOTE });
+  const file = h.vault.file("Film.md");
+  try {
+    await h.openNote("Film");
+    await h.page.locator(".props-title").click({ button: "right" });
+    await expect(h.page.locator(".props-title")).toHaveAttribute("data-menu", "");
+    await h.page.getByRole("menuitem", { name: /Remove all properties/ }).click();
+    await waitForFile(file, (t) => t === "Body.\n", {
+      label: "the fences, the comment and every property gone",
+    });
+    await expect(h.page.locator(".props")).toHaveCount(0);
+
+    await h.page.locator("[data-block-type='p']").first().click();
+    await h.page.keyboard.press(`${MOD}+z`);
+    await waitForFile(file, (t) => t === NOTE, { label: "one ⌘Z brings it all back" });
+
+    await h.page.locator(".props-title").click({ button: "right" });
+    await h.page.getByRole("menuitem", { name: /Show Markdown/ }).click();
+    await expect(h.page.getByRole("textbox", { name: "Markdown" })).toBeVisible();
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Film.md"), "showing it changes nothing").toBe(NOTE);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

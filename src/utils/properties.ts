@@ -427,6 +427,116 @@ export const setList = (key: string, items: string[]): Change => ({
   expect: (p) => p.type === "list" && sameItems(p.shown, items),
 });
 
+/*
+ * One item of a list, changed by splicing its own bytes: every other item, the
+ * separators between them, blank lines, a flow list's spacing and line breaks
+ * stay exactly as written. Each names the item by its place and the text it
+ * held, so a change made on a list that has changed since is refused.
+ */
+
+/** The item at `i` as the change saw it, in a list the rows can change; else null. */
+function listItem(p: Property, i: number, was: string) {
+  if (!p.editable || !p.list || !Array.isArray(p.shown) || p.shown[i] !== was) return null;
+  return { list: p.list, items: p.shown, at: p.list.items[i] };
+}
+
+/** Item `i`, which read `was`, now reads `v`, in the quote its old spelling used, if any. */
+export const replaceItem = (key: string, i: number, was: string, v: string): Change => {
+  let after: string[] = [];
+  return {
+    key,
+    apply: (text, p) => {
+      const it = listItem(p, i, was);
+      if (!it) return null;
+      after = it.items.map((s, j) => (j === i ? v : s));
+      const q = text[it.at.from];
+      const spelled = yamlText(v, q === '"' || q === "'" ? q : undefined, it.list.flow);
+      return text.slice(0, it.at.from) + spelled + text.slice(it.at.to);
+    },
+    expect: (p) => p.type === "list" && sameItems(p.shown, after),
+  };
+};
+
+/** Item `i`, which read `was`, goes: with its separator in a flow list, its own line in a block one. */
+export const removeItem = (key: string, i: number, was: string): Change => {
+  let after: string[] = [];
+  return {
+    key,
+    apply: (text, p) => {
+      const it = listItem(p, i, was);
+      if (!it) return null;
+      after = it.items.filter((_, j) => j !== i);
+      const ranges = it.list.items;
+      // A list's only item leaves `[]`: a key with nothing after it would read as empty, not a list.
+      if (ranges.length === 1) return writeValue(text, p, "[]");
+      if (it.list.flow) {
+        const [from, to] =
+          i < ranges.length - 1 ? [it.at.from, ranges[i + 1].from] : [ranges[i - 1].to, it.at.to];
+        return text.slice(0, from) + text.slice(to);
+      }
+      // The item's own line, newline and all.
+      const from = lineStart(text, it.at.from);
+      const nl = text.indexOf("\n", it.at.to);
+      if (nl >= 0) return text.slice(0, from) + text.slice(nl + 1);
+      // The text's last line: the newline before it goes instead.
+      return text.slice(0, from - 1) + text.slice(it.at.to);
+    },
+    expect: (p) => p.type === "list" && sameItems(p.shown, after),
+  };
+};
+
+/**
+ * A new item at place `at` (the end when `at` is the length or more), written
+ * as the list writes its own: after the separator its neighbours share in a
+ * flow list (`, ` when it has one item), on a line with its neighbour's prefix
+ * in a block one.
+ */
+export const insertItem = (key: string, at: number, v: string): Change => {
+  let after: string[] = [];
+  return {
+    key,
+    apply: (text, p) => {
+      if (!p.editable || (p.type !== "list" && p.type !== null)) return null;
+      const items = Array.isArray(p.shown) ? p.shown : [];
+      const ranges = p.list?.items ?? [];
+      const i = Math.min(Math.max(at, 0), ranges.length);
+      after = [...items.slice(0, i), v, ...items.slice(i)];
+      if (!p.list || !ranges.length) {
+        if (p.list?.flow) {
+          // `[]` or `[ ]`: just inside the bracket.
+          const open = text.indexOf("[", p.valueRange[0]) + 1;
+          return text.slice(0, open) + yamlText(v, undefined, true) + text.slice(open);
+        }
+        return writeValue(text, p, listOut(text, p, after));
+      }
+      const n = ranges.length;
+      if (p.list.flow) {
+        const spelled = yamlText(v, undefined, true);
+        // The separator beside the new item: its left neighbours', else the first pair's.
+        const pair = i > 0 && i < n ? i - 1 : i === n ? n - 2 : 0;
+        const sep = n > 1 ? text.slice(ranges[pair].to, ranges[pair + 1].from) : ", ";
+        if (i === n)
+          return text.slice(0, ranges[n - 1].to) + sep + spelled + text.slice(ranges[n - 1].to);
+        return text.slice(0, ranges[i].from) + spelled + sep + text.slice(ranges[i].from);
+      }
+      const spelled = yamlText(v, undefined, false);
+      // Right under the item before it (a blank line after that one stays after the new one).
+      if (i > 0) {
+        const prev = ranges[i - 1];
+        const prefix = text.slice(lineStart(text, prev.from), prev.from);
+        return `${text.slice(0, prev.to)}\n${prefix}${spelled}${text.slice(prev.to)}`;
+      }
+      const ls = lineStart(text, ranges[0].from);
+      const prefix = text.slice(ls, ranges[0].from);
+      return `${text.slice(0, ls)}${prefix}${spelled}\n${text.slice(ls)}`;
+    },
+    expect: (p) => p.type === "list" && sameItems(p.shown, after),
+  };
+};
+
+/** A new last item. */
+export const appendItem = (key: string, v: string): Change => insertItem(key, Infinity, v);
+
 /** Removing the last property, when no newline ends the text, takes the newline before it too. */
 const lastWithoutNewline = (text: string, p: Property) =>
   p.end === text.length && p.start > 0 && !text.endsWith("\n");

@@ -293,6 +293,8 @@ export const MonitorIcon = contentIcon(LuMonitor);
 export const FolderOpenIcon = contentIcon(LuFolderOpen);
 /** A dialog's close, in a chrome button: navigation stroke like the other controls. */
 export const CloseIcon = navIcon(LuX, ICON_CONTROL);
+/** The × beside a property's list item or tag: drawn, so it centres on the line as a glyph can't. */
+export const RemoveItemIcon = navIcon(LuX, 13);
 export const SettingsIcon = navIcon(LuSettings);
 
 // ── Standalone controls (ICON_CONTROL) ────────────────────────────────────

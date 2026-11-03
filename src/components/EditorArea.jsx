@@ -244,6 +244,7 @@ const EditorArea = memo(
       updateBlockProperty,
       editFrontmatter,
       removeEmptyFrontmatter,
+      removeFrontmatter,
       detectActiveFormats,
       applyFormat,
       deleteBlockRange,
@@ -1588,6 +1589,8 @@ const EditorArea = memo(
                               onUpdateBlockProperty={updateBlockProperty}
                               onEditFrontmatter={editFrontmatter}
                               onRemoveEmptyFrontmatter={removeEmptyFrontmatter}
+                              onRemoveFrontmatter={removeFrontmatter}
+                              onShowMarkdown={() => switchViewRef?.current?.()}
                               onTagClick={onTagClick}
                               onFileOpen={handleFileOpen}
                               onFileOpenDefault={handleFileOpenDefault}

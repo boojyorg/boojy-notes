@@ -417,6 +417,8 @@ export function useHoldToGrab({
       claim();
     };
     const onContextMenu = (e: Event) => {
+      // Properties is never held as a block; a hold there is its own (a list item's menu).
+      if (e.target instanceof Element && e.target.closest("[data-properties]")) return;
       // A double-tap's selection fires one too: the system's own menu is
       // the answer, never a block's desktop right-click menu (code's).
       e.stopPropagation();

@@ -1,6 +1,12 @@
 import { useTheme } from "../hooks/useTheme";
-import { TAG_PILL_RADIUS, tagPillCss, tagPillGround } from "../styles/tagPill";
-import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W } from "../constants/layout";
+import {
+  REMOVE_X_ALPHA,
+  TAG_PILL_RADIUS,
+  TAG_PILL_TEXT_LIFT,
+  tagPillCss,
+  tagPillGround,
+} from "../styles/tagPill";
+import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W, TOUCH } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
@@ -1048,6 +1054,8 @@ ${tagPillCss(theme)}
           color: ${theme.TEXT.primary}; display: inline-flex; align-items: center; gap: 3px;
         }
         .props-title::before { content: attr(data-label); }
+        /* Its menu open, the title wears the selected ground, as a row does for its own. */
+        .props-title[data-menu] { background: ${theme.BG.hover}; }
         /* The fold chevron is part of the title, shown with the tools (hover, focus); always on the phone. */
         .props-chev {
           display: inline-flex; color: ${theme.TEXT.secondary};
@@ -1059,7 +1067,7 @@ ${tagPillCss(theme)}
         .props[data-arrived] :is(.props-rows, .props-yaml) {
           animation: motion-fade-in var(--motion-enter) var(--ease-enter) backwards;
         }
-        .props:focus-within .props-chev, html.is-phone .props-chev { opacity: 1; }
+        .props:focus-within .props-chev, html.is-phone .props-chev, .props-title[data-menu] .props-chev { opacity: 1; }
         /* Add property: a row of the rows' own grid, shown as the tools are (on hover or focus),
            and always when there is nothing else to show. */
         /* Add property: a row of the rows' own grid, shown on hover or focus,
@@ -1091,11 +1099,13 @@ ${tagPillCss(theme)}
           .props:hover :is(.props-add, .props-chev) { opacity: 1; pointer-events: auto; }
           :is(.props-add, .props-action):hover { background: ${theme.BG.surface}; color: ${theme.TEXT.primary}; }
           .props-title:hover { background: ${theme.BG.surface}; }
+          .props-title[data-menu]:hover { background: ${theme.BG.hover}; }
           .props-row:hover { background: ${theme.BG.surface}; }
-          .props-row[data-editing]:hover { background: ${theme.BG.hover}; }
+          .props-row:is([data-editing], [data-menu]):hover { background: ${theme.BG.hover}; }
           .props-icon:hover { color: ${theme.TEXT.primary}; }
-          .props-x:hover { opacity: 1; }
-          .props-tag:hover { background: ${tagPillGround(theme, true)}; }
+          .props-x:hover { color: ${theme.TEXT.primary}; opacity: 1; }
+          .props-tag .props-x:hover { color: inherit; opacity: 1; }
+          .props-tag:not([data-editing]):hover { background: ${tagPillGround(theme, true)}; }
         }
         .props-rows {
           /* The name column is as wide as the names (at least 136px, at most 240px), sized by
@@ -1109,7 +1119,8 @@ ${tagPillCss(theme)}
           grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start;
           min-height: 30px; border-radius: 6px; margin: 0 -6px; padding: 0 6px;
         }
-        .props-row[data-editing] { background: ${theme.BG.hover}; }
+        /* Edited, or the row its open menu is about: the selected ground. */
+        .props-row:is([data-editing], [data-menu]) { background: ${theme.BG.hover}; }
         .props-icon {
           display: flex; align-items: center; justify-content: center; width: 20px; height: 30px;
           padding: 0; border: 0; background: transparent; color: ${theme.TEXT.secondary}; cursor: pointer;
@@ -1144,10 +1155,15 @@ ${tagPillCss(theme)}
           border: 0; background: none; padding: 0; font: inherit; color: ${theme.ACCENT.text};
           text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
         }
+        /* × removes its item: quiet, beside the text. Its box is a fixed 14×13 (a stray press
+           next to it must not delete); the glyph inside is drawn larger and takes no press. */
         .props-x {
-          border: 0; background: none; padding: 0 0 0 4px; margin-right: -2px; font: inherit; font-size: 13px;
-          line-height: 1; color: inherit; opacity: 0.55; cursor: pointer;
+          display: inline-flex; align-items: center; justify-content: center; flex: none;
+          box-sizing: border-box; width: 14px; height: 13px; padding: 0 0 0 3px; margin-left: 1px;
+          border: 0; background: none; font: inherit; line-height: 1; color: ${theme.TEXT.muted};
+          cursor: pointer; overflow: visible; opacity: ${REMOVE_X_ALPHA.item};
         }
+        .props-x svg { flex: none; pointer-events: none; }
         .props-confirm { padding: 6px 8px 4px; max-width: 264px; }
         .props-confirm p { margin: 0; font-size: 12.5px; line-height: 1.45; color: ${theme.TEXT.secondary}; }
         .props-confirm .props-confirm-title { font-size: 13px; font-weight: 600; color: ${theme.TEXT.primary}; margin-bottom: 2px; }
@@ -1157,15 +1173,41 @@ ${tagPillCss(theme)}
         }
         .props-muted { color: ${theme.TEXT.muted}; }
         .props-empty::before { content: "Empty"; color: ${theme.TEXT.muted}; }
-        /* One pill shape: the text's tag pill (styles/tagPill), its tokens shared;
-           a list's items wear it in neutral. */
-        .props-pill {
-          display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
-          border-radius: ${TAG_PILL_RADIUS}px; font-size: 0.92em; background: ${theme.overlay(0.06)};
+        /* A list: each item is its text and its ×, one unit that never wraps apart (the text
+           inside a long one may). Plain text; a tag keeps the text's own pill. The unused space
+           after the items is the list's own: a press there adds one. */
+        .props-list { flex: 1; min-width: 0; align-self: stretch; column-gap: 2px; row-gap: 2px; }
+        .props-item {
+          display: inline-flex; align-items: center; max-width: 100%; min-height: 24px;
+          border-radius: ${TAG_PILL_RADIUS}px; padding: 0 2px 0 6px; margin-left: -6px; margin-right: 6px;
           color: ${theme.TEXT.primary};
         }
-        .props-tag { background: ${tagPillGround(theme)}; color: ${theme.ACCENT.tagText}; cursor: pointer; }
+        .props-item-text {
+          all: unset; min-width: 0; overflow-wrap: anywhere; cursor: text;
+        }
+        .props-item:has(.props-item-text:focus-visible) { box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
+        /* Picked by Backspace, next to go: the selection's own band. */
+        .props-item[data-armed] { background: ${bandFill(theme.ACCENT.primary, theme.name)}; }
+        .props-item[data-editing] .props-input { field-sizing: content; min-width: 4ch; flex: 0 1 auto; max-width: 100%; }
+        .props-tag {
+          height: 22px; padding: 0 5px 0 8px; margin-left: 0; margin-right: 4px; font-size: 0.92em;
+          background: ${tagPillGround(theme)}; color: ${theme.ACCENT.tagText};
+        }
+        .props-tag .props-x { color: inherit; opacity: ${REMOVE_X_ALPHA.tag}; }
+        /* The words sit half a pixel high, as the text's own pill sets them; the × stays centred. */
+        .props-tag :is(.props-item-text, .props-input) { position: relative; top: -${TAG_PILL_TEXT_LIFT}px; }
+        .props-tag[data-editing] { background: ${tagPillGround(theme)}; }
+        .props-tag .props-input { color: inherit; }
+        .props-tag[data-armed] { box-shadow: inset 0 0 0 1.5px ${theme.ACCENT.tagText}; }
         .props-tag::before { content: "#"; }
+        .props-list > .props-input { flex: 1 1 8ch; }
+        .props-empty-add { all: unset; cursor: text; }
+        .props-empty-add:focus-visible { outline: 2px solid var(--boojy-focus-ring); outline-offset: 2px; border-radius: 4px; }
+        /* The phone: the list always ends with a finger's width of its own space (a tap there
+           adds), drawn as nothing; it takes a line of its own only when the last one is full. */
+        html.is-phone .props-list:not(:has(.props-input))::after { content: ""; flex: 1 0 ${TOUCH}px; height: 24px; }
+        /* The phone: a hold is the item's menu, never a text selection. */
+        html.is-phone .props-item { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         .props-check {
           display: flex; align-items: center; justify-content: center; width: 16px; height: 16px;
           padding: 0; border: 0; background: transparent; cursor: pointer;
