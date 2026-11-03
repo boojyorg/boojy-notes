@@ -152,19 +152,21 @@ through state.**
 ## Block drag: the gutter grip; on the phone, a hold
 
 - **On the desktop text never starts a block drag; a picture does.** One floating grip
-  (`BlockDragHandle`) in the left padding, on hover, `aria-hidden`; a click selects the block.
-- A key hides the grip (a modifier alone doesn't: Shift-click). **Blur cancels a press
-  unconditionally** (Cmd-Tab left a phantom drag). `grip-reveal.spec.ts`.
+  (`BlockDragHandle`) in the gutter, in by `data-indent` (not a quote's bar), on hover,
+  `aria-hidden`.
+- A key hides the grip (not a lone modifier: Shift-click). **Blur cancels a press
+  unconditionally** (Cmd-Tab: a phantom drag). `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`): moved, it drags; let go,
   `BlockMenu`. A scroll, a double-tap or selected text is the browser's. A lone new finger ends
-  a lost hold (Android reuses finger ids). `hold-to-grab.spec.ts`.
-- **Commits on drop**, one history entry, only if order changed; Escape, blur or the sidebar
-  cancel. A selection drags as one run; moved blocks glide (`settleBlocks`). `motion.spec.ts`.
+  a lost hold (Android reuses ids). `hold-to-grab.spec.ts`.
+- **Commits on drop**, one entry, only if order changed; Escape, blur or the sidebar
+  cancel. A selection drags as one run, its copy from its first block; moved blocks glide
+  (`settleBlocks`). `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (no item changes
   parent; `moveStep`). `list-move.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (UI scale).
-- **Every root the grip can show beside is in `blockRefs`**; media, code and callout register
-  via `wholeRef`, not `elRef` (its repaint paints over the wrapper).
+- **Every root the grip shows beside is in `blockRefs`**; media, code and callout register via
+  `wholeRef`, not `elRef` (its repaint covers the wrapper).
 
 ## Menus
 

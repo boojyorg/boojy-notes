@@ -3,6 +3,7 @@ import { GripVerticalIcon } from "./Icons";
 import { cssZoom } from "../utils/domHelpers";
 import { Z } from "../constants/zIndex";
 import { Tooltip, useTooltip } from "./Tooltip";
+import { INDENT_PX } from "./EditableBlock";
 
 /**
  * The block drag handle — one floating grip for the whole editor.
@@ -115,8 +116,15 @@ function gripAt(els, i, anchor) {
     top: (line.top - origin.top) / zoom + (line.height / zoom - HANDLE_H) / 2,
     // Negative on purpose: the grip lives in the column's left padding. A
     // table's too, though its header row's own grip, across the left edge,
-    // then stands close beside it: one line of grips down the page.
-    left: (r.left - origin.left) / zoom - HANDLE_W - HANDLE_GAP,
+    // then stands close beside it: one line of grips down the page. A nested
+    // block's stands in by its depth (`data-indent`, the padding its marker
+    // and text move by), so it stays beside the item it moves; a quote has
+    // none, its bar staying at the edge. CSS pixels, after the zoom.
+    left:
+      (r.left - origin.left) / zoom -
+      HANDLE_W -
+      HANDLE_GAP +
+      (Number(els[i].dataset.indent) || 0) * INDENT_PX,
   };
 }
 

@@ -98,6 +98,33 @@ test("a hold on a block already selected keeps the run, its menu under all of it
   await expect(paragraphs(page).filter({ hasText: /\S/ })).toHaveCount(0);
 });
 
+test("a held block of a selected run drags the run, its copy starting over the run", async ({
+  page,
+}) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  await paragraphs(page).first().click();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Shift+ArrowDown");
+  await page.keyboard.press("Shift+ArrowDown");
+  await expect.poll(() => washed(page)).toEqual(["One", "Two", "Three"]);
+
+  const three = await centre(page, 2);
+  const oneTop = (await paragraphs(page).first().boundingBox())!.y;
+  // Already selected: it drags from the first move, no hold to wait for.
+  await f.down(three.x, three.y);
+  for (let i = 1; i <= 3; i++) await f.move(three.x, three.y + 10 * i);
+  const copy = page.locator("[data-drag-copy]");
+  await expect(copy).toHaveCount(1);
+  // Over the run, its first row on One (moved as far as the finger since the
+  // drag began, at most its 30px): never lined up with the block held.
+  const top = (await copy.boundingBox())!.y;
+  expect(top - oneTop).toBeGreaterThanOrEqual(-1);
+  expect(top - oneTop).toBeLessThanOrEqual(31);
+  await expect(copy.locator('[data-block-type="p"]')).toHaveCount(3);
+  await f.up();
+});
+
 test("a held finger that moves drags the block, one commit on the drop", async ({ page }) => {
   await threeParagraphs(page);
   const f = finger(await page.context().newCDPSession(page));

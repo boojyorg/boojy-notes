@@ -80,8 +80,44 @@ async function turnIntoTodo(page: Page) {
 
 const BULLETS = ["bullet:One", "bullet:Two", "bullet:Kid", "bullet:Three", "p:End."];
 
+// Kinds with different margins: the note's first line (a heading, its lift),
+// a paragraph, a list, a to-do, so a copy that drops a margin shows.
+const MIXED = "## Heading\n\nA paragraph.\n\n- Bullet\n- [ ] Task\n\nEnd.\n";
+
+/** The copy's top and its rows' tops, against the originals', while a drag is live. */
+const copyPlaces = (page: Page, ids: string[]) =>
+  page.evaluate((ids) => {
+    const copy = document.querySelector<HTMLElement>("[data-drag-copy]");
+    if (!copy) return null;
+    const top = (el: Element | null | undefined) => el?.getBoundingClientRect().top ?? Number.NaN;
+    const original = ids.map((id) =>
+      top(document.querySelector(`[data-editor] > [data-block-id="${id}"]`)),
+    );
+    const rows = Array.from(copy.children).map((c) => top(c));
+    return { top: top(copy), rows, original };
+  }, ids);
+
+/** Press block `n`'s grip and move past the drag threshold: the drag is live. */
+async function startDrag(page: Page, n: number) {
+  await hoverGrip(page, n);
+  await page.mouse.down();
+  const g = (await page.locator('[data-testid="block-drag-handle"]').boundingBox())!;
+  const x = g.x + g.width / 2;
+  const y = g.y + g.height / 2;
+  await page.mouse.move(x, y + 6, { steps: 2 });
+  await page.waitForFunction(() => document.body.classList.contains("block-dragging"));
+  return { x, y: y + 6 };
+}
+
+const blockIds = (page: Page) =>
+  page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>("[data-editor] > [data-block-id]")).map(
+      (el) => el.dataset.blockId!,
+    ),
+  );
+
 test.beforeEach(async () => {
-  h = await launchApp({ "List.md": NOTE });
+  h = await launchApp({ "List.md": NOTE, "Mixed.md": MIXED });
   await h.openNote("List");
   await roots(h.page).first().waitFor();
 });
@@ -161,4 +197,55 @@ test("a gutter press inside the run picks that block alone, with no menu", async
   expect(await washed(h.page)).toEqual(["Three"]);
   await expect(menu(h.page)).toHaveCount(0);
   await expect(pressedGrip(h.page)).toHaveCount(0);
+});
+
+for (const [from, name] of [
+  [3, "the last"],
+  [1, "a middle"],
+] as const) {
+  test(`dragged from ${name} grip, the run's copy starts over the run and moves with the pointer`, async () => {
+    await selectAllBullets(h.page);
+    const ids = (await blockIds(h.page)).slice(0, 4);
+    const at = await startDrag(h.page, from);
+    // At activation: over the run, its first row on One, not on the block grabbed.
+    const start = (await copyPlaces(h.page, ids))!;
+    expect(Math.abs(start.top - start.original[0])).toBeLessThanOrEqual(1);
+    // Then one-for-one with the pointer.
+    await h.page.mouse.move(at.x, at.y + 30, { steps: 3 });
+    const moved = (await copyPlaces(h.page, ids))!;
+    expect(Math.abs(moved.top - start.top - 30)).toBeLessThanOrEqual(1);
+    // Escape: it goes home, and nothing moved.
+    await h.page.keyboard.press("Escape");
+    await expect(h.page.locator("[data-drag-copy]")).toHaveCount(0);
+    await h.page.mouse.up();
+    expect(await types(h.page)).toEqual(BULLETS);
+  });
+}
+
+test("a mixed run's copy matches the page, row for row, from its last block's grip", async () => {
+  await h.openNote("Mixed");
+  await roots(h.page).first().waitFor();
+  await clickGrip(h.page, 0);
+  await h.page.keyboard.press("Escape");
+  await clickGrip(h.page, 3, { shift: true });
+  expect(await washed(h.page)).toEqual(["Heading", "A paragraph.", "Bullet", "Task"]);
+  const ids = (await blockIds(h.page)).slice(0, 4);
+  await startDrag(h.page, 3);
+  const p = (await copyPlaces(h.page, ids))!;
+  expect(p.rows).toHaveLength(4);
+  for (let i = 0; i < 4; i++) {
+    expect(Math.abs(p.rows[i] - p.top - (p.original[i] - p.original[0]))).toBeLessThanOrEqual(1);
+  }
+  expect(Math.abs(p.top - p.original[0])).toBeLessThanOrEqual(1);
+  await h.page.keyboard.press("Escape");
+  await h.page.mouse.up();
+});
+
+test("a run dragged from its last grip and dropped below End. lands there, in order", async () => {
+  await selectAllBullets(h.page);
+  const at = await startDrag(h.page, 3);
+  const end = (await roots(h.page).nth(4).boundingBox())!;
+  await h.page.mouse.move(at.x, end.y + end.height - 2, { steps: 6 });
+  await h.page.mouse.up();
+  await expect.poll(() => types(h.page)).toEqual(["p:End.", ...BULLETS.slice(0, 4)]);
 });
