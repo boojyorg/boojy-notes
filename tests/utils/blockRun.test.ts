@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   belowItem,
+  gripSelection,
   indentRun,
   moveStep,
   selectedIds,
@@ -121,6 +122,41 @@ describe("selectionRange / selectedIds", () => {
 
   it("never covers the frontmatter", () => {
     expect(selectedIds([fm, p("a")], { anchor: "a", head: "fm" })).toEqual(["a"]);
+  });
+});
+
+describe("gripSelection", () => {
+  // note: a, b (c, d nested), e, f
+  it("keeps the run a grip is pressed in, the pressed grip marked", () => {
+    const run = { anchor: "b", head: "e" };
+    expect(gripSelection(note, run, [], "e")).toEqual({ anchor: "b", head: "e", grip: "e" });
+  });
+
+  it("keeps the run from a nested item its selected parent brought", () => {
+    const run = { anchor: "b", head: "b" };
+    expect(gripSelection(note, run, [], "d")).toEqual({ anchor: "b", head: "b", grip: "d" });
+  });
+
+  it("takes the lines a text selection runs through, when the grip is one of them", () => {
+    expect(gripSelection(note, null, ["b", "c", "d", "e"], "c")).toEqual({
+      anchor: "b",
+      head: "e",
+      grip: "c",
+    });
+  });
+
+  it("is the block alone from a text selection in one line, or outside the lines", () => {
+    expect(gripSelection(note, null, ["e"], "e")).toEqual({ anchor: "e", head: "e", grip: "e" });
+    expect(gripSelection(note, null, ["a", "b"], "f")).toEqual({
+      anchor: "f",
+      head: "f",
+      grip: "f",
+    });
+  });
+
+  it("starts afresh outside the run, whatever text is selected", () => {
+    const run = { anchor: "a", head: "a" };
+    expect(gripSelection(note, run, [], "f")).toEqual({ anchor: "f", head: "f", grip: "f" });
   });
 });
 

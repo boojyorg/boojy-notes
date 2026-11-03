@@ -65,6 +65,39 @@ test("a still finger, let go, selects the block and opens its menu under it", as
   expect(box.y).toBeGreaterThanOrEqual(block.y + block.height);
 });
 
+test("a hold on a block already selected keeps the run, its menu under all of it", async ({
+  page,
+}) => {
+  await threeParagraphs(page);
+  const f = finger(await page.context().newCDPSession(page));
+  // A run made by the keys: Escape selects the caret's block, Shift+↓ grows it.
+  await paragraphs(page).first().click();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Shift+ArrowDown");
+  await page.keyboard.press("Shift+ArrowDown");
+  await expect.poll(() => washed(page)).toEqual(["One", "Two", "Three"]);
+  const hold = async (index: number) => {
+    const at = await centre(page, index);
+    await f.down(at.x, at.y);
+    await page.waitForTimeout(HOLD);
+    await f.up();
+    await expect(menu(page)).toBeVisible();
+    expect(await washed(page)).toEqual(["One", "Two", "Three"]);
+    // Below the last block it acts on, never over one.
+    const last = (await paragraphs(page).nth(2).boundingBox())!;
+    expect((await menu(page).boundingBox())!.y).toBeGreaterThanOrEqual(last.y + last.height);
+  };
+
+  await hold(1); // the middle
+  await page.keyboard.press("Escape"); // the menu; the selection stays
+  await expect(menu(page)).toHaveCount(0);
+  await hold(0); // the first
+  await menu(page)
+    .getByRole("menuitem", { name: /Delete/ })
+    .tap();
+  await expect(paragraphs(page).filter({ hasText: /\S/ })).toHaveCount(0);
+});
+
 test("a held finger that moves drags the block, one commit on the drop", async ({ page }) => {
   await threeParagraphs(page);
   const f = finger(await page.context().newCDPSession(page));

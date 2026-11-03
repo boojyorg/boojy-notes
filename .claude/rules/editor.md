@@ -302,19 +302,18 @@ above, open until its `</>` closes it. `diagram.spec.ts`.
 
 ## Whole-block selection
 
-- **Any block can be selected whole** (`utils/blockRun.ts`): the grip, the gutter strip, Escape,
+- **Any block can be selected whole** (`blockRun.ts`): the grip, the gutter, Escape,
   a press on a divider, image or table; Shift-click extends. **A list item brings its nested
-  items** (`subtreeEnd`). Text blocks wear the band; the caret rests, hidden.
-- On a selection, Backspace/Delete remove it in one commit and ⌘C/⌘X copy it whole
-  (`wholeBlocksCopy`); a letter deselects and types. A press off `data-selection-surface`
-  deselects.
-- **The grip's click also opens `BlockMenu`** beside it (right-click, Shift+F10); its shown keys
-  work. `block-selection.spec.ts`.
+  items** (`subtreeEnd`). Text blocks wear the band, the caret hidden.
+- Backspace/Delete remove a selection in one commit, ⌘C/⌘X copy it whole (`wholeBlocksCopy`);
+  a letter deselects and types; a press off `data-selection-surface` deselects.
+- **The grip's click opens `BlockMenu` on its run** or text's lines (`gripSelection`;
+  right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
 - Backspace from below / Delete from above selects a divider, image or table first
   (`reachAcross`). **Arrows stop on a divider or image and enter every block with a field**;
   deletion steps over code and embeds (`landingBefore` vs `caretLandingBefore`).
 - **Taking the caret back never scrolls the note** (`placeCaret`: `preventScroll`).
-- **Measure a caret's line with `caretRect`** (an empty node's range reports zeros).
+- **Measure a caret's line with `caretRect`** (an empty range is zeros).
   `caret-navigation.spec.ts`.
 
 ## Paste and copy
