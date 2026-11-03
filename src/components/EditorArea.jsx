@@ -74,7 +74,15 @@ import { wikilinkStatus } from "../utils/wikilinkTarget";
 import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
 import { atScale } from "../utils/uiScale";
-import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../utils/blockRun";
+import {
+  gripSelection,
+  selectedIds,
+  selectionRange,
+  stepHead,
+  subtreeEnd,
+} from "../utils/blockRun";
+import { selectedLinesOf } from "../utils/selectedLines";
+import { reorderFloor } from "../utils/blockOrder";
 import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
 import { LIST_TYPES } from "../utils/blockKinds";
 import BlockMenu from "./BlockMenu";
@@ -656,9 +664,10 @@ const EditorArea = memo(
       enabled: isPhone || HOLD_IN_WEB,
       mountKey: `${activeNote}:${hasNote}:${sourceView}`,
       // A hold through the open menu's backdrop closes it.
+      // A hold on a block already selected keeps the run, so its menu acts on all of it.
       onHold: (id) => {
         setBlockMenu(null);
-        setSelectedBlockId(id);
+        if (!heldIdsRef.current.includes(id)) setSelectedBlockId(id);
       },
       // Under the held block and its nested items, never on them.
       onRelease: (id) => {
@@ -875,24 +884,10 @@ const EditorArea = memo(
       ],
     );
 
-    // A press on a block's grip that never became a drag: select the block and
-    // open its menu under the grip (Shift extends the run from its anchor
-    // instead). The caret rests, hidden, at the end of a text block, so keys
+    // The caret rests, hidden, at the end of a selected text block, so keys
     // reach the editor and a letter typed deselects and carries on writing.
-    const handleGripClick = useCallback(
-      (blockId, extend, gripRect) => {
-        // `grip`: the selection was made on the grip, whose face then stays
-        // pressed; a list marker's click selects with the grip left plain.
-        setBlockSelection((s) =>
-          extend && s
-            ? { ...s, head: blockId }
-            : { anchor: blockId, head: blockId, grip: !!gripRect },
-        );
-        if (extend) return;
-        if (gripRect) {
-          const { top, bottom, left, right } = gripRect;
-          setBlockMenu({ top, bottom, left, right });
-        }
+    const restCaretIn = useCallback(
+      (blockId) => {
         const block = noteDataRef.current[activeNote]?.content?.blocks?.find(
           (b) => b.id === blockId,
         );
@@ -900,7 +895,38 @@ const EditorArea = memo(
         if (block && el && isEditableBlock(block)) placeCaret(el, caretLength(el));
         else editorRef.current?.focus({ preventScroll: true });
       },
-      [activeNote, noteDataRef, blockRefs, editorRef, setBlockSelection],
+      [activeNote, noteDataRef, blockRefs, editorRef],
+    );
+
+    // A press on a block's grip that never became a drag, or a right-click on
+    // it: open its menu under the grip on the run it was pressed in, or the
+    // lines a text selection runs through, else the block alone
+    // (`gripSelection`), with that grip's face pressed. Shift extends the run
+    // from its anchor instead. The text selection is read here, before the
+    // caret comes to rest and collapses it.
+    const handleGripClick = useCallback(
+      (blockId, extend, gripRect) => {
+        if (extend) {
+          setBlockSelection((s) =>
+            s ? { ...s, head: blockId } : { anchor: blockId, head: blockId, grip: blockId },
+          );
+          return;
+        }
+        const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
+        const sel = window.getSelection();
+        const floor = reorderFloor(blocks);
+        const lineIds =
+          sel?.rangeCount && !sel.isCollapsed
+            ? selectedLinesOf(blocks, sel).filter(
+                (id) => blocks.findIndex((b) => b.id === id) >= floor,
+              )
+            : [];
+        setBlockSelection((s) => gripSelection(blocks, s, lineIds, blockId));
+        const { top, bottom, left, right } = gripRect;
+        setBlockMenu({ top, bottom, left, right });
+        restCaretIn(blockId);
+      },
+      [activeNote, noteDataRef, setBlockSelection, restCaretIn],
     );
 
     // A press in a block's gutter strip, between the grip and where its
@@ -923,9 +949,11 @@ const EditorArea = memo(
         if (!id) return;
         e.preventDefault();
         e.stopPropagation();
-        handleGripClick(id, false);
+        // A fresh pick: the block alone, whatever was selected, and no menu.
+        setSelectedBlockId(id);
+        restCaretIn(id);
       },
-      [editorRef, blockRefs, handleGripClick],
+      [editorRef, blockRefs, setSelectedBlockId, restCaretIn],
     );
 
     // The wash on a selected text block: the band's tint over the whole row,
@@ -1615,7 +1643,7 @@ const EditorArea = memo(
                       startHandleDrag={startHandleDrag}
                       onGripClick={handleGripClick}
                       pinnedBlockId={
-                        selectedRun && blockSelection.grip ? blockSelection.anchor : null
+                        selectedRun && blockSelection.grip ? blockSelection.grip : null
                       }
                       pinKey={note.content.blocks}
                     />

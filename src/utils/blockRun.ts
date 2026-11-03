@@ -10,8 +10,8 @@ import { LIST_TYPES, MAX_INDENT } from "./blockKinds";
 export interface BlockSelection {
   anchor: string;
   head: string;
-  /** Made on the grip (its face stays pressed), not a list marker or the keys. */
-  grip?: boolean;
+  /** The block whose grip made it (that grip stays pressed); none from a list marker or the keys. */
+  grip?: string;
 }
 
 /**
@@ -109,6 +109,27 @@ export function selectionRange(
 export function selectedIds(blocks: readonly Block[], sel: BlockSelection | null): string[] {
   const range = selectionRange(blocks, sel);
   return range ? blocks.slice(range.from, range.to + 1).map((b) => b.id) : [];
+}
+
+/**
+ * What a grip's click (or right-click, or the phone's hold) selects: the run
+ * it was pressed in, so the menu it opens acts on all of it; else the lines a
+ * text selection runs through, when there are several and this is one of them
+ * (the drag's rule); else the block alone. `grip` is the block pressed.
+ */
+export function gripSelection(
+  blocks: readonly Block[],
+  current: BlockSelection | null,
+  lineIds: readonly string[],
+  blockId: string,
+): BlockSelection {
+  if (selectedIds(blocks, current).includes(blockId) && current) {
+    return { ...current, grip: blockId };
+  }
+  if (lineIds.length > 1 && lineIds.includes(blockId)) {
+    return { anchor: lineIds[0], head: lineIds[lineIds.length - 1], grip: blockId };
+  }
+  return { anchor: blockId, head: blockId, grip: blockId };
 }
 
 /**

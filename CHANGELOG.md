@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixes
+
+- **The block menu acts on everything selected** — Opening a block's menu from its handle (a click, a right-click, or a hold on the phone) on blocks you've already selected now applies Turn into, Duplicate, Copy and Delete to all of them, not just the one you clicked. The same goes for the lines a text selection runs through: select a few bullets' text, click a handle and choose To-do list, and they all become to-dos, with one Undo turning them back. A selected list item still brings the items nested under it.
+
 ## v0.20.0 — 2026-11-01
 
 ### Improvements
