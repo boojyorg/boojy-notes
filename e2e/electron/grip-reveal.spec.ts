@@ -70,72 +70,89 @@ test("a press on the grip that loses the window never becomes a drag, and the gr
   ]);
 });
 
-// A nested item's grip stands by its own marker, as a top-level one does by
-// its (`data-indent`); a quote's stays by its bar at the column's edge.
+// A nested item's grip is centred on its parent's marker column (the bullet,
+// number or box one level up), so nested grips stand in a line under the
+// markers; a top-level one stays in the gutter, in line with a paragraph's,
+// and a quote's stays by its bar at the column's edge.
 const NESTED =
   "- A\n  - B\n    - C\n\n1. One\n   10. Deep ten\n\n- [ ] Task\n  - [ ] Nested task\n\n> Quote\n\nPara.\n\n10. Ten\n";
 
-test("a nested block's grip keeps the top-level gap to its own marker; a quote's and a paragraph's stay at the edge", async () => {
+test("a nested block's grip is centred on its parent's marker; a top-level one, a quote's and a paragraph's stay in the gutter", async () => {
   const g = await launchApp({ "Nested.md": NESTED });
   try {
     await g.openNote("Nested");
     const rows = g.page.locator("[data-editor] > [data-block-id]");
     await rows.first().waitFor();
-    /** The grip's right edge, and where block `text`'s marker ink starts. */
+    // Exact: `hasText` is a case-blind substring ("Ten" in "Deep ten").
+    const row = (text: string) => rows.filter({ has: g.page.getByText(text, { exact: true }) });
+    /** Block `text`'s grip, its marker column's centre and where its marker's ink starts. */
     const measure = async (text: string) => {
-      // Exact: `hasText` is a case-blind substring ("Ten" in "Deep ten").
-      const row = rows.filter({ has: g.page.getByText(text, { exact: true }) });
-      await expect(row).toHaveCount(1);
-      const box = (await row.boundingBox())!;
-      await g.page.mouse.move(box.x + 120, box.y + Math.min(10, box.height / 2));
-      const id = await row.getAttribute("data-block-id");
+      await expect(row(text)).toHaveCount(1);
+      await row(text).scrollIntoViewIfNeeded();
+      const id = await row(text).getAttribute("data-block-id");
       const handle = g.page.locator(`[data-testid="block-drag-handle"][data-target-block="${id}"]`);
-      await handle.waitFor({ timeout: 2_000 });
+      // Hovered until its grip shows: a press elsewhere (the box's tick) can
+      // still be settling, and the grip follows the pointer a frame late.
+      await expect(async () => {
+        const box = (await row(text).boundingBox())!;
+        await g.page.mouse.move(box.x + 120, box.y + Math.min(10, box.height / 2) + 1);
+        await g.page.mouse.move(box.x + 120, box.y + Math.min(10, box.height / 2));
+        await expect(handle).toBeVisible({ timeout: 500 });
+      }).toPass({ timeout: 5_000 });
       const hb = (await handle.boundingBox())!;
-      const ink = await row.evaluate((el) => {
-        const mark = el.querySelector("[data-marker], .checkbox-hit");
-        if (mark) return mark.getBoundingClientRect().left;
-        // A number: its characters' own left, which a wide one moves past the column's.
+      const marker = await row(text).evaluate((el) => {
+        // A list row's first child is its marker column's content, centred in
+        // it (a dot, a box) or as wide as it (a number).
+        const col = el.firstElementChild?.getBoundingClientRect();
         const t = el.firstElementChild?.firstChild;
+        let ink = col?.left ?? el.getBoundingClientRect().left;
         if (t?.nodeType === Node.TEXT_NODE) {
+          // A number's own characters: a wide one hangs past its column's left.
           const r = document.createRange();
           r.selectNodeContents(t);
-          return r.getBoundingClientRect().left;
+          ink = r.getBoundingClientRect().left;
         }
-        return el.getBoundingClientRect().left;
+        return { centre: col ? col.left + col.width / 2 : Number.NaN, ink };
       });
-      return { grip: hb.x + hb.width, gap: ink - (hb.x + hb.width) };
+      return {
+        left: hb.x,
+        right: hb.x + hb.width,
+        centre: hb.x + hb.width / 2,
+        column: marker.centre,
+        ink: marker.ink,
+      };
     };
+    const centredOn = (child: { centre: number }, parent: { column: number }) =>
+      expect(Math.abs(child.centre - parent.column)).toBeLessThanOrEqual(1);
 
     const a = await measure("A");
-    for (const t of ["B", "C"])
-      expect(Math.abs((await measure(t)).gap - a.gap)).toBeLessThanOrEqual(1);
     const b = await measure("B");
-    expect(b.grip).toBeGreaterThan(a.grip + 20);
+    const c = await measure("C");
+    centredOn(b, a);
+    centredOn(c, b);
+    expect(b.ink - b.right).toBeGreaterThan(0);
 
-    // A number wider than its column never meets the grip, at any depth.
-    const ten = await measure("Ten");
-    const deep = await measure("Deep ten");
     // Both are drawn `10.` (a list's first number is its own; Para. ends the one above).
-    for (const t of ["Ten", "Deep ten"]) {
-      const row = rows.filter({ has: g.page.getByText(t, { exact: true }) });
-      await expect(row).toContainText("10.");
-    }
-    expect(ten.gap).toBeGreaterThan(0);
-    expect(Math.abs(deep.gap - ten.gap)).toBeLessThanOrEqual(1);
+    for (const t of ["Ten", "Deep ten"]) await expect(row(t)).toContainText("10.");
+    const one = await measure("One");
+    const deep = await measure("Deep ten");
+    centredOn(deep, one);
+    // A number wider than its column never meets the grip, at any depth.
+    expect(deep.ink - deep.right).toBeGreaterThan(0);
+    const ten = await measure("Ten");
+    expect(ten.ink - ten.right).toBeGreaterThan(0);
 
-    const task = await measure("Task");
-    expect(Math.abs((await measure("Nested task")).gap - task.gap)).toBeLessThanOrEqual(1);
+    centredOn(await measure("Nested task"), await measure("Task"));
     // The nested box still ticks.
-    const box = rows
-      .filter({ has: g.page.getByText("Nested task", { exact: true }) })
-      .locator(".checkbox-hit");
+    const box = row("Nested task").locator(".checkbox-hit");
     await box.click();
     await expect(box).toHaveAttribute("aria-checked", "true");
 
+    // Top level: one line of grips down the gutter, a quote's included.
     const para = await measure("Para.");
-    expect(Math.abs((await measure("Quote")).grip - para.grip)).toBeLessThanOrEqual(1);
-    expect(Math.abs(a.grip - para.grip)).toBeLessThanOrEqual(1);
+    for (const top of [a, one, ten, await measure("Quote")]) {
+      expect(Math.abs(top.left - para.left)).toBeLessThanOrEqual(1);
+    }
   } finally {
     await g.close();
   }

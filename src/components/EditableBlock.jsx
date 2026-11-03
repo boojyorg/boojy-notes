@@ -46,7 +46,7 @@ export const INDENT_PX = 24;
  * its right. Column and air make one indent, so every kind's text starts at
  * the same x and a nested item's marker stands under its parent's text.
  */
-const LIST_MARKER_W = CHECKBOX_SIZE;
+export const LIST_MARKER_W = CHECKBOX_SIZE;
 const LIST_TEXT_GAP = INDENT_PX - LIST_MARKER_W;
 
 /** Padding a row carries above its own first line, which sits between the

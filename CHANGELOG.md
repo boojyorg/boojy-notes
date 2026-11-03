@@ -4,7 +4,7 @@
 
 ### Fixes
 
-- **Dragging several blocks no longer jumps, and a nested item's handle sits beside it** — With a few blocks selected, dragging from any of their handles now lifts them exactly where they are, instead of jumping down to the handle you grabbed; this works the same with a hold on the phone. A nested list item's handle now stands just left of its own bullet, number or box, the deeper ones further in, so it's clear which item it moves.
+- **Dragging several blocks no longer jumps, and a nested item's handle sits beside it** — With a few blocks selected, dragging from any of their handles now lifts them exactly where they are, instead of jumping down to the handle you grabbed; this works the same with a hold on the phone. A nested list item's handle now stands in line under the bullet, number or box of the item it's nested in, the deeper ones further in, so it's clear which item it moves.
 - **The block menu acts on everything selected** — Opening a block's menu from its handle (a click, a right-click, or a hold on the phone) on blocks you've already selected now applies Turn into, Duplicate, Copy and Delete to all of them, not just the one you clicked. The same goes for the lines a text selection runs through: select a few bullets' text, click a handle and choose To-do list, and they all become to-dos, with one Undo turning them back. A selected list item still brings the items nested under it.
 
 ## v0.20.0 — 2026-11-01
