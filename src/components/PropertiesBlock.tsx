@@ -19,6 +19,7 @@ import {
   addProperty,
   type Change,
   conversion,
+  freeName,
   isNumber,
   nameProblem,
   type Property,
@@ -132,6 +133,30 @@ interface Editing {
 const TAG_NAME_RE = new RegExp(`^${TAG_BODY}$`, "u");
 const listOf = (p: Property) => (Array.isArray(p.shown) ? p.shown : []);
 
+/** A new property's name until it is given one: its type's, in lower case (a date's either way). */
+const DRAFT_NAME: Record<PropType, string> = {
+  text: "text",
+  list: "list",
+  number: "number",
+  checkbox: "checkbox",
+  date: "date",
+  datetime: "date",
+};
+
+/** A property being added: on screen, named in its row, written only once it has its name. */
+interface Draft {
+  type: PropType;
+  /** What is typed; empty, the property takes `fallback`, shown in grey until then. */
+  name: string;
+  fallback: string;
+  error?: string;
+  /** From a fresh `/properties`: dropped, the empty section goes too and the caret goes back. */
+  fresh?: boolean;
+  from?: string;
+  /** What the line that asked held (`---`), given back if nothing is added. */
+  literal?: string;
+}
+
 interface MenuState {
   key: string;
   anchor: MenuAnchor;
@@ -147,7 +172,11 @@ interface PropertiesBlockProps {
   onUpdateText: (noteId: string, blockIndex: number, text: string) => void;
   onEditFrontmatter?: (noteId: string, blockId: string, change: Change) => "ok" | "none" | "unsafe";
   /** Takes away a frontmatter block left with no text (a cancelled `/properties`). */
-  onRemoveEmpty?: (noteId: string, blockId: string) => void;
+  onRemoveEmpty?: (
+    noteId: string,
+    blockId: string,
+    restore?: { blockId: string; text: string },
+  ) => void;
   /** Takes away the whole frontmatter block, whatever it holds: one undo. */
   onRemoveAll?: (noteId: string, blockId: string) => void;
   /** The note's Markdown view, as ⌘/ switches to it. */
@@ -194,8 +223,10 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     anchor: MenuAnchor;
     fresh: boolean;
     from?: string;
+    literal?: string;
   } | null>(null);
   const addRef = useRef<HTMLButtonElement>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
 
   // YAML the rows can't read opens as YAML, and stays so once mended, so
   // mending it never swaps the field away under the caret.
@@ -244,7 +275,7 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
   // `/properties` asks this block, perhaps before it is mounted, for its picker.
   useEffect(
     () =>
-      registerBlockOpener(block.id, ({ what, from }) => {
+      registerBlockOpener(block.id, ({ what, from, literal }) => {
         if (what !== "add" && what !== "add-new") return;
         setFolded((was) => {
           if (was)
@@ -257,16 +288,25 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
         setAsYaml(false);
         requestAnimationFrame(() => {
           if (addRef.current)
-            setPicker({ anchor: rectAnchor(addRef.current), fresh: what === "add-new", from });
+            setPicker({
+              anchor: rectAnchor(addRef.current),
+              fresh: what === "add-new",
+              from,
+              literal,
+            });
         });
       }),
     [block.id, noteId],
   );
 
-  const choosePicked = (name: string, type: PropType) => {
+  // A property by name: of a type, or (null) with none yet, its value deciding what it is.
+  const choosePicked = (name: string, type: PropType | null) => {
     setPicker(null);
-    if (commit(addProperty(name, type)) !== "ok") return;
-    setChosen(rememberPropertyType(name, type));
+    if (commit(addProperty(name, type)) !== "ok") {
+      leaveFresh(picker?.fresh, picker?.from, picker?.literal);
+      return;
+    }
+    if (type) setChosen(rememberPropertyType(name, type));
     if (type !== "checkbox") {
       setEditing({
         key: name,
@@ -278,18 +318,59 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
     }
   };
   const closePicker = () => {
-    const fresh = picker?.fresh;
-    const from = picker?.from;
     setPicker(null);
-    if (fresh && !text.trim()) props.onRemoveEmpty?.(noteId, block.id);
-    // Cancelled, the caret goes back to the line `/properties` was typed on,
-    // so the next keys go where they were going (they were lost before).
-    // At once, in the Escape's own keystroke: a frame later, keys typed in
-    // that frame went nowhere.
-    if (from) {
-      const line = document.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(from)}"]`);
-      if (line) placeCaret(line, 0, { reveal: false });
+    leaveFresh(picker?.fresh, picker?.from, picker?.literal);
+  };
+  /** A fresh `/properties` left with nothing added: the section goes, the caret back where it was. */
+  const leaveFresh = (fresh?: boolean, from?: string, literal?: string) => {
+    const line = from
+      ? document.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(from)}"]`)
+      : null;
+    const giveBack = !!(fresh && !text.trim() && literal && from && line);
+    // The `---` that asked for it is the line's again: written into the line as typing would
+    // be, and committed with the section's going, in one commit.
+    if (giveBack && line && literal) line.textContent = literal;
+    if (fresh && !text.trim()) {
+      if (giveBack && from && literal)
+        props.onRemoveEmpty?.(noteId, block.id, { blockId: from, text: literal });
+      else props.onRemoveEmpty?.(noteId, block.id);
     }
+    // Cancelled, the caret goes back to the line `/properties` was typed on
+    // (after the dashes it gives back), so the next keys go where they were
+    // going. At once, in the Escape's own keystroke: a frame later, keys typed
+    // in that frame went nowhere.
+    if (line) placeCaret(line, giveBack && literal ? literal.length : 0, { reveal: false });
+  };
+
+  // A type picked: its row appears, named after it and ready to be renamed; nothing is written
+  // until the name is given (Enter, Tab, or a press elsewhere), so ⌘Z takes it back in one.
+  const pickType = (type: PropType) => {
+    setDraft({
+      type,
+      name: "",
+      fallback: freeName(text, DRAFT_NAME[type]),
+      fresh: picker?.fresh,
+      from: picker?.from,
+      literal: picker?.literal,
+    });
+    setPicker(null);
+    setEditing(null);
+  };
+  /** The draft, written; false (it says why) when its name can't be one. */
+  const commitDraft = (d: Draft): boolean => {
+    const name = d.name.trim() || d.fallback;
+    const problem = nameProblem(text, "", name);
+    if (problem) {
+      setDraft({ ...d, error: problem });
+      return false;
+    }
+    setDraft(null);
+    choosePicked(name, d.type);
+    return true;
+  };
+  const dropDraft = (d: Draft) => {
+    setDraft(null);
+    leaveFresh(d.fresh, d.from, d.literal);
   };
 
   // The rows come and go at once (a hidden field must never keep focus); only
@@ -771,6 +852,19 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
                 </button>
               </p>
             )}
+            {draft && (
+              <DraftRow
+                draft={draft}
+                onName={(name) => setDraft((d) => d && { ...d, name, error: undefined })}
+                onCommit={() => commitDraft(draft)}
+                onCancel={() => dropDraft(draft)}
+                onLeave={() => {
+                  // A press elsewhere adds it, as a field's blur saves; a name that can't be one goes.
+                  if (nameProblem(text, "", draft.name.trim() || draft.fallback)) dropDraft(draft);
+                  else commitDraft(draft);
+                }}
+              />
+            )}
             <button
               ref={addRef}
               type="button"
@@ -794,6 +888,8 @@ export default function PropertiesBlock(props: PropertiesBlockProps) {
           names={namesInOtherNotes(props.noteDataRef?.current, noteId)}
           types={chosen}
           onChoose={choosePicked}
+          onPickType={pickType}
+          problem={(n) => nameProblem(text, "", n)}
           onClose={closePicker}
         />
       )}
@@ -1183,6 +1279,70 @@ function PropertyRow(r: RowProps) {
           </button>
         </p>
       )}
+    </div>
+  );
+}
+
+/** The property being added: its type's icon, its name to type (its default in grey), no value yet. */
+function DraftRow({
+  draft,
+  onName,
+  onCommit,
+  onCancel,
+  onLeave,
+}: {
+  draft: Draft;
+  onName: (name: string) => void;
+  onCommit: () => boolean;
+  onCancel: () => void;
+  onLeave: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  // Enter, Tab or Escape has settled it: the blur its unmounting may bring does nothing more.
+  const settled = useRef(false);
+  useLayoutEffect(() => {
+    ref.current?.focus({ preventScroll: true });
+  }, []);
+  return (
+    <div className="props-row" data-editing="" data-draft="">
+      <span className="props-icon" aria-hidden="true">
+        <PropertyTypeIcon type={draft.type} />
+      </span>
+      <span className="props-name-edit">
+        <input
+          ref={ref}
+          className="props-input"
+          value={draft.name}
+          placeholder={draft.fallback}
+          spellCheck={false}
+          autoComplete="off"
+          enterKeyHint="next"
+          aria-label="New property's name"
+          aria-invalid={draft.error ? true : undefined}
+          onChange={(e) => onName(e.target.value)}
+          onKeyDown={(e) => {
+            if (
+              (e.key === "Enter" || (e.key === "Tab" && !e.shiftKey)) &&
+              !e.nativeEvent.isComposing
+            ) {
+              e.preventDefault();
+              settled.current = onCommit();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              settled.current = true;
+              onCancel();
+            }
+          }}
+          onBlur={() => {
+            if (!settled.current) onLeave();
+          }}
+        />
+      </span>
+      <span className="props-value">
+        <span className="props-empty" />
+        {draft.error && <span className="props-error">{draft.error}</span>}
+      </span>
     </div>
   );
 }

@@ -9,13 +9,15 @@
 export interface OpenRequest {
   what?: string;
   from?: string;
+  /** What the asking line held (`---`), put back if the request comes to nothing. */
+  literal?: string;
 }
 type Opener = (request: OpenRequest) => void;
 const openers = new Map<string, Opener>();
 const pending = new Map<string, OpenRequest>();
 
-export function openBlock(blockId: string, what?: string, from?: string): void {
-  const request = { what, from };
+export function openBlock(blockId: string, what?: string, from?: string, literal?: string): void {
+  const request = { what, from, literal };
   const open = openers.get(blockId);
   if (open) open(request);
   else pending.set(blockId, request);

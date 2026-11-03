@@ -1,9 +1,19 @@
 import { expect, test } from "@playwright/test";
-import { launchApp, SETTLE_MS, sleep, waitForFile } from "./harness";
+import {
+  END_OF_LINE,
+  launchApp,
+  MOD,
+  SETTLE_MS,
+  START_OF_LINE,
+  sleep,
+  waitForFile,
+} from "./harness";
 
 /**
  * Adding properties. `/properties` makes the section at the top of a note that
- * has none and opens Add property; a name of one's own takes a type, and the
+ * has none and opens Add property. A type picked names its row in place and is
+ * written once, on Enter (Escape writes nothing); a typed name is added on Enter
+ * with no type (its value decides), or as a type picked under it; the
  * type of a value left empty is remembered on this device, through a restart.
  * A picker closed with nothing chosen leaves no section behind.
  */
@@ -14,7 +24,7 @@ const row = (key: string) => `.props-row[data-key="${key}"]`;
 /** `/prop` typed on a new line under the first, chosen from the slash menu. */
 async function slashProperties(h: Awaited<ReturnType<typeof launchApp>>) {
   await h.page.locator("[data-block-type='p']").first().click();
-  await h.page.keyboard.press("Meta+ArrowRight");
+  await h.page.keyboard.press(END_OF_LINE);
   await h.page.keyboard.press("Enter");
   await h.page.keyboard.type("/prop");
   await expect(h.page.getByRole("option", { name: /Properties/ })).toBeVisible();
@@ -29,9 +39,8 @@ test("/properties adds the section and a property of one's own; an empty one kee
     await h.openNote("Film");
     await slashProperties(h);
     await h.page.keyboard.type("mood");
-    await h.page.keyboard.press("Enter");
-    await h.page.keyboard.press("ArrowDown");
-    await h.page.keyboard.press("ArrowDown");
+    // Below the typed name, its type picked: down past Add, Text and List to Number.
+    for (let i = 0; i < 4; i++) await h.page.keyboard.press("ArrowDown");
     await h.page.keyboard.press("Enter");
     await expect(h.page.locator(`${row("mood")} .props-input`)).toBeFocused();
     await h.page.keyboard.press("Escape");
@@ -71,8 +80,7 @@ test("Add property in a section that has some adds after them; Escape adds nothi
     await h.page.locator(".props").hover();
     await h.page.getByRole("button", { name: "Add property" }).click();
     await h.page.keyboard.type("seen");
-    await h.page.keyboard.press("Enter");
-    await h.page.getByRole("option", { name: "Checkbox" }).click();
+    await h.page.getByRole("option", { name: "Add “seen” as Checkbox" }).click();
     await waitForFile(file, (t) => t === `---\ntitle: A # kept\nseen: false\n---\n${BODY}`, {
       label: "the box added last, unticked",
     });
@@ -88,6 +96,117 @@ test("Add property in a section that has some adds after them; Escape adds nothi
     });
     await sleep(SETTLE_MS);
     expect(h.vault.read("Plain.md")).not.toContain("---");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a type picked is named in its row and written once; Escape writes nothing", async () => {
+  const h = await launchApp({ "Film.md": BODY });
+  const file = h.vault.file("Film.md");
+  try {
+    await h.openNote("Film");
+    await slashProperties(h);
+    await h.page
+      .getByTestId("property-picker")
+      .getByRole("option", { name: "Date", exact: true })
+      .click();
+    const name = h.page.locator("[data-draft] input");
+    await expect(name).toBeFocused();
+    await expect(name).toHaveValue("");
+    await expect(name).toHaveAttribute("placeholder", "date");
+    await sleep(SETTLE_MS);
+    // `/properties` has made the (empty) section; the row not yet named has written nothing.
+    expect(h.vault.read("Film.md"), "nothing written for a row not yet named").not.toContain(
+      "date",
+    );
+    await h.page.keyboard.type("watched");
+    await h.page.keyboard.press("Enter");
+    await waitForFile(file, (t) => t.startsWith("---\nwatched:\n---\n"), {
+      label: "one line, named",
+    });
+    // The value is next: the date field.
+    await expect(h.page.locator(`${row("watched")} .props-input`)).toBeFocused();
+    await h.page.keyboard.press("Escape");
+
+    await h.page.locator(".props").hover();
+    await h.page.getByRole("button", { name: "Add property" }).click();
+    await h.page
+      .getByTestId("property-picker")
+      .getByRole("option", { name: "Text", exact: true })
+      .click();
+    await expect(h.page.locator("[data-draft] input")).toHaveAttribute("placeholder", "text");
+    const before = h.vault.read("Film.md");
+    await h.page.keyboard.press("Escape");
+    await expect(h.page.locator("[data-draft]")).toHaveCount(0);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Film.md"), "Escape writes nothing").toBe(before);
+
+    // One ⌘Z takes the whole property back (the section with it).
+    await h.page.locator("[data-block-type='p']").first().click();
+    await h.page.keyboard.press(`${MOD}+z`);
+    await waitForFile(file, (t) => !t.includes("watched"), { label: "one undo" });
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("`---` on a note's first line opens Properties; ⌘Z gives the dashes back; lower down it's a divider", async () => {
+  const h = await launchApp({ "Film.md": BODY });
+  const file = h.vault.file("Film.md");
+  try {
+    await h.openNote("Film");
+    const first = h.page.locator("[data-block-type='p']").first();
+    await first.click();
+    await h.page.keyboard.press(START_OF_LINE);
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.press("ArrowUp");
+    // The third dash opens it: no space, no Enter.
+    await h.page.keyboard.type("---");
+    await expect(h.page.getByTestId("property-picker")).toBeVisible();
+    await h.page.getByTestId("property-picker").getByRole("option", { name: "Tags" }).click();
+    await h.page.keyboard.type("film");
+    await h.page.keyboard.press("Enter");
+    await waitForFile(file, (t) => t.startsWith("---\ntags: [film]\n---\n"), {
+      label: "the section, from three dashes",
+    });
+    await h.page.keyboard.press("Escape");
+
+    // Lower down, three dashes are a divider, as ever.
+    await h.page.locator("[data-block-type='p']").last().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.type("---");
+    await h.page.keyboard.press("Enter");
+    await expect(h.page.locator("[data-block-type='spacer']")).toHaveCount(1);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("`---` on the first line, then Escape, gives the dashes back, and typing goes on", async () => {
+  const h = await launchApp({ "Film.md": BODY });
+  const file = h.vault.file("Film.md");
+  try {
+    await h.openNote("Film");
+    await h.page.locator("[data-block-type='p']").first().click();
+    await h.page.keyboard.press(START_OF_LINE);
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.press("ArrowUp");
+    await h.page.keyboard.type("---");
+    await expect(h.page.getByTestId("property-picker")).toBeVisible();
+    await h.page.keyboard.press("Escape");
+    await expect(h.page.locator(".props")).toHaveCount(0);
+    await expect(h.page.locator("[data-block-type='p']").first()).toHaveText("---");
+    // The caret is after the dashes: what is typed next follows them, and opens nothing again.
+    await h.page.keyboard.type("-x");
+    await waitForFile(file, (t) => t.startsWith("----x\n"), {
+      label: "the dashes back, typing after them",
+    });
+    await expect(h.page.getByTestId("property-picker")).toHaveCount(0);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

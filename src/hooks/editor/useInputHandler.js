@@ -11,6 +11,7 @@ import {
   TYPED_IMAGE_RE,
   TYPED_TABLE_RE,
   lineKind,
+  opensProperties,
   typedBlockType,
   typedFenceLang,
   typedTableColumns,
@@ -99,6 +100,22 @@ export function useInputHandler({
     updateBlockText(noteId, blockIndex, text);
 
     const currentBlock = noteDataRef.current[noteId].content.blocks[blockIndex];
+    // The one marker that doesn't wait: `---` on a note's first line, the note
+    // having no properties, opens them as its third dash is typed (Obsidian's
+    // habit). It takes no argument, and there it can only be the fence. Typed
+    // only: the dashes Escape gives back, typed after, never open it again.
+    if (
+      native?.inputType === "insertText" &&
+      native.data === "-" &&
+      !native.isComposing &&
+      text === "---" &&
+      opensProperties(text, blockIndex, currentBlock.type)
+    ) {
+      el.innerHTML = "<br>";
+      const command = SLASH_COMMANDS.find((c) => c.type === "frontmatter");
+      if (command) executeSlashCommand(noteId, blockIndex, command, { literal: "---" });
+      return;
+    }
     // Every marker waits for its space: a marker that fires on its last
     // character can never be given an argument (```js, `||||`), and could
     // never be typed as text.
@@ -119,6 +136,13 @@ export function useInputHandler({
       // A formula's source opens in its panel, the caret in it.
       if (typedType === "math") {
         openMathBlock(noteId, blockIndex);
+        return;
+      }
+      // `--- ` on the first line of a note without properties opens them, as
+      // `/properties` does (one commit, so ⌘Z brings the dashes back).
+      if (typedType === "spacer" && opensProperties(text, blockIndex, currentBlock.type)) {
+        const command = SLASH_COMMANDS.find((c) => c.type === "frontmatter");
+        if (command) executeSlashCommand(noteId, blockIndex, command, { literal: "---" });
         return;
       }
       // A divider holds no text and takes no caret, so it ends in a fresh

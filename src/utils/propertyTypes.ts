@@ -34,17 +34,25 @@ export function rememberPropertyType(name: string, type: PropType): Record<strin
   return next;
 }
 
+/** A name other notes' properties use: the type they write it as (most often), and how many. */
+export interface VaultName {
+  name: string;
+  /** null when every note leaves it empty (the file can't say). */
+  type: PropType | null;
+  count: number;
+}
+
 /**
- * The names other notes' properties use, most used first, then A–Z: what Add
- * property offers. Read from the notes' frontmatter as it reads (cached by
- * text), never from the note being edited. `tags`, `aliases` and
- * `cssclasses` are never offered here.
+ * The names other notes' properties use, most used first, then A–Z, each with
+ * the type most of them write: what Add property finds by name. Read from the
+ * notes' frontmatter as it reads, never from the note being edited. `tags`,
+ * `aliases` and `cssclasses` are never offered here.
  */
 export function namesInOtherNotes(
   noteData: NoteData | null | undefined,
   exceptNoteId: string,
-): string[] {
-  const counts = new Map<string, number>();
+): VaultName[] {
+  const seen = new Map<string, { count: number; types: Map<PropType, number> }>();
   for (const [id, note] of Object.entries(vaultNotes(noteData ?? {}))) {
     if (id === exceptNoteId) continue;
     const first = (note?.content?.blocks as Block[] | undefined)?.[0];
@@ -53,8 +61,22 @@ export function namesInOtherNotes(
     if (!read.ok) continue;
     for (const p of read.props) {
       if (p.fixed) continue;
-      counts.set(p.key, (counts.get(p.key) ?? 0) + 1);
+      const entry = seen.get(p.key) ?? { count: 0, types: new Map() };
+      entry.count += 1;
+      const type = p.list ? "list" : p.editable ? p.type : null;
+      if (type) entry.types.set(type, (entry.types.get(type) ?? 0) + 1);
+      seen.set(p.key, entry);
     }
   }
-  return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k]) => k);
+  return [...seen]
+    .map(([name, { count, types }]) => ({
+      name,
+      count,
+      // The type most of them write; a tie goes to the order types are offered in.
+      type:
+        [...types].sort(
+          (a, b) => b[1] - a[1] || TYPES.indexOf(a[0]) - TYPES.indexOf(b[0]),
+        )[0]?.[0] ?? null,
+    }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }

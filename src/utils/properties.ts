@@ -547,6 +547,16 @@ export const removeProperty = (key: string): Change => ({
     text.slice(0, lastWithoutNewline(text, p) ? p.start - 1 : p.start) + text.slice(p.end),
 });
 
+/** `base`, else `base 2`, `base 3`…: the first name no property here has (in any case). */
+export function freeName(text: string, base: string): string {
+  const read = readProperties(text);
+  const taken = new Set(read.ok ? read.props.map((p) => p.key.toLowerCase()) : []);
+  if (!taken.has(base.toLowerCase())) return base;
+  let n = 2;
+  while (taken.has(`${base} ${n}`.toLowerCase())) n += 1;
+  return `${base} ${n}`;
+}
+
 /** Whether `name` can be a property's name here: plain, and not another's. */
 export function nameProblem(text: string, from: string, name: string): string | null {
   const n = name.trim();

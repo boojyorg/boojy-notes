@@ -58,6 +58,16 @@ export function bareFenceLang(text: string): string | null {
   return BARE_FENCE_RE.exec(text)?.[1]?.trim() ?? null;
 }
 
+/**
+ * `---` on a note's first line, the note having no properties yet (a section
+ * is always its first block), ended by a space or Enter: Markdown's own
+ * frontmatter fence, so it opens Properties, as Obsidian does, rather than a
+ * divider. Exactly three dashes; a longer run is a divider anywhere.
+ */
+export function opensProperties(text: string, blockIndex: number, blockType?: string): boolean {
+  return blockIndex === 0 && blockType === "p" && /^---[\s\u00a0]?$/.test(text);
+}
+
 /** Whether a bare `---` is under the caret, for the Enter that opens the divider. */
 export function isBareDivider(text: string): boolean {
   return BARE_DIVIDER_RE.test(text);

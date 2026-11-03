@@ -142,3 +142,16 @@ describe("a line marker typed before a paragraph's text", () => {
     expect(LINE_MARKER_ON_TEXT_RE.exec("--- x")).toBeNull();
   });
 });
+
+describe("opensProperties: `---` on a note's first line", () => {
+  it("opens properties only on the first block, a paragraph, with exactly three dashes", async () => {
+    const { opensProperties } = await import("../../src/utils/blockTriggers");
+    expect(opensProperties("---", 0, "p")).toBe(true);
+    expect(opensProperties("--- ", 0, "p")).toBe(true);
+    expect(opensProperties("---\u00a0", 0, "p")).toBe(true);
+    expect(opensProperties("---", 1, "p")).toBe(false);
+    expect(opensProperties("----", 0, "p")).toBe(false);
+    expect(opensProperties("---", 0, "h1")).toBe(false);
+    expect(opensProperties("--- x", 0, "p")).toBe(false);
+  });
+});

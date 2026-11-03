@@ -574,43 +574,150 @@ describe("PropertiesBlock: Add property", () => {
   const field = () => picker().querySelector("input") as HTMLInputElement;
   const rowsOf = () => [...picker().querySelectorAll('[role="option"]')].map((r) => r.textContent);
 
-  it("a name of your own, then its type: added last, its value open to type", () => {
+  it("opens on tags and the six types; a type's row is named in place and written once", () => {
     const { container: c, text } = setup("title: A");
     fireEvent.click(c.querySelector(".props-add") as HTMLElement);
-    expect(rowsOf()).toEqual(["tags", "Custom property"]);
-    fireEvent.change(field(), { target: { value: "mood" } });
-    expect(rowsOf()).toEqual(["Add “mood”"]);
-    fireEvent.keyDown(field(), { key: "Enter" });
-    expect(rowsOf()).toEqual(["Text", "List", "Number", "Checkbox", "Date", "Date & time"]);
-    fireEvent.keyDown(field(), { key: "ArrowDown" });
-    fireEvent.keyDown(field(), { key: "ArrowDown" });
-    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(rowsOf()).toEqual(["Tags", "Text", "List", "Number", "Checkbox", "Date", "Date & time"]);
+    fireEvent.click(
+      [...picker().querySelectorAll('[role="option"]')].find(
+        (r) => r.textContent === "Number",
+      ) as HTMLElement,
+    );
+    // A row whose name is to type, its type's in grey until then; nothing written yet.
+    const name = c.querySelector("[data-draft] input") as HTMLInputElement;
+    expect(name.value).toBe("");
+    expect(name.placeholder).toBe("number");
+    expect(document.activeElement).toBe(name);
+    expect(text()).toBe("title: A");
+    fireEvent.change(name, { target: { value: "mood" } });
+    fireEvent.keyDown(name, { key: "Enter" });
     expect(text()).toBe("title: A\nmood:");
     expect(iconLabel(c, "mood")).toBe("mood: Number. Change type");
+    // The value is next.
     fireEvent.change(input(c), { target: { value: "4" } });
     fireEvent.keyDown(input(c), { key: "Enter" });
     expect(text()).toBe("title: A\nmood: 4");
   });
 
-  it("offers names other notes use, with the type this device remembers", () => {
-    localStorage.setItem("boojy-property-types", JSON.stringify({ rating: "number" }));
+  it("a draft: Escape writes nothing, a taken name gets a number, a bad one says why", () => {
+    const { container: c, text } = setup("title: A\ndate: 2026-01-01");
+    const pick = (label: string) => {
+      fireEvent.click(c.querySelector(".props-add") as HTMLElement);
+      fireEvent.click(
+        [...picker().querySelectorAll('[role="option"]')].find(
+          (r) => r.textContent === label,
+        ) as HTMLElement,
+      );
+      return c.querySelector("[data-draft] input") as HTMLInputElement;
+    };
+    fireEvent.keyDown(pick("Text"), { key: "Escape" });
+    expect(c.querySelector("[data-draft]")).toBeNull();
+    expect(text()).toBe("title: A\ndate: 2026-01-01");
+    // Enter with nothing typed takes the grey name; a taken one gets a number.
+    const plain = pick("Text");
+    fireEvent.keyDown(plain, { key: "Enter" });
+    expect(text()).toBe("title: A\ndate: 2026-01-01\ntext:");
+    fireEvent.keyDown(input(c), { key: "Escape" });
+    const name = pick("Date");
+    expect(name.placeholder).toBe("date 2");
+    fireEvent.change(name, { target: { value: "title" } });
+    fireEvent.keyDown(name, { key: "Enter" });
+    expect(c.querySelector("[data-draft] .props-error")?.textContent).toMatch(/already called/);
+    expect(text()).toBe("title: A\ndate: 2026-01-01\ntext:");
+    fireEvent.change(name, { target: { value: "watched" } });
+    fireEvent.blur(name);
+    expect(text()).toBe("title: A\ndate: 2026-01-01\ntext:\nwatched:");
+  });
+
+  it("finds names other notes use as typed, with their type and how many use them", () => {
+    const other = (text: string) => ({
+      title: "o",
+      folder: null,
+      content: { title: "o", blocks: [{ id: "x", type: "frontmatter", text }] },
+    });
+    const { container: c, text } = setup("title: A", "n1", {
+      noteDataRef: {
+        current: { o1: other("rating: 3\nstatus: done"), o2: other("rating: 5") },
+      } as never,
+    });
+    fireEvent.click(c.querySelector(".props-add") as HTMLElement);
+    // Nothing is picked as it opens.
+    expect(picker().querySelector('[aria-selected="true"]')).toBeNull();
+    fireEvent.change(field(), { target: { value: "rat" } });
+    // Enter's row first (the typed name), then the names that match.
+    expect(rowsOf()).toEqual([
+      "Add “rat”↵",
+      "rating2 notes",
+      "Text",
+      "List",
+      "Number",
+      "Checkbox",
+      "Date",
+      "Date & time",
+    ]);
+    fireEvent.keyDown(field(), { key: "ArrowDown" });
+    fireEvent.keyDown(field(), { key: "ArrowDown" });
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(text()).toBe("title: A\nrating:");
+    expect(iconLabel(c, "rating")).toBe("rating: Number. Change type");
+  });
+
+  it("a name matches at a word's start, and one typed exactly comes first, Enter adding it", () => {
     const other = {
       title: "o",
       folder: null,
       content: {
         title: "o",
-        blocks: [{ id: "x", type: "frontmatter", text: "rating: 3\nstatus: done" }],
+        blocks: [
+          {
+            id: "x",
+            type: "frontmatter",
+            text: "created: 2026-01-01\nsource: x\ndate seen: 2026-01-02",
+          },
+        ],
       },
     };
     const { container: c, text } = setup("title: A", "n1", {
       noteDataRef: { current: { other } } as never,
     });
     fireEvent.click(c.querySelector(".props-add") as HTMLElement);
-    expect(rowsOf()).toEqual(["tags", "rating", "status", "Custom property"]);
-    fireEvent.change(field(), { target: { value: "rat" } });
+    fireEvent.change(field(), { target: { value: "s" } });
+    // source and "date seen" (a word's start); never a letter inside a word.
+    expect(rowsOf().slice(0, 3)).toEqual(["Add “s”↵", "date seen1 note", "source1 note"]);
+    fireEvent.change(field(), { target: { value: "created" } });
+    expect(rowsOf()[0]).toBe("created1 note↵");
     fireEvent.keyDown(field(), { key: "Enter" });
-    expect(text()).toBe("title: A\nrating:");
-    expect(iconLabel(c, "rating")).toBe("rating: Number. Change type");
+    expect(text()).toBe("title: A\ncreated:");
+    expect(iconLabel(c, "created")).toBe("created: Date. Change type");
+  });
+
+  it("a typed name: Enter adds it with no type, its value deciding; or one is picked below", () => {
+    const { container: c, text } = setup("title: A");
+    const add = (name: string) => {
+      fireEvent.click(c.querySelector(".props-add") as HTMLElement);
+      fireEvent.change(field(), { target: { value: name } });
+    };
+    add("mood");
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(text()).toBe("title: A\nmood:");
+    fireEvent.change(input(c), { target: { value: "4" } });
+    fireEvent.keyDown(input(c), { key: "Enter" });
+    expect(text()).toBe("title: A\nmood: 4");
+    expect(iconLabel(c, "mood")).toBe("mood: Number. Change type");
+
+    add("cast");
+    const asList = [...picker().querySelectorAll('[role="option"]')].find(
+      (r) => r.getAttribute("aria-label") === "Add “cast” as List",
+    ) as HTMLElement;
+    fireEvent.click(asList);
+    expect(text()).toBe("title: A\nmood: 4\ncast: []");
+
+    // A name that can't be one says why, and offers nothing to add.
+    add("a: b");
+    expect(rowsOf()).toEqual([]);
+    expect(picker().textContent).toContain("Use letters, numbers, spaces, - or _.");
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(text()).toBe("title: A\nmood: 4\ncast: []");
   });
 
   it("Escape leaves the note as it was; a section /properties made is taken away again", async () => {
