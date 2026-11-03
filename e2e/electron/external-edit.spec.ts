@@ -13,7 +13,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { END_OF_LINE, SETTLE_MS, launchApp, noteText, sleep, waitForFile } from "./harness";
+import {
+  END_OF_LINE,
+  SETTLE_MS,
+  holdSaves,
+  launchApp,
+  noteText,
+  sleep,
+  waitForFile,
+} from "./harness";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -170,12 +178,18 @@ test("an outside change to a note with pending edits that is no longer on screen
   // with no copy and no toast.
   const h = await launchApp({ "Alpha.md": "Alpha body.\n", "Beta.md": "Beta body.\n" });
   try {
+    // The edits must still be unsaved when the outside change lands. The save
+    // runs 800 ms after the last key, and a slow runner's note switch took
+    // longer: " mine" was on disk first, so there was rightly no copy. Hold
+    // every save until the outside change is on disk, however slow the runner.
+    const releaseSaves = await holdSaves(h);
     await h.openNote("Alpha");
     await h.page.locator("[data-block-id]").first().click();
     await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.type(" mine");
     await h.openNote("Beta");
     h.vault.write("Alpha.md", "Alpha body.\nTheirs, from outside.\n");
+    await releaseSaves();
 
     const copyName = `Alpha (conflicted copy ${TODAY})`;
     await waitForFile(h.vault.file(`${copyName}.md`), (t) => t.includes("mine"));

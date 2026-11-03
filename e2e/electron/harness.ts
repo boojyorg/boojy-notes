@@ -361,6 +361,37 @@ export function menuClick(h: AppHandle, id: string) {
   }, id);
 }
 
+/**
+ * Hold every `write-note` in the main process until the returned function is
+ * called, then let them run in order, so a spec can make an outside change
+ * land while the app's edits are still unsaved. Electron has no public way to
+ * wrap a handler, so this reaches into `ipcMain`'s handler map.
+ */
+export async function holdSaves(h: AppHandle): Promise<() => Promise<void>> {
+  await h.app.evaluate(({ ipcMain }) => {
+    type Handler = (...args: unknown[]) => unknown;
+    const handlers = (ipcMain as unknown as { _invokeHandlers?: Map<string, Handler> })
+      ._invokeHandlers;
+    const write = handlers?.get("write-note");
+    if (!handlers || !write) throw new Error("holdSaves: no write-note handler to wrap");
+    const g = globalThis as unknown as { releaseSaves?: () => void };
+    const held = new Promise<void>((resolve) => {
+      g.releaseSaves = () => {
+        handlers.set("write-note", write);
+        resolve();
+      };
+    });
+    handlers.set("write-note", async (...args) => {
+      await held;
+      return write(...args);
+    });
+  });
+  return () =>
+    h.app.evaluate(() => {
+      (globalThis as unknown as { releaseSaves: () => void }).releaseSaves();
+    });
+}
+
 /** Whether an application-menu item is enabled; null when there is no such item. */
 export function menuEnabled(h: AppHandle, id: string) {
   return h.app.evaluate(
