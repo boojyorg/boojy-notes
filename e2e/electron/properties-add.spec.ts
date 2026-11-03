@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { launchApp, MOD, SETTLE_MS, sleep, waitForFile } from "./harness";
+import {
+  END_OF_LINE,
+  launchApp,
+  MOD,
+  SETTLE_MS,
+  START_OF_LINE,
+  sleep,
+  waitForFile,
+} from "./harness";
 
 /**
  * Adding properties. `/properties` makes the section at the top of a note that
@@ -16,7 +24,7 @@ const row = (key: string) => `.props-row[data-key="${key}"]`;
 /** `/prop` typed on a new line under the first, chosen from the slash menu. */
 async function slashProperties(h: Awaited<ReturnType<typeof launchApp>>) {
   await h.page.locator("[data-block-type='p']").first().click();
-  await h.page.keyboard.press("Meta+ArrowRight");
+  await h.page.keyboard.press(END_OF_LINE);
   await h.page.keyboard.press("Enter");
   await h.page.keyboard.type("/prop");
   await expect(h.page.getByRole("option", { name: /Properties/ })).toBeVisible();
@@ -152,7 +160,7 @@ test("`---` on a note's first line opens Properties; ⌘Z gives the dashes back;
     await h.openNote("Film");
     const first = h.page.locator("[data-block-type='p']").first();
     await first.click();
-    await h.page.keyboard.press("Meta+ArrowLeft");
+    await h.page.keyboard.press(START_OF_LINE);
     await h.page.keyboard.press("Enter");
     await h.page.keyboard.press("ArrowUp");
     // The third dash opens it: no space, no Enter.
@@ -168,7 +176,7 @@ test("`---` on a note's first line opens Properties; ⌘Z gives the dashes back;
 
     // Lower down, three dashes are a divider, as ever.
     await h.page.locator("[data-block-type='p']").last().click();
-    await h.page.keyboard.press("Meta+ArrowRight");
+    await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.press("Enter");
     await h.page.keyboard.type("---");
     await h.page.keyboard.press("Enter");
@@ -185,7 +193,7 @@ test("`---` on the first line, then Escape, gives the dashes back, and typing go
   try {
     await h.openNote("Film");
     await h.page.locator("[data-block-type='p']").first().click();
-    await h.page.keyboard.press("Meta+ArrowLeft");
+    await h.page.keyboard.press(START_OF_LINE);
     await h.page.keyboard.press("Enter");
     await h.page.keyboard.press("ArrowUp");
     await h.page.keyboard.type("---");
