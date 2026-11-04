@@ -133,7 +133,10 @@ export function useBlockDrag({
     bd.outside = false;
     bd.active = true;
 
-    const rect = el.getBoundingClientRect();
+    // Measured from the run's first block, whichever grip was grabbed: the
+    // copy starts where the run already stands and moves with the pointer
+    // from there (and goes home to that block, `returnHome`).
+    const rect = (rootOf(draggedIds[0]) ?? el).getBoundingClientRect();
     bd.offsetY = pointerY - rect.top;
     // The ghost and the marker live on <body>, inside the UI scale's `zoom`:
     // pointer and rect values are viewport pixels, their styles are CSS pixels.
@@ -154,6 +157,9 @@ export function useBlockDrag({
       // A picture travels as the picture: its outline, corner dots, wash and
       // bar are controls for one at rest (`data-drag-chrome`).
       for (const e of c.querySelectorAll("[data-drag-chrome]")) e.remove();
+      // The copy's top is the first block's own top, so its margin above
+      // (a heading's, the note's first line's) would push the print down.
+      if (!clone.childElementCount) c.style.marginTop = "0px";
       clone.appendChild(c);
     }
     // The clone lives on <body>, so carry the editor's type with it or it

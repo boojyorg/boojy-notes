@@ -38,14 +38,15 @@ if (typeof window !== "undefined") {
 /** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
 const CHECKBOX_LINE_HEIGHT = 1.6;
 const CHECKBOX_SIZE = TICK_BOX_SIZE;
-const INDENT_PX = 24;
+/** One level of nesting; the grip (BlockDragHandle) steps in by it too. */
+export const INDENT_PX = 24;
 /**
  * Every list item's marker takes one column, then the air, then the text: a
  * dot is centred in it (so it lines up with a task's box), a number sits at
  * its right. Column and air make one indent, so every kind's text starts at
  * the same x and a nested item's marker stands under its parent's text.
  */
-const LIST_MARKER_W = CHECKBOX_SIZE;
+export const LIST_MARKER_W = CHECKBOX_SIZE;
 const LIST_TEXT_GAP = INDENT_PX - LIST_MARKER_W;
 
 /** Padding a row carries above its own first line, which sits between the
@@ -446,6 +447,8 @@ const EditableBlock = memo(
           ref={elRef}
           data-block-id={block.id}
           data-block-type={block.type}
+          // Its depth, for the grip to stand by it (BlockDragHandle).
+          data-indent={block.indent || undefined}
           data-placeholder="Type / for blocks"
           className={placeholder ? "empty-block" : undefined}
           role="textbox"
@@ -473,6 +476,7 @@ const EditableBlock = memo(
           ref={elRef}
           data-block-id={block.id}
           data-block-type={block.type}
+          data-indent={block.indent || undefined}
           aria-label={`Heading ${block.type.slice(1)}`}
           // Shown by CSS while the element holds nothing but the caret's <br>
           // (GlobalStyles, the paragraph placeholder's rule), so an empty
@@ -503,6 +507,7 @@ const EditableBlock = memo(
       <div
         data-block-id={block.id}
         data-block-type={block.type}
+        data-indent={block.indent || undefined}
         suppressContentEditableWarning
         style={{
           contain: "content",

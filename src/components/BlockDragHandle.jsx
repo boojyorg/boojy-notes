@@ -3,6 +3,7 @@ import { GripVerticalIcon } from "./Icons";
 import { cssZoom } from "../utils/domHelpers";
 import { Z } from "../constants/zIndex";
 import { Tooltip, useTooltip } from "./Tooltip";
+import { INDENT_PX, LIST_MARKER_W } from "./EditableBlock";
 
 /**
  * The block drag handle — one floating grip for the whole editor.
@@ -104,19 +105,56 @@ function topLevelBlocks(root) {
   );
 }
 
+/**
+ * Where the grip stands across, in CSS pixels from the block's left edge. At
+ * the top level, in the column's left padding: negative on purpose. A table's
+ * too, though its header row's own grip, across the left edge, then stands
+ * close beside it: one line of grips down the page. A nested block's
+ * (`data-indent`) is centred on its parent's marker column, the bullet,
+ * number or box one level up, so nested grips stand in a line under the
+ * markers they belong among. A quote has no depth: its bar stays at the edge.
+ */
+function gripX(el) {
+  const depth = Number(el.dataset.indent) || 0;
+  if (!depth) return -HANDLE_W - HANDLE_GAP;
+  return (depth - 1) * INDENT_PX + LIST_MARKER_W / 2 - HANDLE_W / 2;
+}
+
+/**
+ * The least air between the grip and a number it stands beside. A number
+ * wider than its column (`100.`) hangs out left of it, over where the grip
+ * stands, at any depth; the grip then steps left of its ink instead.
+ */
+const MARKER_CLEARANCE = 2;
+
+/** Where a numbered item's number starts, in viewport pixels; null for any other block. */
+function numberInkLeft(el) {
+  if (el.dataset.blockType !== "numbered") return null;
+  const text = el.firstElementChild?.firstChild;
+  if (text?.nodeType !== Node.TEXT_NODE) return null;
+  const range = document.createRange();
+  range.selectNodeContents(text);
+  // jsdom has no Range geometry.
+  if (typeof range.getBoundingClientRect !== "function") return null;
+  return range.getBoundingClientRect().left;
+}
+
 /** Where the grip stands beside `els[i]`, in the anchor's CSS pixels. */
 function gripAt(els, i, anchor) {
   const origin = anchor.getBoundingClientRect(); // top-left of our containing block
   const zoom = cssZoom(anchor);
   const r = els[i].getBoundingClientRect();
   const line = firstLineRect(els[i], zoom);
+  // CSS pixels, after the zoom (`gripX`), and never over a wide number.
+  let left = (r.left - origin.left) / zoom + gripX(els[i]);
+  const ink = numberInkLeft(els[i]);
+  if (ink != null) {
+    left = Math.min(left, (ink - origin.left) / zoom - MARKER_CLEARANCE - HANDLE_W);
+  }
   return {
     blockId: els[i].dataset.blockId,
     top: (line.top - origin.top) / zoom + (line.height / zoom - HANDLE_H) / 2,
-    // Negative on purpose: the grip lives in the column's left padding. A
-    // table's too, though its header row's own grip, across the left edge,
-    // then stands close beside it: one line of grips down the page.
-    left: (r.left - origin.left) / zoom - HANDLE_W - HANDLE_GAP,
+    left,
   };
 }
 
