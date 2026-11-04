@@ -157,3 +157,37 @@ test("a nested block's grip is centred on its parent's marker; a top-level one, 
     await g.close();
   }
 });
+
+test("a number wider than its column, at any depth, keeps clear of its grip", async () => {
+  const top = [98, 99, 100].map((n) => `${n}. n${n}`).join("\n");
+  const nested = ["1. Top", ...[98, 99, 100].map((n) => `   ${n}. d${n}`)].join("\n");
+  const g = await launchApp({ "Wide.md": `${top}\n\nPara.\n\n${nested}\n` });
+  try {
+    await g.openNote("Wide");
+    const rows = g.page.locator("[data-editor] > [data-block-id]");
+    await rows.first().waitFor();
+    for (const t of ["n98", "n100", "d98", "d100"]) {
+      const row = rows.filter({ has: g.page.getByText(t, { exact: true }) });
+      await expect(row).toContainText(`${t.slice(1)}.`);
+      await row.scrollIntoViewIfNeeded();
+      const id = await row.getAttribute("data-block-id");
+      const handle = g.page.locator(`[data-testid="block-drag-handle"][data-target-block="${id}"]`);
+      await expect(async () => {
+        const box = (await row.boundingBox())!;
+        await g.page.mouse.move(box.x + 150, box.y + 9);
+        await g.page.mouse.move(box.x + 150, box.y + 8);
+        await expect(handle).toBeVisible({ timeout: 500 });
+      }).toPass({ timeout: 5_000 });
+      const right = await handle.evaluate((el) => el.getBoundingClientRect().right);
+      const ink = await row.evaluate((el) => {
+        const r = document.createRange();
+        r.selectNodeContents(el.firstElementChild!.firstChild!);
+        return r.getBoundingClientRect().left;
+      });
+      // MARKER_CLEARANCE: never closer than 2px to the number's own ink.
+      expect(ink - right, t).toBeGreaterThanOrEqual(1.5);
+    }
+  } finally {
+    await g.close();
+  }
+});

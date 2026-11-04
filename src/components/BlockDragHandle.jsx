@@ -120,17 +120,41 @@ function gripX(el) {
   return (depth - 1) * INDENT_PX + LIST_MARKER_W / 2 - HANDLE_W / 2;
 }
 
+/**
+ * The least air between the grip and a number it stands beside. A number
+ * wider than its column (`100.`) hangs out left of it, over where the grip
+ * stands, at any depth; the grip then steps left of its ink instead.
+ */
+const MARKER_CLEARANCE = 2;
+
+/** Where a numbered item's number starts, in viewport pixels; null for any other block. */
+function numberInkLeft(el) {
+  if (el.dataset.blockType !== "numbered") return null;
+  const text = el.firstElementChild?.firstChild;
+  if (text?.nodeType !== Node.TEXT_NODE) return null;
+  const range = document.createRange();
+  range.selectNodeContents(text);
+  // jsdom has no Range geometry.
+  if (typeof range.getBoundingClientRect !== "function") return null;
+  return range.getBoundingClientRect().left;
+}
+
 /** Where the grip stands beside `els[i]`, in the anchor's CSS pixels. */
 function gripAt(els, i, anchor) {
   const origin = anchor.getBoundingClientRect(); // top-left of our containing block
   const zoom = cssZoom(anchor);
   const r = els[i].getBoundingClientRect();
   const line = firstLineRect(els[i], zoom);
+  // CSS pixels, after the zoom (`gripX`), and never over a wide number.
+  let left = (r.left - origin.left) / zoom + gripX(els[i]);
+  const ink = numberInkLeft(els[i]);
+  if (ink != null) {
+    left = Math.min(left, (ink - origin.left) / zoom - MARKER_CLEARANCE - HANDLE_W);
+  }
   return {
     blockId: els[i].dataset.blockId,
     top: (line.top - origin.top) / zoom + (line.height / zoom - HANDLE_H) / 2,
-    // CSS pixels, after the zoom (`gripX`).
-    left: (r.left - origin.left) / zoom + gripX(els[i]),
+    left,
   };
 }
 

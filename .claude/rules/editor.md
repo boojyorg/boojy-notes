@@ -153,7 +153,7 @@ through state.**
 
 - **On the desktop text never starts a block drag; a picture does.** One floating grip
   (`BlockDragHandle`) in the gutter; nested (`data-indent`), on its parent's marker
-  (`gripX`). On hover, `aria-hidden`.
+  (`gripX`), clear of a wide number; on hover, `aria-hidden`.
 - A key hides the grip (not a lone modifier: Shift-click). **Blur cancels a press
   unconditionally** (Cmd-Tab: a phantom drag). `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`): moved, it drags; let go,
