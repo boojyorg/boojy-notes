@@ -13,6 +13,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*", "electron/**/*", "e2e/**/*"],
+  "include": ["src/**/*", "electron/**/*", "e2e/**/*", "dev/screenshots/**/*"],
   "exclude": ["dist", "dist-electron", "node_modules"]
 }
