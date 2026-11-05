@@ -37,6 +37,27 @@ afterEach(() => {
 });
 
 describe("useLinkHoverTooltip", () => {
+  it("a pressed link shows no chip while the pointer stays on it; leaving and coming back does", () => {
+    const { result, link, container, moveOver, leave } = setup();
+    moveOver(link);
+    act(() => {
+      vi.advanceTimersByTime(200);
+      link.dispatchEvent(new (window.PointerEvent ?? MouseEvent)("pointerdown", { bubbles: true }));
+    });
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.tooltip).toBeNull();
+    // Still resting on it, moving a little: nothing.
+    moveOver(link);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.tooltip).toBeNull();
+    // Off and back: the chip comes as ever.
+    moveOver(container);
+    moveOver(link);
+    act(() => vi.advanceTimersByTime(600));
+    expect(result.current.tooltip?.description.label).toBe("Beta");
+    leave();
+  });
+
   it("shows the [[target]] after resting on a wikilink, and hides it on leave", () => {
     const h = setup();
     h.moveOver(h.link);
