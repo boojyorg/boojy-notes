@@ -126,9 +126,9 @@ the test its rule names when it is built.
   emphasis and the other divider forms draw as they mean**, each keeping its spelling (Markdown
   compatibility, below).
 - **The Obsidian extensions, explicitly.** Drawn and edited: wikilinks and aliases,
-  `[[Note#Heading]]`, embeds with a size (`#page=`: a file card that opens that page), callouts,
+  `[[Note#Heading]]` and `#^block-id` (drawn quietly), embeds with a size (`#page=`: a file card that opens that page), callouts,
   `==highlight==`, `#tags`, frontmatter (as properties), maths, Mermaid. **Preserved only**, byte for
-  byte and shown as text: footnotes, `%%comments%%`, task states beyond `[ ]`/`[x]`, `^block-id`,
+  byte and shown as text: footnotes, `%%comments%%`, task states beyond `[ ]`/`[x]`,
   HTML, reference-style links, plugin syntax. The spec takes this list when the work lands.
 
 **Connected notes** (one link index)
@@ -503,8 +503,9 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   approved: per-note icons, and text or background colour inside notes (no portable Markdown).
 - **Open a note in a new window**: only if the in-place viewer with Back and Forward is not
   enough (2026-09-30). Still one note per window, never tabs.
-- **Block targets in links** (`[[Note#^block]]`): opening works; the jump follows the heading
-  jump (Public Beta). A folder-path link to a missing note creates nothing.
+- **Block links, the rest** (`[[Note#^block]]` is followed): embedding a block
+  (`![[Note#^id]]`), and the link picker offering a note's blocks and writing an ID for one, as
+  Obsidian's `[[Note#^` does. A folder-path link to a missing note creates nothing.
 - **Richer nested quotes and list contents.** Consider nested quote depth and Markdown elements
   inside quotes or list items. Basic list indentation is separate. Source preservation and
   editing across those structures need a design before broader support is selected.

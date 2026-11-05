@@ -73,6 +73,13 @@ export function missingHeadingMessage(segments: string[], noteTitle: string | nu
     : `No heading “${heading}” in ${noteTitle}.`;
 }
 
+/** What the toast says when a link's block ID is not in its note (`noteTitle` null: the open note). */
+export function missingBlockMessage(id: string, noteTitle: string | null): string {
+  return noteTitle == null
+    ? `No block “^${id}” in this note.`
+    : `No block “^${id}” in ${noteTitle}.`;
+}
+
 /** What the toast says when an unresolved target is one the app will not create. */
 export function unresolvedWikilinkMessage({ name, folder }: WikilinkTarget): string {
   const where = folder ? ` in ${folder}` : "";

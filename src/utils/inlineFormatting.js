@@ -5,6 +5,7 @@ import { CARET_ANCHOR_CLASS, ESCAPE_CLASS, INLINE_MATH_CLASS } from "./domHelper
 import { parseWikilinkTarget, wikilinkKey, wikilinkLabel } from "./wikilinkTarget";
 import { LINK_DEST } from "./linkDestination";
 import { TAG_RE } from "./tags";
+import { BLOCK_ID_END_RE } from "./blockTarget";
 import { codeSourceText, codeSpanSource, editedCodeSpanSource, findCodeSpans } from "./codeSpans";
 
 /** Step 1 of the renderer, for prose that has been read back to characters. */
@@ -354,6 +355,15 @@ export function inlineMarkdownToHtml(md, noteTitles) {
             ? m
             : `${pre}<span class="inline-tag" data-tag="${tag}">#${tag}</span>`,
         ),
+  );
+
+  // 11b. A block ID ending the text (`^first-block`, utils/blockTarget) is
+  // drawn quietly, where Obsidian hides it; its text is the file's, read back
+  // as written. Only at the very end, in prose: inside an element, the HTML
+  // ends with its closing tag; escaped, its `^` is shielded.
+  s = s.replace(
+    BLOCK_ID_END_RE,
+    (_, pre, id, trail) => `${pre}<span class="block-id">^${id}</span>${trail}`,
   );
 
   // A destination whose link the passes above took apart is the text it was.

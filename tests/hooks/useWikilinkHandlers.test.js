@@ -128,7 +128,7 @@ describe("useWikilinkHandlers", () => {
         blocks: [
           { id: "g1", type: "h1", text: "Guide" },
           { id: "g2", type: "h2", text: "**Tables**" },
-          { id: "g3", type: "p", text: "rows" },
+          { id: "g3", type: "p", text: "rows ^Rows-ID" },
           { id: "g4", type: "h2", text: "Callouts" },
         ],
       },
@@ -181,12 +181,31 @@ describe("useWikilinkHandlers", () => {
       ]);
     });
 
-    it("to a block only opens the note", () => {
-      const { result, openNote, reveal, showToast } = headingSetup();
-      result.current.handleWikilinkClick("Guide#^abc123");
+    it("to a block opens its note there, and in the open note is a visit", () => {
+      const { result, rerender, openNote, reveal, history, showToast, ...deps } = headingSetup();
+      result.current.handleWikilinkClick("Guide#^rows-id");
       expect(openNote).toHaveBeenCalledWith("n1");
-      expect(reveal).not.toHaveBeenCalled();
+      expect(reveal).toHaveBeenCalledWith("n1", "g3", "g3");
+      rerender({ ...deps, openNote, showToast, activeNote: "n1" });
+      result.current.handleWikilinkClick("#^rows-id");
+      expect(openNote).toHaveBeenCalledTimes(1);
+      expect(history.jump).toHaveBeenCalledWith("n1");
+      expect(reveal).toHaveBeenCalledTimes(2);
       expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it("to a missing block: another note opens at its top, the open note stays; both say so", () => {
+      const { result, rerender, openNote, reveal, showToast, ...deps } = headingSetup();
+      result.current.handleWikilinkClick("Guide#^nope");
+      expect(openNote).toHaveBeenCalledWith("n1");
+      rerender({ ...deps, openNote, showToast, activeNote: "n1" });
+      result.current.handleWikilinkClick("#^nope");
+      expect(openNote).toHaveBeenCalledTimes(1);
+      expect(reveal).not.toHaveBeenCalled();
+      expect(showToast.mock.calls.map(([m]) => m)).toEqual([
+        "No block “^nope” in Guide.",
+        "No block “^nope” in this note.",
+      ]);
     });
   });
 

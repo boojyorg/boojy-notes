@@ -295,6 +295,19 @@ export function useInputHandler({
       setTagMenu(null);
     }
 
+    // A block ID is drawn quietly only while it ends the text (utils/blockTarget):
+    // a keystroke that makes one, or one that ends one (a word typed after
+    // it), paints the block by hand, as the tag's first letter does, so the
+    // grey is never stale. A text-only commit would leave it as it was.
+    if (native && !native.isComposing && (text.includes("^") || el.querySelector(".block-id"))) {
+      const html = inlineMarkdownToHtml(text, noteTitleSetRef?.current);
+      if (html.includes('class="block-id"') !== !!el.querySelector(".block-id")) {
+        const offset = getCaretOffset(el);
+        el.innerHTML = html;
+        placeCaret(el, offset);
+      }
+    }
+
     // Auto-convert bare URLs: if text contains a URL followed by a space, re-render to style it
     if (/https?:\/\/\S+\s$/.test(text) || /https?:\/\/\S+\s/.test(text)) {
       // Check if the DOM already has it as a link (avoid re-render loop)

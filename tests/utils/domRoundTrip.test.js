@@ -183,3 +183,33 @@ describe("a heading link's drawn label", () => {
     expect(domNodeToMarkdown(el)).toBe("[[#Callouts|Callout blocks]]");
   });
 });
+
+describe("a block ID", () => {
+  const draw = (md) => {
+    const el = document.createElement("p");
+    el.innerHTML = inlineMarkdownToHtml(md);
+    return el;
+  };
+  it("is drawn quietly only where it ends the text, and reads back as written", () => {
+    for (const text of [
+      "This paragraph has an ID. ^first-block",
+      "^whole-list",
+      "Soft break\n^next-line",
+      "**Bold ^not-an-id**",
+      "An ^id in the middle",
+      "Escaped \\^nope",
+      "`code ^nope`",
+      "[[#^first-block]]",
+    ])
+      expectRoundTrip(text);
+    expect(draw("Has an ID. ^first-block").querySelector(".block-id")?.textContent).toBe(
+      "^first-block",
+    );
+    expect(draw("**Bold ^x**").querySelector(".block-id")).toBeNull();
+    expect(draw("An ^id in the middle").querySelector(".block-id")).toBeNull();
+    expect(draw("Escaped \\^nope").querySelector(".block-id")).toBeNull();
+    expect(draw("`code ^nope`").querySelector(".block-id")).toBeNull();
+    expect(draw("[[#^first-block]]").querySelector(".block-id")).toBeNull();
+    expect(draw("[[#^first-block]]").textContent).toBe("^first-block");
+  });
+});

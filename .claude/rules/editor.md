@@ -100,12 +100,13 @@ through state.**
   `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
   (`utils/wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the
-  picker to fix; a file opens (`fileForTarget`); a heading is found as Obsidian finds it, a
-  child only in its parent (`headingTarget.ts`), as a visit (`historyJump`); a missing one is
-  said. It reads `Note > Heading` (`data-label`). `link-resolution.spec.ts`,
-  `heading-links.spec.ts`.
-- **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and a
-  broken link; it writes the shortest clear target (`linkTargetFor`). `link-picker.spec.ts`.
+  picker to fix; a file opens (`fileForTarget`); a heading or `^id` is found as Obsidian finds
+  it (`headingTarget.ts`, a child only in its parent; `blockTarget.ts`), as a visit
+  (`historyJump`); a missing one is said. It reads `Note > Heading` (`data-label`). An ID is
+  drawn quietly only while it ends its block. `link-resolution.spec.ts`,
+  `heading-links.spec.ts`, `block-links.spec.ts`.
+- **One link picker** (`LinkPicker.tsx`) for every way in; it writes the shortest clear target
+  (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
   reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at a pill's end lands outside it. `tag-pill.spec.ts`.
@@ -163,8 +164,8 @@ through state.**
 - **Commits on drop**, one entry, only if order changed; Escape, blur or the sidebar
   cancel. A selection drags as one run; moved blocks glide
   (`settleBlocks`). `motion.spec.ts`.
-- **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (no item changes
-  parent; `moveStep`). `list-move.spec.ts`.
+- **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (`moveStep`).
+  `list-move.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (UI scale).
 - **Every root the grip shows beside is in `blockRefs`**; media, code and callout register via
   `wholeRef`, not `elRef` (its repaint covers the wrapper).
@@ -272,7 +273,7 @@ never holds a byte sequence the syntax cannot.**
 
 Every `.code-line` takes at least `1lh` (or the layers drift). **One hover toolbar per code
 block.** `code-language.spec.ts`. **A `mermaid` fence is drawn** (`DiagramView`), its code
-above, open until its `</>` closes it. `diagram.spec.ts`.
+open until `</>` closes it. `diagram.spec.ts`.
 
 ## Images
 
@@ -309,14 +310,14 @@ above, open until its `</>` closes it. `diagram.spec.ts`.
   right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
 - **Arrows stop on a divider or image and enter every block with a field**;
   deletion steps over code and embeds (`landingBefore` vs `caretLandingBefore`).
-- **Taking the caret back never scrolls the note** (`placeCaret`: `preventScroll`).
+- **Taking the caret back never scrolls the note** (`preventScroll`).
   `caret-navigation.spec.ts`.
 
 ## Paste and copy
 
 - **A block holding text never changes type on paste.** Plain lines stay soft breaks; a blank
-  line starts a block; only an empty block is taken over by structure. Lines a keyboard types at
-  once (Gboard's clipboard) are a paste (`typedPaste`).
+  line starts a block; only an empty block is taken over by structure. Gboard's clipboard is a
+  paste (`typedPaste`).
 - **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`).
   `file-drop.spec.ts`.
 - **Copy**: structure travels only for whole blocks (`fullBlock`); a partial selection writes
