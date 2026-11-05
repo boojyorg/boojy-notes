@@ -9,7 +9,7 @@ Boojy Notes is a free notes app for your desktop. Your notes are plain Markdown 
 
 [Download](https://boojy.org/notes/) · [Website](https://boojy.org) · [Changelog](CHANGELOG.md) · [Feedback](mailto:tyr@boojy.org)
 
-[![Latest release](https://img.shields.io/github/v/release/boojyorg/boojy-notes?label=Release)](https://github.com/boojyorg/boojy-notes/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/boojyorg/boojy-notes?label=Release&color=8FC1C6)](https://github.com/boojyorg/boojy-notes/releases/latest)
 
 <!-- The #gh-…-mode-only endings follow the theme chosen in GitHub's settings; <picture> would follow the system's. -->
 <img src="assets/screenshots/notes-light.png#gh-light-mode-only" alt="Boojy Notes with a Lisbon trip note open: to-dos, a table of places to eat, a quote and two tags, beside a folder tree">
