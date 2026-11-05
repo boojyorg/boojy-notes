@@ -93,6 +93,9 @@ import { fromTouch } from "../utils/touch";
 import { isTodoKey, todoFlip } from "../utils/todoToggle";
 import { editedSurface, shedStyleResidue } from "../utils/styleResidue";
 import { forgetDeletedStyle } from "../utils/typingStyle";
+import { useMarqueeSelect } from "../hooks/editor/useMarqueeSelect";
+import { besideLine } from "../utils/marqueeSelect";
+import { withAlpha } from "../utils/selectionBand";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -238,6 +241,7 @@ const EditorArea = memo(
       cancelBlockDrag,
       handleEditorMouseDown,
       handleEditorMouseUp,
+      releaseMouse,
       handleEditorFocus,
       handleEditorDragOver,
       handleEditorDragLeave,
@@ -1027,6 +1031,51 @@ const EditorArea = memo(
       },
       [editorRef, blockRefs, setSelectedBlockId, restCaretIn],
     );
+
+    // A drag from the note's background or a block's gutter strip draws a box
+    // that selects the blocks it touches (useMarqueeSelect). Its start is
+    // exactly the background (the scroller, the column, the editor between
+    // its blocks) or a gutter strip; a control under the press keeps it.
+    const blockSelectionRef = useRef(blockSelection);
+    blockSelectionRef.current = blockSelection;
+    useMarqueeSelect({
+      enabled: !isPhone,
+      scrollerRef: editorScrollRef,
+      editorRef,
+      currentSelection: () => blockSelectionRef.current,
+      setBlockSelection,
+      restCaretIn: (id) => restCaretIn(id),
+      releaseMouse,
+      colours: {
+        fill: withAlpha(accentColor, theme.name === "night" ? 0.14 : 0.1),
+        edge: withAlpha(accentColor, 0.55),
+      },
+      startsBox: (e) => {
+        const t = e.target;
+        if (!(t instanceof Element)) return false;
+        if (t.closest("button, a, input, textarea, select, [role='button'], .block-drag-handle"))
+          return false;
+        if (t.closest(".checkbox-hit, .wikilink, .inline-tag")) return false;
+        if (
+          editorRef.current &&
+          gutterBlockAt(editorRef.current, blockRefs.current, e.clientX, e.clientY, HANDLE_GAP)
+        )
+          return true;
+        // Beside a block on its right is the line's: a drag from there is text.
+        const editor = editorRef.current;
+        if (editor) {
+          const spans = Array.from(editor.children, (el) => el.getBoundingClientRect());
+          if (besideLine(spans, editor.getBoundingClientRect().left, e.clientX, e.clientY))
+            return false;
+        }
+        return (
+          t === editorScrollRef.current ||
+          t === columnRef.current ||
+          t === editorContainerRef.current ||
+          t === editorRef.current
+        );
+      },
+    });
 
     // The wash on a selected text block: the band's tint over the whole row,
     // marker included. A divider, an image and a table draw their own.

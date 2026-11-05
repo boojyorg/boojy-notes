@@ -550,6 +550,16 @@ ${tagPillCss(theme)}
             border-radius: 2px;
           }
         }
+        /* A box drag from the margin (useMarqueeSelect): no text is
+           selected under it; the box is a thin edge over a light wash. */
+        html.marquee-dragging, html.marquee-dragging * { user-select: none !important; cursor: default; }
+        .marquee-box {
+          position: fixed;
+          z-index: 50;
+          pointer-events: none;
+          border: 1px solid;
+          border-radius: 3px;
+        }
         /* Selected text in the note, and in every field (Search, a rename),
            wears the selection's one colour, the band a selected block wears
            (utils/selectionBand); a code field keeps its own, below. */

@@ -139,10 +139,11 @@ export function useEditorHandlers({
     ...shared,
     saveAndInsertFiles,
   });
-  const { handleEditorMouseUp, handleEditorMouseDown, handleEditorFocus } = useMouseHandlers({
-    ...shared,
-    mouseIsDown,
-  });
+  const { handleEditorMouseUp, handleEditorMouseDown, handleEditorFocus, releaseMouse } =
+    useMouseHandlers({
+      ...shared,
+      mouseIsDown,
+    });
 
   return {
     handleEditorKeyDown,
@@ -150,6 +151,7 @@ export function useEditorHandlers({
     handleEditorMouseUp,
     handleEditorMouseDown,
     handleEditorFocus,
+    releaseMouse,
     handleEditorPaste,
     handleEditorCopy,
     handleEditorCut,

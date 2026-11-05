@@ -22,12 +22,12 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
   move is not undoable. `undo-scope.spec.ts`.
 - **One keystroke is one entry**: Enter's split and Backspace's join set text and blocks in one
   commit. `undo-steps.spec.ts`.
-- A draft ends in the ref at its first keystroke. The rebuild after an outside delete keeps
+- The rebuild after an outside delete keeps
   drafts and dirty notes from the ref. A vault switch flushes, empties, then switches. A
   version already written is not written again. `note-ownership.spec.ts`,
   `pending-edits-lifecycle.spec.ts`.
 
-### The DOM is painted from the ref, and a programmatic edit is read back like a keystroke
+### The DOM is painted from the ref; a programmatic edit is read back
 
 - **A text block is painted only on a signal** (mount, a `syncGen` bump, a title-set change),
   from `latestBlock(noteDataRef)`, never from the render (a keystroke behind), caret restored,
@@ -55,13 +55,13 @@ through state.**
   textarea): `handleEditorKeyDown` returns in a field, whose document selection is stale there;
   only inline-format shortcuts in a `data-inline-field` go to `applyFormat`.
 - A collapsed Delete/Backspace into a neighbour merges only with text; it selects a divider,
-  image or table. **Backspace in the only empty block is prevented** (Chromium deletes the
+  image or table (`reachAcross`). **Backspace in the only empty block is prevented** (Chromium deletes the
   `<p>`). `cross-block-ownership.spec.ts`.
 
 ## Keys and focus: the closest active surface owns them
 
 - **Tab outside a list goes to the open note's sidebar row** (`focusBeyondNote`; Shift+Tab the
-  name); lists indent, cells and code keep their Tab. Swallowing it was a keyboard trap.
+  name); lists indent, cells and code keep their Tab.
   `keyboard-walkthrough.spec.ts`.
 - **A surface that takes a key prevents its default; one that reads a key checks
   `defaultPrevented` first.** The shell (`useAppKeyboard`) is the last, bubble-phase window
@@ -74,7 +74,8 @@ through state.**
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
   completion. The `[[` picker is a dialog and takes focus.
 - A completion from a native listener commits at once. A triple-click selects the block or its
-  field by the app's hand (`selectClickedBlock`). A caret rescue never takes focus back, nor follows a link's click.
+  field by the app's hand (`selectClickedBlock`). A caret rescue never takes focus back, nor
+  follows a link's click.
 - ArrowUp with nothing above reaches the note's name, ArrowDown comes back; Shift+Arrow is
   always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
 - **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), on screen.
@@ -100,16 +101,14 @@ through state.**
 - **A wikilink click opens the note its target names; it never guesses or creates**
   (`utils/wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the
   picker to fix; a file opens (`fileForTarget`); a heading is found as Obsidian finds it, a
-  path's child only in its parent (`headingTarget.ts`), the caret let go, a visit
-  (`historyJump`), a missing one said. It reads `Note > Heading` (`data-label`; an alias
-  reading so keeps its pipe).
-  `link-resolution.spec.ts`, `heading-links.spec.ts`.
-- **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and an
-  unresolved click; it writes the shortest clear target (`linkTargetFor`). `link-picker.spec.ts`.
+  child only in its parent (`headingTarget.ts`), as a visit (`historyJump`); a missing one is
+  said. It reads `Note > Heading` (`data-label`). `link-resolution.spec.ts`,
+  `heading-links.spec.ts`.
+- **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and a
+  broken link; it writes the shortest clear target (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
-  reads frontmatter only as its `tags:` property (`frontmatterTags`, names the grammar reads
-  whole). Punctuation typed at a pill's end lands outside it. `tag-pill.spec.ts`.
+  reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at a pill's end lands outside it. `tag-pill.spec.ts`.
 - **A backslash escape is its symbol alone, sealed**: one caret character, read back with its
   backslash; as written in code, addresses and wikilinks. `escapes.spec.ts`.
 - Bare URLs autolink in prose only; `<url>` is text. **`LINK_DEST` is the one reading of a link
@@ -117,13 +116,12 @@ through state.**
 
 ## Typed inline formatting converts on the closing marker, and changes no bytes
 
-- A format becomes its element when its closing marker is typed; the literal run *is* the
-  Markdown, so it is a repaint and Cmd+Z is typing undo.
+- The literal run *is* the Markdown, so converting is a repaint and Cmd+Z is typing undo.
 - **The trigger is the native `insertText` of one marker character**, outside composition,
   never the text alone (Backspace re-converted). **The paint is verified**
   (`paintTypedFormat`): paired differently, the old DOM and caret come back.
   `typed-formatting.spec.ts`.
-- **A code span is literal** (`codeSpans.js`, CommonMark's backtick runs): nothing in it is
+- **A code span is literal** (`codeSpans.js`): nothing in it is
   drawn; untouched it keeps its spelling (`data-md`), edited only what changed; only ⌘E acts in
   one. `literal-code.spec.ts`.
 - **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the next letters
@@ -148,8 +146,8 @@ through state.**
   outside the note gets the same (`TextFieldMenu`). **Items run the keys' own path.** Never
   focused, so the selection stays blue. `text-context-menu.spec.ts`.
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is late),
-  never in code, tags or links; guesses only on a marked word. A Mac: wrong in all its
-  languages, guessed in the sentence's first. Windows: Chromium's line and guesses.
+  never in code, tags or links; guesses only on a marked word. A Mac checks all its
+  languages; Windows is Chromium's.
   `spelling.spec.ts`, `spelling-line.spec.ts`.
 
 ## Block drag: the gutter grip; on the phone, a hold
@@ -163,7 +161,7 @@ through state.**
   `BlockMenu`. A scroll, a double-tap or selected text is the browser's. A lone new finger ends
   a lost hold (Android reuses ids). `hold-to-grab.spec.ts`.
 - **Commits on drop**, one entry, only if order changed; Escape, blur or the sidebar
-  cancel. A selection drags as one run, its copy from its first block; moved blocks glide
+  cancel. A selection drags as one run; moved blocks glide
   (`settleBlocks`). `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (no item changes
   parent; `moveStep`). `list-move.spec.ts`.
@@ -250,33 +248,24 @@ never holds a byte sequence the syntax cannot.**
 ## Properties
 
 - **Frontmatter is the note's properties** (`PropertiesBlock`), read with `yaml`
-  (`readProperties`), never written by it. YAML the rows can't read opens as YAML; nothing is
-  written through rows it can't read. The YAML field is a real field, kept literal. Folding is
-  per note, on this device. Never moved (`reorderFloor`). `properties-view.spec.ts`,
+  (`readProperties`), never written by it. YAML the rows can't read opens as YAML. The YAML field is a real field, kept literal. Never moved (`reorderFloor`). `properties-view.spec.ts`,
   `frontmatter-order.spec.ts`.
 - **A row edit is one `editFrontmatter` commit** that splices only that property's text, run
   by name on the latest text and read back first (`runChange`), else refused and the YAML
-  opens. Icon: type menu (a loss asks; Keep is the default); name renames; value edits. Its
-  text is React's to paint (`haveEditorBlockRenderChanges`). An outside change to the property
+  opens. A type change that loses data asks. Its text is React's to paint (`haveEditorBlockRenderChanges`). An outside change to the property
   being edited sets the draft aside, with Restore. `properties.spec.ts`.
 - **A list is edited an item at a time** (`replaceItem`, `removeItem`, `insertItem`), each
-  splicing that item's bytes only: a flow list's spacing and a blank line stay. A click edits an
-  item, Enter saves and opens the next, unused space adds; no add control. Empty-field Backspace
-  picks, then removes. A tag's click edits it; Search is in its menu (right-click, a hold, which
-  `useHoldToGrab` leaves to the section). `property-lists.spec.ts`.
-- **The title's menu** (right-click, Shift+F10, a hold): Show Markdown (⌘/'s own path) and
-  Remove all properties, the whole block, fences and comments, in one commit (`removeFrontmatter`).
+  splicing only that item's bytes. Enter saves and opens the next; empty-field Backspace picks,
+  then removes. A tag's click edits it; Search is in its menu. `property-lists.spec.ts`.
+- **The title's menu** (right-click, Shift+F10, a hold): Show Markdown and Remove all
+  properties, the whole block in one commit (`removeFrontmatter`).
   `properties-view.spec.ts`.
-- **Add property and `/properties`** (`PropertyPicker`): types first (tags, then the six), the
-  same in every note; names other notes use only when typed (a name's or a word's start), with
-  their type and count, under Enter's own row; the list scrolls. A type picked is a draft row,
-  its name to type over the type's in grey (`freeName`), written once on Enter, Tab or a press
-  elsewhere; Escape writes nothing. `---` on a note's first line opens it at the third dash
-  (`opensProperties`; the one marker that takes no argument, so never waits for its space);
-  cancelled, the dashes come back. A typed name: Enter adds it untyped (its value decides), or
-  a type is picked under "Or pick its type". Nothing is picked as it opens. Written last in the
-  type's empty form. An empty value's type is this device's (`propertyTypes`), never the
-  vault's. `/properties` makes the section at the top; left empty, it goes again.
+- **Add property and `/properties`** (`PropertyPicker`): types first, the same in every note;
+  other notes' names only when typed, under Enter's own row. A picked type is a draft row
+  (`freeName`), written once on Enter, Tab or a press elsewhere; Escape writes nothing. `---` on
+  a note's first line opens it at the third dash (`opensProperties`: it takes no argument);
+  cancelled, the dashes come back. A typed name: Enter adds it untyped. An empty value's type
+  is this device's (`propertyTypes`), never the vault's. `/properties` left empty goes again.
   `properties-add.spec.ts`.
 
 ## Code blocks
@@ -307,18 +296,20 @@ above, open until its `</>` closes it. `diagram.spec.ts`.
 
 ## Whole-block selection
 
-- **Any block can be selected whole** (`blockRun.ts`): the grip, the gutter, Escape,
-  a press on a divider, image or table; Shift-click extends. **A list item brings its nested
+- **Any block can be selected whole** (`blockRun.ts`): the grip, the gutter, Escape (every
+  block a text selection touches), a press on a divider, image or table; Shift-click extends. **A list item brings its nested
   items** (`subtreeEnd`). Text blocks wear the band, the caret hidden.
 - Backspace/Delete remove a selection in one commit, ⌘C/⌘X copy it whole (`wholeBlocksCopy`);
   a letter deselects and types; a press off `data-selection-surface` deselects.
+- **A drag from the left margin, a gutter strip or between blocks draws a box**
+  (`useMarqueeSelect`) selecting the blocks it spans (`marqueeRun`); Escape restores,
+  its release clicks nothing. From text or right of a line (`besideLine`), it is text.
+  `marquee-select.spec.ts`.
 - **The grip's click opens `BlockMenu` on its run** or text's lines (`gripSelection`;
   right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
-- Backspace from below / Delete from above selects a divider, image or table first
-  (`reachAcross`). **Arrows stop on a divider or image and enter every block with a field**;
+- **Arrows stop on a divider or image and enter every block with a field**;
   deletion steps over code and embeds (`landingBefore` vs `caretLandingBefore`).
 - **Taking the caret back never scrolls the note** (`placeCaret`: `preventScroll`).
-- **Measure a caret's line with `caretRect`** (an empty range is zeros).
   `caret-navigation.spec.ts`.
 
 ## Paste and copy
