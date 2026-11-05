@@ -1,8 +1,6 @@
 <h1>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/boojy-notes-lockup-dark.svg">
-    <img src="assets/boojy-notes-lockup-light.svg" alt="Boojy Notes" width="300">
-  </picture>
+  <img src="assets/boojy-notes-lockup-light.svg#gh-light-mode-only" alt="Boojy Notes" width="300">
+  <img src="assets/boojy-notes-lockup-dark.svg#gh-dark-mode-only" alt="Boojy Notes" width="300">
 </h1>
 
 ### A calm place for the notes you own.
@@ -13,10 +11,9 @@ Boojy Notes is a free notes app for your desktop. Your notes are plain Markdown 
 
 [![Latest release](https://img.shields.io/github/v/release/boojyorg/boojy-notes?label=Release)](https://github.com/boojyorg/boojy-notes/releases/latest)
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/notes-dark.png">
-  <img src="assets/screenshots/notes-light.png" alt="Boojy Notes with a Lisbon trip note open: to-dos, a table of places to eat, a quote and two tags, beside a folder tree">
-</picture>
+<!-- The #gh-…-mode-only endings follow the theme chosen in GitHub's settings; <picture> would follow the system's. -->
+<img src="assets/screenshots/notes-light.png#gh-light-mode-only" alt="Boojy Notes with a Lisbon trip note open: to-dos, a table of places to eat, a quote and two tags, beside a folder tree">
+<img src="assets/screenshots/notes-dark.png#gh-dark-mode-only" alt="Boojy Notes with a Lisbon trip note open: to-dos, a table of places to eat, a quote and two tags, beside a folder tree">
 
 ## About
 
