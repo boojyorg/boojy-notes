@@ -240,6 +240,7 @@ const EditorArea = memo(
       cancelBlockDrag,
       handleEditorMouseDown,
       handleEditorMouseUp,
+      releaseMouse,
       handleEditorFocus,
       handleEditorDragOver,
       handleEditorDragLeave,
@@ -1043,6 +1044,7 @@ const EditorArea = memo(
       currentSelection: () => blockSelectionRef.current,
       setBlockSelection,
       restCaretIn: (id) => restCaretIn(id),
+      releaseMouse,
       colours: {
         fill: withAlpha(accentColor, theme.name === "night" ? 0.14 : 0.1),
         edge: withAlpha(accentColor, 0.55),

@@ -101,6 +101,13 @@ export function useMouseHandlers({
     // Deps deliberately not exhaustive: mouseIsDown is a stable ref
   }, []);
 
+  // A press another surface took whole (the box drag) ends its own release,
+  // which neither mouse-up handler hears: it lets the button go here.
+  const releaseMouse = useCallback(() => {
+    mouseIsDown.current = false;
+    // Deps deliberately not exhaustive: mouseIsDown is a stable ref
+  }, []);
+
   const handleEditorFocus = useCallback(() => {
     const currentNote = activeNoteRef.current;
     if (mouseIsDown.current) return;
@@ -123,5 +130,5 @@ export function useMouseHandlers({
     // Deps deliberately not exhaustive: all deps are stable refs
   }, []);
 
-  return { handleEditorMouseUp, handleEditorMouseDown, handleEditorFocus };
+  return { handleEditorMouseUp, handleEditorMouseDown, handleEditorFocus, releaseMouse };
 }

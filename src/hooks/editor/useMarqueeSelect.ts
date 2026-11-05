@@ -18,6 +18,8 @@ interface Options {
   setBlockSelection: (s: BlockSelection | null) => void;
   /** The caret rests, hidden, in the run's anchor, so the run's keys reach the editor. */
   restCaretIn: (id: string) => void;
+  /** The editor's mouse-down flag let go: the box keeps the release from the editor's handlers. */
+  releaseMouse: () => void;
   colours: { fill: string; edge: string };
   enabled: boolean;
 }
@@ -160,6 +162,7 @@ export function useMarqueeSelect(options: Options) {
       const anchor = drag.run.split("|")[0];
       finish();
       if (!wasBox) return;
+      opts.current.releaseMouse();
       if (anchor) opts.current.restCaretIn(anchor);
       e.stopPropagation();
       e.preventDefault();

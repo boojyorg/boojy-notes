@@ -134,3 +134,31 @@ test("the box selects the same blocks at an Interface size above 100%", async ()
     await h.close();
   }
 });
+
+test("after a box started between blocks, a keyboard selection still shows the toolbar", async () => {
+  const h = await launchApp({ "Note.md": NOTE });
+  try {
+    await h.openNote("Note");
+    // The gap between Alpha and Beta, inside the editor: its press is the editor's too.
+    const gap = await h.page.evaluate(() => {
+      const [a, b] = Array.from(document.querySelectorAll("[data-editor] > [data-block-id]"))
+        .slice(0, 2)
+        .map((el) => el.getBoundingClientRect());
+      const p = { x: a.left + 40, y: (a.bottom + b.top) / 2 };
+      const hit = document.elementFromPoint(p.x, p.y);
+      return { ...p, editor: hit?.hasAttribute("data-editor") ?? false };
+    });
+    expect(gap.editor).toBe(true);
+    const g = await rect(h.page, "Gamma line.");
+    await h.page.mouse.move(gap.x, gap.y);
+    await h.page.mouse.down();
+    await h.page.mouse.move(gap.x + 4, g.y + g.height / 2, { steps: 8 });
+    await h.page.mouse.up();
+    await h.page.keyboard.press("Escape");
+    await h.page.keyboard.press("Shift+ArrowLeft");
+    await h.page.keyboard.press("Shift+ArrowLeft");
+    await expect(h.page.getByRole("toolbar")).toBeVisible();
+  } finally {
+    await h.close();
+  }
+});
