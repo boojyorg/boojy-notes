@@ -1,126 +1,121 @@
 import { useNoteData } from "../../context/NoteDataContext";
 import { useTheme } from "../../hooks/useTheme";
-import { inlineMarkdownToHtml } from "../../utils/inlineFormatting";
-import { findHeadingSection, headingSegments } from "../../utils/headingTarget";
-import { wikilinkStatus } from "../../utils/wikilinkTarget";
+import { embedTarget } from "../../utils/embedTarget";
+import ReadOnlyBlocks from "../ReadOnlyBlocks";
 
 /**
- * `![[Note]]`: the note's first blocks, read from the vault's live note data,
- * so the embed follows edits to its note (a snapshot handed down at render
- * kept the old text until the editor repainted).
+ * `![[Note]]`, `![[Note#Heading]]`, `![[#^id]]`: what the target names, drawn
+ * by the editor's own renderer, read-only (ReadOnlyBlocks), whole, set apart
+ * by a neutral line, from the vault's live note data so it follows edits to
+ * its note. The source's name, under it on hover, is a link to it. A link
+ * inside reads as it does in its own note (`data-embed-source`), never in
+ * this one. A note that embeds itself, at any depth, is said, not drawn.
+ *
+ * The copy sits inside the editor's one editable surface, so it is fenced:
+ * not editable, and every key, input, paste, cut and drop that would edit is
+ * stopped before the editor sees it. Copy is the browser's: the selection's
+ * text and HTML, never the editor's whole-block copy.
  */
 function EmbedBlock(props) {
   const { noteData } = useNoteData();
   return <EmbedView {...props} noteData={noteData} />;
 }
 
-function EmbedView({ block, noteData, accentColor, onNavigate, depth = 0 }) {
+const MAX_DEPTH = 3;
+
+function EmbedView({
+  block,
+  noteData,
+  noteTitleSet,
+  accentColor,
+  hostNote,
+  ancestors = [],
+  depth = 0,
+}) {
   const { theme } = useTheme();
-  const { TEXT } = theme;
-  if (depth >= 3) {
-    return (
-      <div
-        style={{
-          padding: "8px 12px",
-          borderRadius: 6,
-          border: `1px dashed ${TEXT.muted}`,
-          color: TEXT.muted,
-          fontSize: 12,
-        }}
-      >
-        Embed depth limit reached
-      </div>
-    );
+  const { TEXT, BG } = theme;
+  const quiet = (text) => (
+    <div data-embed-missing style={{ color: TEXT.muted, fontSize: 14, padding: "4px 0" }}>
+      {text}
+    </div>
+  );
+
+  const found = embedTarget(block, noteData, hostNote);
+  if (found.missing) return quiet(found.missing);
+  const key = `${found.noteId}#${found.subpath ?? ""}`;
+  if (ancestors.includes(key) || depth >= MAX_DEPTH)
+    return quiet("This embeds itself, so it isn't shown again.");
+
+  // Runs of ordinary blocks are drawn read-only; an embed among them is drawn
+  // here, so it knows the chain it sits in.
+  const runs = [];
+  for (const b of found.blocks) {
+    const last = runs[runs.length - 1];
+    if (b.type === "embed") runs.push({ embed: b });
+    else if (last?.blocks) last.blocks.push(b);
+    else runs.push({ blocks: [b] });
   }
-
-  // The note the target names, as a click on `[[target]]` resolves it
-  // (utils/wikilinkTarget): a folder path is the path, and a name two notes
-  // share is shown as such, never guessed.
-  const status = wikilinkStatus(block.target ?? "", noteData);
-  const targetNote = status.kind === "note" ? noteData[status.id] : null;
-
-  if (!targetNote) {
-    return (
-      <div
-        style={{
-          padding: "12px 16px",
-          borderRadius: 8,
-          border: `1px dashed ${TEXT.muted}`,
-          color: TEXT.muted,
-          fontSize: 13,
-        }}
-      >
-        {status.kind === "ambiguous"
-          ? `"${block.target}" names ${status.ids.length} notes`
-          : `"${block.target}" not found`}
-      </div>
-    );
-  }
-
-  let blocks = targetNote.content?.blocks || [];
-  // The section a link to the same heading reaches (utils/headingTarget).
-  const segments = headingSegments(block.heading ?? null);
-  const section = segments ? findHeadingSection(blocks, segments) : null;
-  if (section) blocks = blocks.slice(section.start, section.end);
+  const own = (e) => e.currentTarget.contains(e.target);
+  const stop = (e) => {
+    if (!own(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const edits = (e) =>
+    (e.key.length === 1 && !e.metaKey && !e.ctrlKey) ||
+    e.key === "Enter" ||
+    e.key === "Backspace" ||
+    e.key === "Delete" ||
+    ((e.metaKey || e.ctrlKey) && (e.key === "v" || e.key === "x"));
 
   return (
     <div
-      style={{
-        borderLeft: `3px solid ${accentColor}`,
-        background: `${accentColor}08`,
-        borderRadius: 6,
-        padding: "12px 16px",
-        cursor: "pointer",
+      className="embed"
+      data-embed
+      data-embed-source={found.linkName}
+      contentEditable={false}
+      suppressContentEditableWarning
+      onKeyDownCapture={(e) => {
+        if (own(e) && edits(e)) stop(e);
       }}
-      onClick={() => onNavigate?.(targetNote.id)}
+      onBeforeInputCapture={stop}
+      onPasteCapture={stop}
+      onCutCapture={stop}
+      onDropCapture={stop}
+      // The browser's copy of what is selected, never the editor's block copy.
+      onCopy={(e) => {
+        if (own(e)) e.stopPropagation();
+      }}
+      // Its text selects and copies: the whole-block root it sits in turns selection off.
+      style={{ borderLeft: `3px solid ${BG.divider}`, paddingLeft: 16, userSelect: "text" }}
     >
-      <div
-        style={{
-          fontSize: 12,
-          color: TEXT.secondary,
-          marginBottom: 8,
-          display: "flex",
-          justifyContent: "space-between",
-        }}
-      >
-        <span>
-          {targetNote.title}
-          {block.heading ? ` > ${block.heading}` : ""}
-        </span>
-        <span style={{ fontSize: 11, opacity: 0.6 }}>open &rarr;</span>
-      </div>
-      <div style={{ fontSize: 13, color: TEXT.primary, pointerEvents: "none" }}>
-        {blocks.slice(0, 10).map((b) => {
-          if (b.type === "embed") {
-            return (
-              <div
-                key={b.id}
-                style={{
-                  paddingLeft: 8,
-                  borderLeft: `2px solid ${accentColor}40`,
-                  margin: "4px 0",
-                }}
-              >
-                <EmbedView
-                  block={b}
-                  noteData={noteData}
-                  accentColor={accentColor}
-                  depth={depth + 1}
-                />
-              </div>
-            );
-          }
-          return (
-            <div
-              key={b.id}
-              dangerouslySetInnerHTML={{
-                __html: inlineMarkdownToHtml(b.text || "", new Set()),
-              }}
-              style={{ margin: "2px 0" }}
-            />
-          );
-        })}
-      </div>
+      {runs.map((run, i) =>
+        run.embed ? (
+          <EmbedView
+            key={run.embed.id}
+            block={run.embed}
+            noteData={noteData}
+            noteTitleSet={noteTitleSet}
+            accentColor={accentColor}
+            hostNote={found.noteId}
+            ancestors={[...ancestors, key]}
+            depth={depth + 1}
+          />
+        ) : (
+          <ReadOnlyBlocks
+            // Remounted when the source changes: a block paints only on a signal.
+            key={`${i}:${found.version}`}
+            noteId={found.noteId}
+            blocks={run.blocks}
+            noteTitleSet={noteTitleSet}
+            accentColor={accentColor}
+            idPrefix={`embed:${block.id}:${depth}:`}
+          />
+        ),
+      )}
+      <span className="wikilink embed-source" data-target={found.fullTarget}>
+        {found.label}
+      </span>
     </div>
   );
 }

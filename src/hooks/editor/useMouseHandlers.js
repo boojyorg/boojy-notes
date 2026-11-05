@@ -55,6 +55,8 @@ export function useMouseHandlers({
   const handleEditorMouseUp = useCallback((e) => {
     const currentNote = activeNoteRef.current;
     mouseIsDown.current = false;
+    // PROTOTYPE: an embed's copy is read-only; a press in it keeps its own selection.
+    if (e?.target?.closest?.("[data-embed]")) return;
     if (selectClickedBlock(e)) return;
     // A press on a wikilink follows it, and a heading link lets the caret go
     // on purpose: a rescue would put one back and scroll the note to it.

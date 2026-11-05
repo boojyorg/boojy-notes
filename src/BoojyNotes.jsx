@@ -67,6 +67,7 @@ import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
 import { describeWikilink } from "./utils/linkDescription";
+import { linkTargetIn } from "./utils/embedTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isPhone, isWeb, keyBarInWeb } from "./utils/platform";
 import { NAV_BAR_H, STATUS_BAR_H } from "./utils/uiScale";
@@ -1213,8 +1214,7 @@ export default function BoojyNotes() {
         const url = el.getAttribute("data-url") || el.getAttribute("href");
         return url ? { label: url } : null;
       }
-      const target = el.getAttribute("data-target") || "";
-      return describeWikilink(target, noteDataRef.current, activeNoteRef.current);
+      return describeWikilink(linkTargetIn(el), noteDataRef.current, activeNoteRef.current);
     },
     [noteDataRef, activeNoteRef],
   );

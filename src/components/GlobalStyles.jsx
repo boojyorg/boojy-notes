@@ -536,6 +536,19 @@ export default function GlobalStyles() {
           padding: 0 2px;
         }
 ${tagPillCss(theme)}
+        /* An embed's source (EmbedBlock): a link in quiet ink, under the copy, shown on hover. */
+        [data-block-id] .embed > .embed-source {
+          display: inline-block;
+          margin-top: 6px;
+          font-size: 13px;
+          color: ${theme.TEXT.muted};
+          text-decoration: none;
+          opacity: 0;
+          transition: opacity var(--motion-fast);
+        }
+        [data-block-id] .embed:hover > .embed-source,
+        [data-block-id] .embed > .embed-source:focus-visible { opacity: 1; }
+        @media (hover: none) { [data-block-id] .embed > .embed-source { opacity: 1; } }
         /* A block ID (^first-block): kept as text, drawn quietly (utils/blockTarget). */
         [data-editor] .block-id { color: ${theme.TEXT.muted}; }
         [data-block-id] .wikilink {

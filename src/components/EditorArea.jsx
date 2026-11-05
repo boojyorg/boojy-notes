@@ -94,6 +94,8 @@ import { isTodoKey, todoFlip } from "../utils/todoToggle";
 import { editedSurface, shedStyleResidue } from "../utils/styleResidue";
 import { forgetDeletedStyle } from "../utils/typingStyle";
 import { useMarqueeSelect } from "../hooks/editor/useMarqueeSelect";
+import { linkTargetIn } from "../utils/embedTarget";
+import { useEmbedFence } from "../hooks/editor/useEmbedFence";
 import { besideLine } from "../utils/marqueeSelect";
 import { withAlpha } from "../utils/selectionBand";
 
@@ -1036,6 +1038,9 @@ const EditorArea = memo(
       [editorRef, blockRefs, setSelectedBlockId, restCaretIn],
     );
 
+    // An embed's copy is read-only: a selection in it edits nothing (useEmbedFence).
+    useEmbedFence(editorRef);
+
     // A drag from the note's background or a block's gutter strip draws a box
     // that selects the blocks it touches (useMarqueeSelect). Its start is
     // exactly the background (the scroller, the column, the editor between
@@ -1689,7 +1694,8 @@ const EditorArea = memo(
                       const wikilink = e.target.closest(".wikilink");
                       if (wikilink) {
                         e.preventDefault();
-                        const target = wikilink.getAttribute("data-target");
+                        // Inside an embed, a link reads as in its own note.
+                        const target = linkTargetIn(wikilink);
                         if (target && onWikilinkClick) onWikilinkClick(target, wikilink);
                         return;
                       }

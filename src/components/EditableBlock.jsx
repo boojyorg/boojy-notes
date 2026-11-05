@@ -407,7 +407,12 @@ const EditableBlock = memo(
 
     if (block.type === "embed") {
       return wholeRoot(
-        <EmbedBlock block={block} accentColor={accentColor} onNavigate={onNavigateToNote} />,
+        <EmbedBlock
+          block={block}
+          accentColor={accentColor}
+          noteTitleSet={noteTitleSet}
+          hostNote={noteId}
+        />,
         { padding: "4px 0" },
         wholeRef,
       );
