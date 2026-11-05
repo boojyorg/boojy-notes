@@ -1,126 +1,307 @@
+import { useEffect, useRef, useState } from "react";
 import { useNoteData } from "../../context/NoteDataContext";
 import { useTheme } from "../../hooks/useTheme";
-import { inlineMarkdownToHtml } from "../../utils/inlineFormatting";
-import { findHeadingSection, headingSegments } from "../../utils/headingTarget";
-import { wikilinkStatus } from "../../utils/wikilinkTarget";
+import { embedFieldsFrom, embedTarget, writtenEmbedTarget } from "../../utils/embedTarget";
+import { BAND_REACH, bandFill } from "../../utils/selectionBand";
+import { EmbedOpenIcon } from "../Icons";
+import ReadOnlyBlocks from "../ReadOnlyBlocks";
+import { Tooltip, useTooltip } from "../Tooltip";
 
 /**
- * `![[Note]]`: the note's first blocks, read from the vault's live note data,
- * so the embed follows edits to its note (a snapshot handed down at render
- * kept the old text until the editor repainted).
+ * `![[Note]]`, `![[Note#Heading]]`, `![[#^id]]`: what the target names, drawn
+ * by the editor's own renderer, read-only (ReadOnlyBlocks), whole, set apart
+ * by a neutral line, from the vault's live note data so it follows edits to
+ * its note. An arrow in its own strip on the right, always shown and muted,
+ * opens the source; its chip says where. A link inside reads as it does in
+ * its own note (`data-embed-source`). A note that embeds itself, at any
+ * depth, is said, not drawn.
+ *
+ * A whole block (`isSelectableBlock`): a click that selects no text picks it,
+ * and its `![[…]]` opens underneath as a field, as a formula's source does.
+ * Its copy edits nothing (useEmbedFence); a key that would is answered by the
+ * arrow's chip saying where to edit (`embed-nudge`), never silence.
  */
 function EmbedBlock(props) {
   const { noteData } = useNoteData();
   return <EmbedView {...props} noteData={noteData} />;
 }
 
-function EmbedView({ block, noteData, accentColor, onNavigate, depth = 0 }) {
+const MAX_DEPTH = 3;
+const NUDGE_MS = 2500;
+
+function EmbedView({
+  block,
+  noteData,
+  noteTitleSet,
+  accentColor,
+  hostNote,
+  viewNote = hostNote,
+  ancestors = [],
+  depth = 0,
+  isSelected = false,
+  onSelect,
+  onUpdate,
+}) {
   const { theme } = useTheme();
   const { TEXT } = theme;
-  if (depth >= 3) {
-    return (
+  const openTip = useTooltip();
+  const openRef = useRef(null);
+  const embedRef = useRef(null);
+  const [nudged, setNudged] = useState(false);
+  // The link being edited (picked, its field open): drawn as typed while it
+  // names something real, saved once when the edit ends.
+  const [draft, setDraft] = useState(null);
+  useEffect(() => {
+    if (!isSelected) setDraft(null);
+  }, [isSelected]);
+
+  // A key that would edit the copy: the chip says where to edit, at once.
+  useEffect(() => {
+    const el = embedRef.current;
+    if (!el) return;
+    let timer = 0;
+    const onNudge = () => {
+      setNudged(true);
+      clearTimeout(timer);
+      timer = window.setTimeout(() => setNudged(false), NUDGE_MS);
+    };
+    el.addEventListener("embed-nudge", onNudge);
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener("embed-nudge", onNudge);
+    };
+  });
+
+  const typed = draft == null ? null : embedFieldsFrom(`![[${draft}]]`);
+  const trial = typed ? embedTarget({ ...block, ...typed }, noteData, hostNote, viewNote) : null;
+  // A draft that names nothing real keeps the last good drawing (the last one
+  // typed this edit, else the saved one), its reason said.
+  const lastGood = useRef(null);
+  if (draft == null) lastGood.current = null;
+  else if (trial && !trial.missing) lastGood.current = typed;
+  const reason = draft == null ? null : !typed ? "Not a link to a note." : (trial?.missing ?? null);
+  const found =
+    trial && !trial.missing
+      ? trial
+      : embedTarget(
+          lastGood.current ? { ...block, ...lastGood.current } : block,
+          noteData,
+          hostNote,
+          viewNote,
+        );
+  const key = found.missing ? null : `${found.noteId}#${found.subpath ?? ""}`;
+  const loops = key != null && (ancestors.includes(key) || depth >= MAX_DEPTH);
+
+  let body;
+  if (found.missing || loops) {
+    body = (
+      <div data-embed-missing style={{ color: TEXT.muted, fontSize: 14, padding: "4px 0" }}>
+        {found.missing ?? "This embeds itself, so it isn't shown again."}
+      </div>
+    );
+  } else {
+    // Runs of ordinary blocks are drawn read-only; an embed among them is
+    // drawn here, so it knows the chain it sits in.
+    const runs = [];
+    for (const b of found.blocks) {
+      const last = runs[runs.length - 1];
+      if (b.type === "embed") runs.push({ embed: b });
+      else if (last?.blocks) last.blocks.push(b);
+      else runs.push({ blocks: [b] });
+    }
+    const tip = nudged ? found.editLabel : found.openLabel;
+    body = (
       <div
-        style={{
-          padding: "8px 12px",
-          borderRadius: 6,
-          border: `1px dashed ${TEXT.muted}`,
-          color: TEXT.muted,
-          fontSize: 12,
+        ref={embedRef}
+        className="embed"
+        data-embed
+        data-embed-source={found.linkName}
+        contentEditable={false}
+        suppressContentEditableWarning
+        // Its text selects and copies: the whole-block root it sits in turns selection off.
+        style={{ userSelect: "text" }}
+        // The browser's copy of what is selected, never the editor's block copy.
+        onCopy={(e) => {
+          if (e.currentTarget.contains(e.target)) e.stopPropagation();
         }}
       >
-        Embed depth limit reached
+        {runs.map((run, i) =>
+          run.embed ? (
+            <EmbedView
+              key={run.embed.id}
+              block={run.embed}
+              noteData={noteData}
+              noteTitleSet={noteTitleSet}
+              accentColor={accentColor}
+              hostNote={found.noteId}
+              viewNote={viewNote}
+              ancestors={[...ancestors, key]}
+              depth={depth + 1}
+            />
+          ) : (
+            <ReadOnlyBlocks
+              // Remounted when the source changes: a block paints only on a signal.
+              key={`${i}:${found.version}`}
+              noteId={found.noteId}
+              blocks={run.blocks}
+              noteTitleSet={noteTitleSet}
+              accentColor={accentColor}
+              idPrefix={`embed:${block.id}:${depth}:`}
+            />
+          ),
+        )}
+        {/* Its source, one press away: the arrow in its own strip on the right,
+            always shown, its chip saying where it goes. EditorArea follows it. */}
+        <button
+          ref={openRef}
+          type="button"
+          tabIndex={-1}
+          // The code block's tool button: one size and hover for a note's tools.
+          className={nudged ? "code-tool embed-open is-nudged" : "code-tool embed-open"}
+          aria-label={found.openLabel}
+          data-target={found.fullTarget}
+          {...openTip.handlers}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            openTip.handlers.onMouseDown();
+          }}
+        >
+          <EmbedOpenIcon />
+        </button>
+        {(openTip.shown || nudged) && <Tooltip label={tip} anchor={openRef.current} />}
       </div>
     );
   }
 
-  // The note the target names, as a click on `[[target]]` resolves it
-  // (utils/wikilinkTarget): a folder path is the path, and a name two notes
-  // share is shown as such, never guessed.
-  const status = wikilinkStatus(block.target ?? "", noteData);
-  const targetNote = status.kind === "note" ? noteData[status.id] : null;
+  if (depth > 0) return body;
 
-  if (!targetNote) {
-    return (
-      <div
-        style={{
-          padding: "12px 16px",
-          borderRadius: 8,
-          border: `1px dashed ${TEXT.muted}`,
-          color: TEXT.muted,
-          fontSize: 13,
-        }}
-      >
-        {status.kind === "ambiguous"
-          ? `"${block.target}" names ${status.ids.length} notes`
-          : `"${block.target}" not found`}
-      </div>
-    );
-  }
+  // The note's own block: picked by a click that selects no text, its source
+  // underneath while picked.
+  return (
+    <div
+      data-selection-surface
+      onMouseUp={(e) => {
+        if (e.button !== 0 || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.target.closest?.(".embed-open, .wikilink, a, input")) return;
+        const sel = window.getSelection();
+        if (sel && !sel.isCollapsed) return;
+        onSelect?.();
+      }}
+      style={{
+        // The link's panel hangs from here.
+        position: "relative",
+        margin: `0 -${BAND_REACH}px`,
+        padding: `2px ${BAND_REACH}px`,
+        borderRadius: 4,
+        background: isSelected ? bandFill(accentColor, theme.name) : "transparent",
+      }}
+    >
+      {body}
+      {isSelected && (
+        <EmbedLinkEditor
+          block={block}
+          draft={draft}
+          setDraft={setDraft}
+          reason={reason}
+          onSave={onUpdate}
+        />
+      )}
+    </div>
+  );
+}
 
-  let blocks = targetNote.content?.blocks || [];
-  // The section a link to the same heading reaches (utils/headingTarget).
-  const segments = headingSegments(block.heading ?? null);
-  const section = segments ? findHeadingSection(blocks, segments) : null;
-  if (section) blocks = blocks.slice(section.start, section.end);
+/**
+ * A picked embed's link, `![[…]]`, in a panel underneath that floats over the
+ * text below, as a formula's source does (MathBlock). The embed is drawn as
+ * typed while the link names something real (EmbedView); the edit is saved
+ * once, in one step, on Enter or leaving; Escape puts it back. A press
+ * anywhere on the panel puts the caret in the link.
+ */
+function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
+  const { theme } = useTheme();
+  const written = writtenEmbedTarget(block);
+  const ref = useRef(null);
+  const editing = draft != null;
+  // The editor's own beforeinput seam sits on its root: this field's edits are its own.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const own = (e) => e.stopPropagation();
+    el.addEventListener("beforeinput", own);
+    return () => el.removeEventListener("beforeinput", own);
+  });
+  const finish = (keep) => {
+    const fields = keep && draft != null ? embedFieldsFrom(`![[${draft}]]`) : null;
+    setDraft(null);
+    if (fields && draft.trim() !== written) onSave?.(fields);
+  };
+  const field = (
+    <input
+      ref={ref}
+      className="embed-link-field"
+      aria-label="Embed's link"
+      value={editing ? draft : written}
+      // As wide as what it holds, so the closing `]]` follows the text.
+      size={Math.max((editing ? draft : written).length, 1)}
+      spellCheck={false}
+      autoComplete="off"
+      onFocus={() => {
+        if (!editing) setDraft(written);
+      }}
+      onChange={(e) => setDraft(e.target.value)}
+      // Its input is its own: reaching the editor's, it read as typing in the
+      // block and left an empty undo step before the next ⌘Z's.
+      onInput={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.currentTarget.blur();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          setDraft(null);
+          requestAnimationFrame(() => ref.current?.blur());
+        }
+      }}
+      onBlur={() => finish(true)}
+      onMouseUp={(e) => e.stopPropagation()}
+    />
+  );
+  const said = reason && (
+    <div className="embed-link-reason" style={{ color: theme.TEXT.muted }}>
+      {reason}
+    </div>
+  );
 
   return (
     <div
-      style={{
-        borderLeft: `3px solid ${accentColor}`,
-        background: `${accentColor}08`,
-        borderRadius: 6,
-        padding: "12px 16px",
-        cursor: "pointer",
+      className="embed-edit motion-pop motion-from-top"
+      // The field is only as wide as its text: a press anywhere else on the
+      // panel (its brackets, its padding) puts the caret in it, at the end.
+      onMouseDown={(e) => {
+        if (e.target === ref.current) return;
+        e.preventDefault();
+        const el = ref.current;
+        if (!el) return;
+        el.focus();
+        const end = el.value.length;
+        el.setSelectionRange(end, end);
       }}
-      onClick={() => onNavigate?.(targetNote.id)}
+      onMouseUp={(e) => e.stopPropagation()}
+      style={{
+        background: theme.BG.elevated,
+        border: `1px solid ${theme.BG.divider}`,
+        boxShadow: theme.modalShadow,
+      }}
     >
-      <div
-        style={{
-          fontSize: 12,
-          color: TEXT.secondary,
-          marginBottom: 8,
-          display: "flex",
-          justifyContent: "space-between",
-        }}
-      >
-        <span>
-          {targetNote.title}
-          {block.heading ? ` > ${block.heading}` : ""}
-        </span>
-        <span style={{ fontSize: 11, opacity: 0.6 }}>open &rarr;</span>
-      </div>
-      <div style={{ fontSize: 13, color: TEXT.primary, pointerEvents: "none" }}>
-        {blocks.slice(0, 10).map((b) => {
-          if (b.type === "embed") {
-            return (
-              <div
-                key={b.id}
-                style={{
-                  paddingLeft: 8,
-                  borderLeft: `2px solid ${accentColor}40`,
-                  margin: "4px 0",
-                }}
-              >
-                <EmbedView
-                  block={b}
-                  noteData={noteData}
-                  accentColor={accentColor}
-                  depth={depth + 1}
-                />
-              </div>
-            );
-          }
-          return (
-            <div
-              key={b.id}
-              dangerouslySetInnerHTML={{
-                __html: inlineMarkdownToHtml(b.text || "", new Set()),
-              }}
-              style={{ margin: "2px 0" }}
-            />
-          );
-        })}
-      </div>
+      <span className="embed-link-mark" style={{ color: theme.TEXT.muted }}>
+        ![[
+      </span>
+      {field}
+      <span className="embed-link-mark" style={{ color: theme.TEXT.muted }}>
+        ]]
+      </span>
+      {said}
     </div>
   );
 }
