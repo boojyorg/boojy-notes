@@ -24,7 +24,8 @@
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "test:e2e": "playwright test",
-    "test:electron": "vite build && playwright test -c playwright.electron.config.ts"
+    "test:electron": "vite build && playwright test -c playwright.electron.config.ts",
+    "screenshots": "vite build && playwright test -c dev/screenshots/playwright.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
