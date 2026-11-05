@@ -28,6 +28,8 @@ const tweaking = import.meta.env.DEV && new URLSearchParams(window.location.sear
 const ThemeTweaker = tweaking ? lazy(() => import("../dev/ThemeTweaker.jsx")) : null;
 const RhythmTweaker = tweaking ? lazy(() => import("../dev/RhythmTweaker.jsx")) : null;
 const MotionTweaker = tweaking ? lazy(() => import("../dev/MotionTweaker.jsx")) : null;
+// EXPERIMENT, never merged: where an embed's link is edited (dev/EmbedTweaker).
+const EmbedTweaker = tweaking ? lazy(() => import("../dev/EmbedTweaker.jsx")) : null;
 // The phone's own panel stands in for the three: they are desktop-wide.
 const PhoneTweaker = tweaking && isPhone ? lazy(() => import("../dev/PhoneTweaker.jsx")) : null;
 
@@ -78,6 +80,7 @@ ready.then(
                   <ThemeTweaker />
                   <RhythmTweaker />
                   <MotionTweaker />
+                  <EmbedTweaker />
                 </>
               )}
             </Suspense>

@@ -543,25 +543,72 @@ ${tagPillCss(theme)}
           border-left: 3px solid ${theme.BG.divider};
           padding: 2px 32px 2px 16px;
         }
+        /* The arrow is the code block's tool button (.code-tool): placed only. */
         [data-block-id] .embed > .embed-open {
           position: absolute;
-          top: 2px;
+          top: 0;
           right: 0;
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: none;
-          border-radius: 6px;
-          background: transparent;
-          color: ${theme.TEXT.muted};
-          cursor: pointer;
-          padding: 0;
         }
-        [data-block-id] .embed > .embed-open:hover,
         [data-block-id] .embed > .embed-open.is-nudged { color: ${theme.TEXT.primary}; background: ${theme.BG.hover}; }
         html.is-phone [data-block-id] .embed > .embed-open { width: 44px; height: 44px; top: -8px; right: -10px; }
+        /* EXPERIMENT (dev/EmbedTweaker): where a picked embed's link is edited,
+           in the corner beside the arrow (default) or underneath, as a formula's
+           source. The losing placement goes. */
+        [data-block-id] .embed-edit-corner {
+          position: absolute;
+          top: 0;
+          right: 30px;
+          max-width: 60%;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 2px;
+        }
+        [data-block-id] .embed-edit-corner .embed-link-label {
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        [data-block-id] .embed-edit-corner .embed-link-field {
+          width: 260px;
+          max-width: 100%;
+          height: 26px;
+          padding: 0 8px;
+          border: 1px solid ${theme.BG.divider};
+          border-radius: 6px;
+          background: ${theme.BG.editor};
+          color: ${theme.TEXT.primary};
+          font: 500 12px ${fontStack};
+          outline: none;
+        }
+        [data-block-id] .embed-edit-corner .embed-link-field:focus { border-color: var(--boojy-focus-ring); }
+        [data-block-id] .embed-edit-below {
+          position: absolute;
+          z-index: 5;
+          top: calc(100% + 6px);
+          left: 0;
+          right: 0;
+          display: none;
+          flex-wrap: wrap;
+          align-items: baseline;
+          padding: 10px 14px;
+          border-radius: 10px;
+          font: 13.5px/1.6 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        }
+        [data-block-id] .embed-edit-below .embed-link-field {
+          flex: 0 1 auto;
+          min-width: 0;
+          border: 0;
+          outline: none;
+          background: transparent;
+          color: ${theme.TEXT.primary};
+          font: inherit;
+          padding: 0;
+        }
+        [data-block-id] .embed-link-reason { flex-basis: 100%; font: 12px ${fontStack}; margin-top: 2px; }
+        html[data-embed-edit="below"] [data-block-id] .embed-edit-corner { display: none; }
+        html[data-embed-edit="below"] [data-block-id] .embed-edit-below { display: flex; }
         /* A block ID (^first-block): kept as text, drawn quietly (utils/blockTarget). */
         [data-editor] .block-id { color: ${theme.TEXT.muted}; white-space: nowrap; }
         [data-block-id] .wikilink {

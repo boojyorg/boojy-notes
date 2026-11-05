@@ -48,6 +48,12 @@ function EmbedView({
   const openRef = useRef(null);
   const embedRef = useRef(null);
   const [nudged, setNudged] = useState(false);
+  // The link being edited (picked, its field open): drawn as typed while it
+  // names something real, saved once when the edit ends.
+  const [draft, setDraft] = useState(null);
+  useEffect(() => {
+    if (!isSelected) setDraft(null);
+  }, [isSelected]);
 
   // A key that would edit the copy: the chip says where to edit, at once.
   useEffect(() => {
@@ -66,7 +72,23 @@ function EmbedView({
     };
   });
 
-  const found = embedTarget(block, noteData, hostNote, viewNote);
+  const typed = draft == null ? null : embedFieldsFrom(`![[${draft}]]`);
+  const trial = typed ? embedTarget({ ...block, ...typed }, noteData, hostNote, viewNote) : null;
+  // A draft that names nothing real keeps the last good drawing (the last one
+  // typed this edit, else the saved one), its reason said.
+  const lastGood = useRef(null);
+  if (draft == null) lastGood.current = null;
+  else if (trial && !trial.missing) lastGood.current = typed;
+  const reason = draft == null ? null : !typed ? "Not a link to a note." : (trial?.missing ?? null);
+  const found =
+    trial && !trial.missing
+      ? trial
+      : embedTarget(
+          lastGood.current ? { ...block, ...lastGood.current } : block,
+          noteData,
+          hostNote,
+          viewNote,
+        );
   const key = found.missing ? null : `${found.noteId}#${found.subpath ?? ""}`;
   const loops = key != null && (ancestors.includes(key) || depth >= MAX_DEPTH);
 
@@ -134,7 +156,8 @@ function EmbedView({
           ref={openRef}
           type="button"
           tabIndex={-1}
-          className={nudged ? "embed-open is-nudged" : "embed-open"}
+          // The code block's tool button: one size and hover for a note's tools.
+          className={nudged ? "code-tool embed-open is-nudged" : "code-tool embed-open"}
           aria-label={found.openLabel}
           data-target={found.fullTarget}
           {...openTip.handlers}
@@ -143,8 +166,20 @@ function EmbedView({
             openTip.handlers.onMouseDown();
           }}
         >
-          <EmbedOpenIcon size={16} />
+          <EmbedOpenIcon />
         </button>
+        {/* EXPERIMENT (dev/EmbedTweaker): the link in the corner, beside the arrow. */}
+        {depth === 0 && isSelected && (
+          <EmbedLinkEditor
+            placement="corner"
+            block={block}
+            label={found.label}
+            draft={draft}
+            setDraft={setDraft}
+            reason={reason}
+            onSave={onUpdate}
+          />
+        )}
         {(openTip.shown || nudged) && <Tooltip label={tip} anchor={openRef.current} />}
       </div>
     );
@@ -165,6 +200,8 @@ function EmbedView({
         onSelect?.();
       }}
       style={{
+        // The link's panel underneath (`below`) hangs from here.
+        position: "relative",
         margin: `0 -${BAND_REACH}px`,
         padding: `2px ${BAND_REACH}px`,
         borderRadius: 4,
@@ -172,22 +209,35 @@ function EmbedView({
       }}
     >
       {body}
-      {isSelected && <EmbedSourceField block={block} onUpdate={onUpdate} />}
+      {/* EXPERIMENT (dev/EmbedTweaker): the link underneath, as a formula's source. */}
+      {isSelected && (
+        <EmbedLinkEditor
+          placement="below"
+          block={block}
+          label={found.label}
+          draft={draft}
+          setDraft={setDraft}
+          reason={reason}
+          onSave={onUpdate}
+        />
+      )}
     </div>
   );
 }
 
 /**
- * The embed's `![[…]]`, editable while it is picked: Enter or leaving saves it
- * in one step, Escape puts it back. Only another note embed is taken; a line
- * that reads otherwise (a picture, a file, no brackets) goes back as it was.
+ * EXPERIMENT: where an embed's link is edited, one of two placements shown by
+ * `html[data-embed-edit]` (dev/EmbedTweaker): `corner`, its name beside the
+ * arrow, a line in its place when clicked; `below`, its `![[…]]` in a panel
+ * underneath, as a formula's source. Either way the embed is drawn as typed
+ * while the link names something real (EmbedView), and the edit is saved once,
+ * in one step, on Enter or leaving; Escape puts it back.
  */
-function EmbedSourceField({ block, onUpdate }) {
+function EmbedLinkEditor({ placement, block, label, draft, setDraft, reason, onSave }) {
   const { theme } = useTheme();
-  const written = `![[${writtenEmbedTarget(block)}]]`;
-  const [draft, setDraft] = useState(written);
+  const written = writtenEmbedTarget(block);
   const ref = useRef(null);
-  useEffect(() => setDraft(written), [written]);
+  const editing = draft != null;
   // The editor's own beforeinput seam sits on its root: this field's edits are its own.
   useEffect(() => {
     const el = ref.current;
@@ -195,22 +245,25 @@ function EmbedSourceField({ block, onUpdate }) {
     const own = (e) => e.stopPropagation();
     el.addEventListener("beforeinput", own);
     return () => el.removeEventListener("beforeinput", own);
-  }, []);
-  const save = () => {
-    const fields = embedFieldsFrom(draft);
-    if (!fields || draft.trim() === written) {
-      setDraft(written);
-      return;
-    }
-    onUpdate?.(fields);
+  });
+  const finish = (keep) => {
+    const fields = keep && draft != null ? embedFieldsFrom(`![[${draft}]]`) : null;
+    setDraft(null);
+    if (fields && draft.trim() !== written) onSave?.(fields);
   };
-  return (
+  const field = (
     <input
       ref={ref}
-      className="embed-source-field"
+      className="embed-link-field"
       aria-label="Embed's link"
-      value={draft}
+      value={editing ? draft : written}
+      // As wide as what it holds, so the closing `]]` follows the text.
+      size={Math.max((editing ? draft : written).length, 1)}
       spellCheck={false}
+      autoComplete="off"
+      onFocus={() => {
+        if (!editing) setDraft(written);
+      }}
       onChange={(e) => setDraft(e.target.value)}
       // Its input is its own: reaching the editor's, it read as typing in the
       // block and left an empty undo step before the next ⌘Z's.
@@ -218,29 +271,65 @@ function EmbedSourceField({ block, onUpdate }) {
       onKeyDown={(e) => {
         e.stopPropagation();
         if (e.key === "Enter") {
-          // Leaving saves (onBlur): saved here too, it was two undo steps.
           e.preventDefault();
           e.currentTarget.blur();
         } else if (e.key === "Escape") {
           e.preventDefault();
-          setDraft(written);
-          e.currentTarget.blur();
+          setDraft(null);
+          requestAnimationFrame(() => ref.current?.blur());
         }
       }}
-      onBlur={save}
+      onBlur={() => finish(true)}
       onMouseUp={(e) => e.stopPropagation()}
-      style={{
-        display: "block",
-        width: "100%",
-        marginTop: 6,
-        padding: "4px 6px",
-        border: `1px solid ${theme.BG.divider}`,
-        borderRadius: 6,
-        background: theme.BG.editor,
-        color: theme.TEXT.secondary,
-        font: "13px ui-monospace, SFMono-Regular, Menlo, monospace",
-      }}
     />
+  );
+  const said = reason && (
+    <div className="embed-link-reason" style={{ color: theme.TEXT.muted }}>
+      {reason}
+    </div>
+  );
+
+  if (placement === "corner") {
+    return (
+      <div className="embed-edit embed-edit-corner">
+        {editing ? (
+          field
+        ) : (
+          <button
+            type="button"
+            tabIndex={-1}
+            className="code-tool code-lang embed-link-label"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setDraft(written);
+              requestAnimationFrame(() => ref.current?.focus());
+            }}
+          >
+            {label}
+          </button>
+        )}
+        {said}
+      </div>
+    );
+  }
+  return (
+    <div
+      className="embed-edit embed-edit-below motion-pop motion-from-top"
+      style={{
+        background: theme.BG.elevated,
+        border: `1px solid ${theme.BG.divider}`,
+        boxShadow: theme.modalShadow,
+      }}
+    >
+      <span className="embed-link-mark" style={{ color: theme.TEXT.muted }}>
+        ![[
+      </span>
+      {field}
+      <span className="embed-link-mark" style={{ color: theme.TEXT.muted }}>
+        ]]
+      </span>
+      {said}
+    </div>
   );
 }
 
