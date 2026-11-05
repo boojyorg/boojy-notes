@@ -1,7 +1,7 @@
 import { type MutableRefObject, useLayoutEffect, useRef, useState } from "react";
 import { blocksToMarkdown, markdownToBlocks } from "../utils/markdown";
 import { paintMarkdown, sourceOffsetFor } from "../utils/sourceView";
-import { focusTitleEnd } from "../utils/domHelpers";
+import { cssZoom, focusTitleEnd } from "../utils/domHelpers";
 import type { Block, NoteData } from "../types/notes";
 
 /**
@@ -22,7 +22,8 @@ export interface SourceViewApi {
    * heading link into a note left in this view. The view holds the field's
    * focus as it opens, so the caret goes where the reader was sent.
    */
-  reveal: (index: number, top: number) => void;
+  /** The block at `index`: its line where the file's first line rests unscrolled, the caret on it. */
+  reveal: (index: number) => void;
 }
 
 interface SourceViewProps {
@@ -147,7 +148,7 @@ export default function SourceView({
       field.focus({ preventScroll: true });
       field.setSelectionRange(0, 0);
     },
-    reveal: (index, top) => {
+    reveal: (index) => {
       const field = fieldRef.current;
       const scroller = scrollerRef.current;
       const blocks = noteDataRef.current?.[noteId]?.content?.blocks;
@@ -156,7 +157,8 @@ export default function SourceView({
       field.focus({ preventScroll: true });
       field.setSelectionRange(offset, offset);
       const line = lineTop(layerRef.current, offset);
-      if (line != null) scroller.scrollTop = scrollTopFor(scroller, line, top);
+      const first = lineTop(layerRef.current, 0);
+      if (line != null && first != null) scroller.scrollTop = (line - first) / cssZoom(scroller);
     },
   };
 

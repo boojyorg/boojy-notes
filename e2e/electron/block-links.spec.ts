@@ -42,19 +42,30 @@ const link = (h: AppHandle, text: string) =>
     .filter({ hasText: new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) })
     .first();
 
-/** The top of the block whose text starts with `text`, below the scroller's top. */
-const blockTop = (page: Page, text: string) =>
-  page.evaluate((text) => {
-    const top = document.querySelector(".editor-scroll")!.getBoundingClientRect().top;
-    const el = [...document.querySelectorAll("[data-editor] > [data-block-id]")].find((b) =>
-      (b as HTMLElement).innerText.trim().startsWith(text),
-    );
-    return el ? Math.round(el.getBoundingClientRect().top - top) : null;
-  }, text);
+/**
+ * How far the block reading `text` (the `nth`) stands from where a note's first
+ * line rests unscrolled (the editor's top and padding, in the content), in
+ * viewport pixels: 0 is a jump that landed exactly there, clear of the chrome row.
+ */
+const fromRest = (page: Page, text: string, nth = 0) =>
+  page.evaluate(
+    ([text, nth]) => {
+      const scroller = document.querySelector(".editor-scroll") as HTMLElement;
+      const editor = document.querySelector("[data-editor]") as HTMLElement;
+      const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      const pad = Number.parseFloat(getComputedStyle(editor).paddingTop) * zoom;
+      const rest = editor.getBoundingClientRect().top + scroller.scrollTop * zoom + pad;
+      const el = [...document.querySelectorAll("[data-editor] > [data-block-id]")].filter((b) =>
+        (b as HTMLElement).innerText.trim().startsWith(text as string),
+      )[nth as number];
+      return el ? Math.round(el.getBoundingClientRect().top - rest) : null;
+    },
+    [text, nth] as const,
+  );
 
-const atTop = async (page: Page, text: string) => {
-  const top = await blockTop(page, text);
-  return top !== null && top >= 0 && top < 160;
+const atTop = async (page: Page, text: string, nth = 0) => {
+  const off = await fromRest(page, text, nth);
+  return off !== null && Math.abs(off) <= 2;
 };
 
 const scrollTop = (page: Page) =>
@@ -145,6 +156,20 @@ test("the ID is quiet only while it ends its block: a word after it makes it tex
     await expect(para.locator(".block-id")).toHaveText("^first-block");
     await sleep(SETTLE_MS);
     expect(h.vault.read("Here.md")).toBe(HERE);
+  } finally {
+    await h.close();
+  }
+});
+
+test("at an Interface size above 100%, the block lands where the first line rests too", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.page.evaluate(() => {
+      document.documentElement.style.zoom = "125%";
+    });
+    await openWriting(h, "Here");
+    await link(h, "^first-block").click();
+    await expect.poll(() => fromRest(h.page, "This paragraph has an ID.")).toBe(0);
   } finally {
     await h.close();
   }
