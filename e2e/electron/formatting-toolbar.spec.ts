@@ -63,13 +63,32 @@ test("a pointer selection shows the toolbar on release, not while dragging", asy
 test("a keyboard selection shows the toolbar after a rest", async () => {
   await h.page.locator("[data-block-id]").first().click();
   await h.page.keyboard.press("Home");
+  // Timed in the page: when the selection last changed and when the toolbar
+  // came. Checked from the test, "nothing yet" raced the runner: a slow CI
+  // Mac took longer than the rest itself to ask (#479).
+  await h.page.evaluate(() => {
+    const w = window as unknown as { __sel: number; __shown: number };
+    w.__sel = 0;
+    w.__shown = 0;
+    document.addEventListener("selectionchange", () => {
+      if (!w.__shown) w.__sel = performance.now();
+    });
+    new MutationObserver(() => {
+      if (!w.__shown && document.querySelector('[role="toolbar"][aria-label="Text formatting"]'))
+        w.__shown = performance.now();
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   for (let i = 0; i < 3; i++) {
     await h.page.keyboard.press("Shift+ArrowRight");
     await sleep(80);
   }
-  // Inside the rest window nothing shows; after it, the toolbar does.
-  await expect(toolbar(h.page)).toHaveCount(0);
   await expect(toolbar(h.page)).toBeVisible({ timeout: 2_000 });
+  // It came only after the selection had rested (TOOLBAR_REST_MS, 300).
+  const rested = await h.page.evaluate(() => {
+    const w = window as unknown as { __sel: number; __shown: number };
+    return w.__shown - w.__sel;
+  });
+  expect(rested).toBeGreaterThanOrEqual(250);
   expect(h.pageErrors).toEqual([]);
 });
 
