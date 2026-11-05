@@ -797,7 +797,13 @@ export function isEditableBlock(b) {
  * and are skipped.
  */
 export function isSelectableBlock(b) {
-  return b.type === "spacer" || b.type === "image" || b.type === "table" || b.type === "math";
+  return (
+    b.type === "spacer" ||
+    b.type === "image" ||
+    b.type === "table" ||
+    b.type === "math" ||
+    b.type === "embed"
+  );
 }
 
 /**

@@ -283,9 +283,8 @@ export const OpenNoteIcon = navIcon(LuFileText);
 export const UnlinkIcon = navIcon(LuUnlink);
 /** The link picker's address row. */
 export const LinkIcon = navIcon(LuLink);
-/** EXPERIMENT: an embed's open arrow, two candidates (dev/EmbedTweaker). */
-export const EmbedOpenUpRightIcon = contentIcon(LuArrowUpRight);
-export const EmbedOpenRightIcon = contentIcon(LuArrowRight);
+/** An embed's open arrow: a control, so at the controls' stroke. */
+export const EmbedOpenIcon = navIcon(LuArrowUpRight);
 /** Move to…: a folder with an arrow going in, beside the menu's Pencil and Copy. */
 export const MoveToIcon = navIcon(LuFolderInput);
 // ── Settings and setup ────────────────────────────────────────────────────

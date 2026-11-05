@@ -11,7 +11,8 @@ vi.mock("../../../src/utils/domHelpers", async (importOriginal) => ({
   findNearestBlock: vi.fn(),
   focusBeyondNote: vi.fn(),
   isEditableBlock: (await importOriginal()).isEditableBlock,
-  isSelectableBlock: (block) => block.type === "spacer" || block.type === "image",
+  // The real rule: a hand-kept copy here fell behind it (embeds joined).
+  isSelectableBlock: (await importOriginal()).isSelectableBlock,
   hasOwnField: (block) => ["code", "callout", "table"].includes(block?.type),
   focusOwnedField: vi.fn(() => true),
   // The real landing rules and key test: where the arrows and Backspace go.
@@ -559,7 +560,7 @@ describe("useKeyboardHandlers", () => {
       expect(focusOwnedField).not.toHaveBeenCalled();
     });
 
-    it("Backspace steps over an embed rather than merging into it", () => {
+    it("Backspace below an embed picks it rather than merging past it", () => {
       deps.noteDataRef.current["note-1"] = {
         content: {
           blocks: [
@@ -573,10 +574,9 @@ describe("useKeyboardHandlers", () => {
       caretIn(deps.blockRefs.current.b2, "World", 0);
       const { result } = renderHook(() => useKeyboardHandlers(deps));
       result.current.handleBlockKeyDown("note-1", 2, key("Backspace"));
-      // Merged into the paragraph above the embed, never into the embed.
-      expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 2, {
-        mergeInto: { index: 0, text: "HelloWorld" },
-      });
+      // An embed is whole: picked first, as an image is, never merged across.
+      expect(deps.selectBlock).toHaveBeenCalledWith("e1");
+      expect(deps.deleteBlock).not.toHaveBeenCalled();
     });
 
     it("an image is stopped on too; a file block between is still stepped over", () => {

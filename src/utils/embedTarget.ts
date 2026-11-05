@@ -37,13 +37,35 @@ export type EmbedTarget =
       label: string;
       /** What the open arrow's chip says: where it goes, and that it goes. */
       openLabel: string;
+      /** What the chip says when a key tried to edit the copy: where to edit it. */
+      editLabel: string;
       /** Changes when what is shown changes, so the copy repaints. */
       version: string;
     };
 
 /** The target as written: the parser keeps `Note#Heading` apart, and `#…` whole. */
-const writtenTarget = (b: EmbedBlockLike) =>
+export const writtenEmbedTarget = (b: EmbedBlockLike) =>
   b.heading ? `${b.target ?? ""}#${b.heading}` : (b.target ?? "");
+
+/**
+ * The embed fields a typed `![[…]]` makes, split as the parser splits them
+ * (utils/markdown: a name before the first `#` is the target, the rest the
+ * heading; none, the target is the whole), or null for a line that is not a
+ * note embed: no brackets, nothing inside, or a file's (an extension).
+ */
+export function embedFieldsFrom(line: string): { target: string; heading: string | null } | null {
+  const m = /^\s*!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]\s*$/.exec(line);
+  if (!m) return null;
+  const inner = m[1].trim();
+  if (!inner) return null;
+  const hash = inner.indexOf("#");
+  const file = hash < 0 ? inner : inner.slice(0, hash);
+  if (/\.[a-z0-9]+$/i.test(file.trim()) && !/\.md$/i.test(file.trim())) return null;
+  const split = /^(.+?)#(.+)$/.exec(inner);
+  return split
+    ? { target: split[1].trim(), heading: split[2].trim() }
+    : { target: inner, heading: null };
+}
 
 function hash(s: string): string {
   let h = 5381;
@@ -58,7 +80,7 @@ export function embedTarget(
   /** The note on screen: an embed of it says "in this note". Defaults to the host. */
   viewNote: string | null = hostNote,
 ): EmbedTarget {
-  const written = writtenTarget(block);
+  const written = writtenEmbedTarget(block);
   const parsed = parseWikilinkTarget(written);
   let noteId: string;
   if (!parsed.name) {
@@ -96,9 +118,11 @@ export function embedTarget(
   const fullTarget = subpath ? `${linkName}#${subpath}` : linkName;
   const rest = subpath ? wikilinkLabel(`#${subpath}`) : "";
   const label = subpath ? `${title} > ${rest}` : title;
-  const openLabel = noteId === viewNote ? `Go to ${rest || title} in this note` : `Open ${label}`;
+  const inView = noteId === viewNote;
+  const openLabel = inView ? `Go to ${rest || title} in this note` : `Open ${label}`;
+  const editLabel = inView ? `Edit it at ${rest || title}, in this note` : `Edit in ${title}`;
   const version = hash(JSON.stringify(blocks));
-  return { noteId, subpath, blocks, linkName, fullTarget, label, openLabel, version };
+  return { noteId, subpath, blocks, linkName, fullTarget, label, openLabel, editLabel, version };
 }
 
 /**

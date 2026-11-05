@@ -59,29 +59,75 @@ test("a heading embed draws its section as the note does, and a block embed its 
   }
 });
 
-test("typing, Enter, paste and Backspace inside an embed change nothing", async () => {
+/** The chip the app shows (aria-hidden, so never found by role). */
+const chip = (page: Page, text: string) => page.locator("[role=tooltip]").filter({ hasText: text });
+
+test("keys in an embed's text change nothing, and its arrow says where to edit", async () => {
   const h = await launchApp(FILES);
   try {
     await h.openNote("Host");
     const quotes = embeds(h.page).first();
     const before = await quotes.innerText();
-    // Near the line's start: its middle holds a link, which would follow.
-    await quotes.getByText("Start a line with").click({ position: { x: 8, y: 8 } });
+    // A word selected inside: a text selection, never the whole embed.
+    await quotes.getByText("Start a line with").dblclick({ position: { x: 8, y: 8 } });
     expect(
-      await h.page.evaluate(
-        () => !!getSelection()?.anchorNode?.parentElement?.closest("[data-embed]"),
-      ),
+      await h.page.evaluate(() => {
+        const s = getSelection();
+        return !s?.isCollapsed && !!s?.anchorNode?.parentElement?.closest("[data-embed]");
+      }),
     ).toBe(true);
-    await h.page.keyboard.type("xyz");
-    for (const k of ["x", "y", "z"]) await h.page.keyboard.press(k);
-    await h.page.keyboard.press("Enter");
-    await h.page.keyboard.press("Backspace");
-    await h.page.keyboard.press("Delete");
-    await h.page.keyboard.press(`${MOD}+v`);
-    await h.page.keyboard.press(`${MOD}+x`);
+    for (const k of ["x", "Enter", "Backspace", "Delete", `${MOD}+v`, `${MOD}+x`])
+      await h.page.keyboard.press(k);
+    await expect(chip(h.page, "Edit in Guide")).toBeVisible();
     expect(await quotes.innerText()).toBe(before);
     await unchanged(h, FILES);
     expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a click picks the embed whole: its link shows underneath, a letter is answered, Enter opens it", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    await root.locator('[data-block-type="blockquote"]').click();
+    await expect(root).toHaveAttribute("data-selected", "true");
+    await expect(root.locator(".embed-source-field")).toHaveValue("![[Guide#Quotes]]");
+    await h.page.keyboard.press("a");
+    await expect(chip(h.page, "Edit in Guide")).toBeVisible();
+    await unchanged(h, FILES);
+    await h.page.keyboard.press("Enter");
+    await expect.poll(() => editorTitle(h.page)).toBe("Guide");
+  } finally {
+    await h.close();
+  }
+});
+
+test("the link underneath edits what the embed shows, in one step", async () => {
+  const UNDO = process.platform === "darwin" ? "Meta+z" : "Control+z";
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    await root.locator('[data-block-type="blockquote"]').click();
+    const field = root.locator(".embed-source-field");
+    await field.fill("![[Guide#Next]]");
+    await field.press("Enter");
+    await expect(embeds(h.page).first()).toContainText("After quotes.");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST.replace("![[Guide#Quotes]]", "![[Guide#Next]]"));
+    // A picture's name is not a note embed: it goes back as it was.
+    await root.locator('[data-block-type="p"]').first().click();
+    await field.fill("![[sunset.png]]");
+    await field.press("Enter");
+    await expect(field).toHaveValue("![[Guide#Next]]");
+    // ⌘Z in the note takes the edit back.
+    await h.page.locator("[data-editor] > [data-block-id]", { hasText: /^After\.$/ }).click();
+    await h.page.keyboard.press(UNDO);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST);
   } finally {
     await h.close();
   }
@@ -104,26 +150,37 @@ test("text selected in an embed copies as its text", async () => {
   }
 });
 
-test("the keyboard walks past an embed, and Backspace below it never edits the copy", async () => {
+test("the arrows stop on an embed; Backspace below picks it first, then removes it", async () => {
+  const UNDO = process.platform === "darwin" ? "Meta+z" : "Control+z";
   const h = await launchApp(FILES);
   try {
     await h.openNote("Host");
-    const at = () =>
-      h.page.evaluate(() => {
-        const n = window.getSelection()?.anchorNode ?? null;
-        const el = n && (n.nodeType === 1 ? (n as Element) : n.parentElement);
-        if (el?.closest("[data-embed]")) return "embed";
-        return (
-          (el?.closest("[data-editor] > [data-block-id]") as HTMLElement | null)?.innerText ?? null
-        );
-      });
+    const picked = () =>
+      h.page
+        .locator('[data-editor] > [data-selected="true"]')
+        .evaluateAll((els) => els.map((e) => (e as HTMLElement).innerText.split("\n")[0]));
     await h.page.locator("[data-editor] > [data-block-id]", { hasText: /^Intro\.$/ }).click();
     await h.page.keyboard.press("ArrowDown");
-    // Down from Intro passes both embeds to the paragraph after them.
-    expect(await at()).toBe("This paragraph has an ID. ^first-block");
-    await h.page.keyboard.press("ArrowUp");
-    expect(await at()).toBe("Intro.");
+    expect(await picked()).toEqual(["Quotes"]);
+    // From a block picked whole the arrows go on to text, as from a picture:
+    // the second embed, right after, is passed with it.
+    await h.page.keyboard.press("ArrowDown");
+    expect(await picked()).toEqual([]);
+
+    // At the start of the paragraph under the second embed: Backspace picks it.
+    await h.page
+      .locator('[data-editor] > [data-block-type="p"]', { hasText: /^This paragraph has an ID/ })
+      .click({ position: { x: 2, y: 8 } });
+    await h.page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowLeft" : "Home");
+    await h.page.keyboard.press("Backspace");
+    expect(await picked()).toEqual(["This paragraph has an ID. ^first-block"]);
+    await unchanged(h, FILES);
+    await h.page.keyboard.press("Backspace");
     await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST.replace("![[#^first-block]]\n\n", ""));
+    await h.page.keyboard.press(UNDO);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST);
     expect(h.vault.read("Guide.md")).toBe(GUIDE);
   } finally {
     await h.close();

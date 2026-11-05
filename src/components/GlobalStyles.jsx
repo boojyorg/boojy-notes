@@ -559,15 +559,11 @@ ${tagPillCss(theme)}
           cursor: pointer;
           padding: 0;
         }
-        [data-block-id] .embed > .embed-open:hover { color: ${theme.TEXT.primary}; background: ${theme.BG.hover}; }
+        [data-block-id] .embed > .embed-open:hover,
+        [data-block-id] .embed > .embed-open.is-nudged { color: ${theme.TEXT.primary}; background: ${theme.BG.hover}; }
         html.is-phone [data-block-id] .embed > .embed-open { width: 44px; height: 44px; top: -8px; right: -10px; }
-        /* EXPERIMENT: which arrow (dev/EmbedTweaker); ↗ by default. */
-        [data-block-id] .embed-open > .embed-open-right { display: none; }
-        html[data-embed-arrow="right"] [data-block-id] .embed-open > .embed-open-up-right { display: none; }
-        html[data-embed-arrow="right"] [data-block-id] .embed-open > .embed-open-right { display: flex; }
-        [data-block-id] .embed-open > span { display: flex; }
         /* A block ID (^first-block): kept as text, drawn quietly (utils/blockTarget). */
-        [data-editor] .block-id { color: ${theme.TEXT.muted}; }
+        [data-editor] .block-id { color: ${theme.TEXT.muted}; white-space: nowrap; }
         [data-block-id] .wikilink {
           /* A web link's ink, underline and hover; dashed is kept for a link to no note. */
           color: ${theme.link.color};
