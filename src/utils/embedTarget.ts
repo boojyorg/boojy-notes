@@ -43,6 +43,12 @@ export type EmbedTarget =
       version: string;
     };
 
+/** Why a typed embed link can't be saved, in words for the field, or null when it can. */
+export function embedLinkProblem(inner: string): string | null {
+  if (inner.includes("|")) return "Text after | can't be kept here yet. Remove it to save.";
+  return embedFieldsFrom(`![[${inner}]]`) ? null : "Not a link to a note.";
+}
+
 /** The target as written: the parser keeps `Note#Heading` apart, and `#…` whole. */
 export const writtenEmbedTarget = (b: EmbedBlockLike) =>
   b.heading ? `${b.target ?? ""}#${b.heading}` : (b.target ?? "");
@@ -51,10 +57,12 @@ export const writtenEmbedTarget = (b: EmbedBlockLike) =>
  * The embed fields a typed `![[…]]` makes, split as the parser splits them
  * (utils/markdown: a name before the first `#` is the target, the rest the
  * heading; none, the target is the whole), or null for a line that is not a
- * note embed: no brackets, nothing inside, or a file's (an extension).
+ * note embed: no brackets, nothing inside, or a file's (an extension), and
+ * for one with a `|` suffix, which these fields cannot keep (refused, said:
+ * `embedLinkProblem`, never written without it).
  */
 export function embedFieldsFrom(line: string): { target: string; heading: string | null } | null {
-  const m = /^\s*!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]\s*$/.exec(line);
+  const m = /^\s*!\[\[([^\]|]+)\]\]\s*$/.exec(line);
   if (!m) return null;
   const inner = m[1].trim();
   if (!inner) return null;

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { embedFieldsFrom, embedTarget, writtenEmbedTarget } from "../../src/utils/embedTarget";
+import {
+  embedFieldsFrom,
+  embedLinkProblem,
+  embedTarget,
+  writtenEmbedTarget,
+} from "../../src/utils/embedTarget";
 import type { NoteData } from "../../src/types/notes";
 
 const note = (title: string, blocks: { type: string; text: string }[], folder?: string) => ({
@@ -80,7 +85,25 @@ describe("embedFieldsFrom", () => {
   });
 
   it("refuses what is not a note embed", () => {
-    for (const line of ["![[sunset.png]]", "![[]]", "[[Guide]]", "Guide", "![[a.pdf#page=2]]"])
+    for (const line of [
+      "![[sunset.png]]",
+      "![[]]",
+      "[[Guide]]",
+      "Guide",
+      "![[a.pdf#page=2]]",
+      // A suffix these fields can't keep: refused, never saved without it.
+      "![[Guide|label]]",
+    ])
       expect(embedFieldsFrom(line)).toBeNull();
+  });
+});
+
+describe("embedLinkProblem", () => {
+  it("says why a typed link can't be saved, and nothing for one that can", () => {
+    expect(embedLinkProblem("Guide#Quotes")).toBeNull();
+    expect(embedLinkProblem("Guide|label")).toBe(
+      "Text after | can't be kept here yet. Remove it to save.",
+    );
+    expect(embedLinkProblem("sunset.png")).toBe("Not a link to a note.");
   });
 });

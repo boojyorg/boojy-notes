@@ -285,3 +285,47 @@ test("a long note embeds whole; a note embedding itself is said, never drawn for
     await h.close();
   }
 });
+
+test("a code block inside an embed is read-only: typed keys and paste change nothing", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const quotes = embeds(h.page).first();
+    const code = quotes.locator('[data-block-type="code"] textarea').first();
+    await expect(code).toHaveJSProperty("readOnly", true);
+    const before = await code.inputValue();
+    await code.click();
+    await h.page.keyboard.type("xyz");
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.press("Backspace");
+    await h.page.keyboard.press(`${MOD}+v`);
+    expect(await code.inputValue()).toBe(before);
+    await unchanged(h, FILES);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a link with a | suffix is refused and said, never saved without it", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    await root.locator('[data-block-type="blockquote"]').click();
+    const field = root.locator(".embed-link-field");
+    await field.click();
+    await h.page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowRight" : "End");
+    await h.page.keyboard.type("|label");
+    await expect(root.locator(".embed-link-reason")).toHaveText(
+      "Text after | can't be kept here yet. Remove it to save.",
+    );
+    // Enter keeps it open, nothing written.
+    await h.page.keyboard.press("Enter");
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue("Guide#Quotes|label");
+    await h.page.keyboard.press("Escape");
+    await unchanged(h, FILES);
+  } finally {
+    await h.close();
+  }
+});

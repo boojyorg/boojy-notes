@@ -40,6 +40,10 @@ export function useEmbedFence(editorRef: RefObject<HTMLElement | null>) {
       const editor = editorRef.current;
       const sel = window.getSelection();
       if (!editor || !sel?.rangeCount) return null;
+      // A field inside the copy (a code block's textarea) holds focus, not the
+      // document selection: it is the copy's too.
+      const active = document.activeElement?.closest("[data-embed]");
+      if (active && editor.contains(active)) return active;
       for (const n of [sel.anchorNode, sel.focusNode]) {
         const el = n && (n.nodeType === Node.ELEMENT_NODE ? (n as Element) : n.parentElement);
         const embed = el?.closest("[data-embed]");
@@ -54,11 +58,9 @@ export function useEmbedFence(editorRef: RefObject<HTMLElement | null>) {
       if (picked.length !== 1 || picked[0].getAttribute("data-block-type") !== "embed") return null;
       return picked[0].querySelector("[data-embed]");
     };
-    // A field of the embed's own (its `![[…]]`) owns its keys.
-    const inField = () => {
-      const a = document.activeElement;
-      return a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement;
-    };
+    // The embed's own link field (its `![[…]]`) owns its keys; no field inside
+    // the copy does (a code block's textarea there is the copy's).
+    const inField = () => !!document.activeElement?.closest(".embed-link-field");
     const cancel = (e: Event) => {
       e.preventDefault();
       e.stopImmediatePropagation();

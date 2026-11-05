@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNoteData } from "../../context/NoteDataContext";
 import { useTheme } from "../../hooks/useTheme";
-import { embedFieldsFrom, embedTarget, writtenEmbedTarget } from "../../utils/embedTarget";
+import {
+  embedFieldsFrom,
+  embedLinkProblem,
+  embedTarget,
+  writtenEmbedTarget,
+} from "../../utils/embedTarget";
 import { BAND_REACH, bandFill } from "../../utils/selectionBand";
 import { EmbedOpenIcon } from "../Icons";
 import ReadOnlyBlocks from "../ReadOnlyBlocks";
@@ -79,7 +84,18 @@ function EmbedView({
   const lastGood = useRef(null);
   if (draft == null) lastGood.current = null;
   else if (trial && !trial.missing) lastGood.current = typed;
-  const reason = draft == null ? null : !typed ? "Not a link to a note." : (trial?.missing ?? null);
+  const reason = draft == null ? null : !typed ? embedLinkProblem(draft) : (trial?.missing ?? null);
+  // Every field the copy's blocks draw is read-only (a code block's textarea,
+  // a cell's or a callout body's own editing host): the fence stops keys,
+  // and this stops what no key event announces (an input method's text).
+  useEffect(() => {
+    const el = embedRef.current;
+    if (!el) return;
+    for (const f of el.querySelectorAll("textarea, input:not(.embed-link-field)"))
+      f.readOnly = true;
+    for (const f of el.querySelectorAll('[contenteditable="true"]'))
+      f.setAttribute("contenteditable", "false");
+  });
   const found =
     trial && !trial.missing
       ? trial
@@ -256,6 +272,9 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
         e.stopPropagation();
         if (e.key === "Enter") {
           e.preventDefault();
+          // A link these fields can't hold stays open, its reason said, never
+          // saved without what it can't keep.
+          if (draft != null && embedLinkProblem(draft)) return;
           e.currentTarget.blur();
         } else if (e.key === "Escape") {
           e.preventDefault();
