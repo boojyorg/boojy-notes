@@ -166,4 +166,4 @@ One planning file (`docs/BACKLOG.md`, tiered, including direction) and one histo
 editor behaviour updates its rules file in the same commit.
 
 `.claude/hooks/post-edit-validation.sh` runs after every `.js/.jsx/.ts/.tsx` edit (Biome,
-typecheck for TS, `vitest related`). Do not bypass it. `CLAUDE.md` points here.
+typecheck for TS, `vitest related`). Do not bypass it. `CLAUDE.md` imports this file.
