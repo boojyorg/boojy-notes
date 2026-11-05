@@ -96,8 +96,8 @@ test("a click picks the embed whole: its link shows underneath, a letter is answ
     const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
     await root.locator('[data-block-type="blockquote"]').click();
     await expect(root).toHaveAttribute("data-selected", "true");
-    // Its link, beside the arrow (the corner placement, by default).
-    await expect(root.locator(".embed-link-label")).toHaveText("Guide > Quotes");
+    // Its link, in the panel underneath.
+    await expect(root.locator(".embed-link-field")).toHaveValue("Guide#Quotes");
     await h.page.keyboard.press("a");
     await expect(chip(h.page, "Edit in Guide")).toBeVisible();
     await unchanged(h, FILES);
@@ -108,44 +108,62 @@ test("a click picks the embed whole: its link shows underneath, a letter is answ
   }
 });
 
-for (const placement of ["corner", "below"] as const)
-  test(`the link (${placement}) redraws the embed as typed, says a bad one, and saves in one step`, async () => {
-    const UNDO = process.platform === "darwin" ? "Meta+z" : "Control+z";
-    const h = await launchApp(FILES);
-    try {
-      await h.page.evaluate((p) => {
-        document.documentElement.dataset.embedEdit = p;
-      }, placement);
-      await h.openNote("Host");
-      const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
-      await root.locator('[data-block-type="blockquote"]').click();
-      if (placement === "corner") await root.locator(".embed-link-label").click();
-      const field = root.locator(`.embed-edit-${placement} .embed-link-field`);
-      await field.click();
-      await expect(field).toHaveValue("Guide#Quotes");
-      // Drawn as typed, once it names something real; nothing saved yet.
-      await field.fill("Guide#Next");
-      await expect(embeds(h.page).first()).toContainText("After quotes.");
-      await sleep(SETTLE_MS);
-      expect(h.vault.read("Host.md")).toBe(HOST);
-      // A name that is no note: the last good drawing stays, the reason said.
-      await field.fill("Guide#Nowhere");
-      await expect(root.locator(`.embed-edit-${placement} .embed-link-reason`)).toHaveText(
-        "No heading “Nowhere” in Guide.",
-      );
-      await expect(embeds(h.page).first()).toContainText("After quotes.");
-      await field.fill("Guide#Next");
-      await field.press("Enter");
-      await sleep(SETTLE_MS);
-      expect(h.vault.read("Host.md")).toBe(HOST.replace("![[Guide#Quotes]]", "![[Guide#Next]]"));
-      await h.page.locator("[data-editor] > [data-block-id]", { hasText: /^After\.$/ }).click();
-      await h.page.keyboard.press(UNDO);
-      await sleep(SETTLE_MS);
-      expect(h.vault.read("Host.md")).toBe(HOST);
-    } finally {
-      await h.close();
-    }
-  });
+test("the link underneath redraws the embed as typed, says a bad one, and saves in one step", async () => {
+  const UNDO = process.platform === "darwin" ? "Meta+z" : "Control+z";
+  const END = process.platform === "darwin" ? "Meta+ArrowRight" : "End";
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    await root.locator('[data-block-type="blockquote"]').click();
+    const panel = root.locator(".embed-edit");
+    const field = panel.locator(".embed-link-field");
+    // A press on the panel's empty right side puts the caret in the link, at its end.
+    const box = (await panel.boundingBox())!;
+    await h.page.mouse.click(box.x + box.width - 12, box.y + box.height / 2);
+    await expect(field).toBeFocused();
+    // Real keys, as typed: "Quotes" becomes "Next".
+    await h.page.keyboard.press(END);
+    for (let i = 0; i < "Quotes".length; i++) await h.page.keyboard.press("Backspace");
+    await h.page.keyboard.type("Next");
+    await expect(field).toHaveValue("Guide#Next");
+    // Drawn as typed; nothing saved yet.
+    await expect(embeds(h.page).first()).toContainText("After quotes.");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST);
+    // A name that is no heading: the last good drawing stays, the reason said.
+    await h.page.keyboard.type("x");
+    await expect(panel.locator(".embed-link-reason")).toHaveText("No heading “Nextx” in Guide.");
+    await expect(embeds(h.page).first()).toContainText("After quotes.");
+    await h.page.keyboard.press("Backspace");
+    await h.page.keyboard.press("Enter");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST.replace("![[Guide#Quotes]]", "![[Guide#Next]]"));
+    await h.page.locator("[data-editor] > [data-block-id]", { hasText: /^After\.$/ }).click();
+    await h.page.keyboard.press(UNDO);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST);
+  } finally {
+    await h.close();
+  }
+});
+
+test("Escape in the link puts it back; nothing is saved", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    await root.locator('[data-block-type="blockquote"]').click();
+    const field = root.locator(".embed-link-field");
+    await field.click();
+    await h.page.keyboard.type("zzz");
+    await h.page.keyboard.press("Escape");
+    await expect(embeds(h.page).first().locator('[data-block-type="h2"]')).toHaveText("Quotes");
+    await unchanged(h, FILES);
+  } finally {
+    await h.close();
+  }
+});
 
 test("text selected in an embed copies as its text", async () => {
   const h = await launchApp(FILES);

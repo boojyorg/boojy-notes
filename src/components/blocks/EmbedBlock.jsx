@@ -168,18 +168,6 @@ function EmbedView({
         >
           <EmbedOpenIcon />
         </button>
-        {/* EXPERIMENT (dev/EmbedTweaker): the link in the corner, beside the arrow. */}
-        {depth === 0 && isSelected && (
-          <EmbedLinkEditor
-            placement="corner"
-            block={block}
-            label={found.label}
-            draft={draft}
-            setDraft={setDraft}
-            reason={reason}
-            onSave={onUpdate}
-          />
-        )}
         {(openTip.shown || nudged) && <Tooltip label={tip} anchor={openRef.current} />}
       </div>
     );
@@ -200,7 +188,7 @@ function EmbedView({
         onSelect?.();
       }}
       style={{
-        // The link's panel underneath (`below`) hangs from here.
+        // The link's panel hangs from here.
         position: "relative",
         margin: `0 -${BAND_REACH}px`,
         padding: `2px ${BAND_REACH}px`,
@@ -209,12 +197,9 @@ function EmbedView({
       }}
     >
       {body}
-      {/* EXPERIMENT (dev/EmbedTweaker): the link underneath, as a formula's source. */}
       {isSelected && (
         <EmbedLinkEditor
-          placement="below"
           block={block}
-          label={found.label}
           draft={draft}
           setDraft={setDraft}
           reason={reason}
@@ -226,14 +211,13 @@ function EmbedView({
 }
 
 /**
- * EXPERIMENT: where an embed's link is edited, one of two placements shown by
- * `html[data-embed-edit]` (dev/EmbedTweaker): `corner`, its name beside the
- * arrow, a line in its place when clicked; `below`, its `![[…]]` in a panel
- * underneath, as a formula's source. Either way the embed is drawn as typed
- * while the link names something real (EmbedView), and the edit is saved once,
- * in one step, on Enter or leaving; Escape puts it back.
+ * A picked embed's link, `![[…]]`, in a panel underneath that floats over the
+ * text below, as a formula's source does (MathBlock). The embed is drawn as
+ * typed while the link names something real (EmbedView); the edit is saved
+ * once, in one step, on Enter or leaving; Escape puts it back. A press
+ * anywhere on the panel puts the caret in the link.
  */
-function EmbedLinkEditor({ placement, block, label, draft, setDraft, reason, onSave }) {
+function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
   const { theme } = useTheme();
   const written = writtenEmbedTarget(block);
   const ref = useRef(null);
@@ -289,32 +273,21 @@ function EmbedLinkEditor({ placement, block, label, draft, setDraft, reason, onS
     </div>
   );
 
-  if (placement === "corner") {
-    return (
-      <div className="embed-edit embed-edit-corner">
-        {editing ? (
-          field
-        ) : (
-          <button
-            type="button"
-            tabIndex={-1}
-            className="code-tool code-lang embed-link-label"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              setDraft(written);
-              requestAnimationFrame(() => ref.current?.focus());
-            }}
-          >
-            {label}
-          </button>
-        )}
-        {said}
-      </div>
-    );
-  }
   return (
     <div
-      className="embed-edit embed-edit-below motion-pop motion-from-top"
+      className="embed-edit motion-pop motion-from-top"
+      // The field is only as wide as its text: a press anywhere else on the
+      // panel (its brackets, its padding) puts the caret in it, at the end.
+      onMouseDown={(e) => {
+        if (e.target === ref.current) return;
+        e.preventDefault();
+        const el = ref.current;
+        if (!el) return;
+        el.focus();
+        const end = el.value.length;
+        el.setSelectionRange(end, end);
+      }}
+      onMouseUp={(e) => e.stopPropagation()}
       style={{
         background: theme.BG.elevated,
         border: `1px solid ${theme.BG.divider}`,

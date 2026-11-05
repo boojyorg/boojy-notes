@@ -1,6 +1,4 @@
-import { type ComponentType, useMemo } from "react";
-import { listLayout } from "../utils/listStructure";
-import EditableBlock from "./EditableBlock";
+import ReadOnlyBlocks from "./ReadOnlyBlocks";
 import type { Block } from "../types/notes";
 
 interface Props {
@@ -13,10 +11,6 @@ interface Props {
   /** A key that would edit: the past is read-only, and says how to edit. */
   onTypeIntoPast: () => void;
 }
-
-const noop = () => {};
-// A .jsx component: its props are untyped to TypeScript.
-const ReadOnlyBlock = EditableBlock as unknown as ComponentType<Record<string, unknown>>;
 
 /**
  * A version of the note, shown in the note's own place with the note's own
@@ -35,12 +29,6 @@ export default function PastVersionView({
   accentColor,
   onTypeIntoPast,
 }: Props) {
-  const noteDataRef = useMemo(
-    () => ({ current: { [noteId]: { id: noteId, content: { blocks } } } }),
-    [noteId, blocks],
-  );
-  const positions = listLayout(blocks);
-
   // Only what happens in the version itself. A surface a block draws in a
   // portal (a picture's full-size view) is outside it on the page, yet React
   // still hands it its events: those keys are that surface's own.
@@ -78,35 +66,12 @@ export default function PastVersionView({
       onDropCapture={stop}
       style={{ outline: "none" }}
     >
-      {blocks.map((block, i) => (
-        <ReadOnlyBlock
-          key={`${versionId}-${block.id}`}
-          block={block}
-          blockIndex={i}
-          noteId={noteId}
-          onCheckToggle={noop}
-          onDeleteBlock={noop}
-          registerRef={noop}
-          syncGen={0}
-          accentColor={accentColor}
-          numberedIndex={block.type === "numbered" ? positions[i]?.number : undefined}
-          onUpdateText={noop}
-          onUpdateCalloutTitle={noop}
-          onUpdateTableCell={noop}
-          onUpdateTableRows={noop}
-          noteTitleSet={noteTitleSet}
-          onBlockNav={noop}
-          isBlockSelected={false}
-          onBlockSelect={noop}
-          onImageCopyImage={noop}
-          onUpdateBlockProperty={noop}
-          onFileOpen={noop}
-          onFileOpenDefault={noop}
-          onFileShowInFolder={noop}
-          noteDataRef={noteDataRef}
-          onNavigateToNote={noop}
-        />
-      ))}
+      <ReadOnlyBlocks
+        noteId={noteId}
+        blocks={blocks}
+        noteTitleSet={noteTitleSet}
+        accentColor={accentColor}
+      />
     </div>
   );
 }

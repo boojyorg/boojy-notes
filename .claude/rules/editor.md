@@ -253,21 +253,17 @@ never holds a byte sequence the syntax cannot.**
   `frontmatter-order.spec.ts`.
 - **A row edit is one `editFrontmatter` commit** that splices only that property's text, run
   by name on the latest text and read back first (`runChange`), else refused and the YAML
-  opens. A type change that loses data asks. Its text is React's to paint (`haveEditorBlockRenderChanges`). An outside change to the property
-  being edited sets the draft aside, with Restore. `properties.spec.ts`.
+  opens. Its text is React's to paint (`haveEditorBlockRenderChanges`). An outside change to
+  the property being edited sets the draft aside, with Restore. `properties.spec.ts`.
 - **A list is edited an item at a time** (`replaceItem`, `removeItem`, `insertItem`), each
-  splicing only that item's bytes. Enter saves and opens the next; empty-field Backspace picks,
-  then removes. A tag's click edits it; Search is in its menu. `property-lists.spec.ts`.
+  splicing only that item's bytes. `property-lists.spec.ts`.
 - **The title's menu** (right-click, Shift+F10, a hold): Show Markdown and Remove all
   properties, the whole block in one commit (`removeFrontmatter`).
   `properties-view.spec.ts`.
-- **Add property and `/properties`** (`PropertyPicker`): types first, the same in every note;
-  other notes' names only when typed, under Enter's own row. A picked type is a draft row
+- **Add property and `/properties`** (`PropertyPicker`): a picked type is a draft row
   (`freeName`), written once on Enter, Tab or a press elsewhere; Escape writes nothing. `---` on
-  a note's first line opens it at the third dash (`opensProperties`: it takes no argument);
-  cancelled, the dashes come back. A typed name: Enter adds it untyped. An empty value's type
-  is this device's (`propertyTypes`), never the vault's. `/properties` left empty goes again.
-  `properties-add.spec.ts`.
+  a note's first line opens it at the third dash (`opensProperties`). An empty value's type is
+  this device's (`propertyTypes`), never the vault's. `properties-add.spec.ts`.
 
 ## Code blocks
 
@@ -278,8 +274,7 @@ open until `</>` closes it. `diagram.spec.ts`.
 ## Images
 
 - **A width is CSS pixels** (Obsidian's `|350`), capped at the column; none means natural size,
-  never enlarged. One added in the app gets a width only as a Retina PNG. Showing an image never
-  rewrites it. `image-controls.spec.ts`.
+  never enlarged. Showing an image never rewrites it. `image-controls.spec.ts`.
 - **A missing attachment is a `Not found` card**; Find it… copies the file in under the linked
   name. `missing-attachments.spec.ts`.
 
@@ -291,14 +286,13 @@ open until `</>` closes it. `diagram.spec.ts`.
   (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, and an edited
   one fitting a lined-up header takes its columns. `table-preservation.spec.ts`.
 - **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root (the
-  scroller clips); one write, on drop. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column
-  (`⌘⇧←/→` stays select-to-edge). `table-handles.spec.ts`.
+  scroller clips); one write, on drop. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column. `table-handles.spec.ts`.
 - Wraps at words, then scrolls; a short column never wraps. `table-widths.spec.ts`.
 
 ## Whole-block selection
 
 - **Any block can be selected whole** (`blockRun.ts`): the grip, the gutter, Escape (every
-  block a text selection touches), a press on a divider, image or table; Shift-click extends. **A list item brings its nested
+  block a text selection touches), a press on a divider, image, table or embed; Shift-click extends. **A list item brings its nested
   items** (`subtreeEnd`). Text blocks wear the band, the caret hidden.
 - Backspace/Delete remove a selection in one commit, ⌘C/⌘X copy it whole (`wholeBlocksCopy`);
   a letter deselects and types; a press off `data-selection-surface` deselects.
@@ -308,10 +302,19 @@ open until `</>` closes it. `diagram.spec.ts`.
   `marquee-select.spec.ts`.
 - **The grip's click opens `BlockMenu` on its run** or text's lines (`gripSelection`;
   right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
-- **Arrows stop on a divider or image and enter every block with a field**;
-  deletion steps over code and embeds (`landingBefore` vs `caretLandingBefore`).
+- **Arrows stop on a divider, image or embed and enter every block with a field**;
+  deletion steps over code (`landingBefore` vs `caretLandingBefore`).
 - **Taking the caret back never scrolls the note** (`preventScroll`).
   `caret-navigation.spec.ts`.
+
+## Embeds: drawn by the editor, read-only
+
+- **An embed is drawn by `ReadOnlyBlocks`** (the editor's renderer, read-only), found as its
+  link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is
+  said.
+- **The copy is fenced by the selection, never the target** (keys go to the editor):
+  `useEmbedFence` cancels an edit in it and the arrow's chip says where to edit.
+- Picked, its `![[…]]` opens underneath, drawn as typed, saved once. `embeds.spec.ts`.
 
 ## Paste and copy
 
