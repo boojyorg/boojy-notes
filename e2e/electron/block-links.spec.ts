@@ -174,3 +174,33 @@ test("at an Interface size above 100%, the block lands where the first line rest
     await h.close();
   }
 });
+
+test("in a table cell or a callout body, the ID turns quiet as it is typed and plain once a word follows", async () => {
+  const NOTE =
+    "Intro.\n\n| Name | Qty |\n| --- | --- |\n| Tea | 2 |\n\n> [!note] Box\n> Body text\n\nAfter.\n";
+  const END = process.platform === "darwin" ? "Meta+ArrowRight" : "End";
+  const h = await launchApp({ "Fields.md": NOTE });
+  try {
+    await h.openNote("Fields");
+    const fields = [
+      h.page.locator("table.table-block tbody td").first(),
+      h.page.locator(".callout-body"),
+    ];
+    for (const field of fields) {
+      await field.click();
+      await h.page.keyboard.press(END);
+      await h.page.keyboard.type(" ^tag-id");
+      await expect(field.locator(".block-id")).toHaveText("^tag-id");
+      await h.page.keyboard.type(" more");
+      await expect(field.locator(".block-id")).toHaveCount(0);
+      for (let i = 0; i < 5; i++) await h.page.keyboard.press("Backspace");
+      await expect(field.locator(".block-id")).toHaveText("^tag-id");
+    }
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Fields.md")).toBe(
+      NOTE.replace("| Tea |", "| Tea ^tag-id |").replace("> Body text", "> Body text ^tag-id"),
+    );
+  } finally {
+    await h.close();
+  }
+});

@@ -324,6 +324,23 @@ export function paintTypedFormat(el, hit, text, noteTitles) {
 }
 
 /**
+ * A block ID is drawn quietly only while it ends the text (utils/blockTarget).
+ * A text-only commit never repaints, so a keystroke that makes one, or ends
+ * one (a word typed after it), paints `el` by hand from `text`, caret put
+ * back, as the tag's first letter does; else the grey would be stale. The
+ * text block's input and every field's (`fieldTextAfterTyping`) run it.
+ */
+export function repaintBlockId(el, text, native, noteTitles) {
+  if (!native || native.isComposing) return;
+  if (!text.includes("^") && !el.querySelector(".block-id")) return;
+  const html = inlineMarkdownToHtml(text, noteTitles);
+  if (html.includes('class="block-id"') === !!el.querySelector(".block-id")) return;
+  const offset = getCaretOffset(el);
+  el.innerHTML = html;
+  placeCaret(el, offset);
+}
+
+/**
  * A field's text after a keystroke (a table cell, a callout's body), with a
  * typed closing marker painted as a text block paints it: `` `tag` `` typed in
  * a cell became code only on the next repaint from state, which a field that
@@ -333,7 +350,10 @@ export function paintTypedFormat(el, hit, text, noteTitles) {
 export function fieldTextAfterTyping(el, native, noteTitles) {
   const text = domNodeToMarkdown(el);
   const hit = native ? typedFormatHit(el, native) : null;
-  if (!hit) return text;
+  if (!hit) {
+    repaintBlockId(el, text, native, noteTitles);
+    return text;
+  }
   const painted = hit.rewritten ? hit.newText : text;
   return paintTypedFormat(el, hit, painted, noteTitles) ? painted : text;
 }

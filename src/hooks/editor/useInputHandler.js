@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { cleanOrphanNodes, getCaretOffset, hasOwnField, placeCaret } from "../../utils/domHelpers";
 import { domNodeToMarkdown, inlineMarkdownToHtml } from "../../utils/inlineFormatting";
-import { paintTypedFormat, typedFormatHit } from "../../utils/typedFormatting";
+import { paintTypedFormat, repaintBlockId, typedFormatHit } from "../../utils/typedFormatting";
 import { liftTypedSpace } from "../../utils/inlineFormatCommands";
 import { genBlockId } from "../../utils/storage";
 import { TAG_TAIL_RE } from "../../utils/tags";
@@ -295,18 +295,8 @@ export function useInputHandler({
       setTagMenu(null);
     }
 
-    // A block ID is drawn quietly only while it ends the text (utils/blockTarget):
-    // a keystroke that makes one, or one that ends one (a word typed after
-    // it), paints the block by hand, as the tag's first letter does, so the
-    // grey is never stale. A text-only commit would leave it as it was.
-    if (native && !native.isComposing && (text.includes("^") || el.querySelector(".block-id"))) {
-      const html = inlineMarkdownToHtml(text, noteTitleSetRef?.current);
-      if (html.includes('class="block-id"') !== !!el.querySelector(".block-id")) {
-        const offset = getCaretOffset(el);
-        el.innerHTML = html;
-        placeCaret(el, offset);
-      }
-    }
+    // A block ID's grey follows the text as it is typed (repaintBlockId).
+    repaintBlockId(el, text, native, noteTitleSetRef?.current);
 
     // Auto-convert bare URLs: if text contains a URL followed by a space, re-render to style it
     if (/https?:\/\/\S+\s$/.test(text) || /https?:\/\/\S+\s/.test(text)) {
