@@ -1,33 +1,38 @@
-# Boojy Notes
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/boojy-notes-lockup-dark.svg">
+    <img src="assets/boojy-notes-lockup-light.svg" alt="Boojy Notes" width="300">
+  </picture>
+</h1>
 
-A simple desktop notes app for Markdown files you own.
+### A calm place for the notes you own.
 
-## What Boojy Notes is
+Boojy Notes is a free notes app for your desktop. Your notes are plain Markdown files in a folder you choose, so there's no account and nothing to export. It opens an existing Obsidian vault as it is.
 
-Write normally, organise notes into folders, and everything stays as ordinary `.md` files on your computer. There's no account to make, no proprietary note format, and no workspace to set up. Point it at a folder of Markdown and start writing.
+[Download](https://boojy.org/notes/) · [Website](https://boojy.org) · [Changelog](CHANGELOG.md) · [Feedback](mailto:tyr@boojy.org)
 
-The idea is to combine the simplicity of a traditional notes app with the ownership of local Markdown. Common note-taking should be obvious. The more advanced Markdown you might already have in those files (wikilinks, tags, callouts, frontmatter) is understood quietly, and only shows up when you reach for it.
+[![Latest release](https://img.shields.io/github/v/release/boojyorg/boojy-notes?label=Release)](https://github.com/boojyorg/boojy-notes/releases/latest)
 
-One promise sits under all of it: editing part of a file must not rewrite the rest of it. Syntax the app doesn't understand is preserved, never "cleaned up", which is what makes it safe to use on a folder you care about. The full contract is in [docs/SPEC-markdown-source-of-truth.md](docs/SPEC-markdown-source-of-truth.md).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/notes-dark.png">
+  <img src="assets/screenshots/notes-light.png" alt="Boojy Notes with a Lisbon trip note open: to-dos, a table of places to eat, a quote and two tags, beside a folder tree">
+</picture>
 
-## Features
+## About
 
-- Block editor with six heading levels, lists and to-dos, tables, images, code and quotes
-- Slash commands and typed Markdown shortcuts: `#`, `-`, `>` and a space, a code fence, `**bold**` as you type, `|||` for a table, `![]` for an image
-- Notes are `.md` files in a folder you choose, including an existing Obsidian vault
-- Wikilinks, tags, callouts and frontmatter understood without extra chrome
-- A folder tree sorted by most recent or by name, and a search palette on Cmd+P
-- The note's folder path in the top row, and a full menu bar with every command and its shortcut
-- A Markdown view (Cmd+/) that shows and edits the note as its file
-- Spell checking as you write, with suggestions and Add to dictionary on right-click
-- Version history for every note, with save points on Cmd+S, and Recently Deleted for 30 days
-- More than one storage location, including folders in iCloud Drive or Dropbox, and other files shown beside your notes
-- PDFs and pictures open in the note's place, with page links (`[[Slides.pdf#page=12]]`) and Copy as Quote
-- One note open at a time
-- Light, Dark and System appearance, and quiet motion that respects Reduce Motion
-- macOS, Windows and Linux
+- **Your files.** Ordinary `.md` files in a folder you choose, even one in iCloud Drive or Dropbox.
+- **Writing.** Type `/` for any block, or the Markdown you already know: `#`, `-`, `**bold**`. Tables, code, maths and pictures too.
+- **Finding.** Search with ⌘P, tags, and `[[links]]` between notes.
+- **Safe on a folder you care about.** Editing one part of a file never rewrites the rest, and syntax the app doesn't understand is left alone ([the full promise](docs/SPEC-markdown-source-of-truth.md)). Every note keeps its version history, and Recently Deleted holds notes for 30 days.
 
-## Getting started
+## Status
+
+Boojy Notes is in Beta, on macOS, Windows and Linux. I use it every day, and what I bump into decides what I fix next. An Android app on the same editor is in testing.
+
+On Windows the installer isn't signed yet, so Windows warns about an unknown publisher. Choose More info, then Run anyway.
+
+<details>
+<summary><b>Development</b></summary>
 
 You need Node.js 22 and pnpm (`corepack enable pnpm`).
 
@@ -38,8 +43,6 @@ pnpm dev:web    # browser-only dev server, for fast UI iteration
 ```
 
 The desktop app is the product. The browser build is a development target: quick to reload, handy for tests, and its notes live in browser storage rather than on disk.
-
-## Development
 
 | Script           | Description                                                |
 | ---------------- | ---------------------------------------------------------- |
@@ -53,6 +56,7 @@ The desktop app is the product. The browser build is a development target: quick
 | `test:electron`  | Real desktop app against a temp vault                      |
 | `check`          | Biome lint + format in one pass                            |
 | `typecheck`      | TypeScript check (`tsc --noEmit`)                          |
+| `screenshots`    | The README and website screenshots, into `assets/`         |
 | `dev:phone`      | Vite dev server for the Android app, on port 5175          |
 | `android`        | Builds and installs the Android app (`--live`: dev server) |
 
@@ -60,20 +64,12 @@ All scripts run via `pnpm <script>`. CI gates every push on `check`, `typecheck`
 
 Built with React 19 and Vite 8, Electron 44 for the desktop shell, Vitest and Playwright for tests, Biome for lint and format, pnpm for packages.
 
-## Status
-
-Boojy Notes is in Beta, since v0.15.0. The latest release is v0.20.0, published on 2026-11-01 for macOS, Windows and Linux. It's the build [boojy.org](https://boojy.org) offers, and an installed copy from v0.8.0 onward updates itself to it. The desktop app is complete enough for ordinary daily use: I use it every day, and what I bump into decides what gets finished next. On Windows the installer isn't signed yet, so Windows warns about an unknown publisher; choose More info, then Run anyway.
-
-The same notes on an Android phone work, in testing. The vault sits in a Dropbox folder: on the desktop, Dropbox's own app keeps it in step, and an Android app on the same editor syncs it, writing offline too. The phone app isn't available to download yet.
-
-Several things were built and then removed to keep the product small: the first cloud sync and sign-in, PDF and DOCX export, tabs and split view, and the first mobile app. Each is listed under Removed in [CHANGELOG.md](CHANGELOG.md), and Git keeps the code if a direction is ever reconsidered.
+</details>
 
 ## Contributing
 
-Boojy Notes isn't accepting code contributions right now; see [CONTRIBUTING.md](CONTRIBUTING.md) for feedback and bug reports.
+I'm not taking code contributions right now. [CONTRIBUTING.md](CONTRIBUTING.md) says how to send feedback and bug reports.
 
-## License
+## Licence
 
-GNU General Public License v3.0. See [LICENSE](LICENSE).
-
-Copyright (c) 2025–2026 Tyr Bujac
+GNU General Public License v3.0. See [LICENSE](LICENSE). Copyright (c) 2025–2026 Tyr Bujac.
