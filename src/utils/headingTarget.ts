@@ -4,8 +4,10 @@
  * both apps. A heading's Markdown and each segment of the subpath are compared
  * with Obsidian's punctuation turned into spaces, whitespace folded, case
  * ignored: `## **Tables**` and `## Tables?` answer `#tables`, `## _Tables_`
- * does not (Obsidian leaves `_` and `-`). `#A#B` walks the headings in order,
- * each segment deeper than the last; otherwise the first match wins.
+ * does not (Obsidian leaves `_` and `-`). The first match wins. `#A#B` names a
+ * B inside A's section: where Obsidian keeps walking past the end of A (and
+ * lands on a B under another heading), a heading that closes a matched
+ * section here takes the match back, so a broken path is said, never guessed.
  */
 
 /** Obsidian's set: a link's own syntax and Markdown punctuation, never `_` or `-`. */
@@ -42,20 +44,21 @@ export function findHeadingSection(
   segments: string[],
 ): HeadingSection | null {
   const wanted = segments.map(normaliseHeading);
-  let matched = 0;
-  let level = 0;
+  // The levels of the segments matched so far: each one's section still open.
+  const open: number[] = [];
   let start = -1;
   for (let i = 0; i < blocks.length; i++) {
     const l = headingLevel(blocks[i]);
     if (!l) continue;
     if (start >= 0) {
-      if (l <= level) return { start, end: i };
+      if (l <= open[open.length - 1]) return { start, end: i };
       continue;
     }
-    if (l > level && normaliseHeading(blocks[i].text ?? "") === wanted[matched]) {
-      matched++;
-      level = l;
-      if (matched === wanted.length) start = i;
+    // A heading at a matched one's level or above ends that one's section.
+    while (open.length && open[open.length - 1] >= l) open.pop();
+    if (normaliseHeading(blocks[i].text ?? "") === wanted[open.length]) {
+      open.push(l);
+      if (open.length === wanted.length) start = i;
     }
   }
   return start >= 0 ? { start, end: blocks.length } : null;

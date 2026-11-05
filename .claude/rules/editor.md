@@ -99,9 +99,10 @@ through state.**
   `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
   (`utils/wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the
-  picker to fix; a file opens (`fileForTarget`); a heading is found as Obsidian finds it
-  (`headingTarget.ts`), the caret let go, a visit (`historyJump`), a missing one said. It reads
-  `Note > Heading` (`data-label`; an alias reading so keeps its pipe).
+  picker to fix; a file opens (`fileForTarget`); a heading is found as Obsidian finds it, a
+  path's child only in its parent (`headingTarget.ts`), the caret let go, a visit
+  (`historyJump`), a missing one said. It reads `Note > Heading` (`data-label`; an alias
+  reading so keeps its pipe).
   `link-resolution.spec.ts`, `heading-links.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and an
   unresolved click; it writes the shortest clear target (`linkTargetFor`). `link-picker.spec.ts`.

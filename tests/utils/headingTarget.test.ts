@@ -68,4 +68,15 @@ describe("findHeadingSection", () => {
     // A path's later segment must sit deeper than the one before it.
     expect(findHeadingSection(blocks, ["Tables", "Callouts"])).toBeNull();
   });
+
+  it("finds a path's child only inside its parent's section", () => {
+    const moved = [b("h1", "Parent"), b("h1", "Other"), b("h2", "Child")];
+    expect(findHeadingSection(moved, ["Parent", "Child"])).toBeNull();
+    // A later parent of the same name is a fresh start.
+    const again = [b("h1", "Parent"), b("h1", "Other"), b("h1", "Parent"), b("h2", "Child")];
+    expect(findHeadingSection(again, ["Parent", "Child"])).toEqual({ start: 3, end: 4 });
+    // Deeper headings in between leave the parent's section open.
+    const deep = [b("h1", "Parent"), b("h2", "Aside"), b("h3", "Note"), b("h2", "Child")];
+    expect(findHeadingSection(deep, ["Parent", "Child"])).toEqual({ start: 3, end: 4 });
+  });
 });

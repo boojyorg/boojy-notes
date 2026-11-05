@@ -8,7 +8,7 @@
  * opens at its top, the open note stays put. No byte of any file changes.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { SETTLE_MS, editorTitle, launchApp, sleep, type AppHandle } from "./harness";
+import { SETTLE_MS, editorTitle, launchApp, menuClick, sleep, type AppHandle } from "./harness";
 
 const BACK = process.platform === "darwin" ? "Meta+BracketLeft" : "Alt+ArrowLeft";
 const FORWARD = process.platform === "darwin" ? "Meta+BracketRight" : "Alt+ArrowRight";
@@ -188,6 +188,37 @@ test("a heading link in a table cell or a callout goes to its heading too", asyn
       await h.page.keyboard.press(BACK);
       await expect.poll(() => scrollTop(h.page)).toBeLessThan(20);
     }
+
+    await sleep(SETTLE_MS);
+    for (const [name, text] of Object.entries(FILES)) expect(h.vault.read(name)).toBe(text);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a heading link into a note left in the Markdown view shows the heading's line", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Guide");
+    await menuClick(h, "toggleSourceView");
+    await expect(h.page.getByTestId("source-view")).toBeVisible();
+    await openWriting(h, "Links");
+    await link(h, "Guide > tables").click();
+    await expect.poll(() => editorTitle(h.page)).toBe("Guide");
+    await expect(h.page.getByTestId("source-view")).toBeVisible();
+    // The caret on the heading's line, that line where a note's first line sits.
+    const at = () =>
+      h.page.evaluate(() => {
+        const field = document.querySelector(".source-field") as HTMLTextAreaElement;
+        const scroller = document.querySelector(".editor-scroll")!;
+        const lineStart = field.value.lastIndexOf("\n", field.selectionStart - 1) + 1;
+        return {
+          line: field.value.slice(lineStart, field.value.indexOf("\n", lineStart)),
+          scrolled: scroller.scrollTop > 300,
+        };
+      });
+    await expect.poll(at).toEqual({ line: "## **Tables**", scrolled: true });
 
     await sleep(SETTLE_MS);
     for (const [name, text] of Object.entries(FILES)) expect(h.vault.read(name)).toBe(text);

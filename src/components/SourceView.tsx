@@ -1,6 +1,6 @@
 import { type MutableRefObject, useLayoutEffect, useRef, useState } from "react";
 import { blocksToMarkdown, markdownToBlocks } from "../utils/markdown";
-import { paintMarkdown } from "../utils/sourceView";
+import { paintMarkdown, sourceOffsetFor } from "../utils/sourceView";
 import { focusTitleEnd } from "../utils/domHelpers";
 import type { Block, NoteData } from "../types/notes";
 
@@ -17,6 +17,12 @@ export interface SourceViewApi {
   capture: () => SourcePlace | null;
   /** The caret at the start of the text: Enter or ArrowDown from the note's name. */
   focusStart: () => void;
+  /**
+   * Block `index`'s line `top` px below the scroller's top, the caret on it: a
+   * heading link into a note left in this view. The view holds the field's
+   * focus as it opens, so the caret goes where the reader was sent.
+   */
+  reveal: (index: number, top: number) => void;
 }
 
 interface SourceViewProps {
@@ -140,6 +146,17 @@ export default function SourceView({
       if (!field) return;
       field.focus({ preventScroll: true });
       field.setSelectionRange(0, 0);
+    },
+    reveal: (index, top) => {
+      const field = fieldRef.current;
+      const scroller = scrollerRef.current;
+      const blocks = noteDataRef.current?.[noteId]?.content?.blocks;
+      if (!field || !scroller || !blocks) return;
+      const offset = sourceOffsetFor(field.value, blocks, index, 0);
+      field.focus({ preventScroll: true });
+      field.setSelectionRange(offset, offset);
+      const line = lineTop(layerRef.current, offset);
+      if (line != null) scroller.scrollTop = scrollTopFor(scroller, line, top);
     },
   };
 

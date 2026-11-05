@@ -374,10 +374,19 @@ const EditorArea = memo(
     // A heading link's section: its heading where a note's first line sits,
     // the caret let go (following a link moves the view, never the typing),
     // the section tinted as a search hit is. Blocks without text tint nothing.
+    // In the Markdown view, the heading's line instead (its field keeps focus).
     const revealSection = (startId, lastId) => {
       const scroller = editorScrollRef.current;
+      if (!scroller) return;
+      // A note left in the Markdown view: the heading's line, at the same height.
+      if (sourceView) {
+        const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
+        const index = blocks.findIndex((b) => b.id === startId);
+        if (index >= 0) sourceApiRef.current?.reveal(index, columnTop(rhythm));
+        return;
+      }
       const el = blockRefs.current[startId];
-      if (!scroller || !el || sourceView) return;
+      if (!el) return;
       const zoom = cssZoom(scroller);
       scroller.scrollTop +=
         (el.getBoundingClientRect().top - scroller.getBoundingClientRect().top) / zoom -
