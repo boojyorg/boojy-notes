@@ -1,6 +1,7 @@
 import { useNoteData } from "../../context/NoteDataContext";
 import { useTheme } from "../../hooks/useTheme";
 import { inlineMarkdownToHtml } from "../../utils/inlineFormatting";
+import { findHeadingSection, headingSegments } from "../../utils/headingTarget";
 import { wikilinkStatus } from "../../utils/wikilinkTarget";
 
 /**
@@ -57,26 +58,10 @@ function EmbedView({ block, noteData, accentColor, onNavigate, depth = 0 }) {
   }
 
   let blocks = targetNote.content?.blocks || [];
-  if (block.heading) {
-    const idx = blocks.findIndex(
-      (b) =>
-        ["h1", "h2", "h3"].includes(b.type) &&
-        (b.text || "").replace(/\*\*/g, "").replace(/\*/g, "").trim().toLowerCase() ===
-          block.heading.toLowerCase(),
-    );
-    if (idx >= 0) {
-      const level = { h1: 1, h2: 2, h3: 3 }[blocks[idx].type];
-      let end = blocks.length;
-      for (let i = idx + 1; i < blocks.length; i++) {
-        const bl = { h1: 1, h2: 2, h3: 3 }[blocks[i].type];
-        if (bl && bl <= level) {
-          end = i;
-          break;
-        }
-      }
-      blocks = blocks.slice(idx, end);
-    }
-  }
+  // The section a link to the same heading reaches (utils/headingTarget).
+  const segments = headingSegments(block.heading ?? null);
+  const section = segments ? findHeadingSection(blocks, segments) : null;
+  if (section) blocks = blocks.slice(section.start, section.end);
 
   return (
     <div

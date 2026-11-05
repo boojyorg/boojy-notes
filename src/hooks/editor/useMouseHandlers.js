@@ -56,6 +56,9 @@ export function useMouseHandlers({
     const currentNote = activeNoteRef.current;
     mouseIsDown.current = false;
     if (selectClickedBlock(e)) return;
+    // A press on a wikilink follows it, and a heading link lets the caret go
+    // on purpose: a rescue would put one back and scroll the note to it.
+    if (e?.target?.closest?.(".wikilink")) return;
     requestAnimationFrame(() => {
       if (focusLeftEditor()) return;
       const sel = window.getSelection();

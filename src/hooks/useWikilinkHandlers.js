@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useRef } from "react";
 import {
+  missingHeadingMessage,
   noteLinkKeys,
   parseWikilinkTarget,
   unresolvedWikilinkMessage,
   wikilinkStatus,
 } from "../utils/wikilinkTarget";
+import { findHeadingSection, headingSegments } from "../utils/headingTarget";
 import { editBlocks } from "../utils/editBlocks";
 import { fileForTarget } from "../utils/fileView";
 import { baseName } from "../utils/vaultPath";
@@ -22,12 +24,15 @@ import { vaultNotes } from "../utils/vaultNotes";
  *
  * A click resolves the *note* a target names (`utils/wikilinkTarget`), so
  * `[[Beta#Intro]]` and `[[Work/Gamma]]` open Beta and the Gamma in Work (an
- * explicit path is the path, never a namesake elsewhere); the heading or
- * block is not jumped to. **A click that cannot open one note asks**, by
+ * explicit path is the path, never a namesake elsewhere). **A heading is
+ * followed** as Obsidian finds it (`utils/headingTarget`): its section shown
+ * and tinted, the caret let go, the jump a visit of its own (Back returns to
+ * the link, in the same note too). A heading the note lacks is said, never
+ * guessed: another note opens at its top, the open note stays where it is. A
+ * `^block` only opens the note. **A click that cannot open one note asks**, by
  * decision: a name no note has, or one two notes share, opens the link picker
  * on the link (`openLinkFixerRef`) with Create note or the candidates as its
- * rows, and nothing is made or guessed until a row is chosen. A target of another
- * form that resolves to nothing (a heading in this note) says so.
+ * rows, and nothing is made or guessed until a row is chosen.
  *
  * **A target naming a file that is not a note** (`[[Lecture 3.pdf#page=12]]`,
  * Obsidian's form) opens it in the note's place, at the page it asks for
@@ -36,6 +41,11 @@ import { vaultNotes } from "../utils/vaultNotes";
 export function useWikilinkHandlers({
   noteData,
   noteDataRef,
+  // The note open, the editor's heading-link moves (EditorArea) and the
+  // history (useNoteHistory), for a heading in the same note.
+  activeNote = null,
+  headingNavRef = null,
+  noteHistoryRef = null,
   textOnlyEdit,
   openNote,
   wikilinkMenuRef,
@@ -92,21 +102,57 @@ export function useWikilinkHandlers({
     [showFile, otherFiles],
   );
 
+  // A note a link names, opened at the heading its subpath names, if any.
+  const followNoteLink = useCallback(
+    (id, segments) => {
+      const here = id === activeNote;
+      const note = noteDataRef.current[id];
+      const section = segments && findHeadingSection(note?.content?.blocks ?? [], segments);
+      if (segments && !section) {
+        showToast?.(
+          missingHeadingMessage(segments, here ? null : note?.title || "Untitled"),
+          "info",
+        );
+        if (!here) openNote(id);
+        return;
+      }
+      if (!section) {
+        if (!here) openNote(id);
+        return;
+      }
+      const blocks = note.content.blocks;
+      const nav = headingNavRef?.current;
+      if (here) {
+        // The place being left is taken now: Back returns to it, the link on screen.
+        const history = noteHistoryRef?.current;
+        const place = nav?.place();
+        if (place) history?.recordPlace(id, place);
+        history?.jump(id);
+      } else openNote(id);
+      nav?.reveal(id, blocks[section.start].id, blocks[section.end - 1].id);
+    },
+    [activeNote, noteDataRef, showToast, openNote, headingNavRef, noteHistoryRef],
+  );
+
   // Wikilink click handler
   const handleWikilinkClick = useCallback(
     (target, el = null) => {
       if (openFileInPlace(target)) return;
-      const status = wikilinkStatus(target, noteDataRef.current);
-      if (status.kind === "note") {
-        openNote(status.id);
+      const parsed = parseWikilinkTarget(target);
+      const status = parsed.name
+        ? wikilinkStatus(target, noteDataRef.current)
+        : activeNote && noteDataRef.current[activeNote]
+          ? { kind: "note", id: activeNote, title: noteDataRef.current[activeNote].title }
+          : null;
+      if (status?.kind === "note") {
+        followNoteLink(status.id, headingSegments(parsed.subpath));
         return;
       }
-      const parsed = parseWikilinkTarget(target);
       if (el && parsed.name && openLinkFixerRef?.current)
         openLinkFixerRef.current(el, { fix: true });
-      else showToast?.(unresolvedWikilinkMessage(parsed), "info");
+      else if (parsed.name) showToast?.(unresolvedWikilinkMessage(parsed), "info");
     },
-    [openNote, noteDataRef, showToast, openLinkFixerRef, openFileInPlace],
+    [noteDataRef, showToast, openLinkFixerRef, openFileInPlace, activeNote, followNoteLink],
   );
 
   // Wikilink autocomplete select handler

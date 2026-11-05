@@ -112,15 +112,82 @@ describe("useWikilinkHandlers", () => {
     result.current.handleWikilinkClick("Work/Delta");
     // Beta exists, but the path says Old: a stale path opens no namesake.
     result.current.handleWikilinkClick("Old/Beta");
-    result.current.handleWikilinkClick("#Intro");
     expect(createNote).not.toHaveBeenCalled();
     expect(openNote).not.toHaveBeenCalled();
     expect(showToast.mock.calls.map(([msg, type]) => [msg.split(".")[0], type])).toEqual([
       ['No note named "Delta"', "info"],
       ['No note named "Delta" in Work', "info"],
       ['No note named "Beta" in Old', "info"],
-      ["Links to a heading in this note can't be followed yet", "info"],
     ]);
+  });
+
+  describe("a heading link", () => {
+    const guide = {
+      title: "Guide",
+      content: {
+        blocks: [
+          { id: "g1", type: "h1", text: "Guide" },
+          { id: "g2", type: "h2", text: "**Tables**" },
+          { id: "g3", type: "p", text: "rows" },
+          { id: "g4", type: "h2", text: "Callouts" },
+        ],
+      },
+    };
+    const headingSetup = () => {
+      const noteData = { n1: guide, n2: { title: "Beta", content: { blocks: [] } } };
+      const reveal = vi.fn();
+      const place = { top: { id: "g1", top: 0 }, caret: null };
+      const history = { jump: vi.fn(), recordPlace: vi.fn() };
+      const ctx = setup({
+        noteData,
+        noteDataRef: { current: noteData },
+        activeNote: "n2",
+        headingNavRef: { current: { reveal, place: () => place } },
+        noteHistoryRef: { current: history },
+      });
+      return { ...ctx, reveal, history, place };
+    };
+
+    it("opens another note and reveals the heading's section", () => {
+      const { result, openNote, reveal, history, showToast } = headingSetup();
+      result.current.handleWikilinkClick("Guide#tables");
+      expect(openNote).toHaveBeenCalledWith("n1");
+      expect(reveal).toHaveBeenCalledWith("n1", "g2", "g3");
+      expect(history.jump).not.toHaveBeenCalled();
+      expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it("in the open note is a visit of its own, the place left kept first", () => {
+      const { result, rerender, openNote, reveal, history, place, ...deps } = headingSetup();
+      rerender({ ...deps, openNote, activeNote: "n1" });
+      result.current.handleWikilinkClick("#Callouts");
+      expect(openNote).not.toHaveBeenCalled();
+      expect(history.recordPlace).toHaveBeenCalledWith("n1", place);
+      expect(history.jump).toHaveBeenCalledWith("n1");
+      expect(reveal).toHaveBeenCalledWith("n1", "g4", "g4");
+    });
+
+    it("missing: another note opens at its top, the open note stays; both say so", () => {
+      const { result, rerender, openNote, reveal, showToast, ...deps } = headingSetup();
+      result.current.handleWikilinkClick("Guide#Nope");
+      expect(openNote).toHaveBeenCalledWith("n1");
+      rerender({ ...deps, openNote, showToast, activeNote: "n1" });
+      result.current.handleWikilinkClick("#Nope");
+      expect(openNote).toHaveBeenCalledTimes(1);
+      expect(reveal).not.toHaveBeenCalled();
+      expect(showToast.mock.calls.map(([m]) => m)).toEqual([
+        "No heading “Nope” in Guide.",
+        "No heading “Nope” in this note.",
+      ]);
+    });
+
+    it("to a block only opens the note", () => {
+      const { result, openNote, reveal, showToast } = headingSetup();
+      result.current.handleWikilinkClick("Guide#^abc123");
+      expect(openNote).toHaveBeenCalledWith("n1");
+      expect(reveal).not.toHaveBeenCalled();
+      expect(showToast).not.toHaveBeenCalled();
+    });
   });
 
   it("select inserts the link with a bump, leaves the DOM to the block's own repaint, and queues the caret", () => {

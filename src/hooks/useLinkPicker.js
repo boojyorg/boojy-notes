@@ -1,6 +1,6 @@
 // @ts-check
 import { useCallback, useMemo, useState } from "react";
-import { linkTargetFor, wikilinkStatus } from "../utils/wikilinkTarget";
+import { linkTargetFor, wikilinkLabel, wikilinkStatus } from "../utils/wikilinkTarget";
 import { vaultNotes } from "../utils/vaultNotes";
 import { caretLength, caretOffsetAt, linkText, placeCaret } from "../utils/domHelpers";
 
@@ -221,11 +221,18 @@ export function useLinkPicker({
           dest.keep && p.existing?.classList.contains("wikilink")
             ? p.existing.getAttribute("data-target") || dest.title
             : noteTarget(dest);
-        const label = text || selectedText || dest.title;
+        // Text left as the old target's drawn label is no alias: the new
+        // target draws its own, and the file keeps the link unpiped.
+        const shown = text || selectedText || dest.title;
+        const drawn =
+          p.existing?.hasAttribute("data-label") &&
+          shown === wikilinkLabel(p.existing.getAttribute("data-target") || "");
+        const label = drawn ? wikilinkLabel(target) : shown;
         el = document.createElement("span");
         const status = wikilinkStatus(target, noteDataRef.current);
         el.className = status.kind === "note" ? "wikilink" : "wikilink wikilink-broken";
         el.setAttribute("data-target", target);
+        if (drawn && label !== target) el.setAttribute("data-label", "");
         el.textContent = label;
       }
       if (p.existing) {

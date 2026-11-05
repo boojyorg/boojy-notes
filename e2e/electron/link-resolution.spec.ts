@@ -1,7 +1,8 @@
 /**
  * What a click on a `[[wikilink]]` opens, and what it writes. Obsidian writes
- * three target forms this editor does not fully support: `[[Note#Heading]]`,
- * `[[Note#^block]]` and `[[Folder/Note]]`. Every one of them names a note
+ * three target forms beyond a plain name: `[[Note#Heading]]` (followed to the
+ * heading: heading-links.spec.ts), `[[Note#^block]]` and `[[Folder/Note]]`.
+ * Every one of them names a note
  * that may well exist, and a click used to match the whole target against
  * titles, fail, and create a note called `Beta#Intro` or `Work/Gamma`, which
  * the filename rules wrote as `Beta#Intro.md` and `Work_Gamma.md` in the
@@ -25,7 +26,7 @@ const link = (h: AppHandle, text: string) =>
     .filter({ hasText: new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) })
     .first();
 
-test("a heading link opens the note it names and writes no file", async () => {
+test("a heading or block link opens the note it names and writes no file", async () => {
   const h = await launchApp({
     "Alpha.md": "See [[Beta#Intro]] and [[Beta#^ref]].\n",
     "Beta.md": "# Intro\n\nBeta body. ^ref\n",
@@ -36,10 +37,10 @@ test("a heading link opens the note it names and writes no file", async () => {
     await expect(h.page.locator("[data-block-id] .wikilink")).toHaveCount(2);
     await expect(h.page.locator("[data-block-id] .wikilink-broken")).toHaveCount(0);
 
-    await link(h, "Beta#Intro").click();
+    await link(h, "Beta > Intro").click();
     await expect.poll(() => editorTitle(h.page)).toBe("Beta");
     await h.openNote("Alpha");
-    await link(h, "Beta#^ref").click();
+    await link(h, "Beta > ^ref").click();
     await expect.poll(() => editorTitle(h.page)).toBe("Beta");
 
     await sleep(SETTLE_MS);
@@ -61,7 +62,7 @@ test("a folder-path link opens the note at that path and writes no file", async 
     await expect(h.page.locator("[data-block-id] .wikilink")).toHaveCount(3);
     await expect(h.page.locator("[data-block-id] .wikilink-broken")).toHaveCount(0);
 
-    for (const text of ["Work/Gamma", "Work/Gamma.md", "Work/Gamma#Plan"]) {
+    for (const text of ["Work/Gamma", "Work/Gamma.md", "Work/Gamma > Plan"]) {
       await link(h, text).click();
       await expect.poll(() => editorTitle(h.page)).toBe("Gamma");
       await h.openNote("Alpha");
@@ -124,7 +125,7 @@ test("a heading or path target whose note is missing asks by the note's name; a 
         .evaluateAll((els) => els.map((el) => (el as HTMLElement).innerText.replace(/\s+/g, " ")));
 
     // The picker searches by the name, never the path: Create for Beta.
-    await link(h, "Beta#Intro").click();
+    await link(h, "Beta > Intro").click();
     await expect(picker).toBeVisible();
     await expect(picker.getByLabel("Text")).toBeFocused();
     expect(await rows()).toEqual(["Create note “Beta”"]);
@@ -139,9 +140,9 @@ test("a heading or path target whose note is missing asks by the note's name; a 
     await h.page.keyboard.press("Escape");
     await expect(picker).toHaveCount(0);
 
-    // A heading in this note names no note: nothing to pick, so it says so.
-    await link(h, "#Intro").click();
-    await expect(h.page.getByRole("alert")).toContainText("heading in this note");
+    // A heading this note lacks names no note: nothing to pick, so it says so.
+    await link(h, "Intro").click();
+    await expect(h.page.getByRole("alert")).toContainText("No heading “Intro” in this note.");
     await expect(picker).toHaveCount(0);
     await expect.poll(() => editorTitle(h.page)).toBe("Alpha");
 

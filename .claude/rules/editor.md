@@ -34,7 +34,7 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
   a line-end space before it as U+00A0. A bump alone paints nothing; pair it with a commit that
   publishes at once. `repaint-spaces.spec.ts`.
 - **A text-only commit never repaints**, so a programmatic text edit edits the DOM and reads it
-  back (`domNodeToMarkdown`): formatting, the link popover, Find → Replace.
+  back (`domNodeToMarkdown`): formatting, the link popover, Replace.
   `repaint-ownership.spec.ts`.
 
 ## One edit, one block root
@@ -74,7 +74,7 @@ through state.**
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
   completion. The `[[` picker is a dialog and takes focus.
 - A completion from a native listener commits at once. A triple-click selects the block or its
-  field by the app's hand (`selectClickedBlock`). A caret rescue never takes focus back.
+  field by the app's hand (`selectClickedBlock`). A caret rescue never takes focus back, nor follows a link's click.
 - ArrowUp with nothing above reaches the note's name, ArrowDown comes back; Shift+Arrow is
   always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
 - **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), on screen.
@@ -98,9 +98,12 @@ through state.**
 - **The browser's caret is fixed at the keystroke** (`caretOutOfLinkEnd`/`Start`), never on
   `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
-  (`utils/wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the link
-  picker in fix mode; a vault file's name opens the file (`fileForTarget`).
-  `link-resolution.spec.ts`.
+  (`utils/wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the
+  picker to fix; a file opens (`fileForTarget`); a heading is found as Obsidian finds it, a
+  path's child only in its parent (`headingTarget.ts`), the caret let go, a visit
+  (`historyJump`), a missing one said. It reads `Note > Heading` (`data-label`; an alias
+  reading so keeps its pipe).
+  `link-resolution.spec.ts`, `heading-links.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and an
   unresolved click; it writes the shortest clear target (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
@@ -127,9 +130,9 @@ through state.**
   take the caret's own formatting, never a deleted run's; overtyping keeps its style.
   `typing-style.spec.ts`.
 - **Block triggers wait for their space, and Enter does what the space does**
-  (`utils/blockTriggers.ts`): a marker can carry an argument (a fence's language) a trigger on
-  its last character could never read. **A line kind's marker typed before a one-line
-  paragraph's text converts it too**; Cmd+Z gives the literal back. `marker-on-text.spec.ts`.
+  (`utils/blockTriggers.ts`): a marker may carry an argument (a fence's language). **A line
+  kind's marker typed before a one-line paragraph's text converts it too**; Cmd+Z gives the
+  literal back. `marker-on-text.spec.ts`.
 
 ## The selection toolbar waits for the selection to finish
 
@@ -268,13 +271,13 @@ never holds a byte sequence the syntax cannot.**
   same in every note; names other notes use only when typed (a name's or a word's start), with
   their type and count, under Enter's own row; the list scrolls. A type picked is a draft row,
   its name to type over the type's in grey (`freeName`), written once on Enter, Tab or a press
-  elsewhere; Escape writes nothing. `---` on a note's first line opens it as the third dash is
-  typed (`opensProperties`; Obsidian's habit, and the one marker that doesn't wait for its space:
-  it takes no argument and can only be the fence there); cancelled, the dashes come back. A typed name: Enter adds it with no type (its value
-  decides), or one is picked under "Or pick its type". Nothing is picked as it opens. Written
-  last in the type's empty form. An empty value's type is this
-  device's (`propertyTypes`), never the vault's. `/properties` makes the section at the top, and
-  one left with nothing added goes again. `properties-add.spec.ts`.
+  elsewhere; Escape writes nothing. `---` on a note's first line opens it at the third dash
+  (`opensProperties`; the one marker that takes no argument, so never waits for its space);
+  cancelled, the dashes come back. A typed name: Enter adds it untyped (its value decides), or
+  a type is picked under "Or pick its type". Nothing is picked as it opens. Written last in the
+  type's empty form. An empty value's type is this device's (`propertyTypes`), never the
+  vault's. `/properties` makes the section at the top; left empty, it goes again.
+  `properties-add.spec.ts`.
 
 ## Code blocks
 

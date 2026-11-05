@@ -1156,10 +1156,17 @@ export default function BoojyNotes() {
 
   // Wikilink wiring (title set, click/select)
   const openLinkFixerRef = useRef(null);
+  // The editor's heading-link moves (EditorArea) and the history, which is
+  // made further down (useNoteHistory).
+  const headingNavRef = useRef(null);
+  const noteHistoryRef = useRef(null);
   const { noteTitleSet, handleWikilinkClick, handleWikilinkSelect, openFileInPlace } =
     useWikilinkHandlers({
       noteData,
       noteDataRef,
+      activeNote,
+      headingNavRef,
+      noteHistoryRef,
       textOnlyEdit,
       openNote: setActiveNote,
       wikilinkMenuRef,
@@ -1464,12 +1471,14 @@ export default function BoojyNotes() {
       if (rel) showFile(rel);
       else setActiveNote(key);
     },
+    restoreHere: (place) => headingNavRef.current?.applyPlace(place),
     exists: (key) => {
       const rel = fileFromHistoryKey(key);
       return rel ? otherFiles.some((f) => f.path === rel) : !!noteDataRef.current[key];
     },
     resetKey: notesDir,
   });
+  noteHistoryRef.current = noteHistory;
 
   const blockSelectionIds = () =>
     selectedIds(noteDataRef.current[activeNote]?.content?.blocks ?? [], blockSelectionRef.current);
@@ -1830,6 +1839,7 @@ export default function BoojyNotes() {
                   onPathRowPointerDown={handleSidebarPointerDown}
                   onShowFolder={isPhone ? showFolder : undefined}
                   noteHistory={noteHistory}
+                  headingNavRef={headingNavRef}
                   onTitleBlur={settleTitle}
                   pastVersion={versionHistory.state.past}
                   deletedNote={deletedPreview}

@@ -3,7 +3,9 @@ import {
   linkTargetFor,
   noteLinkKeys,
   parseWikilinkTarget,
+  missingHeadingMessage,
   unresolvedWikilinkMessage,
+  wikilinkLabel,
   wikilinkCandidates,
   wikilinkKey,
   wikilinkStatus,
@@ -108,8 +110,31 @@ describe("unresolvedWikilinkMessage", () => {
     expect(unresolvedWikilinkMessage(parseWikilinkTarget("Work/Gamma"))).toBe(
       'No note named "Gamma" in Work. Links to a heading, block or folder path don\'t create notes.',
     );
-    expect(unresolvedWikilinkMessage(parseWikilinkTarget("#Intro"))).toBe(
-      "Links to a heading in this note can't be followed yet.",
+  });
+});
+
+describe("wikilinkLabel", () => {
+  it("reads a heading target as Obsidian's reading view does", () => {
+    expect(wikilinkLabel("Markdown Guide#Tables")).toBe("Markdown Guide > Tables");
+    expect(wikilinkLabel("Guide#Tables#Widths")).toBe("Guide > Tables > Widths");
+    expect(wikilinkLabel("#Callouts")).toBe("Callouts");
+    expect(wikilinkLabel("Work/Note#Intro")).toBe("Work/Note > Intro");
+  });
+
+  it("leaves a target without a heading as it is", () => {
+    expect(wikilinkLabel("Note")).toBe("Note");
+    expect(wikilinkLabel("Work/Note")).toBe("Work/Note");
+    expect(wikilinkLabel("Lecture 3.pdf#page=4")).toBe("Lecture 3.pdf#page=4");
+  });
+});
+
+describe("missingHeadingMessage", () => {
+  it("names the heading, and the note when it is another", () => {
+    expect(missingHeadingMessage(["Tables"], "Markdown Guide")).toBe(
+      "No heading “Tables” in Markdown Guide.",
+    );
+    expect(missingHeadingMessage(["Guide", "Widths"], null)).toBe(
+      "No heading “Widths” in this note.",
     );
   });
 });

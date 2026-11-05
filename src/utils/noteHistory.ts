@@ -17,25 +17,52 @@ export interface NoteHistory {
   at: number;
   /** The next visit's number. */
   serial: number;
+  /**
+   * The visits a heading link made inside the note already open: Back and
+   * Forward step between them and their neighbour in the same note, which
+   * an ordinary reopening never is.
+   */
+  jumps: number[];
 }
 
 /** How many notes back the list reaches. */
 export const HISTORY_LIMIT = 50;
 
-export const emptyHistory = (): NoteHistory => ({ ids: [], visits: [], at: -1, serial: 0 });
+export const emptyHistory = (): NoteHistory => ({
+  ids: [],
+  visits: [],
+  at: -1,
+  serial: 0,
+  jumps: [],
+});
+
+function added(h: NoteHistory, id: string, jump: boolean): NoteHistory {
+  const ids = [...h.ids.slice(0, h.at + 1), id].slice(-HISTORY_LIMIT);
+  const visits = [...h.visits.slice(0, h.at + 1), h.serial].slice(-HISTORY_LIMIT);
+  const jumps = [...h.jumps, ...(jump ? [h.serial] : [])].filter((v) => visits.includes(v));
+  return { ids, visits, at: ids.length - 1, serial: h.serial + 1, jumps };
+}
 
 /** The history with `id` opened: forward dropped, `id` added, the oldest let go past the limit. */
 export function historyOpen(h: NoteHistory, id: string): NoteHistory {
-  if (h.ids[h.at] === id) return h;
-  const ids = [...h.ids.slice(0, h.at + 1), id].slice(-HISTORY_LIMIT);
-  const visits = [...h.visits.slice(0, h.at + 1), h.serial].slice(-HISTORY_LIMIT);
-  return { ids, visits, at: ids.length - 1, serial: h.serial + 1 };
+  return h.ids[h.at] === id ? h : added(h, id, false);
 }
 
-/** The index one step back (-1) or forward (1) that still exists, or -1 for none. */
+/** The history with a heading link followed inside `id`, the note open: a visit of its own. */
+export function historyJump(h: NoteHistory, id: string): NoteHistory {
+  return h.ids[h.at] === id ? added(h, id, true) : historyOpen(h, id);
+}
+
+/**
+ * The index one step back (-1) or forward (1) that still exists, or -1 for
+ * none. An entry for the open note is stepped over (a note gone in between
+ * left two in a row), unless the later of the two is a heading link's visit.
+ */
 export function historyTarget(h: NoteHistory, dir: -1 | 1, exists: (id: string) => boolean) {
   for (let i = h.at + dir; i >= 0 && i < h.ids.length; i += dir) {
-    if (h.ids[i] !== h.ids[h.at] && exists(h.ids[i])) return i;
+    if (!exists(h.ids[i])) continue;
+    if (h.ids[i] !== h.ids[h.at]) return i;
+    if (h.jumps.includes(h.visits[Math.max(i, h.at)])) return i;
   }
   return -1;
 }

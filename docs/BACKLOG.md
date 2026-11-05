@@ -139,7 +139,6 @@ the test its rule names when it is built.
   first, one toast with the count; not undoable, like a move. Renames outside the app, on the
   phone or while closed are reported, never rewritten; offloaded and unreadable notes are
   skipped and counted. The spec's preservation promise gains the carve-out.
-- **`[[Note#Heading]]` jumps to the heading**, matched by text as Obsidian does.
 - **A quiet backlinks section** at the foot of the note.
 
 **Organisation**
