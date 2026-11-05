@@ -56,20 +56,30 @@ const link = (h: AppHandle, text: string, within = "[data-block-id]") =>
     .filter({ hasText: new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) })
     .first();
 
-/** Each heading reading `text`: its top below the scroller's top, in CSS pixels. */
-const headingTops = (page: Page, text: string) =>
-  page.evaluate((text) => {
-    const scroller = document.querySelector(".editor-scroll")!;
-    const top = scroller.getBoundingClientRect().top;
-    return [...document.querySelectorAll('[data-block-type^="h"]')]
-      .filter((el) => (el as HTMLElement).innerText.trim() === text)
-      .map((el) => Math.round(el.getBoundingClientRect().top - top));
-  }, text);
+/**
+ * How far the block reading `text` (the `nth`) stands from where a note's first
+ * line rests unscrolled (the editor's top and padding, in the content), in
+ * viewport pixels: 0 is a jump that landed exactly there, clear of the chrome row.
+ */
+const fromRest = (page: Page, text: string, nth = 0) =>
+  page.evaluate(
+    ([text, nth]) => {
+      const scroller = document.querySelector(".editor-scroll") as HTMLElement;
+      const editor = document.querySelector("[data-editor]") as HTMLElement;
+      const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      const pad = Number.parseFloat(getComputedStyle(editor).paddingTop) * zoom;
+      const rest = editor.getBoundingClientRect().top + scroller.scrollTop * zoom + pad;
+      const el = [...document.querySelectorAll('[data-editor] > [data-block-type^="h"]')].filter(
+        (b) => (b as HTMLElement).innerText.trim() === text,
+      )[nth as number];
+      return el ? Math.round(el.getBoundingClientRect().top - rest) : null;
+    },
+    [text, nth] as const,
+  );
 
-/** Whether a heading reading `text` (the `nth`) stands where a note's first line does. */
 const atTop = async (page: Page, text: string, nth = 0) => {
-  const top = (await headingTops(page, text))[nth];
-  return top !== undefined && top >= 0 && top < 160;
+  const off = await fromRest(page, text, nth);
+  return off !== null && Math.abs(off) <= 2;
 };
 
 const scrollTop = (page: Page) =>

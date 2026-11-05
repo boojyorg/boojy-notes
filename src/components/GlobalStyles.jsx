@@ -536,6 +536,8 @@ export default function GlobalStyles() {
           padding: 0 2px;
         }
 ${tagPillCss(theme)}
+        /* A block ID (^first-block): kept as text, drawn quietly (utils/blockTarget). */
+        [data-editor] .block-id { color: ${theme.TEXT.muted}; }
         [data-block-id] .wikilink {
           /* A web link's ink, underline and hover; dashed is kept for a link to no note. */
           color: ${theme.link.color};

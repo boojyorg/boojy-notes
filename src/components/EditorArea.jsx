@@ -386,15 +386,19 @@ const EditorArea = memo(
       if (sourceView) {
         const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
         const index = blocks.findIndex((b) => b.id === startId);
-        if (index >= 0) sourceApiRef.current?.reveal(index, columnTop(rhythm));
+        if (index >= 0) sourceApiRef.current?.reveal(index);
         return;
       }
       const el = blockRefs.current[startId];
-      if (!el) return;
+      const editor = editorRef.current;
+      if (!el || !editor) return;
+      // Where a note's first line rests unscrolled: the editor's top and its
+      // padding, measured, never the column's padding alone (the chrome row
+      // stands over the scrolled text, and in the flow above it unscrolled).
       const zoom = cssZoom(scroller);
-      scroller.scrollTop +=
-        (el.getBoundingClientRect().top - scroller.getBoundingClientRect().top) / zoom -
-        columnTop(rhythm);
+      const pad = Number.parseFloat(getComputedStyle(editor).paddingTop) || 0;
+      scroller.scrollTop =
+        (el.getBoundingClientRect().top - editor.getBoundingClientRect().top) / zoom - pad;
       // The last note's caret may sit on a node the switch removed, or on the
       // scroller, where the browser carries it into the new note's text.
       const sel = window.getSelection();

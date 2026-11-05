@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useRef } from "react";
 import {
+  missingBlockMessage,
   missingHeadingMessage,
   noteLinkKeys,
   parseWikilinkTarget,
   unresolvedWikilinkMessage,
   wikilinkStatus,
 } from "../utils/wikilinkTarget";
+import { blockSubpath, findBlockTarget } from "../utils/blockTarget";
 import { findHeadingSection, headingSegments } from "../utils/headingTarget";
 import { editBlocks } from "../utils/editBlocks";
 import { fileForTarget } from "../utils/fileView";
@@ -102,15 +104,23 @@ export function useWikilinkHandlers({
     [showFile, otherFiles],
   );
 
-  // A note a link names, opened at the heading its subpath names, if any.
+  // A note a link names, opened at the heading or block its subpath names, if any.
   const followNoteLink = useCallback(
-    (id, segments) => {
+    (id, subpath) => {
       const here = id === activeNote;
       const note = noteDataRef.current[id];
-      const section = segments && findHeadingSection(note?.content?.blocks ?? [], segments);
-      if (segments && !section) {
+      const all = note?.content?.blocks ?? [];
+      const segments = headingSegments(subpath);
+      const blockId = blockSubpath(subpath);
+      const section = segments
+        ? findHeadingSection(all, segments)
+        : blockId
+          ? findBlockTarget(all, blockId)
+          : null;
+      if ((segments || blockId) && !section) {
+        const where = here ? null : note?.title || "Untitled";
         showToast?.(
-          missingHeadingMessage(segments, here ? null : note?.title || "Untitled"),
+          segments ? missingHeadingMessage(segments, where) : missingBlockMessage(blockId, where),
           "info",
         );
         if (!here) openNote(id);
@@ -120,7 +130,6 @@ export function useWikilinkHandlers({
         if (!here) openNote(id);
         return;
       }
-      const blocks = note.content.blocks;
       const nav = headingNavRef?.current;
       if (here) {
         // The place being left is taken now: Back returns to it, the link on screen.
@@ -129,7 +138,7 @@ export function useWikilinkHandlers({
         if (place) history?.recordPlace(id, place);
         history?.jump(id);
       } else openNote(id);
-      nav?.reveal(id, blocks[section.start].id, blocks[section.end - 1].id);
+      nav?.reveal(id, all[section.start].id, all[section.end - 1].id);
     },
     [activeNote, noteDataRef, showToast, openNote, headingNavRef, noteHistoryRef],
   );
@@ -145,7 +154,7 @@ export function useWikilinkHandlers({
           ? { kind: "note", id: activeNote, title: noteDataRef.current[activeNote].title }
           : null;
       if (status?.kind === "note") {
-        followNoteLink(status.id, headingSegments(parsed.subpath));
+        followNoteLink(status.id, parsed.subpath);
         return;
       }
       if (el && parsed.name && openLinkFixerRef?.current)

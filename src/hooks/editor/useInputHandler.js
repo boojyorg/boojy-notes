@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { cleanOrphanNodes, getCaretOffset, hasOwnField, placeCaret } from "../../utils/domHelpers";
 import { domNodeToMarkdown, inlineMarkdownToHtml } from "../../utils/inlineFormatting";
-import { paintTypedFormat, typedFormatHit } from "../../utils/typedFormatting";
+import { paintTypedFormat, repaintBlockId, typedFormatHit } from "../../utils/typedFormatting";
 import { liftTypedSpace } from "../../utils/inlineFormatCommands";
 import { genBlockId } from "../../utils/storage";
 import { TAG_TAIL_RE } from "../../utils/tags";
@@ -294,6 +294,9 @@ export function useInputHandler({
     } else if (tagMenuRef.current && tagMenuRef.current.blockIndex === blockIndex) {
       setTagMenu(null);
     }
+
+    // A block ID's grey follows the text as it is typed (repaintBlockId).
+    repaintBlockId(el, text, native, noteTitleSetRef?.current);
 
     // Auto-convert bare URLs: if text contains a URL followed by a space, re-render to style it
     if (/https?:\/\/\S+\s$/.test(text) || /https?:\/\/\S+\s/.test(text)) {

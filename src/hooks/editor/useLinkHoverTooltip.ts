@@ -37,6 +37,10 @@ export function useLinkHoverTooltip(
 ) {
   const [tooltip, setTooltip] = useState<LinkTooltipState | null>(null);
   const pending = useRef<PendingHover | null>(null);
+  // A link just pressed: its chip stays away until the pointer leaves it, as
+  // a control's does. A click that jumps within the note leaves the pointer
+  // resting on the link, and the rest that began before the press showed it.
+  const pressed = useRef<HTMLElement | null>(null);
 
   const cancel = useCallback(() => {
     if (pending.current?.timer) clearTimeout(pending.current.timer);
@@ -73,17 +77,20 @@ export function useLinkHoverTooltip(
   const onMouseMove = useCallback(
     (e: MouseEvent<HTMLElement>) => {
       const link = linkAt(e.target as Node);
+      if (link !== pressed.current) pressed.current = null;
       if (!link) {
         cancel();
         setTooltip(null);
         return;
       }
+      if (link === pressed.current) return;
       arm(link);
     },
     [arm, cancel],
   );
 
   const onMouseLeave = useCallback(() => {
+    pressed.current = null;
     cancel();
     setTooltip(null);
   }, [cancel]);
@@ -102,8 +109,13 @@ export function useLinkHoverTooltip(
     const onKeyDown = (e: KeyboardEvent) => {
       if (inside(e.target)) byKey.current = true;
     };
-    const onPointer = () => {
+    const onPointer = (e: PointerEvent) => {
       byKey.current = false;
+      const link = inside(e.target) ? linkAt(e.target as Node) : null;
+      if (!link) return;
+      pressed.current = link;
+      cancel();
+      setTooltip(null);
     };
     const onSelectionChange = () => {
       if (!byKey.current) return;
