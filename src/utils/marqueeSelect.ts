@@ -52,3 +52,19 @@ export function autoScrollStep(y: number, top: number, bottom: number, edge = 48
   if (y > bottom - edge) return Math.ceil((y - (bottom - edge)) / 4);
   return 0;
 }
+
+/**
+ * Whether a press at (`x`, `y`) is beside a block on its right: past the
+ * column's left edge, level with a block. That press is the line's, as a
+ * click there puts the caret at its end, so a drag from it selects text
+ * (Word, Docs, Obsidian). The left margin and gutter, the gaps between
+ * blocks and the space below them start a box.
+ */
+export function besideLine(
+  spans: readonly Pick<BlockSpan, "top" | "bottom">[],
+  columnLeft: number,
+  x: number,
+  y: number,
+): boolean {
+  return x >= columnLeft && spans.some((s) => y >= s.top && y <= s.bottom);
+}

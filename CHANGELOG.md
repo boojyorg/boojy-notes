@@ -5,7 +5,7 @@
 ### Improvements
 
 - **Links to a heading take you to it** — Clicking a link like `[[Markdown Guide#Tables]]` opens the note scrolled to its Tables heading, with that whole section briefly tinted, and `[[#Callouts]]` does the same within the note you're in. Headings are found the way Obsidian finds them, so bold or punctuation in a heading, or a different case in the link, doesn't matter, and `[[Guide#Second#Widths]]` reaches a heading that shares its name with another. Back and Forward (⌘[ ⌘]) step across these jumps, even inside one note. A heading that isn't there opens the note at its top (or, in the note you're in, leaves you where you are) and says so. These links now read as Obsidian shows them, Markdown Guide > Tables and Callouts, and the file keeps exactly what you wrote.
-- **Select blocks by drawing a box** — Press in the empty space beside the note, or in the strip just left of a block, and drag: a box follows the pointer and selects every block it touches, ready to delete, copy or cut together. The page scrolls when you hold the box near its top or bottom, and Escape cancels. A drag that starts in the text still selects text, and pressing Escape then turns that selection into whole blocks.
+- **Select blocks by drawing a box** — Press in the empty space left of the note, in the strip just left of a block, or in a gap between blocks, and drag: a box follows the pointer and selects every block it touches, ready to delete, copy or cut together. The page scrolls when you hold the box near its top or bottom, and Escape cancels. A drag that starts in the text, or just right of a line, still selects text, and pressing Escape then turns that selection into whole blocks.
 
 ### Fixes
 

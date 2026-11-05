@@ -1,6 +1,6 @@
 /** Which blocks a box drawn from the margin selects: what its height touches. */
 import { describe, expect, it } from "vitest";
-import { autoScrollStep, marqueeRun } from "../../src/utils/marqueeSelect";
+import { autoScrollStep, besideLine, marqueeRun } from "../../src/utils/marqueeSelect";
 
 const spans = [
   { id: "a", top: 0, bottom: 30 },
@@ -28,5 +28,20 @@ describe("autoScrollStep", () => {
     expect(autoScrollStep(300, 0, 600)).toBe(0);
     expect(autoScrollStep(10, 0, 600)).toBeLessThan(0);
     expect(autoScrollStep(598, 0, 600)).toBeGreaterThan(autoScrollStep(560, 0, 600));
+  });
+});
+
+describe("besideLine", () => {
+  const spans = [
+    { id: "a", top: 0, bottom: 30 },
+    { id: "b", top: 40, bottom: 70 },
+  ];
+  it("is the line's to the right of the column's left edge, level with a block", () => {
+    expect(besideLine(spans, 100, 900, 15)).toBe(true);
+  });
+  it("is the box's in the left margin, a gap between blocks, or below them", () => {
+    expect(besideLine(spans, 100, 60, 15)).toBe(false);
+    expect(besideLine(spans, 100, 900, 35)).toBe(false);
+    expect(besideLine(spans, 100, 900, 200)).toBe(false);
   });
 });

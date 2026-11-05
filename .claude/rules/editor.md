@@ -301,9 +301,10 @@ above, open until its `</>` closes it. `diagram.spec.ts`.
   items** (`subtreeEnd`). Text blocks wear the band, the caret hidden.
 - Backspace/Delete remove a selection in one commit, ⌘C/⌘X copy it whole (`wholeBlocksCopy`);
   a letter deselects and types; a press off `data-selection-surface` deselects.
-- **A drag from the margin or a gutter strip draws a box** (`useMarqueeSelect`, past
-  `MARQUEE_THRESHOLD`) selecting the blocks it spans (`marqueeRun`); Escape or blur restores,
-  its release clicks nothing. A text drag stays text. `marquee-select.spec.ts`.
+- **A drag from the left margin, a gutter strip or between blocks draws a box**
+  (`useMarqueeSelect`) selecting the blocks it spans (`marqueeRun`); Escape restores,
+  its release clicks nothing. From text or right of a line (`besideLine`), it is text.
+  `marquee-select.spec.ts`.
 - **The grip's click opens `BlockMenu` on its run** or text's lines (`gripSelection`;
   right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
 - **Arrows stop on a divider or image and enter every block with a field**;

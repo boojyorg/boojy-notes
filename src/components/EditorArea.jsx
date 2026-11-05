@@ -94,6 +94,7 @@ import { isTodoKey, todoFlip } from "../utils/todoToggle";
 import { editedSurface, shedStyleResidue } from "../utils/styleResidue";
 import { forgetDeletedStyle } from "../utils/typingStyle";
 import { useMarqueeSelect } from "../hooks/editor/useMarqueeSelect";
+import { besideLine } from "../utils/marqueeSelect";
 import { withAlpha } from "../utils/selectionBand";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
@@ -1060,6 +1061,13 @@ const EditorArea = memo(
           gutterBlockAt(editorRef.current, blockRefs.current, e.clientX, e.clientY, HANDLE_GAP)
         )
           return true;
+        // Beside a block on its right is the line's: a drag from there is text.
+        const editor = editorRef.current;
+        if (editor) {
+          const spans = Array.from(editor.children, (el) => el.getBoundingClientRect());
+          if (besideLine(spans, editor.getBoundingClientRect().left, e.clientX, e.clientY))
+            return false;
+        }
         return (
           t === editorScrollRef.current ||
           t === columnRef.current ||
