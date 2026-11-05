@@ -1,25 +1,24 @@
-// Dev-only switch for the embed look experiment (`?tweak`, `pnpm dev:tweak`):
-// the line, a grey ground or a hairline frame (GlobalStyles, by
-// `html[data-embed-look]`). Never merged; it goes with the looks that lose.
+// Dev-only switch for the embed's open arrow (`?tweak`, `pnpm dev:tweak`):
+// ↗ or → (GlobalStyles, by `html[data-embed-arrow]`). Never merged; it goes
+// with the arrow that loses.
 import { useState } from "react";
 
-const KEY = "boojy-dev-embed-look";
+const KEY = "boojy-dev-embed-arrow";
 const LOOKS = [
-  { id: "line", label: "Line" },
-  { id: "ground", label: "Grey ground" },
-  { id: "frame", label: "Frame" },
+  { id: "up-right", label: "↗" },
+  { id: "right", label: "→" },
 ];
 
 function read() {
   try {
-    return localStorage.getItem(KEY) || "line";
+    return localStorage.getItem(KEY) || "up-right";
   } catch {
-    return "line";
+    return "up-right";
   }
 }
 
 function apply(id) {
-  document.documentElement.dataset.embedLook = id;
+  document.documentElement.dataset.embedArrow = id;
 }
 
 export default function EmbedTweaker() {
@@ -51,7 +50,7 @@ export default function EmbedTweaker() {
         font: "12px system-ui",
       }}
     >
-      <span style={{ color: "#aaa", padding: "4px 6px" }}>Embed</span>
+      <span style={{ color: "#aaa", padding: "4px 6px" }}>Embed arrow</span>
       {LOOKS.map((m) => (
         <button
           key={m.id}

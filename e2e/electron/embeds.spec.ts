@@ -130,7 +130,7 @@ test("the keyboard walks past an embed, and Backspace below it never edits the c
   }
 });
 
-test("a link inside an embed reads as in its own note, and the source label opens it", async () => {
+test("a link inside an embed reads as in its own note, and its arrow opens the source", async () => {
   const h = await launchApp(FILES);
   try {
     await h.openNote("Host");
@@ -139,11 +139,28 @@ test("a link inside an embed reads as in its own note, and the source label open
     await quotes.locator(".wikilink", { hasText: /^Next$/ }).click();
     await expect.poll(() => editorTitle(h.page)).toBe("Guide");
     await h.openNote("Host");
-    const label = embeds(h.page).first().locator(".embed-source");
-    await embeds(h.page).first().hover();
-    await expect(label).toHaveText("Guide > Quotes");
-    await expect.poll(() => label.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
-    await label.click();
+    // The arrow in the corner: its chip says where it goes, its press goes there.
+    const arrow = embeds(h.page).first().locator(".embed-open");
+    await expect(arrow).toHaveAttribute("aria-label", "Open Guide > Quotes");
+    await expect(embeds(h.page).nth(1).locator(".embed-open")).toHaveAttribute(
+      "aria-label",
+      "Go to ^first-block in this note",
+    );
+    // Re-hovered until the chip shows, as the tooltip specs do: the note
+    // reopened a moment ago may still repaint the button under the pointer.
+    await expect(async () => {
+      await h.page.mouse.move(5, 5);
+      await arrow.hover();
+      await expect(
+        h.page
+          // The chip is aria-hidden (the button's own name says it), so not by role.
+          .locator("[role=tooltip]")
+          .filter({ hasText: "Open Guide > Quotes" }),
+      ).toBeVisible({
+        timeout: 1_500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await arrow.click();
     await expect.poll(() => editorTitle(h.page)).toBe("Guide");
     await unchanged(h, FILES);
   } finally {

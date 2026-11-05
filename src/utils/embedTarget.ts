@@ -35,6 +35,8 @@ export type EmbedTarget =
       /** The link the source label follows: the note, and the section or block. */
       fullTarget: string;
       label: string;
+      /** What the open arrow's chip says: where it goes, and that it goes. */
+      openLabel: string;
       /** Changes when what is shown changes, so the copy repaints. */
       version: string;
     };
@@ -53,6 +55,8 @@ export function embedTarget(
   block: EmbedBlockLike,
   noteData: NoteData,
   hostNote: string | null,
+  /** The note on screen: an embed of it says "in this note". Defaults to the host. */
+  viewNote: string | null = hostNote,
 ): EmbedTarget {
   const written = writtenTarget(block);
   const parsed = parseWikilinkTarget(written);
@@ -90,9 +94,11 @@ export function embedTarget(
 
   const linkName = linkTargetFor(noteId, noteData);
   const fullTarget = subpath ? `${linkName}#${subpath}` : linkName;
-  const label = subpath ? `${title} > ${wikilinkLabel(`#${subpath}`)}` : title;
+  const rest = subpath ? wikilinkLabel(`#${subpath}`) : "";
+  const label = subpath ? `${title} > ${rest}` : title;
+  const openLabel = noteId === viewNote ? `Go to ${rest || title} in this note` : `Open ${label}`;
   const version = hash(JSON.stringify(blocks));
-  return { noteId, subpath, blocks, linkName, fullTarget, label, version };
+  return { noteId, subpath, blocks, linkName, fullTarget, label, openLabel, version };
 }
 
 /**

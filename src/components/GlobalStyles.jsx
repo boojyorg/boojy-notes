@@ -536,37 +536,36 @@ export default function GlobalStyles() {
           padding: 0 2px;
         }
 ${tagPillCss(theme)}
-        /* An embed (EmbedBlock). EXPERIMENT: three looks by html[data-embed-look]
-           (dev/EmbedTweaker), the line by default; the losers go. */
+        /* An embed (EmbedBlock): a neutral line, lighter and wider than a quote's
+           bar; the right strip holds its open arrow, which nothing runs under. */
         [data-block-id] .embed {
+          position: relative;
           border-left: 3px solid ${theme.BG.divider};
-          padding: 2px 0 2px 16px;
+          padding: 2px 32px 2px 16px;
         }
-        html[data-embed-look="ground"] [data-block-id] .embed {
-          border-left: none;
-          background: ${theme.BG.surface};
-          border-radius: 8px;
-          padding: 10px 16px 12px;
-        }
-        html[data-embed-look="frame"] [data-block-id] .embed {
-          border-left: none;
-          border: 1px solid ${theme.BG.divider};
-          border-radius: 8px;
-          padding: 10px 16px 12px;
-        }
-        /* Its source, always shown above it: a caption in quiet ink that opens it. */
-        [data-block-id] .embed > .embed-source {
-          display: inline-flex;
+        [data-block-id] .embed > .embed-open {
+          position: absolute;
+          top: 2px;
+          right: 0;
+          width: 24px;
+          height: 24px;
+          display: flex;
           align-items: center;
-          gap: 5px;
-          margin-bottom: 4px;
-          font-size: 13px;
-          line-height: 18px;
+          justify-content: center;
+          border: none;
+          border-radius: 6px;
+          background: transparent;
           color: ${theme.TEXT.muted};
-          text-decoration: none;
           cursor: pointer;
+          padding: 0;
         }
-        [data-block-id] .embed > .embed-source:hover { color: ${theme.TEXT.secondary}; }
+        [data-block-id] .embed > .embed-open:hover { color: ${theme.TEXT.primary}; background: ${theme.BG.hover}; }
+        html.is-phone [data-block-id] .embed > .embed-open { width: 44px; height: 44px; top: -8px; right: -10px; }
+        /* EXPERIMENT: which arrow (dev/EmbedTweaker); ↗ by default. */
+        [data-block-id] .embed-open > .embed-open-right { display: none; }
+        html[data-embed-arrow="right"] [data-block-id] .embed-open > .embed-open-up-right { display: none; }
+        html[data-embed-arrow="right"] [data-block-id] .embed-open > .embed-open-right { display: flex; }
+        [data-block-id] .embed-open > span { display: flex; }
         /* A block ID (^first-block): kept as text, drawn quietly (utils/blockTarget). */
         [data-editor] .block-id { color: ${theme.TEXT.muted}; }
         [data-block-id] .wikilink {

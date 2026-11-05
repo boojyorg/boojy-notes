@@ -1691,6 +1691,14 @@ const EditorArea = memo(
                         if (tagName && onTagClick) onTagClick(tagName);
                         return;
                       }
+                      // An embed's arrow opens its source, as a link to it would.
+                      const embedOpen = e.target.closest(".embed-open");
+                      if (embedOpen) {
+                        e.preventDefault();
+                        const target = embedOpen.getAttribute("data-target");
+                        if (target && onWikilinkClick) onWikilinkClick(target, embedOpen);
+                        return;
+                      }
                       const wikilink = e.target.closest(".wikilink");
                       if (wikilink) {
                         e.preventDefault();

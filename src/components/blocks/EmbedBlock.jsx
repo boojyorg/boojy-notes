@@ -2,7 +2,9 @@ import { useNoteData } from "../../context/NoteDataContext";
 import { useTheme } from "../../hooks/useTheme";
 import { embedTarget } from "../../utils/embedTarget";
 import ReadOnlyBlocks from "../ReadOnlyBlocks";
-import { EmbedSourceIcon } from "../Icons";
+import { EmbedOpenRightIcon, EmbedOpenUpRightIcon } from "../Icons";
+import { Tooltip, useTooltip } from "../Tooltip";
+import { useRef } from "react";
 
 /**
  * `![[Note]]`, `![[Note#Heading]]`, `![[#^id]]`: what the target names, drawn
@@ -30,10 +32,13 @@ function EmbedView({
   noteTitleSet,
   accentColor,
   hostNote,
+  viewNote = hostNote,
   ancestors = [],
   depth = 0,
 }) {
   const { theme } = useTheme();
+  const openTip = useTooltip();
+  const openRef = useRef(null);
   const { TEXT } = theme;
   const quiet = (text) => (
     <div data-embed-missing style={{ color: TEXT.muted, fontSize: 14, padding: "4px 0" }}>
@@ -41,7 +46,7 @@ function EmbedView({
     </div>
   );
 
-  const found = embedTarget(block, noteData, hostNote);
+  const found = embedTarget(block, noteData, hostNote, viewNote);
   if (found.missing) return quiet(found.missing);
   const key = `${found.noteId}#${found.subpath ?? ""}`;
   if (ancestors.includes(key) || depth >= MAX_DEPTH)
@@ -91,11 +96,29 @@ function EmbedView({
       // The look (line, ground or frame) is GlobalStyles', by `html[data-embed-look]`.
       style={{ userSelect: "text" }}
     >
-      {/* Where it comes from, always shown: a caption that is a link to it. */}
-      <span className="wikilink embed-source" data-target={found.fullTarget}>
-        <EmbedSourceIcon size={13} />
-        {found.label}
-      </span>
+      {/* Its source, one press away: the arrow in its own strip on the right,
+          muted at rest, its chip saying where it goes. EditorArea follows it. */}
+      <button
+        ref={openRef}
+        type="button"
+        tabIndex={-1}
+        className="embed-open"
+        aria-label={found.openLabel}
+        data-target={found.fullTarget}
+        {...openTip.handlers}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          openTip.handlers.onMouseDown();
+        }}
+      >
+        <span className="embed-open-up-right">
+          <EmbedOpenUpRightIcon size={16} />
+        </span>
+        <span className="embed-open-right">
+          <EmbedOpenRightIcon size={16} />
+        </span>
+      </button>
+      {openTip.shown && <Tooltip label={found.openLabel} anchor={openRef.current} />}
       {runs.map((run, i) =>
         run.embed ? (
           <EmbedView
@@ -105,6 +128,7 @@ function EmbedView({
             noteTitleSet={noteTitleSet}
             accentColor={accentColor}
             hostNote={found.noteId}
+            viewNote={viewNote}
             ancestors={[...ancestors, key]}
             depth={depth + 1}
           />
