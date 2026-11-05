@@ -282,6 +282,8 @@ export const OpenNoteIcon = navIcon(LuFileText);
 export const UnlinkIcon = navIcon(LuUnlink);
 /** The link picker's address row. */
 export const LinkIcon = navIcon(LuLink);
+/** An embed's source caption: where the content lives. */
+export const EmbedSourceIcon = contentIcon(LuLink);
 /** Move to…: a folder with an arrow going in, beside the menu's Pencil and Copy. */
 export const MoveToIcon = navIcon(LuFolderInput);
 // ── Settings and setup ────────────────────────────────────────────────────

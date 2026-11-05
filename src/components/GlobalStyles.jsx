@@ -536,19 +536,37 @@ export default function GlobalStyles() {
           padding: 0 2px;
         }
 ${tagPillCss(theme)}
-        /* An embed's source (EmbedBlock): a link in quiet ink, under the copy, shown on hover. */
+        /* An embed (EmbedBlock). EXPERIMENT: three looks by html[data-embed-look]
+           (dev/EmbedTweaker), the line by default; the losers go. */
+        [data-block-id] .embed {
+          border-left: 3px solid ${theme.BG.divider};
+          padding: 2px 0 2px 16px;
+        }
+        html[data-embed-look="ground"] [data-block-id] .embed {
+          border-left: none;
+          background: ${theme.BG.surface};
+          border-radius: 8px;
+          padding: 10px 16px 12px;
+        }
+        html[data-embed-look="frame"] [data-block-id] .embed {
+          border-left: none;
+          border: 1px solid ${theme.BG.divider};
+          border-radius: 8px;
+          padding: 10px 16px 12px;
+        }
+        /* Its source, always shown above it: a caption in quiet ink that opens it. */
         [data-block-id] .embed > .embed-source {
-          display: inline-block;
-          margin-top: 6px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          margin-bottom: 4px;
           font-size: 13px;
+          line-height: 18px;
           color: ${theme.TEXT.muted};
           text-decoration: none;
-          opacity: 0;
-          transition: opacity var(--motion-fast);
+          cursor: pointer;
         }
-        [data-block-id] .embed:hover > .embed-source,
-        [data-block-id] .embed > .embed-source:focus-visible { opacity: 1; }
-        @media (hover: none) { [data-block-id] .embed > .embed-source { opacity: 1; } }
+        [data-block-id] .embed > .embed-source:hover { color: ${theme.TEXT.secondary}; }
         /* A block ID (^first-block): kept as text, drawn quietly (utils/blockTarget). */
         [data-editor] .block-id { color: ${theme.TEXT.muted}; }
         [data-block-id] .wikilink {

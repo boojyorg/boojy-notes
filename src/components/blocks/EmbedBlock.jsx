@@ -2,6 +2,7 @@ import { useNoteData } from "../../context/NoteDataContext";
 import { useTheme } from "../../hooks/useTheme";
 import { embedTarget } from "../../utils/embedTarget";
 import ReadOnlyBlocks from "../ReadOnlyBlocks";
+import { EmbedSourceIcon } from "../Icons";
 
 /**
  * `![[Note]]`, `![[Note#Heading]]`, `![[#^id]]`: what the target names, drawn
@@ -33,7 +34,7 @@ function EmbedView({
   depth = 0,
 }) {
   const { theme } = useTheme();
-  const { TEXT, BG } = theme;
+  const { TEXT } = theme;
   const quiet = (text) => (
     <div data-embed-missing style={{ color: TEXT.muted, fontSize: 14, padding: "4px 0" }}>
       {text}
@@ -87,8 +88,14 @@ function EmbedView({
         if (own(e)) e.stopPropagation();
       }}
       // Its text selects and copies: the whole-block root it sits in turns selection off.
-      style={{ borderLeft: `3px solid ${BG.divider}`, paddingLeft: 16, userSelect: "text" }}
+      // The look (line, ground or frame) is GlobalStyles', by `html[data-embed-look]`.
+      style={{ userSelect: "text" }}
     >
+      {/* Where it comes from, always shown: a caption that is a link to it. */}
+      <span className="wikilink embed-source" data-target={found.fullTarget}>
+        <EmbedSourceIcon size={13} />
+        {found.label}
+      </span>
       {runs.map((run, i) =>
         run.embed ? (
           <EmbedView
@@ -113,9 +120,6 @@ function EmbedView({
           />
         ),
       )}
-      <span className="wikilink embed-source" data-target={found.fullTarget}>
-        {found.label}
-      </span>
     </div>
   );
 }
