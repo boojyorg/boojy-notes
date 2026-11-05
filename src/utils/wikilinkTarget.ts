@@ -5,9 +5,9 @@ import { vaultNotes } from "./vaultNotes";
  * What a `[[target]]` names. Obsidian writes three forms beyond the plain
  * name: `Note#Heading`, `Note#^block` and `Folder/Note` (optionally with a
  * `.md`). The part before the first `#` names the note, in the folder its path
- * gives when it gives one; the rest (`subpath`) is a heading or block this
- * editor cannot jump to and so ignores when opening. `name` is empty for a
- * link to a heading of the note it sits in (`[[#Intro]]`).
+ * gives when it gives one; the rest (`subpath`) is a heading, followed on a
+ * click (`headingTarget.ts`), or a block, which only opens the note. `name` is
+ * empty for a link to a heading of the note it sits in (`[[#Intro]]`).
  */
 export interface WikilinkTarget {
   /** The note's name, the last path segment, `.md` stripped, trimmed. */
@@ -49,9 +49,32 @@ export function wikilinkKey({ name, folder }: WikilinkTarget): string | null {
   return folder ? `${folder.toLowerCase()}/${key}` : key;
 }
 
+/**
+ * What an unpiped link shows, as Obsidian's reading view does: a target with
+ * a `#` reads `Note > Heading` (`Note > H1 > H2`), one in the same note the
+ * heading alone; any other target is itself, a file's page (`#page=4`)
+ * among them. Pure text: the renderer passes its HTML-escaped target and
+ * `" &gt; "`.
+ */
+export function wikilinkLabel(target: string, separator = " > "): string {
+  const hash = target.indexOf("#");
+  if (hash === -1 || /^\s*page=/.test(target.slice(hash + 1))) return target;
+  const parts = [target.slice(0, hash), ...target.slice(hash + 1).split("#")]
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.length ? parts.join(separator) : target;
+}
+
+/** What the toast says when a link's heading is not in its note (`noteTitle` null: the open note). */
+export function missingHeadingMessage(segments: string[], noteTitle: string | null): string {
+  const heading = segments[segments.length - 1].trim();
+  return noteTitle == null
+    ? `No heading “${heading}” in this note.`
+    : `No heading “${heading}” in ${noteTitle}.`;
+}
+
 /** What the toast says when an unresolved target is one the app will not create. */
 export function unresolvedWikilinkMessage({ name, folder }: WikilinkTarget): string {
-  if (!name) return "Links to a heading in this note can't be followed yet.";
   const where = folder ? ` in ${folder}` : "";
   return `No note named "${name}"${where}. Links to a heading, block or folder path don't create notes.`;
 }

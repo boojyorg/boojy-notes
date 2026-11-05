@@ -61,6 +61,7 @@ import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges"
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
 import { capturePlace, resolveAnchor, resolveCaret } from "../utils/notePlace";
+import { tintRanges } from "../utils/searchHighlight";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import { useSpellingMarks } from "../hooks/editor/useSpellingMarks";
 import { useHoldToGrab } from "../hooks/editor/useHoldToGrab";
@@ -184,6 +185,9 @@ const EditorArea = memo(
     onShowFolder,
     // Back and Forward through the notes opened, beside the path (useNoteHistory).
     noteHistory,
+    // A heading link's way in (useWikilinkHandlers): the place now, a place
+    // put back, a section revealed.
+    headingNavRef,
     onEditorClick,
     onTitleBlur,
     // Edit → Find… and Find and Replace…: the menu opens the bar through this.
@@ -314,19 +318,34 @@ const EditorArea = memo(
     // element remounts with the note (the column is keyed on it), so the
     // listener follows it.
     const hasNote = !!note;
-    // A note opens at its top. The scroller is not keyed by the note (only
-    // the column inside it is), so the previous note's scroll would carry
-    // over. A layout effect, so a search jump's own scroll (150 ms
-    // later) still wins. Back and Forward return to the visit's place
-    // instead (`notePlace.ts`): its top block where it stood, and the caret
-    // if it was on screen, never pulling the page to it.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: the note opening is the cue; the rest is read as it stands
-    useLayoutEffect(() => {
+    // The open note's place as the page shows it now: its top block, and the
+    // caret when it is a collapsed one in a block's own text.
+    const currentPlace = () => {
+      const scroller = editorScrollRef.current;
+      if (!scroller || !activeNote) return null;
+      const caretIn = () => {
+        const sel = window.getSelection();
+        if (!sel?.rangeCount || !sel.isCollapsed) return null;
+        const node = sel.anchorNode;
+        if (!node || !editorRef.current?.contains(node)) return null;
+        const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+        const id = el?.closest?.("[data-block-id]")?.getAttribute("data-block-id");
+        const root = id && blockRefs.current[id];
+        if (!root?.contains(node)) return null;
+        const offset = getCaretOffset(root);
+        return offset >= 0 ? { id, offset, line: caretRect(sel.getRangeAt(0), root) } : null;
+      };
+      const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
+      return capturePlace(blocks, blockRefs.current, scroller, caretIn, cssZoom(scroller));
+    };
+
+    // A visit's place put back (`notePlace.ts`): its top block where it
+    // stood, and the caret if its line shows, never pulling the page to it.
+    // Null is the note's top.
+    const applyPlace = (place) => {
       const scroller = editorScrollRef.current;
       if (!scroller) return;
-      const back = activeNote ? noteHistory?.takeRestore?.(activeNote) : null;
       scroller.scrollTop = 0;
-      const place = back?.place;
       if (!place || sourceView) return;
       const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
       const ids = new Set(blocks.map((b) => b.id));
@@ -350,6 +369,60 @@ const EditorArea = memo(
       if (line && line.bottom > pane.top && line.top < pane.bottom) {
         placeCaret(caretEl, caret.offset, { reveal: false });
       }
+    };
+
+    // A heading link's section: its heading where a note's first line sits,
+    // the caret let go (following a link moves the view, never the typing),
+    // the section tinted as a search hit is. Blocks without text tint nothing.
+    const revealSection = (startId, lastId) => {
+      const scroller = editorScrollRef.current;
+      const el = blockRefs.current[startId];
+      if (!scroller || !el || sourceView) return;
+      const zoom = cssZoom(scroller);
+      scroller.scrollTop +=
+        (el.getBoundingClientRect().top - scroller.getBoundingClientRect().top) / zoom -
+        columnTop(rhythm);
+      // The last note's caret may sit on a node the switch removed, or on the
+      // scroller, where the browser carries it into the new note's text.
+      const sel = window.getSelection();
+      const at = sel?.rangeCount ? sel.anchorNode : null;
+      if (at && (!at.isConnected || scroller.contains(at))) sel.removeAllRanges();
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && editorRef.current?.contains(focused)) focused.blur();
+      const last = blockRefs.current[lastId] ?? el;
+      const range = document.createRange();
+      range.setStart(el, 0);
+      range.setEnd(last, last.childNodes.length);
+      tintRanges([range]);
+    };
+
+    // A section to reveal once its note has opened (a link into another note).
+    const pendingReveal = useRef(null);
+    const activeNoteRef = useRef(activeNote);
+    activeNoteRef.current = activeNote;
+    if (headingNavRef) {
+      headingNavRef.current = {
+        place: () => currentPlace(),
+        applyPlace,
+        reveal: (noteId, startId, lastId) => {
+          if (noteId === activeNoteRef.current) revealSection(startId, lastId);
+          else pendingReveal.current = { noteId, startId, lastId };
+        },
+      };
+    }
+
+    // A note opens at its top. The scroller is not keyed by the note (only
+    // the column inside it is), so the previous note's scroll would carry
+    // over. A layout effect, so a search jump's own scroll (150 ms
+    // later) still wins. Back and Forward return to the visit's place
+    // instead; a heading link, to its section.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: the note opening is the cue; the rest is read as it stands
+    useLayoutEffect(() => {
+      const back = activeNote ? noteHistory?.takeRestore?.(activeNote) : null;
+      applyPlace(back?.place ?? null);
+      const reveal = pendingReveal.current;
+      pendingReveal.current = null;
+      if (reveal && reveal.noteId === activeNote) revealSection(reveal.startId, reveal.lastId);
     }, [activeNote, editorScrollRef]);
 
     // The open visit's place, kept as you scroll and as the caret moves, at
@@ -359,26 +432,10 @@ const EditorArea = memo(
       const scroller = editorScrollRef.current;
       const record = noteHistory?.recordPlace;
       if (!scroller || !record || !activeNote) return;
-      const caretIn = () => {
-        const sel = window.getSelection();
-        if (!sel?.rangeCount || !sel.isCollapsed) return null;
-        const node = sel.anchorNode;
-        if (!node || !editorRef.current?.contains(node)) return null;
-        const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-        const id = el?.closest?.("[data-block-id]")?.getAttribute("data-block-id");
-        const root = id && blockRefs.current[id];
-        if (!root?.contains(node)) return null;
-        const offset = getCaretOffset(root);
-        return offset >= 0 ? { id, offset, line: caretRect(sel.getRangeAt(0), root) } : null;
-      };
       let frame = 0;
       const capture = () => {
         frame = 0;
-        const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
-        record(
-          activeNote,
-          capturePlace(blocks, blockRefs.current, scroller, caretIn, cssZoom(scroller)),
-        );
+        record(activeNote, currentPlace());
       };
       const schedule = () => {
         if (!frame) frame = requestAnimationFrame(capture);

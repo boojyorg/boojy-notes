@@ -82,6 +82,15 @@ describe("every text block of the preservation corpus survives the DOM", () => {
 
 describe("inline bytes that only the DOM road could corrupt", () => {
   const cases = [
+    // A heading link draws its label (`Guide > Tables`, `Callouts`); unpiped it
+    // stays unpiped, and an alias reading the same as the label keeps its pipe.
+    "[[Markdown Guide#Tables]]",
+    "[[#Callouts]]",
+    "[[Guide#Tables#Widths]]",
+    "[[#Callouts|Callouts]]",
+    "[[Markdown Guide#Tables|Markdown Guide > Tables]]",
+    "[[Q&A#Intro]] and [[Q&A#Intro|Q&A > Intro]]",
+    "[[Note\\#tag]]",
     // §3.5: the walkers stripped every U+200B as if it were the caret anchor.
     "zero-width​space",
     "**bold​** and [[Note​]]",
@@ -153,4 +162,24 @@ describe("inline bytes that only the DOM road could corrupt", () => {
   for (const text of cases) {
     it(JSON.stringify(text), () => expectRoundTrip(text));
   }
+});
+
+describe("a heading link's drawn label", () => {
+  const draw = (md) => {
+    const el = document.createElement("p");
+    el.innerHTML = inlineMarkdownToHtml(md);
+    return el;
+  };
+
+  it("shows the label Obsidian's reading view shows", () => {
+    expect(draw("[[Markdown Guide#Tables]]").textContent).toBe("Markdown Guide > Tables");
+    expect(draw("[[#Callouts]]").textContent).toBe("Callouts");
+    expect(draw("[[#Callouts|Callouts]]").querySelector("[data-label]")).toBeNull();
+  });
+
+  it("becomes an alias once its text is edited", () => {
+    const el = draw("[[#Callouts]]");
+    el.querySelector(".wikilink").textContent = "Callout blocks";
+    expect(domNodeToMarkdown(el)).toBe("[[#Callouts|Callout blocks]]");
+  });
 });

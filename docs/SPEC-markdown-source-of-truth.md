@@ -151,8 +151,9 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   its dollars, so `costs $5 and $10` stays text. On screen a formula is one element whose
   read-back is its source, so drawing it changes no byte.
 - `[[Note#Heading]]`, `[[Note#^block]]` and `[[Folder/Note]]` name the note before the `#`, in
-  the folder the path gives; the heading or block is not yet followed, and a click never creates
-  a note for anything but a plain name.
+  the folder the path gives, and a click never creates a note for anything but a plain name. A
+  heading (`#A#B` a path to it) is followed, found as Obsidian finds it, and an unpiped heading
+  link shows `Note > Heading` while the file keeps the target; a block only opens its note.
 - Typing `_italic_` or `__bold__` is committed in the star form the renderer speaks; an imported
   underscore form is left as written and shown literal.
 - Copy writes the app's spelling of the copied blocks (`-` bullets, canonical numbering and

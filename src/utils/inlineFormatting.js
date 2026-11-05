@@ -2,7 +2,7 @@
 // Stores formatting as markdown tokens in block.text, renders as HTML via innerHTML.
 
 import { CARET_ANCHOR_CLASS, ESCAPE_CLASS, INLINE_MATH_CLASS } from "./domHelpers";
-import { parseWikilinkTarget, wikilinkKey } from "./wikilinkTarget";
+import { parseWikilinkTarget, wikilinkKey, wikilinkLabel } from "./wikilinkTarget";
 import { LINK_DEST } from "./linkDestination";
 import { TAG_RE } from "./tags";
 import { codeSourceText, codeSpanSource, editedCodeSpanSource, findCodeSpans } from "./codeSpans";
@@ -309,10 +309,17 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     const piped = display === target ? " data-piped" : "";
     return `<span class="wikilink${broken}" data-target="${escAttr(target)}"${piped}>${display}</span>`;
   });
+  // An unpiped target with a `#` shows its label (`Note > Heading`, the
+  // heading alone in the same note) and is marked `data-label`, so the
+  // read-back writes the target alone while the text is still that label; an
+  // alias that happens to read the same carries no mark and keeps its pipe.
+  // A target holding an escape shows as written: its `#` may be the escape's.
   s = s.replace(/\[\[([^\]]+)\]\]/g, (_, shielded) => {
     const target = realTarget(shielded);
     const broken = brokenClass(target);
-    return `<span class="wikilink${broken}" data-target="${escAttr(target)}">${target}</span>`;
+    const label = target.includes("\x00") ? target : wikilinkLabel(target, " &gt; ");
+    const mark = label === target ? "" : " data-label";
+    return `<span class="wikilink${broken}" data-target="${escAttr(target)}"${mark}>${label}</span>`;
   });
   // A target whose link never closed is the text it was.
   s = realTarget(s);
@@ -478,6 +485,9 @@ export function nodeToMarkdown(child, before = "") {
     }
     if (child.classList.contains("wikilink")) {
       const target = child.getAttribute("data-target") || inner;
+      // A drawn label is the target's own; edited, it is what the reader wrote.
+      if (child.hasAttribute("data-label"))
+        return inner === wikilinkLabel(target) ? `[[${target}]]` : `[[${target}|${inner}]]`;
       return target === inner && !child.hasAttribute("data-piped")
         ? `[[${inner}]]`
         : `[[${target}|${inner}]]`;
@@ -626,6 +636,7 @@ function sanitizeInto(target, sourceNode, inAnchor) {
               const target = child.getAttribute("data-target");
               if (target) el.setAttribute("data-target", target);
               if (child.hasAttribute("data-piped")) el.setAttribute("data-piped", "");
+              if (child.hasAttribute("data-label")) el.setAttribute("data-label", "");
             }
           } else if (cls === "external-link-icon") {
             el.setAttribute("class", cls);

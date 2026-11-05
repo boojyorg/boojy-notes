@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   emptyHistory,
   HISTORY_LIMIT,
+  historyJump,
   historyKey,
   historyOpen,
   historyShortcut,
@@ -69,4 +70,25 @@ describe("the arrows' chips name the keys that step", () => {
       expect(historyKey(press(historyShortcut(1, mac)), mac)).toBe(1);
     });
   }
+
+  it("keeps a heading link inside the open note as a visit of its own", () => {
+    const h = historyJump(opened("a", "b"), "b");
+    expect(h).toMatchObject({ ids: ["a", "b", "b"], at: 2, jumps: [2] });
+    // Back from the jump reaches the link's visit, Forward from there the jump.
+    expect(historyTarget(h, -1, all)).toBe(1);
+    expect(historyTarget({ ...h, at: 1 }, 1, all)).toBe(2);
+    // Into another note it is an ordinary opening.
+    expect(historyJump(opened("a"), "b")).toMatchObject({ ids: ["a", "b"], jumps: [] });
+  });
+
+  it("still steps over the open note met again when no jump made it", () => {
+    const h = historyOpen(historyOpen(opened("a", "b"), "a"), "c");
+    expect(historyTarget({ ...h, at: 2 }, -1, (id) => id !== "b")).toBe(-1);
+  });
+
+  it("forgets a jump that falls off the list's end or is dropped ahead", () => {
+    const h = historyJump(opened("a"), "a");
+    const dropped = historyOpen({ ...h, at: 0 }, "b");
+    expect(dropped.jumps).toEqual([]);
+  });
 });

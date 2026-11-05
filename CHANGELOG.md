@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+- **Links to a heading take you to it** — Clicking a link like `[[Markdown Guide#Tables]]` opens the note scrolled to its Tables heading, with that whole section briefly tinted, and `[[#Callouts]]` does the same within the note you're in. Headings are found the way Obsidian finds them, so bold or punctuation in a heading, or a different case in the link, doesn't matter, and `[[Guide#Second#Widths]]` reaches a heading that shares its name with another. Back and Forward (⌘[ ⌘]) step across these jumps, even inside one note. A heading that isn't there opens the note at its top (or, in the note you're in, leaves you where you are) and says so. These links now read as Obsidian shows them, Markdown Guide > Tables and Callouts, and the file keeps exactly what you wrote.
+
 ### Fixes
 
 - **Dragging several blocks no longer jumps, and a nested item's handle sits beside it** — With a few blocks selected, dragging from any of their handles now lifts them exactly where they are, instead of jumping down to the handle you grabbed; this works the same with a hold on the phone. A nested list item's handle now stands in line under the bullet, number or box of the item it's nested in, the deeper ones further in, so it's clear which item it moves. In a long numbered list the handle no longer covers a number like `100.`.

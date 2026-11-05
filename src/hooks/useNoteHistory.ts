@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { emptyHistory, historyOpen, historyTarget, type NoteHistory } from "../utils/noteHistory";
+import {
+  emptyHistory,
+  historyJump,
+  historyOpen,
+  historyTarget,
+  type NoteHistory,
+} from "../utils/noteHistory";
 import type { NotePlace } from "../utils/notePlace";
 
 /**
@@ -14,12 +20,15 @@ import type { NotePlace } from "../utils/notePlace";
 export function useNoteHistory({
   current,
   open,
+  restoreHere,
   exists,
   resetKey,
 }: {
   /** The open note's id or file's key, or null for neither. */
   current: string | null;
   open: (key: string) => void;
+  /** A step between two visits of the note open (a heading link's): put its place back (null: the top). */
+  restoreHere: (place: NotePlace | null) => void;
   /** Whether a key still names a note or file (one gone is stepped over). */
   exists: (key: string) => boolean;
   resetKey: unknown;
@@ -31,6 +40,9 @@ export function useNoteHistory({
   const places = useRef(new Map<number, NotePlace>());
   const historyRef = useRef(history);
   historyRef.current = history;
+  // A place recorded for the note opening before its visit was added (the
+  // editor's effects run before this one), kept for that visit.
+  const early = useRef<{ key: string; place: NotePlace } | null>(null);
   // The place Back or Forward is returning to, taken once by the editor.
   const restoring = useRef<{ key: string; place: NotePlace | null } | null>(null);
 
@@ -39,7 +51,10 @@ export function useNoteHistory({
   // biome-ignore lint/correctness/useExhaustiveDependencies: the key is the trigger
   useEffect(() => {
     places.current.clear();
-    setHistory(current ? historyOpen(emptyHistory(), current) : emptyHistory());
+    early.current = null;
+    const fresh = current ? historyOpen(emptyHistory(), current) : emptyHistory();
+    historyRef.current = fresh;
+    setHistory(fresh);
   }, [resetKey]);
 
   useEffect(() => {
@@ -48,32 +63,61 @@ export function useNoteHistory({
       stepping.current = null;
       return;
     }
-    setHistory((h) => historyOpen(h, current));
+    const before = historyRef.current;
+    const next = historyOpen(before, current);
+    const e = early.current;
+    early.current = null;
+    if (next === before) return;
+    if (e?.key === current) places.current.set(next.visits[next.at], e.place);
+    historyRef.current = next;
+    setHistory(next);
   }, [current]);
 
   const step = useCallback(
     (dir: -1 | 1) => {
       const i = historyTarget(history, dir, exists);
       if (i < 0) return;
+      const place = places.current.get(history.visits[i]) ?? null;
+      // The same note: nothing opens, so nothing would take a restore or
+      // clear the step's guard. The place goes back here and now.
+      if (history.ids[i] === history.ids[history.at]) {
+        setHistory({ ...history, at: i });
+        historyRef.current = { ...history, at: i };
+        restoreHere(place);
+        return;
+      }
       stepping.current = history.ids[i];
-      restoring.current = {
-        key: history.ids[i],
-        place: places.current.get(history.visits[i]) ?? null,
-      };
+      restoring.current = { key: history.ids[i], place };
       setHistory({ ...history, at: i });
       open(history.ids[i]);
     },
-    [history, exists, open],
+    [history, exists, open, restoreHere],
   );
+
+  /**
+   * A heading link followed inside the note open: a visit of its own, so Back
+   * returns to where the link was. The ref moves at once, so the scroll the
+   * jump makes is recorded as the new visit's place, never the old one's.
+   */
+  const jump = useCallback((key: string) => {
+    const next = historyJump(historyRef.current, key);
+    historyRef.current = next;
+    setHistory(next);
+  }, []);
 
   /**
    * The open visit's place, as the page shows it now. Taken only for the note
    * the list says is open: a scroll the switch to another note fires lands
-   * before the list moves on, and must not overwrite the visit being left.
+   * before the list moves on, and must not overwrite the visit being left; it
+   * is kept for the new note's visit instead (a heading link's scroll).
    */
   const recordPlace = useCallback((key: string, place: NotePlace | null) => {
     const h = historyRef.current;
-    if (h.ids[h.at] !== key) return;
+    if (h.ids[h.at] !== key) {
+      // The note just opened, its visit not yet added: kept for that visit.
+      early.current = place ? { key, place } : null;
+      return;
+    }
     if (place) places.current.set(h.visits[h.at], place);
     // Visits that fell off the list's far end take their places with them.
     if (places.current.size > h.visits.length) {
@@ -95,6 +139,7 @@ export function useNoteHistory({
   return {
     recordPlace,
     takeRestore,
+    jump,
     back: useCallback(() => step(-1), [step]),
     forward: useCallback(() => step(1), [step]),
     canBack: historyTarget(history, -1, exists) >= 0,
