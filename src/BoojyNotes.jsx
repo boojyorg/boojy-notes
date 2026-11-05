@@ -66,7 +66,7 @@ import { cloudProvider, removeLocationPrompt } from "./utils/storageLocations";
 import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
-import { wikilinkStatus } from "./utils/wikilinkTarget";
+import { describeWikilink } from "./utils/linkDescription";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isPhone, isWeb, keyBarInWeb } from "./utils/platform";
 import { NAV_BAR_H, STATUS_BAR_H } from "./utils/uiScale";
@@ -1205,8 +1205,8 @@ export default function BoojyNotes() {
     },
     [reReadBlockFromDom],
   );
-  // What the chip says a link points at: the URL; a note's name and folder;
-  // or that no note, or two, answers to the name.
+  // What the chip says a link points at: the URL, or where a wikilink goes
+  // (utils/linkDescription), a missing note, heading or block said.
   const describeLink = useCallback(
     (el) => {
       if (el.tagName === "A") {
@@ -1214,17 +1214,9 @@ export default function BoojyNotes() {
         return url ? { label: url } : null;
       }
       const target = el.getAttribute("data-target") || "";
-      const status = wikilinkStatus(target, noteDataRef.current);
-      if (status.kind === "note") return { label: status.title, sub: status.folder || "Notes" };
-      if (status.kind === "ambiguous")
-        return {
-          label: status.name,
-          sub: `${status.ids.length} notes share this name`,
-          missing: true,
-        };
-      return { label: status.name || target, sub: "no note by this name", missing: true };
+      return describeWikilink(target, noteDataRef.current, activeNoteRef.current);
     },
-    [noteDataRef],
+    [noteDataRef, activeNoteRef],
   );
 
   // Tag interactions (sidebar filter on click; token-replace + caret restore on select)

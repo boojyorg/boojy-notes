@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { ToastIcon } from "./Icons";
 import { Z } from "../constants/zIndex";
 
 export interface LinkDescription {
@@ -6,7 +7,7 @@ export interface LinkDescription {
   label: string;
   /** A note's folder, muted beside the name; `Notes` for the root. */
   sub?: string;
-  /** A note that is missing or ambiguous: the chip in the error ink. */
+  /** A note, heading or block that is missing, or a name two notes share: the notice's glyph. */
   missing?: boolean;
 }
 
@@ -20,14 +21,15 @@ interface LinkTooltipProps {
  * the primary ink, the elevated ground, a hairline, radius 8, no shadow),
  * 4px under the link, after the same rest a control's chip takes. A web link
  * says its URL; a note link its name with the folder muted beside it; a link
- * that names no note, or two, says so in the error ink.
+ * that names no note, or two, or a heading or block the note lacks, says so
+ * in the same inks, behind the notice's one glyph (the toast's rule: the
+ * meaning is the mark, never coloured words), the toast its click shows.
  */
 export default function LinkTooltip({ description, position }: LinkTooltipProps) {
   const { theme } = useTheme();
-  const { BG, TEXT, SEMANTIC } = theme;
+  const { BG, TEXT, ACCENT } = theme;
 
   if (!description || !position) return null;
-  const ink = description.missing ? SEMANTIC.error : TEXT.primary;
   return (
     <div
       className="motion-fade"
@@ -47,7 +49,7 @@ export default function LinkTooltip({ description, position }: LinkTooltipProps)
         fontSize: 13,
         fontWeight: 500,
         lineHeight: "18px",
-        color: ink,
+        color: TEXT.primary,
         maxWidth: 360,
         overflow: "hidden",
         textOverflow: "ellipsis",
@@ -56,13 +58,20 @@ export default function LinkTooltip({ description, position }: LinkTooltipProps)
         zIndex: Z.TOOLBAR,
       }}
     >
+      {description.missing && (
+        <span
+          data-testid="link-tooltip-mark"
+          style={{ color: ACCENT.text, display: "flex", alignSelf: "center" }}
+        >
+          <ToastIcon name="info" size={14} />
+        </span>
+      )}
       <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{description.label}</span>
       {description.sub && (
         <span
           style={{
             fontWeight: 400,
-            color: description.missing ? ink : TEXT.muted,
-            opacity: description.missing ? 0.8 : 1,
+            color: TEXT.muted,
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}

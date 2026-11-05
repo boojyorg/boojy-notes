@@ -79,6 +79,21 @@ test("a block link in the open note goes to its paragraph; Back returns; a missi
     await openWriting(h, "Here");
     await expect(link(h, "^first-block")).toBeVisible();
 
+    // The chip says where each goes: the open note, or a block it lacks, behind one mark.
+    const chip = h.page.getByTestId("link-tooltip");
+    const chipFor = async (text: string, want: string) => {
+      await expect(async () => {
+        await h.page.mouse.move(5, 5);
+        await link(h, text).hover();
+        await expect(chip).toHaveText(want, { timeout: 1_500 });
+      }).toPass({ timeout: 10_000 });
+    };
+    await chipFor("^first-block", "^first-blockin this note");
+    await expect(h.page.getByTestId("link-tooltip-mark")).toHaveCount(0);
+    await chipFor("^nope", "^nopeno block by this name");
+    await expect(h.page.getByTestId("link-tooltip-mark")).toHaveCount(1);
+    await h.page.mouse.move(5, 5);
+
     await link(h, "^first-block").click();
     await expect.poll(() => atTop(h.page, "This paragraph has an ID.")).toBe(true);
     expect(await tinted(h.page)).toBe(true);
