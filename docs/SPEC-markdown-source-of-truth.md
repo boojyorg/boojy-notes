@@ -156,6 +156,8 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   paragraph, or alone after a list, quote or table for all of it) is followed, found as
   Obsidian finds it, and an unpiped link shows `Note > Heading` while the file keeps the
   target. A `^id` ending a block is drawn quietly; its bytes are the file's.
+- `![[Note]]`, `![[Note#Heading]]` and `![[#^id]]` draw what the same link reaches, read-only;
+  only the embed's own `![[…]]` is edited here, and it is written as typed.
 - Typing `_italic_` or `__bold__` is committed in the star form the renderer speaks; an imported
   underscore form is left as written and shown literal.
 - Copy writes the app's spelling of the copied blocks (`-` bullets, canonical numbering and

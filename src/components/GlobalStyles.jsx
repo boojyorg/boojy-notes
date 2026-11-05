@@ -536,8 +536,50 @@ export default function GlobalStyles() {
           padding: 0 2px;
         }
 ${tagPillCss(theme)}
+        /* An embed (EmbedBlock): a neutral line, lighter and wider than a quote's
+           bar; the right strip holds its open arrow, which nothing runs under. */
+        [data-block-id] .embed {
+          position: relative;
+          border-left: 3px solid ${theme.BG.divider};
+          padding: 2px 32px 2px 16px;
+        }
+        /* The arrow is the code block's tool button (.code-tool): placed only. */
+        [data-block-id] .embed > .embed-open {
+          position: absolute;
+          top: 0;
+          right: 0;
+        }
+        [data-block-id] .embed > .embed-open.is-nudged { color: ${theme.TEXT.primary}; background: ${theme.BG.hover}; }
+        html.is-phone [data-block-id] .embed > .embed-open { width: 44px; height: 44px; top: -8px; right: -10px; }
+        /* A picked embed's link (EmbedBlock), in a panel underneath that floats
+           over the text below, as a formula's source does. */
+        [data-block-id] .embed-edit {
+          position: absolute;
+          z-index: 5;
+          top: calc(100% + 6px);
+          left: 0;
+          right: 0;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          padding: 10px 14px;
+          border-radius: 10px;
+          cursor: text;
+          font: 13.5px/1.6 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        }
+        [data-block-id] .embed-edit .embed-link-field {
+          flex: 0 1 auto;
+          min-width: 0;
+          border: 0;
+          outline: none;
+          background: transparent;
+          color: ${theme.TEXT.primary};
+          font: inherit;
+          padding: 0;
+        }
+        [data-block-id] .embed-link-reason { flex-basis: 100%; font: 12px ${fontStack}; margin-top: 2px; }
         /* A block ID (^first-block): kept as text, drawn quietly (utils/blockTarget). */
-        [data-editor] .block-id { color: ${theme.TEXT.muted}; }
+        [data-editor] .block-id { color: ${theme.TEXT.muted}; white-space: nowrap; }
         [data-block-id] .wikilink {
           /* A web link's ink, underline and hover; dashed is kept for a link to no note. */
           color: ${theme.link.color};

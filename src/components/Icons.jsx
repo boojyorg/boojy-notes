@@ -21,6 +21,7 @@ import {
   ArrowLeft as LuArrowLeft,
   ArrowLeftToLine as LuArrowLeftToLine,
   ArrowRight as LuArrowRight,
+  ArrowUpRight as LuArrowUpRight,
   ArrowRightLeft as LuArrowRightLeft,
   ArrowRightToLine as LuArrowRightToLine,
   ArrowUpDown as LuArrowUpDown,
@@ -282,6 +283,8 @@ export const OpenNoteIcon = navIcon(LuFileText);
 export const UnlinkIcon = navIcon(LuUnlink);
 /** The link picker's address row. */
 export const LinkIcon = navIcon(LuLink);
+/** An embed's open arrow: a control, so at the controls' stroke. */
+export const EmbedOpenIcon = navIcon(LuArrowUpRight);
 /** Move to…: a folder with an arrow going in, beside the menu's Pencil and Copy. */
 export const MoveToIcon = navIcon(LuFolderInput);
 // ── Settings and setup ────────────────────────────────────────────────────
