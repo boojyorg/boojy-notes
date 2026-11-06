@@ -118,9 +118,10 @@ test("the link underneath redraws the embed as typed, says a bad one, and saves 
     await root.locator('[data-block-type="blockquote"]').click();
     const panel = root.locator(".embed-edit");
     const field = panel.locator(".embed-link-field");
-    // A press on the panel's empty right side puts the caret in the link, at its end.
-    const box = (await panel.boundingBox())!;
-    await h.page.mouse.click(box.x + box.width - 12, box.y + box.height / 2);
+    // A press on the panel's empty space, past the closing `]]`, puts the
+    // caret in the link, at its end.
+    const close = (await panel.locator(".embed-link-mark").last().boundingBox())!;
+    await h.page.mouse.click(close.x + close.width + 24, close.y + close.height / 2);
     await expect(field).toBeFocused();
     // Real keys, as typed: "Quotes" becomes "Next".
     await h.page.keyboard.press(END);
@@ -143,6 +144,38 @@ test("the link underneath redraws the embed as typed, says a bad one, and saves 
     await h.page.keyboard.press(UNDO);
     await sleep(SETTLE_MS);
     expect(h.vault.read("Host.md")).toBe(HOST);
+  } finally {
+    await h.close();
+  }
+});
+
+// The link field is inside a picked block, whose caret the editor hides: the
+// field draws its own. Done, as on a formula's source, saves as Enter does.
+test("the link shows its caret, and Done saves it as Enter does", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    await root.locator('[data-block-type="blockquote"]').click();
+    const panel = root.locator(".embed-edit");
+    const field = panel.locator(".embed-link-field");
+    const done = panel.getByRole("button", { name: "Done", exact: true });
+    // Nothing to finish until the link is being edited.
+    await expect(done).toHaveCount(0);
+    await field.click();
+    await expect(field).toBeFocused();
+    const caret = await field.evaluate((el) => getComputedStyle(el).caretColor);
+    expect(caret).not.toBe("rgba(0, 0, 0, 0)");
+    expect(caret).not.toBe("transparent");
+    await h.page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowRight" : "End");
+    for (let i = 0; i < "Quotes".length; i++) await h.page.keyboard.press("Backspace");
+    await h.page.keyboard.type("Next");
+    await done.click();
+    await expect(field).not.toBeFocused();
+    await expect(done).toHaveCount(0);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST.replace("![[Guide#Quotes]]", "![[Guide#Next]]"));
+    expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
   }

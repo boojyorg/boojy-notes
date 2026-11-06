@@ -574,6 +574,8 @@ ${tagPillCss(theme)}
           outline: none;
           background: transparent;
           color: ${theme.TEXT.primary};
+          /* The picked block it sits in hides the editor's caret: the field draws its own. */
+          caret-color: ${theme.caretColor};
           font: inherit;
           padding: 0;
         }

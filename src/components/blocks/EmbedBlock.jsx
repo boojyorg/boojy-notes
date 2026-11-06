@@ -8,6 +8,8 @@ import {
   writtenEmbedTarget,
 } from "../../utils/embedTarget";
 import { BAND_REACH, bandFill } from "../../utils/selectionBand";
+import { isMac } from "../../utils/platform";
+import { fontStack } from "../../tokens/typography";
 import { EmbedOpenIcon } from "../Icons";
 import ReadOnlyBlocks from "../ReadOnlyBlocks";
 import { Tooltip, useTooltip } from "../Tooltip";
@@ -230,13 +232,15 @@ function EmbedView({
  * A picked embed's link, `![[…]]`, in a panel underneath that floats over the
  * text below, as a formula's source does (MathBlock). The embed is drawn as
  * typed while the link names something real (EmbedView); the edit is saved
- * once, in one step, on Enter or leaving; Escape puts it back. A press
- * anywhere on the panel puts the caret in the link.
+ * once, in one step, on Enter, Done or leaving; Escape puts it back. A press
+ * anywhere else on the panel puts the caret in the link.
  */
 function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
   const { theme } = useTheme();
   const written = writtenEmbedTarget(block);
   const ref = useRef(null);
+  const doneRef = useRef(null);
+  const doneTip = useTooltip();
   const editing = draft != null;
   // The editor's own beforeinput seam sits on its root: this field's edits are its own.
   useEffect(() => {
@@ -320,6 +324,45 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
       <span className="embed-link-mark" style={{ color: theme.TEXT.muted }}>
         ]]
       </span>
+      {/* As a formula's source has: shown while there is an edit to finish. */}
+      {editing && (
+        <button
+          ref={doneRef}
+          type="button"
+          className="settings-button math-done"
+          aria-keyshortcuts="Enter"
+          {...doneTip.handlers}
+          onMouseDown={(e) => {
+            // The field keeps focus until Done has acted, and the panel's
+            // press-to-focus leaves it alone.
+            e.preventDefault();
+            e.stopPropagation();
+            doneTip.handlers.onMouseDown();
+          }}
+          onClick={() => ref.current?.blur()}
+          style={{
+            flex: "none",
+            alignSelf: "center",
+            height: 28,
+            // Its 28px fit the panel's one line: no taller when editing starts.
+            margin: "-4px -8px -4px auto",
+            padding: "0 10px",
+            borderRadius: 8,
+            border: `1px solid ${theme.button.border}`,
+            background: theme.button.bg,
+            color: theme.TEXT.primary,
+            fontSize: 12.5,
+            fontWeight: 500,
+            fontFamily: fontStack,
+            cursor: "pointer",
+          }}
+        >
+          Done
+        </button>
+      )}
+      {editing && doneTip.shown && (
+        <Tooltip label="Done" shortcut={isMac ? "↵" : "Enter"} anchor={doneRef.current} />
+      )}
       {said}
     </div>
   );
