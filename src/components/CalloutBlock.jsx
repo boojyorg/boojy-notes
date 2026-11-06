@@ -22,7 +22,9 @@ import {
   Bug,
   FileText,
   XCircle,
+  ChevronRight,
 } from "lucide-react";
+import { registerBlockOpener } from "../utils/blockOpen";
 import { fromTouch } from "../utils/touch";
 import { withAlpha } from "../utils/selectionBand";
 import { fieldTextAfterTyping } from "../utils/typedFormatting";
@@ -234,6 +236,7 @@ export default memo(function CalloutBlock({
   onBlockNav,
   onDelete,
 }) {
+  const rootRef = useRef(null);
   const titleRef = useRef(null);
   const bodyRef = useRef(null);
   const iconBtnRef = useRef(null);
@@ -252,6 +255,55 @@ export default memo(function CalloutBlock({
     const scrollEl = iconBtnRef.current?.closest(".editor-scroll");
     if (scrollEl) scrollRestoreRef.current = { el: scrollEl, top: scrollEl.scrollTop };
   }, []);
+
+  /* ─── Folding ─── */
+
+  // How the note is viewed, never an edit (Obsidian's `-` and `+`): `-` opens
+  // folded, `+` open, no sign never folds. The file's sign rules again
+  // whenever the open note changes, or the sign does.
+  const foldable = block.calloutFold === "-" || block.calloutFold === "+";
+  const [folded, setFolded] = useState(block.calloutFold === "-");
+  const foldedRef = useRef(folded);
+  foldedRef.current = folded;
+  // Set while the body slides, so it clips only then (open, it overflows freely).
+  const [moving, setMoving] = useState(false);
+  useEffect(() => {
+    setFolded(block.calloutFold === "-");
+  }, [noteId, block.calloutFold]);
+
+  const setFold = useCallback((next) => {
+    if (next === foldedRef.current) return;
+    // The caret never stays in hidden text: folding from the body takes it to
+    // the title's end, before the body goes inert.
+    if (next && bodyRef.current?.contains(document.activeElement)) {
+      const t = titleRef.current;
+      t?.focus({ preventScroll: true });
+      if (t) placeCaret(t, caretLength(t));
+    }
+    setMoving(true);
+    setFolded(next);
+  }, []);
+  useEffect(() => {
+    if (!moving) return undefined;
+    // Ends on the slide's end, or at once without one (reduced motion).
+    const timer = window.setTimeout(() => setMoving(false), 600);
+    return () => window.clearTimeout(timer);
+  }, [moving]);
+
+  // The block menu and Find ask by id (blockOpen): "fold", "unfold", "toggle".
+  // Only the note's own block answers, never a copy drawn in an embed or a
+  // past version (they share its id).
+  useLayoutEffect(() => {
+    if (!foldable) return undefined;
+    const own = rootRef.current
+      ?.closest("[data-block-id]")
+      ?.parentElement?.matches("[data-editor]");
+    if (!own) return undefined;
+    return registerBlockOpener(block.id, ({ what }) =>
+      setFold(what === "fold" ? true : what === "unfold" ? false : !foldedRef.current),
+    );
+  }, [block.id, foldable, setFold]);
+  const isFolded = foldable && folded;
 
   /* ─── The two fields ─── */
 
@@ -368,13 +420,30 @@ export default memo(function CalloutBlock({
         onBlockNav?.(blockIndex, "prev");
         return;
       }
+      // ↓ on the title's last line: into the body, or past it while folded.
+      if (e.key === "ArrowDown" && !e.shiftKey) {
+        const sel = window.getSelection();
+        const el = titleRef.current;
+        if (sel?.rangeCount && el) {
+          const rect = caretRect(sel.getRangeAt(0), el);
+          if (el.getBoundingClientRect().bottom - rect.bottom < 4) {
+            e.preventDefault();
+            if (foldable && foldedRef.current) onBlockNav?.(blockIndex, "next");
+            else {
+              bodyRef.current?.focus({ preventScroll: true });
+              if (bodyRef.current) placeCaret(bodyRef.current, 0);
+            }
+            return;
+          }
+        }
+      }
       if (e.key === "Escape") {
         e.preventDefault();
         onBlockNav?.(blockIndex, "next");
         return;
       }
     },
-    [blockIndex, onBlockNav, onDelete],
+    [blockIndex, onBlockNav, onDelete, foldable],
   );
 
   /* ─── Keyboard: body ─── */
@@ -434,7 +503,9 @@ export default memo(function CalloutBlock({
 
   return (
     <div
+      ref={rootRef}
       className="callout-block"
+      data-folded={isFolded || undefined}
       style={{
         // The type's ink, faint: part of the note, not a panel over it.
         background: withAlpha(theme.callouts[calloutType].colour, theme.calloutGround),
@@ -484,7 +555,9 @@ export default memo(function CalloutBlock({
           onKeyDown={handleTitleKeyDown}
           onMouseDown={(e) => e.stopPropagation()}
           style={{
-            flex: 1,
+            // A foldable title is as wide as its words, the chevron after them.
+            flex: foldable ? "0 1 auto" : 1,
+            minWidth: 0,
             color: theme.callouts[calloutType].colour,
             fontWeight: 600,
             fontSize: rhythm.bodySize,
@@ -494,30 +567,78 @@ export default memo(function CalloutBlock({
           }}
           className="callout-title"
         />
+        {foldable && (
+          <>
+            {/* A named button, not a Tab stop: Tab in a note goes to its
+                sidebar row; the block menu is the keyboard's way. */}
+            <button
+              type="button"
+              tabIndex={-1}
+              className="callout-fold-btn"
+              aria-expanded={!isFolded}
+              aria-label={isFolded ? "Expand callout" : "Collapse callout"}
+              onMouseDown={(e) => {
+                // The caret stays where it is (or, folding, goes to the title).
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={() => setFold(!foldedRef.current)}
+              style={{ color: theme.callouts[calloutType].colour }}
+            >
+              <ChevronRight size={16} strokeWidth={2} />
+            </button>
+            {/* The rest of the row still edits the title, at its end. */}
+            <div
+              aria-hidden="true"
+              style={{ flex: 1, alignSelf: "stretch", cursor: "text" }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const t = titleRef.current;
+                if (!t) return;
+                t.focus({ preventScroll: true });
+                placeCaret(t, caretLength(t));
+              }}
+            />
+          </>
+        )}
       </div>
 
-      {/* Body */}
+      {/* Body: folded, it slides shut and is out of reach (inert) from the
+          first moment, so no caret, Tab or selection lands in it. */}
       <div
-        ref={bodyRef}
-        contentEditable
-        suppressContentEditableWarning
-        data-inline-field="callout-body"
-        data-placeholder="Type callout content..."
-        onInput={handleBodyInput}
-        onKeyDown={handleBodyKeyDown}
-        onMouseDown={(e) => e.stopPropagation()}
-        style={{
-          // The note's own words: the title and icon carry the type.
-          color: theme.TEXT.primary,
-          fontSize: rhythm.bodySize,
-          lineHeight: rhythm.lineHeight,
-          outline: "none",
-          paddingLeft: 0,
-          marginTop: 4,
-          minHeight: 20,
+        className="callout-fold"
+        data-folded={isFolded || undefined}
+        data-moving={moving || undefined}
+        inert={isFolded || undefined}
+        onTransitionEnd={(e) => {
+          if (e.target === e.currentTarget) setMoving(false);
         }}
-        className="callout-body"
-      />
+      >
+        <div className="callout-fold-inner">
+          <div
+            ref={bodyRef}
+            contentEditable
+            suppressContentEditableWarning
+            data-inline-field="callout-body"
+            data-placeholder="Type callout content..."
+            onInput={handleBodyInput}
+            onKeyDown={handleBodyKeyDown}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              // The note's own words: the title and icon carry the type.
+              color: theme.TEXT.primary,
+              fontSize: rhythm.bodySize,
+              lineHeight: rhythm.lineHeight,
+              outline: "none",
+              paddingLeft: 0,
+              paddingTop: 4,
+              minHeight: 20,
+            }}
+            className="callout-body"
+          />
+        </div>
+      </div>
 
       {/* Type picker dropdown (portal to avoid scroll jump) */}
       {pickerOpen &&

@@ -4,6 +4,17 @@ import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { isEditableBlock, outsideAtoms } from "../utils/domHelpers";
 import { domNodeToMarkdown } from "../utils/inlineFormatting";
+import { revealFolded } from "../utils/calloutFold";
+
+/**
+ * A match brought into view: a folded callout holding it opens first, and the
+ * scroll waits for it, so it lands where the words finally sit.
+ */
+function showMatch(range) {
+  revealFolded(range.startContainer).then(() =>
+    range.startContainer.parentElement?.scrollIntoView({ behavior: "smooth", block: "center" }),
+  );
+}
 
 /** Put `replacement` where `range` is, on screen. */
 function replaceRange(range, replacement) {
@@ -107,10 +118,7 @@ export default function FindBar({
         const highlight = new Highlight(...ranges);
         CSS.highlights.set("find-matches", highlight);
         CSS.highlights.set("find-active", new Highlight(ranges[idx]));
-        ranges[idx].startContainer.parentElement?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
+        showMatch(ranges[idx]);
       }
     },
     [editorRef],
@@ -126,10 +134,7 @@ export default function FindBar({
     if (matches.length === 0) return;
     const idx = Math.min(activeMatchIndex, matches.length - 1);
     CSS.highlights.set("find-active", new Highlight(matches[idx]));
-    matches[idx].startContainer.parentElement?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
+    showMatch(matches[idx]);
   }, [activeMatchIndex, matches]);
 
   // Clean up highlights on unmount

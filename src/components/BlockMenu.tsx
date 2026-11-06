@@ -5,7 +5,9 @@ import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
 import { shortcutLabel } from "./Tooltip";
 import { cssZoom } from "../utils/domHelpers";
 import {
+  ChevronDownIcon,
   ChevronLeftIcon,
+  ChevronRightIcon,
   ClipboardIcon,
   CopyIcon,
   SlashCommandIcon,
@@ -91,6 +93,8 @@ interface BlockMenuProps {
   onDuplicate: () => void;
   onCopy: () => void;
   onDelete: () => void;
+  /** A foldable callout's: whether it is folded now, and the toggle (never an edit). */
+  fold?: { folded: boolean; onToggle: () => void };
   onClose: () => void;
   /**
    * The phone's: `anchor` is the selected blocks' rect, and the menu hangs
@@ -114,6 +118,7 @@ export default function BlockMenu({
   onDuplicate,
   onCopy,
   onDelete,
+  fold,
   onClose,
   under = false,
 }: BlockMenuProps) {
@@ -146,6 +151,12 @@ export default function BlockMenu({
   }));
   const turnable = types.some((t) => TURNABLE.has(t));
   const items: MenuItem[] = [];
+  if (!turning && fold && types.length === 1)
+    items.push({
+      label: fold.folded ? "Unfold" : "Fold",
+      icon: fold.folded ? <ChevronRightIcon /> : <ChevronDownIcon />,
+      action: fold.onToggle,
+    });
   if (turning) {
     items.push(
       { label: "Turn into", icon: <ChevronLeftIcon />, action: () => setTurning(null) },
