@@ -27,6 +27,7 @@ vi.mock("../../../src/utils/typedFormatting", () => ({
   paintTypedFormat: (...args) => paintTypedFormat(...args),
   // The block ID's repaint is the DOM's (block-links.spec.ts), not what is committed.
   repaintBlockId: () => {},
+  repaintComments: () => {},
 }));
 
 describe("useInputHandler", () => {

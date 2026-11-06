@@ -44,6 +44,8 @@ const inline = fc.constantFrom(
   "![alt](pic.png)",
   "<span>html</span>",
   "$x$",
+  "%%comment%%",
+  "%%**raw** [[Note]] #t%%",
 );
 
 const spaces = fc.constantFrom("", "", "", " ", "  ", "\t");
@@ -190,6 +192,9 @@ const inlinePiece = fc.constantFrom(
   "$",
   "&",
   "&amp;",
+  "%%",
+  "%",
+  "\\%",
 );
 
 /** One block's text, as typed: inline syntax in any order, no newline, no edge spaces. */

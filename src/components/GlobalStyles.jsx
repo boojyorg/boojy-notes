@@ -584,6 +584,8 @@ ${tagPillCss(theme)}
         [data-block-id] .embed-link-reason { flex-basis: 100%; font: 12px ${fontStack}; margin-top: 2px; }
         /* A block ID (^first-block): kept as text, drawn quietly (utils/blockTarget). */
         [data-editor] .block-id { color: ${theme.TEXT.muted}; white-space: nowrap; }
+        /* A %% comment: the file's text, muted, markers and all (utils/comments). */
+        [data-block-id] .md-comment { color: ${theme.TEXT.muted}; }
         [data-block-id] .wikilink {
           /* A web link's ink, underline and hover; dashed is kept for a link to no note. */
           color: ${theme.link.color};

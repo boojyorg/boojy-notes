@@ -1,7 +1,12 @@
 import { useCallback } from "react";
 import { cleanOrphanNodes, getCaretOffset, hasOwnField, placeCaret } from "../../utils/domHelpers";
 import { domNodeToMarkdown, inlineMarkdownToHtml } from "../../utils/inlineFormatting";
-import { paintTypedFormat, repaintBlockId, typedFormatHit } from "../../utils/typedFormatting";
+import {
+  paintTypedFormat,
+  repaintBlockId,
+  repaintComments,
+  typedFormatHit,
+} from "../../utils/typedFormatting";
 import { liftTypedSpace } from "../../utils/inlineFormatCommands";
 import { genBlockId } from "../../utils/storage";
 import { TAG_TAIL_RE } from "../../utils/tags";
@@ -249,8 +254,14 @@ export function useInputHandler({
       }
     }
 
+    // Typed inside a `%%` comment, nothing is offered: a comment is literal.
+    const caretNode = window.getSelection()?.anchorNode;
+    const inComment = !!(
+      caretNode?.nodeType === Node.TEXT_NODE ? caretNode.parentElement : caretNode
+    )?.closest?.(".md-comment");
+
     // Wikilink menu detection: open [[ not yet closed
-    const wikiMatch = text.match(WIKILINK_OPEN_RE);
+    const wikiMatch = inComment ? null : text.match(WIKILINK_OPEN_RE);
     if (wikiMatch) {
       const rect = el.getBoundingClientRect();
       setWikilinkMenu({
@@ -264,7 +275,7 @@ export function useInputHandler({
     }
 
     // Tag autocomplete detection: open # with at least one letter typed
-    const tagMatch = text.match(TAG_OPEN_RE);
+    const tagMatch = inComment ? null : text.match(TAG_OPEN_RE);
     if (tagMatch) {
       // The pill appears on the first letter: a text-only commit never
       // repaints, so `#p` would stay plain until something else did. The
@@ -297,6 +308,8 @@ export function useInputHandler({
 
     // A block ID's grey follows the text as it is typed (repaintBlockId).
     repaintBlockId(el, text, native, noteTitleSetRef?.current);
+    // A comment's grey follows its markers likewise (repaintComments).
+    repaintComments(el, text, native, noteTitleSetRef?.current);
 
     // Auto-convert bare URLs: if text contains a URL followed by a space, re-render to style it
     if (/https?:\/\/\S+\s$/.test(text) || /https?:\/\/\S+\s/.test(text)) {

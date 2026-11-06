@@ -7,6 +7,7 @@ import { LINK_DEST } from "./linkDestination";
 import { TAG_RE } from "./tags";
 import { BLOCK_ID_END_RE } from "./blockTarget";
 import { codeSourceText, codeSpanSource, editedCodeSpanSource, findCodeSpans } from "./codeSpans";
+import { COMMENT_CLASS, findComments } from "./comments";
 
 /** Step 1 of the renderer, for prose that has been read back to characters. */
 const escapeHtml = (text) =>
@@ -187,6 +188,44 @@ function shieldCodeSpans(md, codes) {
 const CODE_TOKEN_RE = /\x00CODE(\d+)\x00/g;
 
 /**
+ * `md` with each comment replaced by a token, its source pushed onto
+ * `comments`. Before everything else, code spans included: nothing in a
+ * comment is drawn, so its text is the file's, read back as written.
+ */
+function shieldComments(md, comments) {
+  const found = findComments(md);
+  if (!found.length) return md;
+  let out = "";
+  let last = 0;
+  for (const { start, end } of found) {
+    comments.push(md.slice(start, end));
+    out += `${md.slice(last, start)}\x00CMT${comments.length - 1}\x00`;
+    last = end;
+  }
+  return out + md.slice(last);
+}
+
+const COMMENT_TOKEN_RE = /\x00CMT(\d+)\x00/g;
+
+/**
+ * The shielded comments put back: as their source inside a tag's attribute
+ * (`[[a %%b%%]]` names "a %%b%%"), as their muted elements everywhere else.
+ */
+function restoreComments(html, comments) {
+  if (!comments.length) return html;
+  const attr = (src) =>
+    escapeHtml(src).replace(/"/g, "&quot;").replace(/\r/g, "&#13;").replace(/\n/g, "&#10;");
+  return html
+    .replace(/<[^>]*>/g, (tag) =>
+      tag.replace(COMMENT_TOKEN_RE, (_, i) => attr(comments[Number(i)])),
+    )
+    .replace(
+      COMMENT_TOKEN_RE,
+      (_, i) => `<span class="${COMMENT_CLASS}">${escapeHtml(comments[Number(i)])}</span>`,
+    );
+}
+
+/**
  * The shielded code spans put back: as their source inside a tag (a wikilink's
  * `data-target`: `[[a `b`]]` names "a `b`"), where an element would break the
  * attribute open; as their elements everywhere else.
@@ -208,6 +247,11 @@ function restoreCodeSpans(html, codes) {
 export function inlineMarkdownToHtml(md, noteTitles) {
   if (!md) return "";
   let s = md;
+
+  // 0a. Comments (`%%…%%`), literal and muted: set aside whole, before even
+  // code spans (a marker inside a code span is no marker: utils/comments).
+  const comments = [];
+  s = shieldComments(s, comments);
 
   // 0. Code spans, before anything else reads the text: everything in one is
   // literal. Each is shielded whole and restored at the end as its element,
@@ -374,6 +418,7 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   s = s.replace(/\x00RUN(\d+)\x00/g, (_, i) => runs[parseInt(i, 10)]);
   s = restoreEscapes(s, escapes);
   s = restoreCodeSpans(s, codes);
+  s = restoreComments(s, comments);
 
   // 12. A newline inside block text is a soft break: one line break on screen.
   // A trailing newline gets a second <br>, the way Chromium keeps an empty
