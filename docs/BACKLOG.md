@@ -18,8 +18,9 @@ else sit in Fix now.
 
 The tiers, kept apart. **Requirements** are what a stage waits for. **Candidates** are
 optional; each is judged on its own and may be declined. **Future** is everything after 1.0,
-recorded so a preference and its open question are not lost. Last reviewed: 2026-10-24, the 1.0
-scope pass (a read-only audit of v0.18.0, an independent review and a Codex review). Items
+recorded so a preference and its open question are not lost. Last reviewed: 2026-11-06, the
+v0.22.0 release pass; the 1.0 scope pass was 2026-10-24 (a read-only audit of v0.18.0, an
+independent review and a Codex review). Items
 marked *review §n* come from the whole-app review of 2026-09-07.
 
 ## Direction
@@ -223,8 +224,9 @@ Optional. Each is considered on its own, judged by daily-drive friction, and may
 none blocks a stage.
 
 - **Callout contents as real blocks.** Lists, fences and nested callouts inside a callout show
-  as text today, and a fold (`-`/`+`) is kept but ignored; whether a click folds one is part of
-  the same question. Decided only after a round of mockups.
+  as text today, kept byte for byte. Not now (2026-11-06): no note in Tyr's vaults nests a
+  callout. Taken up when a real note wants one, with a one-day trial first: the preservation
+  corpus byte for byte, no new note-state action, about five rules lines at most.
 - **Tables that work better.** Wanted (Tyr, 2026-09-24): 101 of the 213 notes in his vault hold
   one. Grips, alignment, Duplicate and Clear contents shipped (`CHANGELOG.md`). Left, in the
   order daily use asks for them: a paste from a spreadsheet (tab-separated text) into a
