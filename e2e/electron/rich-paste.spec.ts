@@ -115,3 +115,13 @@ test("a pasted tag is drawn as a pill at once, plain or formatted, mid-line too"
     (t) => t === "Start\n\nsee #area/work and here #area/home\n",
   );
 });
+
+// A paste with a tag paints its whole line, as the next paint would: other
+// Markdown in it is drawn too (bold here), and the file keeps what was pasted.
+test("a pasted line with a tag and other Markdown draws both, the file as pasted", async () => {
+  const para = h.page.locator('[data-block-type="p"]').nth(1);
+  await paste("**bold** #tag", "");
+  await expect(para.locator(".inline-tag")).toHaveText(["#tag"]);
+  await expect(para.locator("strong, b")).toHaveText(["bold"]);
+  await waitForFile(h.vault.file("P.md"), (t) => t === "Start\n\n**bold** #tag\n");
+});

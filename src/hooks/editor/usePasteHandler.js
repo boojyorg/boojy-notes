@@ -55,8 +55,9 @@ export function usePasteHandler({
    * A pasted `#tag` is a pill at once, as a typed one is from its first letter
    * (useInputHandler): an inline paste is a text-only edit, which never
    * repaints, so the tag stayed plain until something else painted the block.
-   * The block is painted from its own text and the caret put back at its
-   * offset (visible characters), after what was pasted.
+   * The block is painted from its own text, so any other Markdown in the
+   * line is drawn as the next paint would draw it (the file is unchanged),
+   * and the caret put back at its offset (visible characters).
    */
   const paintPastedTags = (el, pasted) => {
     if (!el || !new RegExp(TAG_RE.source, "u").test(pasted)) return;
