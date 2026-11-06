@@ -10,6 +10,7 @@
  */
 import { highlightCode } from "./codeHighlight";
 import { canonicalLang } from "./codeLanguage";
+import { FOOTNOTE_DEF_RE, findFootnotes } from "./footnotes";
 import { trimBareUrl } from "./inlineFormatting";
 import { LINK_DEST } from "./linkDestination";
 import { TAG_BODY } from "./tags";
@@ -145,8 +146,21 @@ function paintInline(line: string): string {
   let i = 0;
   let bold = false;
   const word = (s: string) => (bold ? strong(esc(s)) : esc(s));
+  // Footnotes by the one grammar (utils/footnotes): a reference in the accent,
+  // an inline footnote's `^[` and `]` muted around its words.
+  const footnotes = findFootnotes(line);
   while (i < line.length) {
     const rest = line.slice(i);
+    const fn = footnotes.find((f) => f.start === i);
+    if (fn) {
+      const src = line.slice(fn.start, fn.end);
+      out +=
+        fn.kind === "ref"
+          ? span("md-fn", word(src))
+          : muted("^[") + word(src.slice(2, -1)) + muted("]");
+      i = fn.end;
+      continue;
+    }
     // An escape is written as it is and read as its character.
     if (rest[0] === "\\" && rest.length > 1) {
       out += muted("\\") + word(rest[1]);
@@ -211,7 +225,9 @@ function paintInline(line: string): string {
       continue;
     }
     // Plain text up to the next character that could open a marker.
-    const plain = rest.match(PLAIN)?.[0] ?? rest[0];
+    // Never past a footnote's start: `^` is plain text elsewhere.
+    const next = footnotes.find((f) => f.start > i)?.start ?? line.length;
+    const plain = (rest.match(PLAIN)?.[0] ?? rest[0]).slice(0, next - i);
     out += word(plain);
     i += plain.length;
   }
@@ -306,6 +322,16 @@ function paintLines(lines: string[], atStart: boolean, depth = 0): string {
     }
     const callout = quote === "plain" ? null : line.match(CALLOUT_LINE);
     quote = QUOTE_LINE.test(line) ? (callout ? "callout" : (quote ?? "plain")) : null;
+    // A footnote definition's `[^label]:` in the accent, as a reference is.
+    const definition = quote ? null : line.match(FOOTNOTE_DEF_RE);
+    if (definition) {
+      out.push(
+        muted(definition[1]) +
+          span("md-fn", esc(definition[0].slice(definition[1].length))) +
+          paintInline(line.slice(definition[0].length)),
+      );
+      continue;
+    }
     const lead = line.match(LINE_MARKER)?.[1] ?? "";
     const marker = paintMarker(lead);
     const rest = line.slice(lead.length);

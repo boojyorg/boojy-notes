@@ -29,7 +29,7 @@ import {
   inlineMarkdownToHtml,
   nodeToMarkdown,
 } from "./inlineFormatting";
-import { COMMENT_CLASS } from "./comments";
+import { LITERAL_SELECTOR } from "./footnotes";
 import { markdownAfter, markdownBefore } from "./crossBlockEdit";
 
 /**
@@ -206,10 +206,8 @@ export function typedFormatHit(el, native) {
   if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
   const { anchorNode: node, anchorOffset: offset } = sel;
   if (!node || !el.contains(node)) return null;
-  // A comment is literal: nothing typed in one converts or seals.
-  if (
-    (node.nodeType === Node.TEXT_NODE ? node.parentElement : node)?.closest?.(`.${COMMENT_CLASS}`)
-  )
+  // A comment or footnote is literal: nothing typed in one converts or seals.
+  if ((node.nodeType === Node.TEXT_NODE ? node.parentElement : node)?.closest?.(LITERAL_SELECTOR))
     return null;
   const escaped = typedEscapeHit(el, node, offset);
   if (escaped) return escaped;
@@ -355,11 +353,11 @@ export function repaintBlockId(el, text, native, noteTitles) {
 function commentPlaces(root) {
   const clean = (t) => t.replace(/\u200B/g, "").replace(/\u00A0/g, " ");
   const places = [];
-  for (const c of root.querySelectorAll(`.${COMMENT_CLASS}`)) {
+  for (const c of root.querySelectorAll(LITERAL_SELECTOR)) {
     const before = document.createRange();
     before.setStart(root, 0);
     before.setEndBefore(c);
-    places.push(`${clean(before.toString()).length}:${clean(c.textContent ?? "")}`);
+    places.push(`${c.className}:${clean(before.toString()).length}:${clean(c.textContent ?? "")}`);
   }
   return places.join("\u0000");
 }
@@ -373,7 +371,13 @@ function commentPlaces(root) {
  */
 export function repaintComments(el, text, native, noteTitles) {
   if (!native || native.isComposing) return;
-  if (!text.includes("%%") && !el.querySelector(`.${COMMENT_CLASS}`)) return;
+  if (
+    !text.includes("%%") &&
+    !text.includes("[^") &&
+    !text.includes("^[") &&
+    !el.querySelector(LITERAL_SELECTOR)
+  )
+    return;
   const html = inlineMarkdownToHtml(text, noteTitles);
   const fresh = document.createElement("div");
   fresh.innerHTML = html;

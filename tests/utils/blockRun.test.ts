@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   belowItem,
+  dropBoundary,
   gripSelection,
   indentRun,
   moveStep,
@@ -230,5 +231,71 @@ describe("indentRun", () => {
 
   it("returns null when nothing in the run is a list item", () => {
     expect(indentRun([p("a"), p("b")], 0, 1, 1)).toBeNull();
+  });
+});
+
+// A footnote with two continuation paragraphs (a blank row between them), then
+// a second footnote with one, then a paragraph.
+const fn = (id: string, label: string): Block =>
+  ({ id, type: "footnote", label, text: id }) as Block;
+const cont = (id: string): Block => ({ id, type: "p", text: `    ${id}` });
+const blank = (id: string): Block => ({ id, type: "p", text: "" });
+const notes = [
+  p("a"),
+  fn("r", "recipe"),
+  cont("r2"),
+  blank("x"),
+  cont("r3"),
+  fn("s", "src"),
+  cont("s2"),
+  p("z"),
+];
+const ids = (blocks: Block[] | null) => blocks?.map((b) => b.id);
+
+describe("a footnote's continuation paragraphs belong to it", () => {
+  it("are its subtree, blank rows between them included", () => {
+    expect(subtreeEnd(notes, 1)).toBe(4);
+    expect(subtreeEnd(notes, 5)).toBe(6);
+  });
+
+  it("stop at the first block that is not indented text", () => {
+    expect(subtreeEnd([fn("r", "1"), blank("x"), p("after")], 0)).toBe(0);
+  });
+
+  it("a paragraph indented less than two spaces is not one", () => {
+    expect(subtreeEnd([fn("r", "1"), { id: "q", type: "p", text: " one space" }], 0)).toBe(0);
+  });
+
+  it("a selection of the footnote holds them", () => {
+    expect(selectedIds(notes, { anchor: "r", head: "r" })).toEqual(["r", "r2", "x", "r3"]);
+  });
+
+  it("⌘⇧↓ moves the footnote with them past the next footnote's group", () => {
+    expect(ids(moveStep(notes, 1, 1))).toEqual(["a", "s", "s2", "r", "r2", "x", "r3", "z"]);
+  });
+
+  it("⌘⇧↑ moves the second footnote past the first one's whole group", () => {
+    expect(ids(moveStep(notes, 5, -1))).toEqual(["a", "s", "s2", "r", "r2", "x", "r3", "z"]);
+  });
+
+  it("a paragraph moved up passes a footnote's group whole, never into it", () => {
+    expect(ids(moveStep(notes, 7, -1))).toEqual(["a", "r", "r2", "x", "r3", "z", "s", "s2"]);
+  });
+
+  it("a continuation moves among its footnote's paragraphs only", () => {
+    expect(moveStep(notes, 6, 1)).toBeNull();
+    expect(moveStep(notes, 6, -1)).toBeNull();
+  });
+
+  it("a block inserted below the footnote goes after them", () => {
+    expect(belowItem(notes, 1)).toBe(5);
+  });
+
+  it("a drop inside a footnote's group lands after it", () => {
+    expect(dropBoundary(notes, 2)).toBe(5);
+    expect(dropBoundary(notes, 4)).toBe(5);
+    expect(dropBoundary(notes, 1)).toBe(1);
+    expect(dropBoundary(notes, 5)).toBe(5);
+    expect(dropBoundary(notes, 8)).toBe(8);
   });
 });

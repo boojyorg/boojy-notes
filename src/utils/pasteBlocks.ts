@@ -43,6 +43,7 @@ const TEXT_BLOCK_TYPES: ReadonlySet<BlockType> = new Set<BlockType>([
   "numbered",
   "checkbox",
   "blockquote",
+  "footnote",
 ]);
 
 /** A pasted block as decoded from the clipboard: shaped like a block, without an id. */

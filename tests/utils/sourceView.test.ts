@@ -119,6 +119,16 @@ describe("paintMarkdown", () => {
   const role = (html: string, cls: string) =>
     [...html.matchAll(new RegExp(`<span class="${cls}">([^<]*)</span>`, "g"))].map((m) => m[1]);
 
+  it("colours footnotes by the one grammar, every character kept", () => {
+    const md =
+      "Claim.[^1] Out.^[Version [one] here] and `[^2]`\n\n[^1]: The source.\n   [^long]: Indented.\n> [^q]: in a quote\n";
+    const html = paintMarkdown(md);
+    expect(text(html)).toBe(md);
+    // In a quote it is the quote's text: a reference, never a definition.
+    expect(role(html, "md-fn")).toEqual(["[^1]", "[^1]:", "[^long]:", "[^q]"]);
+    expect(marks(html)).toEqual(expect.arrayContaining(["^[", "]", "   "]));
+  });
+
   it("gives each part of the file its role's ink", () => {
     const html = paintMarkdown(NOTE);
     // Indentation and quote markers muted; list and task markers their own ink.

@@ -160,6 +160,14 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   escapes) is drawn muted and literal, markers shown and nothing inside formatted, so its bytes
   are the file's. It is visible and searchable, never private, and a `#tag` in it counts as a
   tag (as in Obsidian). A comment across blocks stays plain text, preserved byte for byte.
+- **Footnotes are drawn as Obsidian's editing view shows them, never numbered**: a reference
+  (`[^label]`, no whitespace in the label) small and raised, an inline footnote (`^[…]`,
+  brackets inside balanced) muted, both literal like a comment. A definition (`[^label]:`, up
+  to three spaces in) is its own block, its label shown beside its text; its indent, the gap
+  after the colon and any trailing space are kept. A line under it with no blank between is
+  its text; an indented paragraph after it (two spaces or a tab) stays its own block but
+  belongs to it: selected, moved and deleted with it. A missing definition leaves the
+  reference as written. Meaning is judged by `markdown-it-footnote`, Obsidian where they differ.
 - `![[Note]]`, `![[Note#Heading]]` and `![[#^id]]` draw what the same link reaches, read-only;
   only the embed's own `![[…]]` is edited here, and it is written as typed.
 - Typing `_italic_` or `__bold__` is committed in the star form the renderer speaks; an imported

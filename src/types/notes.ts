@@ -22,7 +22,8 @@ export type BlockType =
   | "embed"
   | "spacer"
   | "table"
-  | "frontmatter";
+  | "frontmatter"
+  | "footnote";
 
 // ─── Base properties shared by all blocks ─────────────────────────
 interface BlockBase {
@@ -124,6 +125,14 @@ interface SpacerBlock extends BlockBase {
   dividerSource?: string;
 }
 
+interface FootnoteBlock extends BlockBase {
+  type: "footnote";
+  /** The label between `[^` and `]:`, as written: never renumbered. */
+  label: string;
+  /** Nothing after the colon in the file, not even a space. */
+  bare?: true;
+}
+
 interface FrontmatterBlock extends BlockBase {
   type: "frontmatter";
   /** The closer as written when it is not `---`; `empty` for `---` straight over `---`. */
@@ -141,7 +150,8 @@ export type Block =
   | EmbedBlock
   | TableBlock
   | SpacerBlock
-  | FrontmatterBlock;
+  | FrontmatterBlock
+  | FootnoteBlock;
 
 export interface NoteContent {
   title: string;

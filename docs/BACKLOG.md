@@ -129,8 +129,9 @@ the test its rule names when it is built.
 - **The Obsidian extensions, explicitly.** Drawn and edited: wikilinks and aliases,
   `[[Note#Heading]]` and `#^block-id` (drawn quietly), note embeds (drawn read-only, a heading's section or a block), embeds with a size (`#page=`: a file card that opens that page), callouts,
   `==highlight==`, `#tags`, frontmatter (as properties), maths, Mermaid, `%%comments%%` within a
-  block (muted, literal). **Preserved only**, byte for
-  byte and shown as text: footnotes, comments across blocks, task states beyond `[ ]`/`[x]`,
+  block (muted, literal), footnotes (as Obsidian's editing view: literal, never numbered).
+  **Preserved only**, byte for byte and shown as text: comments across blocks, task states
+  beyond `[ ]`/`[x]`,
   HTML, reference-style links, plugin syntax. The spec takes this list when the work lands.
 
 **Connected notes** (one link index)
@@ -503,7 +504,11 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ### Editor and organisation
 
-- **Someday (Tyr, 2026-09-30), each as Obsidian does it:** footnotes drawn; unlinked mentions
+- **Footnotes, next** (2026-11-06): a read-only preview of a reference's definition; `/footnote`
+  (the next number above every numeric label, references included); whether a click on a
+  reference jumps or places the caret, settled by trying both. No shortcut yet (⌥⌘F is AltGr+F
+  on some Windows layouts).
+- **Someday (Tyr, 2026-09-30), each as Obsidian does it:** unlinked mentions
   under the backlinks; a linked note previewed on hover; moving a selection into a new note,
   leaving a link; emoji by `:name:`; smart quotes and arrows (never in code); the Mac Share
   menu, through the `boojy-notes://` link.

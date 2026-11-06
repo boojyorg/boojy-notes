@@ -45,8 +45,9 @@ import { enterInTag } from "../../utils/tagEditing";
  * does anything else (Notion's rule, and Obsidian's in effect, where the key
  * deletes the `### `): the text and the caret stay, only the kind goes. A
  * second Backspace then merges or reaches across as a paragraph's would.
+ * A footnote definition sheds its label the same way.
  */
-const DEMOTES_TO_PARAGRAPH = LINE_KIND_TYPES;
+const DEMOTES_TO_PARAGRAPH = new Set([...LINE_KIND_TYPES, "footnote"]);
 
 /** A text root that sits inside a row beside its marker (a list item, a task). */
 function inRow(el) {

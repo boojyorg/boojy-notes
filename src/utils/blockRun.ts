@@ -14,15 +14,53 @@ export interface BlockSelection {
   grip?: string;
 }
 
+/** A paragraph indented two spaces or a tab: under a footnote, another of its paragraphs. */
+const CONTINUES_FOOTNOTE = /^(?: {2,}|\t)\S/;
+const continuesFootnote = (b: Block | undefined) =>
+  b?.type === "p" && CONTINUES_FOOTNOTE.test(b.text || "");
+const blankRow = (b: Block | undefined) => b?.type === "p" && (b.text || "") === "";
+
+/**
+ * The last index of footnote `i`'s group: the indented paragraphs after it,
+ * blank rows between them, which Markdown reads as more of the footnote.
+ */
+function footnoteEnd(blocks: readonly Block[], i: number): number {
+  let end = i;
+  for (let k = i + 1; k < blocks.length; k++) {
+    if (continuesFootnote(blocks[k])) end = k;
+    else if (!blankRow(blocks[k])) break;
+  }
+  return end;
+}
+
+/** Whether block `k` is inside a footnote's group, after the definition itself. */
+export function inFootnoteGroup(blocks: readonly Block[], k: number): boolean {
+  let j = k - 1;
+  while (j >= 0 && (continuesFootnote(blocks[j]) || blankRow(blocks[j]))) j--;
+  return j >= 0 && blocks[j].type === "footnote" && footnoteEnd(blocks, j) >= k;
+}
+
+/**
+ * Where a dropped run goes for boundary `target`: never inside a footnote's
+ * group, where it would part the footnote from its later paragraphs (and they
+ * would join the dropped block), but after the group.
+ */
+export function dropBoundary(blocks: readonly Block[], target: number): number {
+  let t = target;
+  while (t > 0 && t < blocks.length && inFootnoteGroup(blocks, t)) t++;
+  return t;
+}
+
 /**
  * The last index of block `i` and what is nested under it: the blocks that
- * follow a list item at a deeper indent. Anything else has no children
- * (Markdown nests only under a list item), so it is its own end. The one rule
- * shared by the selection and the grip's drag, so what is selected is what
- * moves.
+ * follow a list item at a deeper indent, or a footnote's later paragraphs.
+ * Anything else has no children (Markdown nests only under a list item or a
+ * footnote), so it is its own end. The one rule shared by the selection, the
+ * grip's drag and ⌘⇧↑/↓, so what is selected is what moves.
  */
 export function subtreeEnd(blocks: readonly Block[], i: number): number {
   const block = blocks[i];
+  if (block?.type === "footnote") return footnoteEnd(blocks, i);
   if (!block || !LIST_TYPES.has(block.type)) return i;
   const depth = block.indent || 0;
   let end = i;
@@ -40,7 +78,8 @@ export function subtreeEnd(blocks: readonly Block[], i: number): number {
 export function moveStep(blocks: readonly Block[], i: number, dir: 1 | -1): Block[] | null {
   const floor = reorderFloor(blocks);
   if (i < floor || i >= blocks.length) return null;
-  const depth = (k: number) => blocks[k].indent || 0;
+  // A footnote's later paragraphs stand one level in, as nested items do.
+  const depth = (k: number) => (blocks[k].indent || 0) + (inFootnoteGroup(blocks, k) ? 1 : 0);
   const end = subtreeEnd(blocks, i);
   let from: number;
   let to: number;

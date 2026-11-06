@@ -12,6 +12,7 @@ import {
   typedBlockType,
   typedFenceLang,
   typedTableColumns,
+  typedFootnote,
 } from "../../src/utils/blockTriggers";
 
 describe("typedFenceLang", () => {
@@ -153,5 +154,23 @@ describe("opensProperties: `---` on a note's first line", () => {
     expect(opensProperties("----", 0, "p")).toBe(false);
     expect(opensProperties("---", 0, "h1")).toBe(false);
     expect(opensProperties("--- x", 0, "p")).toBe(false);
+  });
+});
+
+describe("typedFootnote", () => {
+  it("reads `[^label]: ` typed at a line's start, with or without text after", () => {
+    expect(typedFootnote("[^1]: ")).toEqual({ label: "1", rest: "", length: 6 });
+    expect(typedFootnote("[^recipe]: Leave it")).toEqual({
+      label: "recipe",
+      rest: "Leave it",
+      length: 11,
+    });
+  });
+
+  it("waits for the space, and refuses a label with whitespace or a soft break", () => {
+    expect(typedFootnote("[^1]:")).toBeNull();
+    expect(typedFootnote("[^my note]: x")).toBeNull();
+    expect(typedFootnote("[^1]: one\ntwo")).toBeNull();
+    expect(typedFootnote("x [^1]: y")).toBeNull();
   });
 });

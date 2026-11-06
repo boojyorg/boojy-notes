@@ -92,6 +92,22 @@ function columnsFrom(pipes: string | undefined): number | null {
   return Math.min(pipes.length - 1, MAX_TYPED_COLUMNS);
 }
 
+/**
+ * `[^label]: ` typed at the start of a paragraph's only line, with text after
+ * it or none: that line becomes a footnote definition, the label kept as
+ * typed (the footnotes grammar: no whitespace in it, never empty).
+ */
+const TYPED_FOOTNOTE_RE = new RegExp(`^\\[\\^([^\\]\\s]+)\\]:${SP}`);
+
+/** The label and the text after a typed footnote marker, or null. */
+export function typedFootnote(
+  text: string,
+): { label: string; rest: string; length: number } | null {
+  if (text.includes("\n")) return null;
+  const m = TYPED_FOOTNOTE_RE.exec(text);
+  return m ? { label: m[1], rest: text.slice(m[0].length), length: m[0].length } : null;
+}
+
 /** A line kind's marker: `#`…`######`, `-` or `*`, `1.`, `[]` or `[ ]`, `>`. */
 const LINE_MARKER = `(#{1,6}|[-*]|1\\.|\\[${S}?\\]|>)`;
 /** A line kind's marker typed with its space on an empty line. */

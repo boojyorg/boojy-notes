@@ -13,6 +13,7 @@ import { useRhythm } from "../tokens/rhythm";
 import { fontStack } from "../tokens/typography";
 import { bandFill, withAlpha } from "../utils/selectionBand";
 import { SEARCH_HIT_ALPHA, SEARCH_HIT_STEPS } from "../utils/searchHighlight";
+import { LIST_MARKER_W } from "./EditableBlock";
 import { settingsStyles } from "./settings/SettingsPrimitives";
 import { isPhone } from "../utils/platform";
 
@@ -586,6 +587,22 @@ ${tagPillCss(theme)}
         [data-editor] .block-id { color: ${theme.TEXT.muted}; white-space: nowrap; }
         /* A %% comment: the file's text, muted, markers and all (utils/comments). */
         [data-block-id] .md-comment { color: ${theme.TEXT.muted}; }
+        /* Footnotes as Obsidian's editing view shows them (utils/footnotes):
+           a reference small and raised, an inline footnote muted at body
+           size, both the file's text, brackets and all. */
+        [data-block-id] .md-fn-ref {
+          color: ${theme.TEXT.muted};
+          font-size: 0.75em;
+          vertical-align: super;
+          line-height: 0;
+        }
+        [data-block-id] .md-fn-inline { color: ${theme.TEXT.muted}; }
+        /* A footnote's later paragraph: a faint guide line, as Obsidian draws. */
+        p[data-footnote-continuation] {
+          border-left: 1px solid ${theme.BG.divider};
+          margin-left: ${LIST_MARKER_W / 2}px;
+          padding-left: ${LIST_MARKER_W / 2}px;
+        }
         [data-block-id] .wikilink {
           /* A web link's ink, underline and hover; dashed is kept for a link to no note. */
           color: ${theme.link.color};
@@ -899,7 +916,7 @@ ${tagPillCss(theme)}
           color: ${theme.TEXT.secondary};
         }
         :is(.source-layer, .code-overlay) .md-strong { font-weight: 600; }
-        :is(.source-layer, .code-overlay) :is(.md-hmark, .md-link, .md-wiki, .md-tag, .md-callout) {
+        :is(.source-layer, .code-overlay) :is(.md-hmark, .md-link, .md-wiki, .md-tag, .md-callout, .md-fn) {
           color: ${theme.ACCENT.text};
         }
         :is(.source-layer, .code-overlay) .md-list { color: ${theme.sourceView.list}; }
