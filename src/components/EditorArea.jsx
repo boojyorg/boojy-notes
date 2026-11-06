@@ -55,6 +55,7 @@ import {
   caretRect,
   cssZoom,
 } from "../utils/domHelpers";
+import { openBlock } from "../utils/blockOpen";
 import { openMathSource } from "../utils/mathOpen";
 import { drawInlineMath } from "../utils/inlineMath";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
@@ -1753,6 +1754,7 @@ const EditorArea = memo(
                               onBlockSelect={setSelectedBlockId}
                               onImageDragPress={imageDragPress}
                               onImageCopyImage={handleImageCopyImage}
+                              showToast={showToast}
                               onUpdateBlockProperty={updateBlockProperty}
                               onEditFrontmatter={editFrontmatter}
                               onRemoveEmptyFrontmatter={removeEmptyFrontmatter}
@@ -1813,6 +1815,10 @@ const EditorArea = memo(
                       onDelete={() => {
                         setBlockMenu(null);
                         deleteWholeBlock(activeNote, selectedRun.from, selectedRun.to);
+                      }}
+                      onEditLink={() => {
+                        setBlockMenu(null);
+                        openBlock(note.content.blocks[selectedRun.from].id);
                       }}
                       onClose={() => setBlockMenu(null)}
                     />

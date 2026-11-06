@@ -569,11 +569,15 @@ ${tagPillCss(theme)}
         }
         [data-block-id] .embed-edit .embed-link-field {
           flex: 0 1 auto;
-          min-width: 0;
+          /* As wide as its text, whatever the characters, so the closing ]] follows it. */
+          field-sizing: content;
+          min-width: 1ch;
           border: 0;
           outline: none;
           background: transparent;
           color: ${theme.TEXT.primary};
+          /* The picked block it sits in hides the editor's caret: the field draws its own. */
+          caret-color: ${theme.caretColor};
           font: inherit;
           padding: 0;
         }

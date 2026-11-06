@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNoteData } from "../../context/NoteDataContext";
 import { useTheme } from "../../hooks/useTheme";
 import {
@@ -8,6 +8,9 @@ import {
   writtenEmbedTarget,
 } from "../../utils/embedTarget";
 import { BAND_REACH, bandFill } from "../../utils/selectionBand";
+import { registerBlockOpener } from "../../utils/blockOpen";
+import { isMac } from "../../utils/platform";
+import { fontStack } from "../../tokens/typography";
 import { EmbedOpenIcon } from "../Icons";
 import ReadOnlyBlocks from "../ReadOnlyBlocks";
 import { Tooltip, useTooltip } from "../Tooltip";
@@ -44,7 +47,9 @@ function EmbedView({
   ancestors = [],
   depth = 0,
   isSelected = false,
+  selectedAlone = false,
   onSelect,
+  onNotice,
   onUpdate,
 }) {
   const { theme } = useTheme();
@@ -56,9 +61,37 @@ function EmbedView({
   // The link being edited (picked, its field open): drawn as typed while it
   // names something real, saved once when the edit ends.
   const [draft, setDraft] = useState(null);
+  // Its panel is open or shut apart from the pick, as a formula's source is:
+  // a click opens it, finishing shuts it and the embed stays picked.
+  // `focusGen` counts the asks (Edit link) that put the caret in the link.
+  const [open, setOpen] = useState(false);
+  const [focusGen, setFocusGen] = useState(0);
+  const shut = () => {
+    setOpen(false);
+    setFocusGen(0);
+  };
+  // The pick goes, and the panel with it: a draft these fields can't hold
+  // (refused on Enter and Done, kept on a blur) is dropped, and that is said.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   useEffect(() => {
-    if (!isSelected) setDraft(null);
-  }, [isSelected]);
+    if (selectedAlone) return;
+    if (draftRef.current != null && embedLinkProblem(draftRef.current)) {
+      onNotice?.("Embed link not saved, so it's back as it was.", "notice");
+    }
+    setDraft(null);
+    setOpen(false);
+    setFocusGen(0);
+  }, [selectedAlone]);
+  // The block menu's Edit link (blockOpen). An embed drawn inside one is not
+  // the note's block.
+  useLayoutEffect(() => {
+    if (depth > 0) return undefined;
+    return registerBlockOpener(block.id, () => {
+      setOpen(true);
+      setFocusGen((g) => g + 1);
+    });
+  }, [block.id, depth]);
 
   // A key that would edit the copy: the chip says where to edit, at once.
   useEffect(() => {
@@ -191,8 +224,8 @@ function EmbedView({
 
   if (depth > 0) return body;
 
-  // The note's own block: picked by a click that selects no text, its source
-  // underneath while picked.
+  // The note's own block: picked by a click that selects no text, which opens
+  // its link underneath.
   return (
     <div
       data-selection-surface
@@ -202,6 +235,7 @@ function EmbedView({
         const sel = window.getSelection();
         if (sel && !sel.isCollapsed) return;
         onSelect?.();
+        setOpen(true);
       }}
       style={{
         // The link's panel hangs from here.
@@ -213,13 +247,16 @@ function EmbedView({
       }}
     >
       {body}
-      {isSelected && (
+      {/* The link is this embed's alone: picked with other blocks, just the band. */}
+      {selectedAlone && open && (
         <EmbedLinkEditor
           block={block}
           draft={draft}
           setDraft={setDraft}
           reason={reason}
           onSave={onUpdate}
+          onShut={shut}
+          focusGen={focusGen}
         />
       )}
     </div>
@@ -230,13 +267,16 @@ function EmbedView({
  * A picked embed's link, `![[…]]`, in a panel underneath that floats over the
  * text below, as a formula's source does (MathBlock). The embed is drawn as
  * typed while the link names something real (EmbedView); the edit is saved
- * once, in one step, on Enter or leaving; Escape puts it back. A press
- * anywhere on the panel puts the caret in the link.
+ * once, in one step, on Enter, Done or leaving; Escape puts it back. Enter,
+ * Done and Escape shut the panel and hand the keys to the editor, the embed
+ * still picked. A press anywhere else on the panel puts the caret in the link.
  */
-function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
+function EmbedLinkEditor({ block, draft, setDraft, reason, onSave, onShut, focusGen }) {
   const { theme } = useTheme();
   const written = writtenEmbedTarget(block);
   const ref = useRef(null);
+  const doneRef = useRef(null);
+  const doneTip = useTooltip();
   const editing = draft != null;
   // The editor's own beforeinput seam sits on its root: this field's edits are its own.
   useEffect(() => {
@@ -251,14 +291,34 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
     setDraft(null);
     if (fields && draft.trim() !== written) onSave?.(fields);
   };
+  // Edit link: the caret in the link, at its end.
+  useEffect(() => {
+    const el = ref.current;
+    if (!focusGen || !el) return;
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [focusGen]);
+  // Enter, Done, Escape: the editor takes the keys back, so the field's blur
+  // ends the edit (kept, or put back), and the panel shuts.
+  const keepOnBlur = useRef(true);
+  const end = (keep) => {
+    // A link these fields can't hold stays open, its reason said, never saved
+    // without what it can't keep: Enter and Done alike.
+    if (keep && draft != null && embedLinkProblem(draft)) return;
+    const el = ref.current;
+    if (el && document.activeElement === el) {
+      keepOnBlur.current = keep;
+      el.closest("[data-editor]")?.focus({ preventScroll: true });
+      keepOnBlur.current = true;
+    } else finish(keep);
+    onShut();
+  };
   const field = (
     <input
       ref={ref}
       className="embed-link-field"
       aria-label="Embed's link"
       value={editing ? draft : written}
-      // As wide as what it holds, so the closing `]]` follows the text.
-      size={Math.max((editing ? draft : written).length, 1)}
       spellCheck={false}
       autoComplete="off"
       onFocus={() => {
@@ -272,17 +332,18 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
         e.stopPropagation();
         if (e.key === "Enter") {
           e.preventDefault();
-          // A link these fields can't hold stays open, its reason said, never
-          // saved without what it can't keep.
-          if (draft != null && embedLinkProblem(draft)) return;
-          e.currentTarget.blur();
+          end(true);
         } else if (e.key === "Escape") {
           e.preventDefault();
-          setDraft(null);
-          requestAnimationFrame(() => ref.current?.blur());
+          end(false);
         }
       }}
-      onBlur={() => finish(true)}
+      // A press away keeps the edit and leaves the panel be; a draft these
+      // fields can't hold stays, its reason said, never dropped unsaid.
+      onBlur={() => {
+        if (keepOnBlur.current && draft != null && embedLinkProblem(draft)) return;
+        finish(keepOnBlur.current);
+      }}
       onMouseUp={(e) => e.stopPropagation()}
     />
   );
@@ -320,6 +381,45 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
       <span className="embed-link-mark" style={{ color: theme.TEXT.muted }}>
         ]]
       </span>
+      {/* As a formula's source has: shown while there is an edit to finish. */}
+      {editing && (
+        <button
+          ref={doneRef}
+          type="button"
+          className="settings-button math-done"
+          aria-keyshortcuts="Enter"
+          {...doneTip.handlers}
+          onMouseDown={(e) => {
+            // The field keeps focus until Done has acted, and the panel's
+            // press-to-focus leaves it alone.
+            e.preventDefault();
+            e.stopPropagation();
+            doneTip.handlers.onMouseDown();
+          }}
+          onClick={() => end(true)}
+          style={{
+            flex: "none",
+            alignSelf: "center",
+            height: 28,
+            // Its 28px fit the panel's one line: no taller when editing starts.
+            margin: "-4px -8px -4px auto",
+            padding: "0 10px",
+            borderRadius: 8,
+            border: `1px solid ${theme.button.border}`,
+            background: theme.button.bg,
+            color: theme.TEXT.primary,
+            fontSize: 12.5,
+            fontWeight: 500,
+            fontFamily: fontStack,
+            cursor: "pointer",
+          }}
+        >
+          Done
+        </button>
+      )}
+      {editing && doneTip.shown && (
+        <Tooltip label="Done" shortcut={isMac ? "↵" : "Enter"} anchor={doneRef.current} />
+      )}
       {said}
     </div>
   );

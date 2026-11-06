@@ -8,6 +8,7 @@ import {
   ChevronLeftIcon,
   ClipboardIcon,
   CopyIcon,
+  LinkIcon,
   SlashCommandIcon,
   TrashIcon,
   TurnIntoIcon,
@@ -91,6 +92,8 @@ interface BlockMenuProps {
   onDuplicate: () => void;
   onCopy: () => void;
   onDelete: () => void;
+  /** An embed's: opens its link underneath, the keyboard's way in. */
+  onEditLink?: () => void;
   onClose: () => void;
   /**
    * The phone's: `anchor` is the selected blocks' rect, and the menu hangs
@@ -114,6 +117,7 @@ export default function BlockMenu({
   onDuplicate,
   onCopy,
   onDelete,
+  onEditLink,
   onClose,
   under = false,
 }: BlockMenuProps) {
@@ -146,6 +150,8 @@ export default function BlockMenu({
   }));
   const turnable = types.some((t) => TURNABLE.has(t));
   const items: MenuItem[] = [];
+  if (!turning && onEditLink && types.length === 1 && types[0] === "embed")
+    items.push({ label: "Edit link", icon: <LinkIcon />, action: onEditLink });
   if (turning) {
     items.push(
       { label: "Turn into", icon: <ChevronLeftIcon />, action: () => setTurning(null) },
