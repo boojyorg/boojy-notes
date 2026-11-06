@@ -1,12 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect, memo } from "react";
-import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { useRhythm } from "../tokens/rhythm";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { useEmptyMark } from "../hooks/useEmptyMark";
-import { useMenuKeys } from "../hooks/useMenuKeys";
-import { Z } from "../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { caretLength, caretRect, getCaretOffset, placeCaret } from "../utils/domHelpers";
 import {
@@ -25,9 +21,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { registerBlockOpener } from "../utils/blockOpen";
-import { fromTouch } from "../utils/touch";
 import { withAlpha } from "../utils/selectionBand";
 import { fieldTextAfterTyping } from "../utils/typedFormatting";
+import Menu from "./Menu";
 
 /* ─── Callout type configuration ─── */
 
@@ -84,6 +80,9 @@ const CALLOUT_TYPES = {
 
 const CALLOUT_TYPE_KEYS = Object.keys(CALLOUT_TYPES);
 
+/** About ten rows; the rest scroll, the chosen one kept in view. */
+const CALLOUT_MENU_MAX_H = 360;
+
 /**
  * What an empty title shows, as Obsidian shows it: the type word as written,
  * in title case (`[!important]` reads Important, `[!banana]` Banana). It is
@@ -92,133 +91,6 @@ const CALLOUT_TYPE_KEYS = Object.keys(CALLOUT_TYPES);
 function shownTitle(block, config) {
   const word = block.calloutTypeRaw || "";
   return word ? word[0].toUpperCase() + word.slice(1).toLowerCase() : config.defaultTitle;
-}
-
-/* ─── Type picker dropdown ─── */
-
-function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
-  const { theme } = useTheme();
-  const { BG, TEXT } = theme;
-  const listRef = useRef(null);
-  const [focusIdx, setFocusIdx] = useState(() => CALLOUT_TYPE_KEYS.indexOf(activeType));
-
-  // Position: below the anchor, flip up if near bottom
-  const style = {};
-  if (anchorRect) {
-    const spaceBelow = window.innerHeight - anchorRect.bottom;
-    if (spaceBelow < 320) {
-      style.bottom = window.innerHeight - anchorRect.top + 4;
-    } else {
-      style.top = anchorRect.bottom + 4;
-    }
-    style.left = anchorRect.left;
-  }
-
-  // The menus' one key rule (useMenuKeys). The picker never takes focus, so
-  // it listens in the document's capture phase, ahead of the field under it
-  // and the shell, and only for the keys it takes; letters stay typing.
-  const menuKeys = useMenuKeys({
-    rows: () => CALLOUT_TYPE_KEYS.map((key) => ({ label: CALLOUT_TYPES[key].defaultTitle })),
-    active: focusIdx,
-    setActive: setFocusIdx,
-    choose: (i) => onSelect(CALLOUT_TYPE_KEYS[i]),
-    close: onClose,
-    suggestion: true,
-  });
-  useEffect(() => {
-    const onKey = (e) => {
-      if (menuKeys(e)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
-  }, [menuKeys]);
-
-  // Scroll focused item into view (manual to avoid page scroll jump)
-  useEffect(() => {
-    const container = listRef.current;
-    const el = container?.children[focusIdx];
-    if (!el || !container) return;
-    const elTop = el.offsetTop;
-    const elBottom = elTop + el.offsetHeight;
-    if (elTop < container.scrollTop) {
-      container.scrollTop = elTop;
-    } else if (elBottom > container.scrollTop + container.clientHeight) {
-      container.scrollTop = elBottom - container.clientHeight;
-    }
-  }, [focusIdx]);
-
-  return (
-    <>
-      {/* overlay to catch clicks outside */}
-      <div
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-        style={{ position: "fixed", inset: 0, zIndex: Z.CALLOUT_BACKDROP }}
-      />
-      <div
-        ref={listRef}
-        className="callout-picker"
-        role="listbox"
-        aria-label="Callout type"
-        style={{
-          position: "fixed",
-          zIndex: Z.TOAST,
-          ...style,
-          width: 180,
-          maxHeight: 320,
-          overflowY: "auto",
-          background: BG.elevated,
-          border: `1px solid ${BG.divider}`,
-          borderRadius: MENU_RADIUS,
-          padding: MENU_PAD,
-          boxShadow: theme.modalShadow,
-        }}
-      >
-        {CALLOUT_TYPE_KEYS.map((key, idx) => {
-          const cfg = CALLOUT_TYPES[key];
-          const Icon = cfg.icon;
-          const isFocused = idx === focusIdx;
-          const isActive = key === activeType;
-          return (
-            <div
-              key={key}
-              id={`callout-option-${key}`}
-              role="option"
-              aria-selected={isFocused}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onSelect(key)}
-              onMouseEnter={(e) => {
-                if (fromTouch(e)) return;
-                setFocusIdx(idx);
-              }}
-              className="callout-picker-item"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "6px 8px",
-                borderRadius: MENU_ROW_RADIUS,
-                cursor: "pointer",
-                background: isFocused ? BG.hover : "transparent",
-                transition: "background var(--motion-fast)",
-              }}
-            >
-              <Icon size={15} color={theme.callouts[key].colour} strokeWidth={1.8} />
-              <span style={{ flex: 1, fontSize: 13, color: TEXT.primary }}>{cfg.defaultTitle}</span>
-              {isActive && (
-                <span style={{ fontSize: 13, color: theme.callouts[key].colour }}>&#10003;</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </>
-  );
 }
 
 /* ─── CalloutBlock ─── */
@@ -520,7 +392,7 @@ export default memo(function CalloutBlock({
           ref={iconBtnRef}
           role="button"
           aria-label="Change callout type"
-          aria-haspopup="listbox"
+          aria-haspopup="menu"
           aria-expanded={pickerOpen}
           onClick={openPicker}
           onMouseDown={(e) => {
@@ -640,17 +512,33 @@ export default memo(function CalloutBlock({
         </div>
       </div>
 
-      {/* Type picker dropdown (portal to avoid scroll jump) */}
-      {pickerOpen &&
-        createPortal(
-          <CalloutTypePicker
-            activeType={calloutType}
-            anchorRect={iconRect}
-            onSelect={handleTypeSelect}
-            onClose={() => setPickerOpen(false)}
-          />,
-          document.body,
-        )}
+      {/* The type menu: the shared menu (portalled, placed, its keys), a
+          radio row per type ticked in the row's ink. It never takes focus, so
+          the caret stays in the callout. */}
+      {pickerOpen && iconRect && (
+        <Menu
+          label="Callout type"
+          idPrefix="callout-type-item"
+          checkTestId="callout-type-check"
+          anchor={iconRect}
+          gapY={4}
+          minWidth={160}
+          maxHeight={CALLOUT_MENU_MAX_H}
+          takesFocus={false}
+          onClose={() => setPickerOpen(false)}
+          items={CALLOUT_TYPE_KEYS.map((key) => {
+            const TypeIcon = CALLOUT_TYPES[key].icon;
+            return {
+              label: CALLOUT_TYPES[key].defaultTitle,
+              // Each type's own ink: the row shows what the callout will look like.
+              icon: <TypeIcon size={16} color={theme.callouts[key].colour} strokeWidth={1.8} />,
+              role: "menuitemradio",
+              checked: key === calloutType,
+              action: () => handleTypeSelect(key),
+            };
+          })}
+        />
+      )}
     </div>
   );
 });

@@ -36,13 +36,17 @@ vi.mock("../../src/utils/inlineFormatting", () => ({
   domNodeToMarkdown: (el) => el?.textContent || "",
 }));
 
-vi.mock("lucide-react", () => {
+// The callout's own icons, named for the tests; the rest (the shared menu's
+// icon set) stay real.
+vi.mock("lucide-react", async (importOriginal) => {
+  const real = await importOriginal();
   const icon = (name) => {
     const Comp = (props) => <svg data-testid={`icon-${name}`} {...props} />;
     Comp.displayName = name;
     return Comp;
   };
   return {
+    ...real,
     Pencil: icon("Pencil"),
     Info: icon("Info"),
     Lightbulb: icon("Lightbulb"),
