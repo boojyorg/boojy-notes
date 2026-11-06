@@ -256,6 +256,27 @@ function commentAround(node: Node | null, boundary: Node | null): Element | null
   return null;
 }
 
+/** Whether the selection holds any of a comment's text: an end in one, or one inside it. */
+function touchesComment(range: Range, boundary: Node | null): boolean {
+  const host = (boundary ?? range.commonAncestorContainer) as Element;
+  if (!host?.querySelectorAll) return false;
+  for (const c of host.querySelectorAll(".md-comment")) {
+    if (!range.intersectsNode(c)) continue;
+    const held = range.cloneRange();
+    if (held.compareBoundaryPoints(Range.START_TO_START, rangeOf(c)) < 0) held.setStart(c, 0);
+    if (held.compareBoundaryPoints(Range.END_TO_END, rangeOf(c)) > 0)
+      held.setEnd(c, c.childNodes.length);
+    if (held.toString() !== "") return true;
+  }
+  return false;
+}
+
+const rangeOf = (el: Element) => {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  return r;
+};
+
 /**
  * Whether `format` must not act on `range`: **a code span is literal**, so
  * no format but code itself (and its removal) applies inside one, and a
@@ -263,13 +284,16 @@ function commentAround(node: Node | null, boundary: Node | null): Element | null
  * in part. Wrapped `**` would read back as stars in the code. A selection
  * holding whole spans among words is formatted whole (`**a `b` c**`, code
  * nested). An end resting on a span's outer edge is outside it. **A comment
- * is literal too**, for every format, code included: nothing in one is drawn.
+ * is literal too**, for every format, code included: nothing in one is drawn,
+ * and a selection touching one at all is refused, a whole comment inside it
+ * too (formatting around one would set markers against its bytes).
  */
 export function formatBlockedByCode(
   range: Range,
   format: InlineFormat,
   boundary: Node | null,
 ): boolean {
+  if (!range.collapsed && touchesComment(range, boundary)) return true;
   const edge = (container: Node, offset: number, atStart: boolean) => {
     const code =
       commentAround(container, boundary) ??

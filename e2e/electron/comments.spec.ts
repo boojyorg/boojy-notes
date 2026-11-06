@@ -104,7 +104,7 @@ test("typing inside a comment converts nothing, offers nothing, and keeps its by
   expect(await blocks.count()).toBeGreaterThan(0);
 });
 
-test("formatting does not act in a comment, nor on a selection reaching into one", async () => {
+test("formatting does not act in a comment, nor on a selection reaching into or holding one", async () => {
   await open("plain %%secret%% text\n");
   const c = comments(h.page).first();
   await c.dblclick();
@@ -127,8 +127,19 @@ test("formatting does not act in a comment, nor on a selection reaching into one
     s.addRange(r);
   });
   await h.page.keyboard.press(`${MOD}+b`);
+  // The whole line, the comment wholly inside: refused too.
+  await h.page.evaluate(() => {
+    const block = document.querySelector("[data-editor] > [data-block-id]")!;
+    const r = document.createRange();
+    r.selectNodeContents(block);
+    const s = window.getSelection()!;
+    s.removeAllRanges();
+    s.addRange(r);
+  });
+  await h.page.keyboard.press(`${MOD}+b`);
   await sleep(SETTLE_MS);
   expect(file()).toBe("plain %%secret%% text\n");
+  await expect(h.page.locator("[data-editor] strong")).toHaveCount(0);
 });
 
 test("a selection crossing a comment's edge acts on text; every byte around it stays", async () => {
