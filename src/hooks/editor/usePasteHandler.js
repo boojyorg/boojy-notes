@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import { isEditableBlock, placeCaret } from "../../utils/domHelpers";
+import { getCaretOffset, isEditableBlock, placeCaret } from "../../utils/domHelpers";
+import { TAG_RE } from "../../utils/tags";
 import {
   sanitizeInlineFragment,
   sanitizeInlineHtml,
@@ -48,6 +49,21 @@ export function usePasteHandler({
     const el = blockRefs.current[kept.id];
     if (!el) return;
     el.innerHTML = kept.text ? inlineMarkdownToHtml(kept.text, noteTitleSetRef?.current) : "<br>";
+  };
+
+  /**
+   * A pasted `#tag` is a pill at once, as a typed one is from its first letter
+   * (useInputHandler): an inline paste is a text-only edit, which never
+   * repaints, so the tag stayed plain until something else painted the block.
+   * The block is painted from its own text and the caret put back at its
+   * offset (visible characters), after what was pasted.
+   */
+  const paintPastedTags = (el, pasted) => {
+    if (!el || !new RegExp(TAG_RE.source, "u").test(pasted)) return;
+    const offset = getCaretOffset(el);
+    const text = htmlToInlineMarkdown(sanitizeInlineHtml(el.innerHTML)).replace(/\n$/, "");
+    el.innerHTML = text ? inlineMarkdownToHtml(text, noteTitleSetRef?.current) : "<br>";
+    placeCaret(el, offset);
   };
 
   const handleEditorPaste = useCallback((e) => {
@@ -198,6 +214,7 @@ export function usePasteHandler({
     }
     if (!htmlData) {
       document.execCommand("insertText", false, textData);
+      paintPastedTags(scope.start.el, textData);
       return;
     }
     const frag = sanitizeInlineFragment(htmlData);
@@ -210,6 +227,7 @@ export function usePasteHandler({
     sel.removeAllRanges();
     sel.addRange(range);
     reReadBlockFromDom();
+    paintPastedTags(scope.start.el, textData);
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
