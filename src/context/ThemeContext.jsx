@@ -20,15 +20,21 @@ function saveThemeSettings(settings) {
 }
 
 // Dev-only theme tweaking (`?tweak` on a dev build mounts dev/ThemeTweaker.jsx):
-// a flat map of token paths (`BG.editor`, `TEXT.muted`, `codeBlockBg`) laid over
-// the resolved theme. Nothing sets it in the product, so `theme` is the palette.
+// a flat map of token paths (`BG.editor`, `callouts.tip.colour`, `codeBlockBg`)
+// laid over the resolved theme. Nothing sets it in the product, so `theme` is
+// the palette.
 function withOverrides(base, overrides) {
   if (!overrides || Object.keys(overrides).length === 0) return base;
   const out = { ...base };
   for (const [path, value] of Object.entries(overrides)) {
-    const [group, key] = path.split(".");
-    if (key) out[group] = { ...out[group], [key]: value };
-    else out[group] = value;
+    const keys = path.split(".");
+    // Copy each level on the way down, so the palette itself is never changed.
+    let at = out;
+    for (const k of keys.slice(0, -1)) {
+      at[k] = { ...at[k] };
+      at = at[k];
+    }
+    at[keys[keys.length - 1]] = value;
   }
   return out;
 }

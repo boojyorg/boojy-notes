@@ -239,6 +239,18 @@ describe("markdown round-trip — per block type (lossless)", () => {
   });
 });
 
+// Obsidian's failure type and its aliases (fail, missing): a red callout of
+// their own, the word kept as written.
+describe("callout types read as Obsidian reads them", () => {
+  it.each(["failure", "fail", "missing", "Failure"])("reads [!%s] as a failure", (word) => {
+    const [block] = markdownToBlocks(`> [!${word}] Broke\n> body`);
+    expect(block).toMatchObject({ type: "callout", calloutType: "failure", calloutTypeRaw: word });
+    expect(blocksToMarkdown(markdownToBlocks(`> [!${word}] Broke\n> body`))).toBe(
+      `> [!${word}] Broke\n> body`,
+    );
+  });
+});
+
 describe("markdown round-trip — multi-block adjacency", () => {
   it("keeps two callouts separate (does not merge)", () => {
     const blocks = [

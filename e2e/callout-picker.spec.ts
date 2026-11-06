@@ -33,11 +33,36 @@ test("the callout picker walks its options by keyboard and chooses with Enter", 
 
   await page.keyboard.press("Enter");
   await expect(picker).toHaveCount(0);
-  // The callout's title follows the new type's default.
-  await expect(page.locator("[data-editor]")).toContainText(chosen);
+  // An empty title stays empty (nothing is written to the file): it is shown
+  // as the new type's name.
+  const title = page.locator(".callout-title").first();
+  await expect(title).toHaveText("");
+  await expect(title).toHaveAttribute("data-placeholder", chosen);
 
   await trigger.click();
   await expect(picker).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(picker).toHaveCount(0);
+});
+
+// An empty title is the type's name, and that is the title the reader sees:
+// drawn at full strength, faint only while the caret is in it to type over.
+test("an empty callout title reads at full strength, faint only while typed into", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.waitForSelector("[data-editor]", { timeout: 10000 });
+  await page.locator("[data-editor] [data-block-id]").first().click();
+  await page.keyboard.type("/callout");
+  await page.keyboard.press("Enter");
+  const title = page.locator(".callout-title").first();
+  await expect(title).toHaveAttribute("data-placeholder", "Note");
+  const opacity = () => title.evaluate((el) => Number(getComputedStyle(el, "::before").opacity));
+  // A new callout starts with the caret in its title, so faint there.
+  await expect.poll(opacity).toBeLessThan(0.5);
+  // In the body, the title is at rest: the name at full strength.
+  await page.locator(".callout-body").first().click();
+  await expect.poll(opacity).toBe(1);
+  await title.click();
+  await expect.poll(opacity).toBeLessThan(0.5);
 });

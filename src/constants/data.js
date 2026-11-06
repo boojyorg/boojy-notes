@@ -65,7 +65,7 @@ export const SLASH_COMMANDS = [
     id: "callout",
     label: "Callout",
     hint: "",
-    icon: "info",
+    icon: "callout",
     type: "callout",
     calloutType: "note",
     advanced: true,
