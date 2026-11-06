@@ -237,6 +237,34 @@ test("the grip stands level with a code block's toolbar", async () => {
   }
 });
 
+// The box is even around its code: as much space above the first line as below
+// the last, one line or several. A textarea is two rows tall unless told, and
+// its scrollHeight never goes below that, so a one-line block carried an empty
+// second line at the bottom.
+test("a code block has as much space below its last line as above its first", async () => {
+  const g = await launchApp({
+    "Even.md": "Intro.\n\n```\nHello\n```\n\nMid.\n\n```\none\ntwo\nthree\n```\n",
+  });
+  try {
+    await g.openNote("Even");
+    const blocks = g.page.locator(".code-block");
+    await expect(blocks).toHaveCount(2);
+    for (let i = 0; i < 2; i++) {
+      const { above, below } = await blocks.nth(i).evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const lines = el.querySelectorAll(".code-line");
+        const first = lines[0].getBoundingClientRect();
+        const last = lines[lines.length - 1].getBoundingClientRect();
+        return { above: first.top - box.top, below: box.bottom - last.bottom };
+      });
+      expect(Math.abs(above - below)).toBeLessThan(1);
+    }
+    expect(g.pageErrors).toEqual([]);
+  } finally {
+    await g.close();
+  }
+});
+
 // Sixteen rows would cover half the note: the menu shows about ten and
 // scrolls, opening with the block's own language in view, and a letter
 // scrolls to its language.

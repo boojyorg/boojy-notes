@@ -700,7 +700,7 @@ ${tagPillCss(theme)}
         .code-textarea {
           display: block;
           width: 100%;
-          min-height: 22px;
+          min-height: 1lh;
           padding: 0;
           margin: 0;
           background: transparent;
