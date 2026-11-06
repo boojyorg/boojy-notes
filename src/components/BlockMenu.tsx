@@ -5,7 +5,6 @@ import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
 import { shortcutLabel } from "./Tooltip";
 import { cssZoom } from "../utils/domHelpers";
 import {
-  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ClipboardIcon,
@@ -94,8 +93,9 @@ interface BlockMenuProps {
   onDuplicate: () => void;
   onCopy: () => void;
   onDelete: () => void;
-  /** A foldable callout's: whether it is folded now, and the toggle (never an edit). */
-  fold?: { folded: boolean; onToggle: () => void };
+  /** One callout's: whether the file gives it a fold sign, and the edit that
+   *  adds or removes one. Folding it now is the chevron's, never the menu's. */
+  fold?: { written: boolean; onChange: () => void };
   /** An embed's: opens its link underneath, the keyboard's way in. */
   onEditLink?: () => void;
   onClose: () => void;
@@ -157,9 +157,9 @@ export default function BlockMenu({
   const items: MenuItem[] = [];
   if (!turning && fold && types.length === 1)
     items.push({
-      label: fold.folded ? "Unfold" : "Fold",
-      icon: fold.folded ? <ChevronRightIcon /> : <ChevronDownIcon />,
-      action: fold.onToggle,
+      label: fold.written ? "Remove fold" : "Add fold",
+      icon: <ChevronRightIcon />,
+      action: fold.onChange,
     });
   if (!turning && onEditLink && types.length === 1 && types[0] === "embed")
     items.push({ label: "Edit link", icon: <LinkIcon />, action: onEditLink });

@@ -243,8 +243,8 @@ never holds a byte sequence the syntax cannot.**
 - **An empty callout title shows its type word, title-cased, and is never written**
   (`shownTitle`); a type change leaves the title alone. `callout-picker.spec.ts`.
 - **A callout's fold is a view, never an edit**: `-` folded, `+` open, reset when the note
-  changes; folded, the body is `inert` and Find opens it. Only the type menu's Foldable
-  writes: `-`, or no sign. `callout-fold.spec.ts`.
+  changes; folded, the body is `inert` and Find opens it. Only the grip menu's Add fold
+  (`-`) and Remove fold write. `callout-fold.spec.ts`.
 
 ## Properties
 

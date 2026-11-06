@@ -20,9 +20,8 @@ test("the callout type menu is the shared menu: walked by keys, ticked in the ro
   const menu = page.getByRole("menu", { name: "Callout type" });
   await expect(menu).toBeVisible();
   await expect(trigger).toHaveAttribute("aria-expanded", "true");
-  // The types, then Foldable after a rule: the arrows walk all of them.
-  const count = (await menu.getByRole("menuitemradio").count()) + 1;
-  await expect(menu.getByRole("menuitemcheckbox")).toHaveText("Foldable");
+  const rows = menu.getByRole("menuitemradio");
+  const count = await rows.count();
   const checked = menu.locator('[role="menuitemradio"][aria-checked="true"]');
   await expect(checked).toHaveCount(1);
   await expect(checked).toHaveText("Note");
