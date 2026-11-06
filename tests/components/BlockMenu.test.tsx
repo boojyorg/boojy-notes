@@ -160,32 +160,3 @@ describe("kindLabel / TURN_INTO", () => {
     ]);
   });
 });
-
-describe("BlockMenu from a hold on a tag", () => {
-  it("leads with the tag's rows, the block's under a rule", () => {
-    const onSearch = vi.fn();
-    const onEdit = vi.fn();
-    render(
-      <BlockMenu
-        anchor={anchor}
-        types={["p"]}
-        tag={{ name: "area/work", onSearch, onEdit }}
-        onTurnInto={vi.fn()}
-        onDuplicate={vi.fn()}
-        onCopy={vi.fn()}
-        onDelete={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
-    const menu = document.body.querySelector('[aria-label="Block options"]') as HTMLElement;
-    const rows = Array.from(menu.querySelectorAll('[role="menuitem"]'));
-    expect(rows.slice(0, 3).map((r) => r.textContent?.replace(/(⌘|Ctrl\+).$/, ""))).toEqual([
-      "Search #area/work",
-      "Edit tag",
-      "Turn into",
-    ]);
-    expect(menu.querySelectorAll('[role="separator"]').length).toBeGreaterThan(0);
-    fireEvent.click(rows[0]);
-    expect(onSearch).toHaveBeenCalledOnce();
-  });
-});

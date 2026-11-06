@@ -98,3 +98,34 @@ describe("EditorContextMenu on a tag", () => {
     expect(onSearchTag).not.toHaveBeenCalled();
   });
 });
+
+describe("EditorContextMenu without a paste route", () => {
+  it("has no Paste row where the app cannot paste (the phone)", () => {
+    render(
+      <EditorContextMenu
+        anchor={{ top: 100, bottom: 120, left: 200, right: 240 }}
+        link={null}
+        tag="area/work"
+        onSearchTag={vi.fn()}
+        onEditTag={vi.fn()}
+        onReplaceWord={vi.fn()}
+        onAddWord={vi.fn()}
+        onOpenLink={vi.fn()}
+        onCopyLink={vi.fn()}
+        onEditLink={vi.fn()}
+        onRemoveLink={vi.fn()}
+        canCutCopy
+        canPaste={false}
+        pasteRow={false}
+        onCut={vi.fn()}
+        onCopy={vi.fn()}
+        onPaste={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const labels = screen
+      .getAllByRole("menuitem")
+      .map((r) => r.textContent?.replace(/(⌘|Ctrl\+).$/, ""));
+    expect(labels).toEqual(["Search #area/work", "Edit tag", "Cut", "Copy"]);
+  });
+});

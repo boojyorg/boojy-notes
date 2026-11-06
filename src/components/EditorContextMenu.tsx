@@ -48,6 +48,8 @@ interface EditorContextMenuProps {
   canCutCopy: boolean;
   /** Desktop only: a page cannot read the clipboard from a menu item. */
   canPaste: boolean;
+  /** False where the app cannot paste from a menu at all (the phone): no row. */
+  pasteRow?: boolean;
   onCut: () => void;
   onCopy: () => void;
   onPaste: () => void;
@@ -89,6 +91,7 @@ export default function EditorContextMenu({
   onRemoveLink,
   canCutCopy,
   canPaste,
+  pasteRow = true,
   onCut,
   onCopy,
   onPaste,
@@ -154,14 +157,15 @@ export default function EditorContextMenu({
       hint: shortcutLabel({ key: "C" }),
       disabled: !canCutCopy,
     },
-    {
+  );
+  if (pasteRow)
+    items.push({
       label: "Paste",
       icon: <PasteIcon />,
       action: onPaste,
       hint: shortcutLabel({ key: "V" }),
       disabled: !canPaste,
-    },
-  );
+    });
   if (onTidyTable) {
     items.push({ label: "Tidy table", icon: <TidyTableIcon />, action: onTidyTable, rule: true });
   }

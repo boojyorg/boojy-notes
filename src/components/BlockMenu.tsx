@@ -10,8 +10,6 @@ import {
   FoldIcon,
   CopyIcon,
   LinkIcon,
-  PencilIcon,
-  SearchIcon,
   SlashCommandIcon,
   TrashIcon,
   TurnIntoIcon,
@@ -99,9 +97,6 @@ interface BlockMenuProps {
   /** One callout's: whether the file gives it a fold sign, and the edit that
    *  adds or removes one. Folding it now is the chevron's, never the menu's. */
   fold?: { written: boolean; onChange: () => void };
-  /** The phone's hold that began on a `#tag`: its rows come first, as the
-   *  desktop's right-click menu gives them. */
-  tag?: { name: string; onSearch: () => void; onEdit: () => void };
   /** An embed's: opens its link underneath, the keyboard's way in. */
   onEditLink?: () => void;
   onClose: () => void;
@@ -128,7 +123,6 @@ export default function BlockMenu({
   onCopy,
   onDelete,
   fold,
-  tag,
   onEditLink,
   onClose,
   under = false,
@@ -162,13 +156,6 @@ export default function BlockMenu({
   }));
   const turnable = types.some((t) => TURNABLE.has(t));
   const items: MenuItem[] = [];
-  if (!turning && tag)
-    items.push(
-      { label: `Search #${tag.name}`, icon: <SearchIcon />, action: tag.onSearch },
-      { label: "Edit tag", icon: <PencilIcon />, action: tag.onEdit },
-    );
-  // The block's own rows start a group under the tag's.
-  const tagRows = items.length;
   if (!turning && fold && types.length === 1)
     items.push({
       label: fold.written ? "Always open" : "Make foldable",
@@ -206,8 +193,6 @@ export default function BlockMenu({
       },
       { label: "Delete", icon: <TrashIcon />, action: onDelete, hint: "⌫", danger: true },
     );
-
-  if (tagRows && items[tagRows]) items[tagRows] = { ...items[tagRows], rule: true };
 
   // The shortcuts the rows show, answered while the menu holds the keys.
   const onKey = (e: KeyboardEvent) => {

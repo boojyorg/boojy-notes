@@ -744,18 +744,22 @@ const EditorArea = memo(
       mountKey: `${activeNote}:${hasNote}:${sourceView}`,
       // A hold through the open menu's backdrop closes it.
       // A hold on a block already selected keeps the run, so its menu acts on all of it.
-      onHold: (id) => {
+      onHold: (id, x, y) => {
         setBlockMenu(null);
+        // A hold on a tag is the tag's (its menu, on release), never the block's.
+        if (tagAtPoint(x, y)) return;
         if (!heldIdsRef.current.includes(id)) setSelectedBlockId(id);
       },
       // Under the run the menu acts on (the held block and its nested items,
       // or the selection the hold kept), never on it: a block it covered
       // would be one its Delete or Turn into changes unseen.
       onRelease: (id, x, y) => {
+        const tagEl = tagAtPoint(x, y);
+        if (tagEl) {
+          openTagMenu(tagEl, x, y);
+          return;
+        }
         const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
-        // A hold that began on a tag: its menu leads with the tag's rows.
-        const under = document.elementFromPoint(x, y)?.closest?.(".inline-tag");
-        const tagEl = under && editorRef.current?.contains(under) ? under : null;
         const i = blocks.findIndex((b) => b.id === id);
         const run = heldIdsRef.current;
         const kept = run.includes(id);
@@ -771,7 +775,6 @@ const EditorArea = memo(
           left: first.left,
           right: first.left,
           under: true,
-          tagEl,
         });
       },
       onDragStart: (id, x, y) => holdDragRef.current?.start(id, x, y) ?? false,
@@ -1204,6 +1207,38 @@ const EditorArea = memo(
     }, [editorRef]);
 
     const [linkCtxMenu, setLinkCtxMenu] = useState(null);
+
+    /** The note's tag under a point (a hold's finger), if any. */
+    const tagAtPoint = (x, y) => {
+      const el = document.elementFromPoint(x, y)?.closest?.(".inline-tag");
+      return el && editorRef.current?.contains(el) ? el : null;
+    };
+
+    // The phone's hold on a tag opens the tag's menu, the desktop's
+    // right-click one (Search, Edit tag, Cut, Copy), the tag selected whole as
+    // a right-click selects it, and no block held.
+    const openTagMenu = (tagEl, x, y) => {
+      const whole = tagRange(tagEl);
+      if (!whole) return;
+      setSelectedBlockId(null);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(whole);
+      const hangFrom = document.createRange();
+      hangFrom.selectNodeContents(tagEl);
+      const cell = tagEl.closest('[data-block-type="table"] th, [data-block-type="table"] td');
+      setLinkCtxMenu({
+        anchor: menuAnchorFor(hangFrom, x, y),
+        linkType: null,
+        range: whole.cloneRange(),
+        field: null,
+        host: cell,
+        tableId: cell?.closest("[data-block-id]")?.getAttribute("data-block-id") ?? null,
+        canCutCopy: true,
+        tag: tagName(tagEl),
+        element: tagEl,
+      });
+    };
     // The latest right-click's spelling question: an older answer is dropped.
     const spellAsk = useRef(0);
 
@@ -1863,23 +1898,6 @@ const EditorArea = memo(
                         setBlockMenu(null);
                         deleteWholeBlock(activeNote, selectedRun.from, selectedRun.to);
                       }}
-                      tag={(() => {
-                        const el = blockMenu.tagEl;
-                        if (!el?.isConnected) return undefined;
-                        return {
-                          name: tagName(el),
-                          onSearch: () => {
-                            setBlockMenu(null);
-                            setSelectedBlockId(null);
-                            if (onTagClick) onTagClick(tagName(el));
-                          },
-                          onEdit: () => {
-                            setBlockMenu(null);
-                            setSelectedBlockId(null);
-                            selectTagName(el);
-                          },
-                        };
-                      })()}
                       fold={(() => {
                         // One callout: Make foldable writes `-` (starts
                         // folded); Always open takes away `-` or `+`. An edit.
@@ -2029,6 +2047,8 @@ const EditorArea = memo(
                 }}
                 canCutCopy={linkCtxMenu.canCutCopy}
                 canPaste={!!getAPI()?.paste}
+                // The phone has no way to paste from a menu: no row for it.
+                pasteRow={!isPhone}
                 onCut={() => runOnSelection(() => document.execCommand("cut"))}
                 onCopy={() => runOnSelection(() => document.execCommand("copy"))}
                 onPaste={() => runOnSelection(() => getAPI()?.paste?.())}

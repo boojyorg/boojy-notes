@@ -614,10 +614,11 @@ test("a hold is felt once, as it is recognised, and the drag after adds nothing"
   expect(await felt()).toBe(1);
 });
 
-// A hold that starts on a tag adds the tag's rows to the menu: Search it, or
-// Edit tag (its name selected, so typing renames this one). A hold elsewhere
-// on the line has neither. A tap still searches.
-test("a hold on a tag offers Search and Edit tag above the block's rows", async ({ page }) => {
+// A hold that starts on a tag is about the tag, as a right-click is on the
+// desktop: no block band; let go, the tag is selected whole and its menu
+// opens (Search, Edit tag, Cut, Copy). A hold elsewhere on the line is the
+// block's. A tap still searches.
+test("a hold on a tag selects the tag and opens its menu, not the block's", async ({ page }) => {
   await page.goto("/?hold");
   await page.locator("[data-title]").first().click();
   await page.keyboard.type("Tags");
@@ -630,27 +631,57 @@ test("a hold on a tag offers Search and Edit tag above the block's rows", async 
     await f.down(x, y);
     await page.waitForTimeout(HOLD);
     await f.up();
-    await expect(menu(page)).toBeVisible();
   };
+  const tagMenu = page.getByRole("menu", { name: "Tag options" });
 
+  // Elsewhere on the line: the block's menu, as before.
   const words = (await paragraphs(page).first().boundingBox())!;
   await hold(words.x + words.width - 20, words.y + words.height / 2);
-  await expect(menu(page).getByRole("menuitem", { name: /Search #|Edit tag/ })).toHaveCount(0);
+  await expect(menu(page)).toBeVisible();
+  await expect(tagMenu).toHaveCount(0);
   await page.keyboard.press("Escape");
 
+  // On the tag: no band, the tag selected, its own menu.
   const b = (await pill.boundingBox())!;
   await hold(b.x + b.width / 2, b.y + b.height / 2);
-  const rows = menu(page).getByRole("menuitem");
-  await expect(rows.nth(0)).toHaveText("Search #area/work");
-  await expect(rows.nth(1)).toHaveText("Edit tag");
-  await rows.nth(1).click();
+  await expect(tagMenu).toBeVisible();
   await expect(menu(page)).toHaveCount(0);
+  expect(await washed(page)).toEqual([]);
+  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("#area/work");
+  const labels = (await tagMenu.getByRole("menuitem").allTextContents()).map((t) =>
+    t.replace(/(⌘|Ctrl\+).$/, ""),
+  );
+  // The phone has no Paste row; the web build's `?hold` (not the phone) keeps it.
+  expect(labels.slice(0, 4)).toEqual(["Search #area/work", "Edit tag", "Cut", "Copy"]);
+
+  // Edit tag: the name selected, so typing renames this one.
+  await tagMenu.getByRole("menuitem", { name: "Edit tag" }).click();
+  await expect(tagMenu).toHaveCount(0);
   expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("area/work");
   await page.keyboard.type("area/home");
   await expect(pill).toHaveText("#area/home");
-  expect(await washed(page)).toEqual([]);
 
+  // Search from the hold.
+  await page.keyboard.press("End");
   await hold(b.x + b.width / 2, b.y + b.height / 2);
-  await menu(page).getByRole("menuitem", { name: "Search #area/home" }).click();
+  await tagMenu.getByRole("menuitem", { name: "Search #area/home" }).click();
   await expect(page.getByRole("dialog", { name: /search/i })).toBeVisible();
+});
+
+// Moved, a hold that began on a tag still drags its block.
+test("a hold on a tag, moved, drags the block", async ({ page }) => {
+  await threeParagraphs(page);
+  await paragraphs(page).first().click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" #tag");
+  const pill = page.locator("[data-editor] .inline-tag");
+  const f = finger(await page.context().newCDPSession(page));
+  const b = (await pill.boundingBox())!;
+  const below = await centre(page, 2);
+  await f.down(b.x + b.width / 2, b.y + b.height / 2);
+  await page.waitForTimeout(HOLD);
+  for (let i = 1; i <= 8; i++)
+    await f.move(b.x + b.width / 2, b.y + ((below.y + 12 - b.y) * i) / 8);
+  await f.up();
+  await expect(paragraphs(page)).toHaveText(["Two", "Three", "One #tag"]);
 });
