@@ -100,6 +100,7 @@ import { useEmbedFence } from "../hooks/editor/useEmbedFence";
 import { besideLine } from "../utils/marqueeSelect";
 import { withAlpha } from "../utils/selectionBand";
 import { selectTagName, tagName, tagRange } from "../utils/tagName";
+import { editingTag } from "../utils/tagEditing";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -1177,6 +1178,31 @@ const EditorArea = memo(
     // on one, then Cut, Copy and Paste (EditorContextMenu). What the menu acts
     // on is taken now, before it takes focus: the selection's range and the
     // field that held focus (a code block's textarea keeps its own selection).
+    // The tag being edited (the selection is in it, `tagEditing`) wears
+    // `data-editing`, and is read at each press, before the press moves the
+    // caret, so a first click on a tag still searches.
+    const tagAtPressRef = useRef(null);
+    useEffect(() => {
+      let shown = null;
+      const mark = () => {
+        const tag = editingTag(editorRef.current);
+        if (tag === shown) return;
+        shown?.removeAttribute("data-editing");
+        tag?.setAttribute("data-editing", "");
+        shown = tag;
+      };
+      const press = () => {
+        tagAtPressRef.current = editingTag(editorRef.current);
+      };
+      document.addEventListener("selectionchange", mark);
+      document.addEventListener("pointerdown", press, true);
+      return () => {
+        document.removeEventListener("selectionchange", mark);
+        document.removeEventListener("pointerdown", press, true);
+        shown?.removeAttribute("data-editing");
+      };
+    }, [editorRef]);
+
     const [linkCtxMenu, setLinkCtxMenu] = useState(null);
     // The latest right-click's spelling question: an older answer is dropped.
     const spellAsk = useRef(0);
@@ -1705,6 +1731,9 @@ const EditorArea = memo(
                       }
                       const tag = e.target.closest(".inline-tag");
                       if (tag) {
+                        // The tag being edited when the press began takes the
+                        // click as text: the caret lands where it was.
+                        if (tag === tagAtPressRef.current) return;
                         // A click searches; editing is the tag's menu's (Edit tag).
                         const name = tagName(tag);
                         if (name && onTagClick) onTagClick(name);

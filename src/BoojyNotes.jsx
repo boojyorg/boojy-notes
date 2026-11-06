@@ -1980,10 +1980,6 @@ export default function BoojyNotes() {
 
       {tagMenu && (
         <>
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: Z.MENU_BACKDROP }}
-            onMouseDown={() => setTagMenu(null)}
-          />
           <TagMenu
             position={tagMenu.rect}
             filter={tagMenu.filter}

@@ -25,7 +25,7 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
   version already written is not written again. `note-ownership.spec.ts`,
   `pending-edits-lifecycle.spec.ts`.
 
-### The DOM is painted from the ref; a programmatic edit is read back
+### Painting from the ref
 
 - **A text block is painted only on a signal** (mount, a `syncGen` bump, a title-set change),
   from `latestBlock(noteDataRef)`, never from the render, caret restored,
@@ -106,8 +106,9 @@ through state.**
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
-  reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at a pill's end lands outside it. A click
-  searches; Edit tag in its menu selects the name, this one only. `tag-pill.spec.ts`.
+  reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at its end lands
+  outside it. A click searches, except on the tag holding the caret (ringed, `tagEditing`); its
+  menu's Edit tag selects the name; Enter inside jumps past it. `tag-pill.spec.ts`.
 - **A backslash escape is its symbol alone, sealed**: one caret character, read back with its
   backslash; as written in code, addresses and wikilinks. `escapes.spec.ts`.
 - Bare URLs autolink in prose only; `<url>` is text. **`LINK_DEST` is the one reading of a link
@@ -274,7 +275,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 
 ## Images
 
-- **A width is CSS pixels** (Obsidian's `|350`), capped at the column; none means natural size,
+- **A width is CSS pixels**, capped at the column; none means natural size,
   never enlarged. Showing an image never rewrites it. `image-controls.spec.ts`.
 - **A missing attachment is a `Not found` card**; Find it… copies the file in under the linked
   name. `missing-attachments.spec.ts`.

@@ -58,5 +58,10 @@ export function tagPillCss(theme: Theme) {
         }
         [data-block-id] .inline-tag:hover {
           background: ${tagPillGround(theme, true)};
+        }
+        /* Being edited (the caret is in it): text for now, ringed in its ink. */
+        [data-block-id] .inline-tag[data-editing] {
+          box-shadow: inset 0 0 0 1px ${theme.ACCENT.tagText};
+          cursor: text;
         }`;
 }

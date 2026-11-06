@@ -131,3 +131,70 @@ test("a right-click selects the whole tag, so Cut takes all of it and Paste puts
     await h.close();
   }
 });
+
+// The tag holding the caret is being edited: a click on it places the caret
+// (a click on any other tag still searches), it wears a ring, and Enter
+// finishes, the caret after it, never splitting it.
+test("the tag being edited takes clicks as text, wears a ring, and Enter finishes it", async () => {
+  const h = await launchApp({ "Note.md": "see #area/home and #area/work\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pills = page.locator("[data-editor] .inline-tag");
+    const home = pills.first();
+    const palette = page.getByRole("dialog", { name: /search/i });
+
+    await home.click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Edit tag" }).click();
+    await expect(home).toHaveAttribute("data-editing", "");
+    await expect(pills.nth(1)).not.toHaveAttribute("data-editing", "");
+
+    // A click just before the `h`: the caret goes there, no Search.
+    const h0 = await home.evaluate((el) => {
+      const text = el.firstChild as Text;
+      const r = document.createRange();
+      r.setStart(text, text.data.indexOf("h"));
+      r.setEnd(text, text.data.indexOf("h") + 1);
+      const b = r.getBoundingClientRect();
+      return { x: b.left + 1, y: b.top + b.height / 2 };
+    });
+    await page.mouse.click(h0.x, h0.y);
+    await expect(palette).toHaveCount(0);
+    await page.keyboard.type("o");
+    await expect(home).toHaveText("#area/ohome");
+
+    // Enter finishes: the caret after the tag, the block whole, the ring gone.
+    const blocks = page.locator("[data-editor] > [data-block-id]");
+    const count = await blocks.count();
+    await page.keyboard.press("Enter");
+    await expect(home).not.toHaveAttribute("data-editing", "");
+    await expect(blocks).toHaveCount(count);
+    await page.keyboard.type("!");
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see #area/ohome! and #area/work\n");
+
+    // Not being edited, a click on a tag searches again.
+    await pills.nth(1).click();
+    await expect(palette).toBeVisible();
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// A new tag with nothing to suggest leaves no unseen backdrop: the next press
+// lands (it used to be swallowed, closing a menu nobody could see).
+test("after typing a tag with no suggestions, the next click lands", async () => {
+  const h = await launchApp({ "Note.md": "see #area/work here\n\nnext\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    await page.locator("[data-editor] [data-block-id]").nth(1).click();
+    await page.keyboard.press(END_OF_LINE);
+    await page.keyboard.type(" #zzqq");
+    await expect(page.getByRole("listbox", { name: "Tag suggestions" })).toHaveCount(0);
+    await page.locator("[data-editor] .inline-tag", { hasText: "#area/work" }).click();
+    await expect(page.getByRole("dialog", { name: /search/i })).toBeVisible();
+  } finally {
+    await h.close();
+  }
+});

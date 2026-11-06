@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import {
+  caretAfterTag,
   caretLength,
   caretOffsetAt,
   caretOnEmptyLastLine,
@@ -38,6 +39,7 @@ import { editBlocks } from "../../utils/editBlocks";
 import { LINE_KIND_TYPES, LIST_TYPES } from "../../utils/blockKinds";
 import { isTodoKey, todoFlip } from "../../utils/todoToggle";
 import { selectedLines } from "../../utils/selectedLines";
+import { editingTag, enterWouldSplit } from "../../utils/tagEditing";
 
 /**
  * Blocks a Backspace at their start turns into a plain paragraph before it
@@ -162,6 +164,18 @@ export function useKeyboardHandlers({
     const text = el
       ? htmlToInlineMarkdown(sanitizeInlineHtml(el.innerHTML)).replace(/\n$/, "")
       : "";
+
+    // Enter inside the tag being edited finishes it: the caret goes after the
+    // tag, which is never split (at its end, Enter is the editor's). A completion offered under the caret has already
+    // taken the key (TagMenu, prevented in capture).
+    if (e.key === "Enter" && !e.defaultPrevented) {
+      const tag = editingTag(el);
+      if (tag && enterWouldSplit(tag)) {
+        e.preventDefault();
+        caretAfterTag(tag);
+        return;
+      }
+    }
 
     // Shift+Enter — a line break inside the block, never a new block. Chromium
     // inserts the <br> and fires `input`, so the ordinary commit path stores
