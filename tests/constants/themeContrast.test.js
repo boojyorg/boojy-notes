@@ -60,6 +60,18 @@ for (const theme of [NIGHT, DAY]) {
       expect(contrast(theme.sourceView.list, theme.BG.editor)).toBeGreaterThanOrEqual(4.5);
     });
 
+    // A callout's ground is its ink at calloutGround over the sheet: the title
+    // and icon in that ink, the body in the note's own, both read on it.
+    for (const [type, { colour }] of Object.entries(theme.callouts)) {
+      const ground = over(colour, theme.calloutGround, theme.BG.editor);
+      it(`a ${type} callout's title reads on its ground`, () => {
+        expect(contrast(colour, ground)).toBeGreaterThanOrEqual(4.5);
+      });
+      it(`a ${type} callout's body reads on its ground`, () => {
+        expect(contrast(theme.TEXT.primary, ground)).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+
     // Code is read on the code block's ground and, in the Markdown view, on the sheet.
     for (const [token, ink] of Object.entries(theme.syntax)) {
       for (const [ground, bg] of [

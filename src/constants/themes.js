@@ -58,22 +58,25 @@ export const NIGHT = {
   codeBlockBorder: "rgba(255,255,255,0.10)",
   codeBlockBorderFocus: "rgba(255,255,255,0.18)",
   transitionMs: 400,
+  // Obsidian's colour families, each type where Obsidian puts it, but Tip greener
+  // (off the app's teal) and Question amber (off Warning's orange). The ground is
+  // the ink at `calloutGround` over the sheet, lower on Dark (a bright ink over
+  // near-black reads stronger); an ink reads 4.5:1 on its ground.
   callouts: {
-    // Grounds are the colour at 14% over the sheet; hand-picked mid-greys read
-    // as lit panels on a sheet that is not near-black.
-    note: { colour: "#7AA2F7", bg: "#262B37", border: "rgba(122,162,247,0.25)" },
-    info: { colour: "#89DDFF", bg: "#283438", border: "rgba(137,221,255,0.25)" },
-    tip: { colour: "#9ECE6A", bg: "#2B3123", border: "rgba(158,206,106,0.25)" },
-    warning: { colour: "#E0AF68", bg: "#342D23", border: "rgba(224,175,104,0.25)" },
-    danger: { colour: "#F7768E", bg: "#372529", border: "rgba(247,118,142,0.25)" },
-    failure: { colour: "#F7768E", bg: "#372529", border: "rgba(247,118,142,0.25)" },
-    success: { colour: "#9ECE6A", bg: "#2B3123", border: "rgba(158,206,106,0.25)" },
-    question: { colour: "#BB9AF7", bg: "#2F2A37", border: "rgba(187,154,247,0.25)" },
-    quote: { colour: "#ACABAA", bg: "#2D2D2C", border: "rgba(172,171,170,0.25)" },
-    example: { colour: "#BB9AF7", bg: "#2F2A37", border: "rgba(187,154,247,0.25)" },
-    bug: { colour: "#F7768E", bg: "#372529", border: "rgba(247,118,142,0.25)" },
-    abstract: { colour: "#89DDFF", bg: "#283438", border: "rgba(137,221,255,0.25)" },
+    note: { colour: "#4D9FF9" },
+    info: { colour: "#4D9FF9" },
+    abstract: { colour: "#0BCB8B" },
+    tip: { colour: "#0BCB8B" },
+    success: { colour: "#08B94E" },
+    question: { colour: "#D68F00" },
+    warning: { colour: "#F17800" },
+    danger: { colour: "#F07281" },
+    failure: { colour: "#F07281" },
+    bug: { colour: "#F07281" },
+    example: { colour: "#A78EF4" },
+    quote: { colour: "#9E9E9E" },
   },
+  calloutGround: 0.12,
   overlay: (a) => `rgba(255,255,255,${a})`,
   // Inline formatting colors
   inlineCode: { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.1)" },
@@ -170,20 +173,25 @@ export const DAY = {
   codeBlockBorder: "rgba(0,0,0,0.08)",
   codeBlockBorderFocus: "rgba(0,0,0,0.15)",
   transitionMs: 400,
+  // Obsidian's colour families, each type where Obsidian puts it, but Tip greener
+  // (off the app's teal) and Question amber (off Warning's orange). The ground is
+  // the ink at `calloutGround` over the sheet, lower on Dark (a bright ink over
+  // near-black reads stronger); an ink reads 4.5:1 on its ground.
   callouts: {
-    note: { colour: "#4A6CF7", bg: "#D8E0F4", border: "rgba(122,162,247,0.25)" },
-    info: { colour: "#2896C8", bg: "#D4E8F4", border: "rgba(137,221,255,0.25)" },
-    tip: { colour: "#5A8A30", bg: "#DCE8D4", border: "rgba(158,206,106,0.25)" },
-    warning: { colour: "#A07830", bg: "#F0E4D0", border: "rgba(224,175,104,0.25)" },
-    danger: { colour: "#C04060", bg: "#F0D4D8", border: "rgba(247,118,142,0.25)" },
-    failure: { colour: "#C04060", bg: "#F0D4D8", border: "rgba(247,118,142,0.25)" },
-    success: { colour: "#5A8A30", bg: "#DCE8D4", border: "rgba(158,206,106,0.25)" },
-    question: { colour: "#7B5AC0", bg: "#E0D8F0", border: "rgba(187,154,247,0.25)" },
-    quote: { colour: "#6A6D80", bg: "#E0E0E8", border: "rgba(155,158,176,0.25)" },
-    example: { colour: "#7B5AC0", bg: "#E0D8F0", border: "rgba(187,154,247,0.25)" },
-    bug: { colour: "#C04060", bg: "#F0D4D8", border: "rgba(247,118,142,0.25)" },
-    abstract: { colour: "#2896C8", bg: "#D4E8F4", border: "rgba(137,221,255,0.25)" },
+    note: { colour: "#075CBB" },
+    info: { colour: "#075CBB" },
+    abstract: { colour: "#066B49" },
+    tip: { colour: "#066B49" },
+    success: { colour: "#056B2D" },
+    question: { colour: "#855800" },
+    warning: { colour: "#954A00" },
+    danger: { colour: "#B51327" },
+    failure: { colour: "#B51327" },
+    bug: { colour: "#B51327" },
+    example: { colour: "#6236EB" },
+    quote: { colour: "#616161" },
   },
+  calloutGround: 0.2,
   overlay: (a) => `rgba(0,0,0,${a})`,
   inlineCode: { bg: "rgba(0,0,0,0.06)", border: "rgba(0,0,0,0.1)" },
   // One link ink for the web and for notes: the ↗ tells them apart.

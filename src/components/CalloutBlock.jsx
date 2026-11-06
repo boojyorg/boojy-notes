@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect, memo } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
+import { useRhythm } from "../tokens/rhythm";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { useEmptyMark } from "../hooks/useEmptyMark";
 import { useMenuKeys } from "../hooks/useMenuKeys";
@@ -23,6 +24,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { fromTouch } from "../utils/touch";
+import { withAlpha } from "../utils/selectionBand";
 import { fieldTextAfterTyping } from "../utils/typedFormatting";
 
 /* ─── Callout type configuration ─── */
@@ -239,6 +241,7 @@ export default memo(function CalloutBlock({
   const [iconRect, setIconRect] = useState(null);
 
   const { theme } = useTheme();
+  const rhythm = useRhythm();
 
   const scrollRestoreRef = useRef(null);
 
@@ -433,7 +436,8 @@ export default memo(function CalloutBlock({
     <div
       className="callout-block"
       style={{
-        background: theme.callouts[calloutType].bg,
+        // The type's ink, faint: part of the note, not a panel over it.
+        background: withAlpha(theme.callouts[calloutType].colour, theme.calloutGround),
         borderRadius: 8,
         padding: "14px 18px",
         transition: "background var(--motion-fast), border-color var(--motion-fast)",
@@ -483,10 +487,10 @@ export default memo(function CalloutBlock({
             flex: 1,
             color: theme.callouts[calloutType].colour,
             fontWeight: 600,
-            fontSize: 14,
+            fontSize: rhythm.bodySize,
             outline: "none",
             lineHeight: 1.5,
-            minHeight: 21,
+            minHeight: "1lh",
           }}
           className="callout-title"
         />
@@ -503,9 +507,10 @@ export default memo(function CalloutBlock({
         onKeyDown={handleBodyKeyDown}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          color: theme.TEXT.secondary,
-          fontSize: 14,
-          lineHeight: 1.7,
+          // The note's own words: the title and icon carry the type.
+          color: theme.TEXT.primary,
+          fontSize: rhythm.bodySize,
+          lineHeight: rhythm.lineHeight,
           outline: "none",
           paddingLeft: 0,
           marginTop: 4,

@@ -24,10 +24,12 @@ const GROUPS = [
 ];
 
 const pathOf = (group, key) => (group ? `${group}.${key}` : key);
-const readPath = (obj, path) => {
-  const [g, k] = path.split(".");
-  return k ? obj[g][k] : obj[g];
-};
+const readPath = (obj, path) => path.split(".").reduce((o, k) => o?.[k], obj);
+
+// Callouts: one ink per type (its ground is that ink at calloutGround over the
+// sheet), so the panel holds the inks and the one strength.
+const CALLOUT_KEYS = Object.keys(DAY.callouts);
+const calloutPath = (type) => `callouts.${type}.colour`;
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const clamp = (n) => Math.max(0, Math.min(255, Math.round(n)));
@@ -126,6 +128,11 @@ export default function ThemeTweaker() {
 
   const snippet = useMemo(() => {
     const lines = [];
+    lines.push("  callouts: {");
+    for (const t of CALLOUT_KEYS)
+      lines.push(`    ${t}: { colour: "${tokenValue(calloutPath(t))}" },`);
+    lines.push("  },");
+    lines.push(`  calloutGround: ${tokenValue("calloutGround")},`);
     for (const { group, keys } of GROUPS) {
       if (group) {
         lines.push(`  ${group}: {`);
@@ -219,6 +226,52 @@ export default function ThemeTweaker() {
           })}
         </div>
       ))}
+
+      <div style={{ marginTop: 6 }}>
+        <div style={{ color: "#999", margin: "4px 0 2px" }}>callouts</div>
+        <label style={row}>
+          <span style={{ width: 90, color: "calloutGround" in mine ? "#FFF" : "#BBB" }}>
+            ground
+          </span>
+          <input
+            type="range"
+            min={0.04}
+            max={0.3}
+            step={0.01}
+            value={tokenValue("calloutGround")}
+            onChange={(e) => setToken("calloutGround", Number(e.target.value))}
+            style={{ flex: 1 }}
+          />
+          <span style={{ width: 36, textAlign: "right" }}>
+            {Math.round(tokenValue("calloutGround") * 100)}%
+          </span>
+        </label>
+        {CALLOUT_KEYS.map((t) => {
+          const path = calloutPath(t);
+          const v = tokenValue(path);
+          const dirty = path in mine;
+          return (
+            <label key={path} style={row}>
+              <span style={{ width: 90, color: dirty ? "#FFF" : "#BBB" }}>{t}</span>
+              <input
+                type="color"
+                value={v}
+                onChange={(e) => setToken(path, e.target.value.toUpperCase())}
+                style={{ width: 28, height: 20, padding: 0, border: "none", background: "none" }}
+              />
+              <input
+                style={hexInput}
+                value={v}
+                onChange={(e) => {
+                  const x = e.target.value.trim();
+                  if (HEX.test(x)) setToken(path, x.toUpperCase());
+                }}
+              />
+              <span style={{ color: "#666" }}>{dirty ? readPath(base, path) : ""}</span>
+            </label>
+          );
+        })}
+      </div>
 
       <pre
         style={{

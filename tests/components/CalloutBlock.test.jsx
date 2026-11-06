@@ -25,6 +25,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
         abstract: { colour: "#89DDFF", bg: "#446277", border: "rgba(137,221,255,0.18)" },
         failure: { colour: "#F7768E", bg: "#6b3d4f", border: "rgba(247,118,142,0.18)" },
       },
+      calloutGround: 0.14,
     },
     isDark: true,
   }),
@@ -93,8 +94,8 @@ describe("CalloutBlock", () => {
   it("renders with info callout type styling", () => {
     const { container } = render(<CalloutBlock {...defaultProps} />);
     const callout = container.querySelector(".callout-block");
-    // Info callout bg from theme mock
-    expect(callout.style.background).toBe("rgb(68, 98, 119)");
+    // The ground is the type's ink at calloutGround.
+    expect(callout.style.background).toBe("rgba(137, 221, 255, 0.14)");
   });
 
   it("renders with warning callout type", () => {
@@ -104,7 +105,7 @@ describe("CalloutBlock", () => {
     };
     const { container } = render(<CalloutBlock {...props} />);
     const callout = container.querySelector(".callout-block");
-    expect(callout.style.background).toBe("rgb(99, 82, 66)");
+    expect(callout.style.background).toBe("rgba(224, 175, 104, 0.14)");
   });
 
   it("renders with tip callout type", () => {
@@ -114,7 +115,7 @@ describe("CalloutBlock", () => {
     };
     const { container } = render(<CalloutBlock {...props} />);
     const callout = container.querySelector(".callout-block");
-    expect(callout.style.background).toBe("rgb(76, 94, 67)");
+    expect(callout.style.background).toBe("rgba(158, 206, 106, 0.14)");
   });
 
   it("renders the title contentEditable element", () => {
@@ -162,7 +163,7 @@ describe("CalloutBlock", () => {
     };
     const { container } = render(<CalloutBlock {...props} />);
     const callout = container.querySelector(".callout-block");
-    expect(callout.style.background).toBe("rgb(107, 61, 79)");
+    expect(callout.style.background).toBe("rgba(247, 118, 142, 0.14)");
   });
 
   // An empty title is the type's word, as Obsidian shows it: the word as
@@ -194,6 +195,8 @@ describe("CalloutBlock", () => {
       <CalloutBlock {...defaultProps} block={{ ...defaultProps.block, calloutType: "failure" }} />,
     );
     expect(container.querySelector("[data-testid='icon-XCircle']")).toBeInTheDocument();
-    expect(container.querySelector(".callout-block").style.background).toBe("rgb(107, 61, 79)");
+    expect(container.querySelector(".callout-block").style.background).toBe(
+      "rgba(247, 118, 142, 0.14)",
+    );
   });
 });
