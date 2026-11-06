@@ -1008,11 +1008,14 @@ ${tagPillCss(theme)}
             background: ${theme.calloutIconHover} !important;
           }
         }
+        /* An empty title is the type's name (CalloutBlock's shownTitle): the
+           title the reader sees, so full strength; faint only while the caret
+           is in it, to type over. */
         .callout-title[data-empty]::before {
           content: attr(data-placeholder);
-          opacity: 0.35;
           pointer-events: none;
         }
+        .callout-title[data-empty]:focus::before { opacity: 0.35; }
         .callout-body[data-empty]::before {
           content: attr(data-placeholder);
           color: ${theme.TEXT.muted};

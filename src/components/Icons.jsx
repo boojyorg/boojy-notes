@@ -81,6 +81,7 @@ import {
   Image as LuImage,
   ImageOff as LuImageOff,
   Info as LuInfo,
+  MessageSquareText as LuMessageSquareText,
   Italic as LuItalic,
   LayoutList as LuLayoutList,
   Link as LuLink,
@@ -335,6 +336,8 @@ const SLASH_GLYPHS = {
   "text-quote": LuTextQuote,
   minus: LuMinus,
   info: LuInfo,
+  // A callout in general, not the Info type's circled i.
+  callout: LuMessageSquareText,
   paperclip: LuPaperclip,
   link: LuLink,
   properties: LuTableProperties,

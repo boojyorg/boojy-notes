@@ -20,6 +20,7 @@ import {
   ListChecks,
   Bug,
   FileText,
+  XCircle,
 } from "lucide-react";
 import { fromTouch } from "../utils/touch";
 import { fieldTextAfterTyping } from "../utils/typedFormatting";
@@ -67,6 +68,10 @@ const CALLOUT_TYPES = {
     icon: Bug,
     defaultTitle: "Bug",
   },
+  failure: {
+    icon: XCircle,
+    defaultTitle: "Failure",
+  },
   abstract: {
     icon: FileText,
     defaultTitle: "Abstract",
@@ -74,6 +79,16 @@ const CALLOUT_TYPES = {
 };
 
 const CALLOUT_TYPE_KEYS = Object.keys(CALLOUT_TYPES);
+
+/**
+ * What an empty title shows, as Obsidian shows it: the type word as written,
+ * in title case (`[!important]` reads Important, `[!banana]` Banana). It is
+ * the placeholder's text, never written to the file.
+ */
+function shownTitle(block, config) {
+  const word = block.calloutTypeRaw || "";
+  return word ? word[0].toUpperCase() + word.slice(1).toLowerCase() : config.defaultTitle;
+}
 
 /* ─── Type picker dropdown ─── */
 
@@ -320,17 +335,11 @@ export default memo(function CalloutBlock({
       setPickerOpen(false);
       if (newType === calloutType) return;
       saveScroll();
-      const oldConfig = CALLOUT_TYPES[calloutType] || CALLOUT_TYPES.note;
-      const newConfig = CALLOUT_TYPES[newType] || CALLOUT_TYPES.note;
-      const updates = { calloutType: newType, calloutTypeRaw: newType };
-      // If title matches the old default, update to new default
-      const currentTitle = block.title || "";
-      if (!currentTitle || currentTitle === oldConfig.defaultTitle) {
-        updates.title = newConfig.defaultTitle;
-      }
-      onUpdateBlock(noteId, blockIndex, updates);
+      // The title is left as it is: an empty one shows the new type's name,
+      // and writing that name would put a title in the file nobody typed.
+      onUpdateBlock(noteId, blockIndex, { calloutType: newType, calloutTypeRaw: newType });
     },
-    [calloutType, block.title, noteId, blockIndex, onUpdateBlock, saveScroll],
+    [calloutType, noteId, blockIndex, onUpdateBlock, saveScroll],
   );
 
   /* ─── Keyboard: title ─── */
@@ -466,7 +475,7 @@ export default memo(function CalloutBlock({
           ref={titleRef}
           contentEditable
           suppressContentEditableWarning
-          data-placeholder={config.defaultTitle}
+          data-placeholder={shownTitle(block, config)}
           onInput={handleTitleInput}
           onKeyDown={handleTitleKeyDown}
           onMouseDown={(e) => e.stopPropagation()}

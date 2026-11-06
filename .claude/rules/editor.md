@@ -245,6 +245,8 @@ never holds a byte sequence the syntax cannot.**
 - **A field repaints only when it doesn't hold the ref's latest text** (`useOwnedField`);
   structural operations reshape the block as the ref holds it.
 - The serializer enforces the syntax: a cell's newline is `<br>`, a callout title's a space.
+- **An empty callout title shows its type word, title-cased, and is never written**
+  (`shownTitle`); a type change leaves the title alone. `callout-picker.spec.ts`.
 
 ## Properties
 

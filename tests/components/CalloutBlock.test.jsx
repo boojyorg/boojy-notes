@@ -23,6 +23,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
         example: { colour: "#BB9AF7", bg: "#564b74", border: "rgba(187,154,247,0.18)" },
         bug: { colour: "#F7768E", bg: "#6b3d4f", border: "rgba(247,118,142,0.18)" },
         abstract: { colour: "#89DDFF", bg: "#446277", border: "rgba(137,221,255,0.18)" },
+        failure: { colour: "#F7768E", bg: "#6b3d4f", border: "rgba(247,118,142,0.18)" },
       },
     },
     isDark: true,
@@ -52,6 +53,7 @@ vi.mock("lucide-react", () => {
     ListChecks: icon("ListChecks"),
     Bug: icon("Bug"),
     FileText: icon("FileText"),
+    XCircle: icon("XCircle"),
   };
 });
 
@@ -161,5 +163,37 @@ describe("CalloutBlock", () => {
     const { container } = render(<CalloutBlock {...props} />);
     const callout = container.querySelector(".callout-block");
     expect(callout.style.background).toBe("rgb(107, 61, 79)");
+  });
+
+  // An empty title is the type's word, as Obsidian shows it: the word as
+  // written in title case (an alias or an unknown type keeps its own name),
+  // drawn by CSS so nothing is written to the file.
+  it("names an empty title by the type word as written, in title case", () => {
+    for (const [calloutType, calloutTypeRaw, shown] of [
+      ["tip", "important", "Important"],
+      ["note", "banana", "Banana"],
+      ["note", "NOTE", "Note"],
+      ["failure", "missing", "Missing"],
+      ["tip", undefined, "Tip"],
+    ]) {
+      const { container, unmount } = render(
+        <CalloutBlock
+          {...defaultProps}
+          block={{ ...defaultProps.block, calloutType, calloutTypeRaw, title: "" }}
+        />,
+      );
+      const title = container.querySelector(".callout-title");
+      expect(title.getAttribute("data-placeholder"), calloutTypeRaw).toBe(shown);
+      expect(title.textContent).toBe("");
+      unmount();
+    }
+  });
+
+  it("draws a failure with its own icon and colours", () => {
+    const { container } = render(
+      <CalloutBlock {...defaultProps} block={{ ...defaultProps.block, calloutType: "failure" }} />,
+    );
+    expect(container.querySelector("[data-testid='icon-XCircle']")).toBeInTheDocument();
+    expect(container.querySelector(".callout-block").style.background).toBe("rgb(107, 61, 79)");
   });
 });
