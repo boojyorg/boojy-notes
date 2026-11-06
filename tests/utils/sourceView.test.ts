@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown";
-import { blockOffsetFor, paintMarkdown, sourceOffsetFor } from "../../src/utils/sourceView";
+import {
+  blockOffsetFor,
+  paintMarkdown,
+  paintMarkdownCode,
+  sourceOffsetFor,
+} from "../../src/utils/sourceView";
 
 const NOTE = [
   "---",
@@ -212,5 +217,99 @@ describe("paintMarkdown", () => {
   it("gives a final empty line its height", () => {
     expect(paintMarkdown("a\n").endsWith("\n​")).toBe(true);
     expect(paintMarkdown("a")).toBe("a");
+  });
+});
+
+/** Markup stripped and entities read back: the characters the layer draws. */
+const drawn = (html: string) =>
+  html
+    .replace(/<[^>]+>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+/** The text of every span of class `cls`, in order. */
+const spans = (html: string, cls: string) =>
+  [...html.matchAll(new RegExp(`<span class="${cls}">([^<]*)</span>`, "g"))].map((m) => m[1]);
+
+describe("callout markers", () => {
+  it("draws a callout's marker, fold sign and all, in its own ink; its title stays words", () => {
+    const md = [
+      "> [!note]",
+      "> A plain note.",
+      "",
+      "> [!tip] A title of your own",
+      "",
+      "> [!warning]- Folded until you click",
+      "",
+      "> [!faq]+ Open by default",
+    ].join("\n");
+    const html = paintMarkdown(md);
+    expect(spans(html, "md-callout")).toEqual(["[!note]", "[!tip]", "[!warning]-", "[!faq]+"]);
+    expect(html).toContain("A title of your own");
+    expect(drawn(html)).toBe(md);
+  });
+
+  it("draws only what the editor opens as a callout", () => {
+    for (const [md, want] of [
+      // Opens: after prose, after a list, after a callout's lines, indented, spaced.
+      ["para\n> [!note] x", ["[!note]"]],
+      ["- item\n> [!note] x", ["[!note]"]],
+      ["> [!tip] a\n> body\n> [!note] b", ["[!tip]", "[!note]"]],
+      ["   > [!note] indented", ["[!note]"]],
+      [">  [!note]\ttab and spaces", ["[!note]"]],
+      // Does not: nested, mid-quote, a list item's, unquoted, no space, two words, mid-line, a code indent.
+      ["> [!question] Can callouts nest?\n> > [!info]\n> > Yes.", ["[!question]"]],
+      ["> plain quote\n> [!note] mid", []],
+      ["> - [!note] in a list", []],
+      ["[!note] not quoted", []],
+      [">[!note] tight", []],
+      ["> [!two words]", []],
+      ["> see [!note] mid-line", []],
+      ["    > [!note] code indent", []],
+      // A fence ends the quote: the marker after it opens a callout.
+      ["> quote\n```\nx\n```\n> [!note] after", ["[!note]"]],
+    ] as const) {
+      const html = paintMarkdown(md);
+      expect(spans(html, "md-callout"), md).toEqual(want);
+      expect(drawn(html), md).toBe(md);
+    }
+  });
+});
+
+describe("paintMarkdownCode", () => {
+  it("draws every character as written: blank lines, trailing spaces, a leading ---", () => {
+    for (const md of [
+      "---\ntags: [a]\n---\nBody",
+      "# Heading  \n\n\n- item \n> [!note]   \n> body\t\n",
+      "a < b & c > d\n```js\nconst x = 1;\n",
+      "",
+      "\n",
+    ]) {
+      expect(drawn(paintMarkdownCode(md)), JSON.stringify(md)).toBe(md);
+    }
+  });
+
+  it("reads a leading --- as a divider, not properties: the block is mid-note", () => {
+    const html = paintMarkdownCode("---\ntags: [a]\n---\nBody");
+    expect(html).not.toContain("md-meta");
+  });
+
+  it("paints Markdown as the Markdown view does, a callout included", () => {
+    const html = paintMarkdownCode("# Title\n- [[Note]] #tag\n> [!tip] Hi");
+    expect(spans(html, "md-hmark")).toEqual(["# "]);
+    expect(spans(html, "md-list")).toEqual(["- "]);
+    expect(spans(html, "md-wiki")).toEqual(["Note"]);
+    expect(spans(html, "md-callout")).toEqual(["[!tip]"]);
+  });
+
+  it("colours another language's fence inside it with that language's grammar", () => {
+    const html = paintMarkdownCode("Some prose.\n```python\ndef f():\n    return 1\n```");
+    expect(html).toContain('class="token keyword"');
+    expect(html).not.toContain("md-strong");
+    expect(drawn(html)).toBe("Some prose.\n```python\ndef f():\n    return 1\n```");
+  });
+
+  it("adds no end-of-text spacer: the code block's lines take their own height", () => {
+    expect(paintMarkdownCode("a\n")).toBe("a\n");
   });
 });
