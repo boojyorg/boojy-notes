@@ -181,6 +181,38 @@ test("the link shows its caret, and Done saves it as Enter does", async () => {
   }
 });
 
+// The link is the one embed's: picked with other blocks, an embed wears the
+// band and nothing else. And the field is as wide as its link, so the
+// closing `]]` follows the text with no gap.
+test("the link shows only for an embed picked alone, and fits its text", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const roots = h.page.locator('[data-editor] > [data-block-type="embed"]');
+    await roots.nth(0).locator('[data-block-type="blockquote"]').click();
+    const field = roots.nth(0).locator(".embed-link-field");
+    await expect(field).toHaveValue("Guide#Quotes");
+    const gap = await field.evaluate((el) => {
+      const ctx = document.createElement("canvas").getContext("2d")!;
+      ctx.font = getComputedStyle(el).font;
+      return el.getBoundingClientRect().width - ctx.measureText(el.value).width;
+    });
+    expect(Math.abs(gap)).toBeLessThan(1);
+    // The open panel floats over the short embed below: extend the pick from
+    // the paragraph after both.
+    await h.page
+      .locator("[data-editor] > [data-block-id]", { hasText: /^This paragraph has an ID/ })
+      .last() // the embed above draws it too
+      .click({ modifiers: ["Shift"] });
+    await expect(roots.nth(0)).toHaveAttribute("data-selected", "true");
+    await expect(roots.nth(1)).toHaveAttribute("data-selected", "true");
+    await expect(h.page.locator(".embed-edit")).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("Escape in the link puts it back; nothing is saved", async () => {
   const h = await launchApp(FILES);
   try {

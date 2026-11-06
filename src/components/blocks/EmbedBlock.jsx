@@ -46,6 +46,7 @@ function EmbedView({
   ancestors = [],
   depth = 0,
   isSelected = false,
+  selectedAlone = false,
   onSelect,
   onUpdate,
 }) {
@@ -59,8 +60,8 @@ function EmbedView({
   // names something real, saved once when the edit ends.
   const [draft, setDraft] = useState(null);
   useEffect(() => {
-    if (!isSelected) setDraft(null);
-  }, [isSelected]);
+    if (!selectedAlone) setDraft(null);
+  }, [selectedAlone]);
 
   // A key that would edit the copy: the chip says where to edit, at once.
   useEffect(() => {
@@ -215,7 +216,8 @@ function EmbedView({
       }}
     >
       {body}
-      {isSelected && (
+      {/* The link is this embed's alone: picked with other blocks, just the band. */}
+      {selectedAlone && (
         <EmbedLinkEditor
           block={block}
           draft={draft}
@@ -261,8 +263,6 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
       className="embed-link-field"
       aria-label="Embed's link"
       value={editing ? draft : written}
-      // As wide as what it holds, so the closing `]]` follows the text.
-      size={Math.max((editing ? draft : written).length, 1)}
       spellCheck={false}
       autoComplete="off"
       onFocus={() => {

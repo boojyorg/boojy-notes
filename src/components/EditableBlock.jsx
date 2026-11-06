@@ -413,6 +413,7 @@ const EditableBlock = memo(
           noteTitleSet={noteTitleSet}
           hostNote={noteId}
           isSelected={isBlockSelected}
+          selectedAlone={isOnlyBlockSelected}
           onSelect={() => onBlockSelect(block.id)}
           onUpdate={(fields) => onUpdateBlockProperty(noteId, blockIndex, fields)}
         />,

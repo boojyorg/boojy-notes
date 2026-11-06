@@ -313,8 +313,8 @@ open until `</>` closes it. `diagram.spec.ts`.
   link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is
   said.
 - **The copy is fenced by the selection, never the target** (keys go to the editor):
-  `useEmbedFence` cancels an edit in it and the arrow's chip says where to edit.
-- Picked, its `![[…]]` opens underneath, drawn as typed, saved once by Done or ↵. `embeds.spec.ts`.
+  `useEmbedFence` cancels an edit in it and its chip says where to edit.
+- Picked alone, its `![[…]]` opens underneath, drawn as typed, saved once by Done or ↵. `embeds.spec.ts`.
 
 ## Paste and copy
 
