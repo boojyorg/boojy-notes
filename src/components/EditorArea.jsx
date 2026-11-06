@@ -1754,6 +1754,7 @@ const EditorArea = memo(
                               onBlockSelect={setSelectedBlockId}
                               onImageDragPress={imageDragPress}
                               onImageCopyImage={handleImageCopyImage}
+                              showToast={showToast}
                               onUpdateBlockProperty={updateBlockProperty}
                               onEditFrontmatter={editFrontmatter}
                               onRemoveEmptyFrontmatter={removeEmptyFrontmatter}

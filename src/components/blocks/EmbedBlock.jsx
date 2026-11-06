@@ -49,6 +49,7 @@ function EmbedView({
   isSelected = false,
   selectedAlone = false,
   onSelect,
+  onNotice,
   onUpdate,
 }) {
   const { theme } = useTheme();
@@ -69,8 +70,15 @@ function EmbedView({
     setOpen(false);
     setFocusGen(0);
   };
+  // The pick goes, and the panel with it: a draft these fields can't hold
+  // (refused on Enter and Done, kept on a blur) is dropped, and that is said.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   useEffect(() => {
     if (selectedAlone) return;
+    if (draftRef.current != null && embedLinkProblem(draftRef.current)) {
+      onNotice?.("Embed link not saved, so it's back as it was.", "notice");
+    }
     setDraft(null);
     setOpen(false);
     setFocusGen(0);
@@ -330,8 +338,12 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave, onShut, focus
           end(false);
         }
       }}
-      // A press away keeps the edit and leaves the panel be.
-      onBlur={() => finish(keepOnBlur.current)}
+      // A press away keeps the edit and leaves the panel be; a draft these
+      // fields can't hold stays, its reason said, never dropped unsaid.
+      onBlur={() => {
+        if (keepOnBlur.current && draft != null && embedLinkProblem(draft)) return;
+        finish(keepOnBlur.current);
+      }}
       onMouseUp={(e) => e.stopPropagation()}
     />
   );

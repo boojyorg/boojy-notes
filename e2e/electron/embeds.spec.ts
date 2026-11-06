@@ -427,6 +427,36 @@ test("a code block inside an embed is read-only: typed keys and paste change not
   }
 });
 
+// A link the fields can't hold is never lost silently: leaving the field with
+// the embed still picked keeps the draft and its reason; a press elsewhere,
+// which drops the pick and the panel with it, says it was not saved.
+test("a | link survives a blur while picked, and a press away says it was not saved", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    await root.locator('[data-block-type="blockquote"]').click();
+    const field = root.locator(".embed-link-field");
+    await field.click();
+    await h.page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowRight" : "End");
+    await h.page.keyboard.type("|label");
+    // The field loses focus (another window, say) while the embed stays picked.
+    await field.evaluate((el) => (el as HTMLInputElement).blur());
+    await expect(field).toHaveValue("Guide#Quotes|label");
+    await expect(root.locator(".embed-link-reason")).toHaveText(
+      "Text after | can't be kept here yet. Remove it to save.",
+    );
+    // A press elsewhere: the pick and the panel go, and that is said.
+    await h.page.locator("[data-editor] > [data-block-id]", { hasText: /^After\.$/ }).click();
+    await expect(root.locator(".embed-edit")).toHaveCount(0);
+    await expect(h.page.locator("[data-toast-kind]")).toContainText("Embed link not saved");
+    await unchanged(h, FILES);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("a link with a | suffix is refused and said, never saved without it", async () => {
   const h = await launchApp(FILES);
   try {
