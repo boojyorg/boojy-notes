@@ -1,16 +1,14 @@
 # Editor
 
-What a change to the editor must not break, and why.
-
 ## One owner for note state
 
 Note state has two copies: React state and `useHistory`'s keystroke ref, which runs ahead of
-state for the 300 ms text-commit debounce. **Every change goes through a `useHistory` action;
+state. **Every change goes through a `useHistory` action;
 the raw setter is not exposed.** Six actions; a seventh is a smell.
 
 | Action | For | Undo |
 | --- | --- | --- |
-| `commitTextChange` | typing (debounced); ends a draft at its first character | per 500 ms burst |
+| `commitTextChange` | typing (debounced); ends a draft at its first character | per burst |
 | `commitNoteData` | a user edit: block, checkbox, rename, new/deleted note, drop | yes |
 | `adoptNoteData` | a change of record: the written filename, a folder move | no |
 | `applyExternalNote` | a note as the disk holds it | drops its entries |
@@ -18,8 +16,8 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
 | `replaceNoteData` | the whole vault: load, switch, rebuild after outside delete | keeps existing notes' |
 
 - **Undo and redo act on the open note only** (`takeNewestFor`); stacks shared. A typing group
-  belongs to one note and a structural commit closes it. Undo never conjures a deleted note; a
-  move is not undoable. `undo-scope.spec.ts`.
+  belongs to one note and a structural commit closes it. Undo never conjures a deleted note.
+  `undo-scope.spec.ts`.
 - **One keystroke is one entry**: Enter's split and Backspace's join set text and blocks in one
   commit. `undo-steps.spec.ts`.
 - The rebuild after an outside delete keeps
@@ -30,7 +28,7 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
 ### The DOM is painted from the ref; a programmatic edit is read back
 
 - **A text block is painted only on a signal** (mount, a `syncGen` bump, a title-set change),
-  from `latestBlock(noteDataRef)`, never from the render (a keystroke behind), caret restored,
+  from `latestBlock(noteDataRef)`, never from the render, caret restored,
   a line-end space before it as U+00A0. A bump alone paints nothing; pair it with a commit that
   publishes at once. `repaint-spaces.spec.ts`.
 - **A text-only commit never repaints**, so a programmatic text edit edits the DOM and reads it
@@ -94,7 +92,7 @@ through state.**
 ## Links: the caret stays outside
 
 - **A caret at a link's edge rests on a U+200B inside a `caret-anchor` span**, placed only by
-  `placeCaret` (Chromium's edge caret typed into the alias). Walkers drop U+200B only inside a
+  `placeCaret`. Walkers drop U+200B only inside a
   `caret-anchor`; elsewhere it is the file's byte. Never strip it by value.
 - **The browser's caret is fixed at the keystroke** (`caretOutOfLinkEnd`/`Start`), never on
   `selectionchange`, which would trap ArrowLeft.
@@ -115,11 +113,11 @@ through state.**
 - Bare URLs autolink in prose only; `<url>` is text. **`LINK_DEST` is the one reading of a link
   destination.**
 
-## Typed inline formatting converts on the closing marker, and changes no bytes
+## Typed inline formatting converts on the closing marker
 
 - The literal run *is* the Markdown, so converting is a repaint and Cmd+Z is typing undo.
 - **The trigger is the native `insertText` of one marker character**, outside composition,
-  never the text alone (Backspace re-converted). **The paint is verified**
+  never the text alone. **The paint is verified**
   (`paintTypedFormat`): paired differently, the old DOM and caret come back.
   `typed-formatting.spec.ts`.
 - **A code span is literal** (`codeSpans.js`): nothing in it is
@@ -133,7 +131,7 @@ through state.**
   kind's marker typed before a one-line paragraph's text converts it too**; Cmd+Z gives the
   literal back. `marker-on-text.spec.ts`.
 
-## The selection toolbar waits for the selection to finish
+## The selection toolbar
 
 - Shows on mouse-up or at rest; hides at once on collapse. Measured once when shown.
 - **It shows only where it can act**: any text block; in a block with its own fields, only
@@ -141,17 +139,16 @@ through state.**
 - **`FORMATS` in `FloatingToolbar.jsx` must match `useKeyboardHandlers`.**
   `formatting-toolbar.spec.ts`.
 
-## Right-click is Cut, Copy and Paste
+## Right-click
 
 - `EditorContextMenu`: a misspelled word's or a link's actions, then Cut, Copy, Paste; a field
   outside the note gets the same (`TextFieldMenu`). **Items run the keys' own path.** Never
   focused, so the selection stays blue. `text-context-menu.spec.ts`.
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is late),
-  never in code, tags or links; guesses only on a marked word. A Mac checks all its
-  languages; Windows is Chromium's.
+  never in code, tags or links; guesses only on a marked word.
   `spelling.spec.ts`, `spelling-line.spec.ts`.
 
-## Block drag: the gutter grip; on the phone, a hold
+## Block drag
 
 - **On the desktop text never starts a block drag; a picture does.** One floating grip
   (`BlockDragHandle`) in the gutter; nested (`data-indent`), on its parent's marker
@@ -197,7 +194,7 @@ through state.**
 **Every editor spacing value lives in `DEFAULT_RHYTHM`.** New headings are ATX; an empty one
 shows `Heading N` from CSS. `heading-placeholder.spec.ts`.
 
-## The Markdown view is the file, edited as typing
+## The Markdown view is the file
 
 `SourceView`: the note as `blocksToMarkdown` writes it, a plain monospace field. **Each note
 keeps its own view, saved** (`useSourceView`).
@@ -220,9 +217,8 @@ keeps its own view, saved** (`useSourceView`).
 
 ## The paragraph model
 
-Blocks are Markdown structure, not lines (`structureParagraphs`).
-
-- **A paragraph holds every adjacent plain line**, joined by `\n`. Enter makes a paragraph;
+- **A paragraph holds every adjacent plain line** (`structureParagraphs`), joined by `\n`.
+  Enter makes a paragraph;
   Shift+Enter a soft break. **Enter in a quote is a soft break**; on an empty last line it
   leaves the quote (adjacent quote blocks are one quote on disk).
 - **One blank line between any two blocks is structure; each further blank is an empty row.**
@@ -234,7 +230,7 @@ Blocks are Markdown structure, not lines (`structureParagraphs`).
 
 ## A special block's field is a real field
 
-Table cell, callout title/body, code textarea. **The field holds what state holds, and the file
+**The field holds what state holds, and the file
 never holds a byte sequence the syntax cannot.**
 
 - Read with the editor's reader, commit every input through `commitTextChange`; a typed closing
