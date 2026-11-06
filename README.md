@@ -18,7 +18,7 @@ Boojy Notes is a free notes app for your desktop. Your notes are plain Markdown 
 ## About
 
 - **Your files.** Ordinary `.md` files in a folder you choose, even one in iCloud Drive or Dropbox.
-- **Writing.** Type `/` for any block, or the Markdown you already know: `#`, `-`, `**bold**`. Tables, code, maths, pictures and properties too.
+- **Writing.** Type `/` for any block, or the Markdown you already know: `#`, `-`, `**bold**`. Tables, code, maths, pictures, callouts and properties too.
 - **Finding.** Search with ⌘P, tags, and `[[links]]` between notes that go straight to a heading or paragraph. Embed part of one note in another with `![[…]]`.
 - **Safe on a folder you care about.** Editing one part of a file never rewrites the rest, and syntax the app doesn't understand is left alone ([the full promise](docs/SPEC-markdown-source-of-truth.md)). Every note keeps its version history, and Recently Deleted holds notes for 30 days.
 

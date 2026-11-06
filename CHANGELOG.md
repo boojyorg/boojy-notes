@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## v0.22.0 — 2026-11-06
+
+### Improvements
+
+- **Callouts look and read as they do in Obsidian** — A callout with no title now shows its type as the title, the way Obsidian does (`[!important]` reads Important), without writing anything into the file, and changing a callout's type no longer adds a title you didn't type. `[!failure]`, `[!fail]` and `[!missing]` are a red type of their own. Each type takes Obsidian's colour on a lighter background, and the text inside reads like the rest of the note. The menu for choosing a type is the same menu as everywhere else, each type with its coloured icon.
+- **Callouts fold** — A callout written `[!type]-` opens folded, and `[!type]+` opens unfolded, as in Obsidian. The arrow after its title folds and unfolds it (Tab reaches it, and Enter or Space works it); folding never changes the file. A folded callout's text is out of the cursor's way, the arrow keys step over it, and Find opens it to show a match. To make any callout foldable, choose **Make foldable** in its handle's menu (it starts folded); **Always open** takes the fold away. Both undo with ⌘Z.
+- **Markdown in a code block is coloured like the Markdown view** — A `markdown` or `md` code block now colours headings, list markers, links and tags as the Markdown view does, and a callout's `[!type]` stands out wherever it really starts a callout.
+- **An embed's link is easier to edit** — Click an embed and its link opens underneath with a visible cursor and a Done button; Enter, Done or Escape closes it and leaves the embed picked, so Backspace still removes it. Edit link in the handle's menu opens it from the keyboard, and arrowing onto an embed just picks it.
+
+### Fixes
+
+- **A one-line code block has no empty line under it** — and code blocks are a little tighter.
+- **A callout's handle sits at its top** — level with the top of its box, also when the title is empty (it used to drop to the first line of text), and an embed showing a callout keeps its handle at the embed's own top.
+
 ## v0.21.0 — 2026-11-05
 
 ### Improvements
