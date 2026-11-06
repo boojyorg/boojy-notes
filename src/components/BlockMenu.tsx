@@ -10,6 +10,7 @@ import {
   ChevronRightIcon,
   ClipboardIcon,
   CopyIcon,
+  LinkIcon,
   SlashCommandIcon,
   TrashIcon,
   TurnIntoIcon,
@@ -95,6 +96,8 @@ interface BlockMenuProps {
   onDelete: () => void;
   /** A foldable callout's: whether it is folded now, and the toggle (never an edit). */
   fold?: { folded: boolean; onToggle: () => void };
+  /** An embed's: opens its link underneath, the keyboard's way in. */
+  onEditLink?: () => void;
   onClose: () => void;
   /**
    * The phone's: `anchor` is the selected blocks' rect, and the menu hangs
@@ -119,6 +122,7 @@ export default function BlockMenu({
   onCopy,
   onDelete,
   fold,
+  onEditLink,
   onClose,
   under = false,
 }: BlockMenuProps) {
@@ -157,6 +161,8 @@ export default function BlockMenu({
       icon: fold.folded ? <ChevronRightIcon /> : <ChevronDownIcon />,
       action: fold.onToggle,
     });
+  if (!turning && onEditLink && types.length === 1 && types[0] === "embed")
+    items.push({ label: "Edit link", icon: <LinkIcon />, action: onEditLink });
   if (turning) {
     items.push(
       { label: "Turn into", icon: <ChevronLeftIcon />, action: () => setTurning(null) },

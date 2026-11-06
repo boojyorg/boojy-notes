@@ -189,7 +189,8 @@ test("an imported ```md block reads Markdown, coloured, and re-picking it leaves
   try {
     await g.openNote("Imported");
     await expect(label(g.page)).toHaveText(/Markdown/);
-    await expect(g.page.locator(".code-overlay .token").first()).toBeAttached();
+    // Painted as the Markdown view paints it: the heading's `#` in its ink.
+    await expect(g.page.locator(".code-overlay .md-hmark").first()).toHaveText("# ");
     await g.page.locator(".code-block").first().hover();
     await label(g.page).click();
     const checked = menu(g.page).locator('[role="menuitemradio"][aria-checked="true"]');
@@ -231,6 +232,59 @@ test("the grip stands level with a code block's toolbar", async () => {
       });
       expect(Math.abs(off)).toBeLessThan(1);
     }
+    expect(g.pageErrors).toEqual([]);
+  } finally {
+    await g.close();
+  }
+});
+
+// A `markdown` block is painted as the Markdown view: a heading's words
+// semibold over the field's regular ones. A monospace face keeps its advance
+// across weights, so the painted layer stays over the typed text, a long
+// line wrapping where the field wraps it. Checked on each platform's own face.
+test("a markdown block's semibold heading stays over the typed text, wrapped or not", async () => {
+  const heading = `# ${"Semibold words over a regular field ".repeat(2).trim()}`;
+  const long = `## ${"wrapping heading text ".repeat(12).trim()}`;
+  const g = await launchApp({
+    "Paint.md": `Intro.\n\n\`\`\`markdown\n${heading}\n> [!note] A callout\n${long}\n\`\`\`\n`,
+  });
+  try {
+    await g.openNote("Paint");
+    const block = g.page.locator(".code-block").first();
+    await expect(block.locator(".code-overlay .md-strong").first()).toBeAttached();
+    await expect(block.locator(".code-overlay .md-callout")).toHaveText("[!note]");
+    const m = await block.evaluate((el) => {
+      const ta = el.querySelector("textarea")!;
+      const code = el.querySelector(".code-overlay code")!;
+      const line = el.querySelector(".code-line")!;
+      const width = (node: Node) => {
+        const r = document.createRange();
+        r.selectNodeContents(node);
+        return r.getBoundingClientRect().width;
+      };
+      // The same characters at the field's weight, in the same place.
+      const plain = document.createElement("span");
+      plain.className = "code-line";
+      plain.textContent = line.textContent;
+      plain.style.cssText =
+        "position:absolute;visibility:hidden;font-weight:normal;white-space:pre";
+      code.appendChild(plain);
+      const painted = line.cloneNode(true) as HTMLElement;
+      painted.style.cssText = "position:absolute;visibility:hidden;white-space:pre";
+      code.appendChild(painted);
+      const out = {
+        painted: width(painted),
+        plain: width(plain),
+        layer: code.getBoundingClientRect().height,
+        field: ta.getBoundingClientRect().height,
+        fonts: [getComputedStyle(ta).font, getComputedStyle(code).font],
+      };
+      plain.remove();
+      painted.remove();
+      return out;
+    });
+    expect(Math.abs(m.painted - m.plain), JSON.stringify(m)).toBeLessThan(0.5);
+    expect(Math.abs(m.layer - m.field), JSON.stringify(m)).toBeLessThan(1);
     expect(g.pageErrors).toEqual([]);
   } finally {
     await g.close();

@@ -56,9 +56,24 @@ for (const theme of [NIGHT, DAY]) {
       }
     }
 
-    it("the Markdown view's list marker reads on the sheet", () => {
-      expect(contrast(theme.sourceView.list, theme.BG.editor)).toBeGreaterThanOrEqual(4.5);
-    });
+    // The Markdown view's inks, on the sheet and, in a `markdown` code block,
+    // on the code block's ground.
+    for (const [name, ink] of Object.entries({
+      "TEXT.primary": theme.TEXT.primary,
+      "TEXT.secondary": theme.TEXT.secondary,
+      "TEXT.muted": theme.TEXT.muted,
+      "ACCENT.text": theme.ACCENT.text,
+      "sourceView.list": theme.sourceView.list,
+    })) {
+      for (const [ground, bg] of [
+        ["BG.editor", theme.BG.editor],
+        ["codeBlockBg", theme.codeBlockBg],
+      ]) {
+        it(`Markdown's ${name} reads on ${ground}`, () => {
+          expect(contrast(ink, bg)).toBeGreaterThanOrEqual(4.5);
+        });
+      }
+    }
 
     // A callout's ground is its ink at calloutGround over the sheet: the title
     // and icon in that ink, the body in the note's own, both read on it.

@@ -118,9 +118,10 @@ test("the link underneath redraws the embed as typed, says a bad one, and saves 
     await root.locator('[data-block-type="blockquote"]').click();
     const panel = root.locator(".embed-edit");
     const field = panel.locator(".embed-link-field");
-    // A press on the panel's empty right side puts the caret in the link, at its end.
-    const box = (await panel.boundingBox())!;
-    await h.page.mouse.click(box.x + box.width - 12, box.y + box.height / 2);
+    // A press on the panel's empty space, past the closing `]]`, puts the
+    // caret in the link, at its end.
+    const close = (await panel.locator(".embed-link-mark").last().boundingBox())!;
+    await h.page.mouse.click(close.x + close.width + 24, close.y + close.height / 2);
     await expect(field).toBeFocused();
     // Real keys, as typed: "Quotes" becomes "Next".
     await h.page.keyboard.press(END);
@@ -143,6 +144,126 @@ test("the link underneath redraws the embed as typed, says a bad one, and saves 
     await h.page.keyboard.press(UNDO);
     await sleep(SETTLE_MS);
     expect(h.vault.read("Host.md")).toBe(HOST);
+  } finally {
+    await h.close();
+  }
+});
+
+// The link field is inside a picked block, whose caret the editor hides: the
+// field draws its own. Done, as on a formula's source, saves as Enter does
+// and closes the panel.
+test("the link shows its caret, and Done saves it and closes the panel", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    await root.locator('[data-block-type="blockquote"]').click();
+    const panel = root.locator(".embed-edit");
+    const field = panel.locator(".embed-link-field");
+    const done = panel.getByRole("button", { name: "Done", exact: true });
+    // Nothing to finish until the link is being edited.
+    await expect(done).toHaveCount(0);
+    await field.click();
+    await expect(field).toBeFocused();
+    const caret = await field.evaluate((el) => getComputedStyle(el).caretColor);
+    expect(caret).not.toBe("rgba(0, 0, 0, 0)");
+    expect(caret).not.toBe("transparent");
+    await h.page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowRight" : "End");
+    for (let i = 0; i < "Quotes".length; i++) await h.page.keyboard.press("Backspace");
+    await h.page.keyboard.type("Next");
+    await done.click();
+    // As a formula's source: the panel goes, the embed stays picked.
+    await expect(panel).toHaveCount(0);
+    await expect(root).toHaveAttribute("data-selected", "true");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST.replace("![[Guide#Quotes]]", "![[Guide#Next]]"));
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// The link is the one embed's: picked with other blocks, an embed wears the
+// band and nothing else. And the field is as wide as its link, so the
+// closing `]]` follows the text with no gap.
+test("the link shows only for an embed picked alone, and fits its text", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const roots = h.page.locator('[data-editor] > [data-block-type="embed"]');
+    await roots.nth(0).locator('[data-block-type="blockquote"]').click();
+    const field = roots.nth(0).locator(".embed-link-field");
+    await expect(field).toHaveValue("Guide#Quotes");
+    const gap = await field.evaluate((el) => {
+      const ctx = document.createElement("canvas").getContext("2d")!;
+      ctx.font = getComputedStyle(el).font;
+      return (
+        el.getBoundingClientRect().width - ctx.measureText((el as HTMLInputElement).value).width
+      );
+    });
+    expect(Math.abs(gap)).toBeLessThan(1);
+    // The open panel floats over the short embed below: extend the pick from
+    // the paragraph after both.
+    await h.page
+      .locator("[data-editor] > [data-block-id]", { hasText: /^This paragraph has an ID/ })
+      .last() // the embed above draws it too
+      .click({ modifiers: ["Shift"] });
+    await expect(roots.nth(0)).toHaveAttribute("data-selected", "true");
+    await expect(roots.nth(1)).toHaveAttribute("data-selected", "true");
+    await expect(h.page.locator(".embed-edit")).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// The panel is open or shut, apart from the pick, as a formula's source is:
+// a click opens it; Enter and Escape in it shut it, the embed still picked
+// (Backspace still removes it); arrowing on only picks; the block menu's
+// Edit link opens it with the caret in the link, the keyboard's way in.
+test("the link panel opens on a click or Edit link, and Enter or Escape shuts it", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    const panel = root.locator(".embed-edit");
+    const field = panel.locator(".embed-link-field");
+    await root.locator('[data-block-type="blockquote"]').click();
+    await expect(panel).toHaveCount(1);
+    await field.click();
+    await h.page.keyboard.press("Enter");
+    await expect(panel).toHaveCount(0);
+    await expect(root).toHaveAttribute("data-selected", "true");
+    // A press on it again opens it again; Escape shuts it.
+    await root.locator('[data-block-type="blockquote"]').click();
+    await expect(panel).toHaveCount(1);
+    await field.click();
+    await h.page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(root).toHaveAttribute("data-selected", "true");
+    await unchanged(h, FILES);
+
+    // Arrowed on, picked only.
+    await h.page.locator("[data-editor] > [data-block-id]", { hasText: /^Intro\.$/ }).click();
+    await h.page.keyboard.press("ArrowDown");
+    await expect(root).toHaveAttribute("data-selected", "true");
+    await expect(panel).toHaveCount(0);
+    // Edit link, from the block menu by keys: the caret in the link, at its end.
+    await h.page.keyboard.press("Shift+F10");
+    await h.page
+      .getByRole("menu", { name: "Block options" })
+      .getByRole("menuitem", { name: "Edit link" })
+      .click();
+    await expect(field).toBeFocused();
+    expect(await field.evaluate((el) => (el as HTMLInputElement).selectionStart)).toBe(
+      "Guide#Quotes".length,
+    );
+    await h.page.keyboard.press("Escape");
+    // Shut, still picked: Backspace removes the embed.
+    await h.page.keyboard.press("Backspace");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST.replace("![[Guide#Quotes]]\n\n", ""));
+    expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
   }
@@ -306,6 +427,36 @@ test("a code block inside an embed is read-only: typed keys and paste change not
   }
 });
 
+// A link the fields can't hold is never lost silently: leaving the field with
+// the embed still picked keeps the draft and its reason; a press elsewhere,
+// which drops the pick and the panel with it, says it was not saved.
+test("a | link survives a blur while picked, and a press away says it was not saved", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    await root.locator('[data-block-type="blockquote"]').click();
+    const field = root.locator(".embed-link-field");
+    await field.click();
+    await h.page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowRight" : "End");
+    await h.page.keyboard.type("|label");
+    // The field loses focus (another window, say) while the embed stays picked.
+    await field.evaluate((el) => (el as HTMLInputElement).blur());
+    await expect(field).toHaveValue("Guide#Quotes|label");
+    await expect(root.locator(".embed-link-reason")).toHaveText(
+      "Text after | can't be kept here yet. Remove it to save.",
+    );
+    // A press elsewhere: the pick and the panel go, and that is said.
+    await h.page.locator("[data-editor] > [data-block-id]", { hasText: /^After\.$/ }).click();
+    await expect(root.locator(".embed-edit")).toHaveCount(0);
+    await expect(h.page.locator("[data-toast-kind]")).toContainText("Embed link not saved");
+    await unchanged(h, FILES);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("a link with a | suffix is refused and said, never saved without it", async () => {
   const h = await launchApp(FILES);
   try {
@@ -319,8 +470,11 @@ test("a link with a | suffix is refused and said, never saved without it", async
     await expect(root.locator(".embed-link-reason")).toHaveText(
       "Text after | can't be kept here yet. Remove it to save.",
     );
-    // Enter keeps it open, nothing written.
+    // Enter keeps it open, nothing written; so does Done.
     await h.page.keyboard.press("Enter");
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue("Guide#Quotes|label");
+    await root.getByRole("button", { name: "Done", exact: true }).click();
     await expect(field).toBeFocused();
     await expect(field).toHaveValue("Guide#Quotes|label");
     await h.page.keyboard.press("Escape");

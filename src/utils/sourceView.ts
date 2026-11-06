@@ -110,7 +110,8 @@ export function blockOffsetFor(
 // painted layer stays over the field's own text): markers muted, a heading's
 // `#` in the accent and its words semibold, list and task markers in their
 // own ink, links, wikilinks and tags in the accent as the formatted view
-// draws them, a quote in the secondary ink, inline code on its tint, and a
+// draws them, a callout's `[!type]` in the accent where the parser opens one,
+// a quote in the secondary ink, inline code on its tint, and a
 // fence's code in its language's colours, as a code block colours it.
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -130,6 +131,10 @@ const LINE_MARKER =
   /^([ \t]*(?:>[ \t]?)*[ \t]*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+(?:\[[ xX]\][ \t]+)?|#{1,6}(?:[ \t]+|$))?)/;
 const FENCE = /^[ \t]*(`{3,}|~{3,})/;
 const RULE = /^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
+/** A quote line, as the parser reads one (`quoteIndent`): up to three spaces, `>`, then a space or the end. */
+const QUOTE_LINE = /^ {0,3}>(?:\s|$)/;
+/** A callout's marker line as the parser opens one: one `>`, a space, `[!word]`, a fold sign. */
+const CALLOUT_LINE = /^ {0,3}>\s+(\[!\w+\][+-]?)/;
 
 /** A link or image: its text in the words' ink, the brackets and address muted. */
 const LINK = new RegExp(String.raw`^(!?\[)([^\]\n]*)(\]\()(${LINK_DEST})(\))`);
@@ -260,6 +265,11 @@ function paintLines(lines: string[], atStart: boolean, depth = 0): string {
   // line to close it; an opener with none is a divider.
   let frontmatter =
     atStart && lines[0] === "---" && lines.some((l, n) => n > 0 && l.trim() === "---");
+  // The quote the lines are in, as the parser reads it: a callout's marker
+  // opens one at a quote's start or after a callout's lines, never inside a
+  // plain quote (there it is the quote's text) nor nested (the editor draws
+  // no callout inside another).
+  let quote: "plain" | "callout" | null = null;
   for (let n = 0; n < lines.length; n++) {
     const line = lines[n];
     if (frontmatter) {
@@ -285,15 +295,24 @@ function paintLines(lines: string[], atStart: boolean, depth = 0): string {
       const at = line.indexOf(fenceOpen[1]) + fenceOpen[1].length;
       const info = line.slice(at);
       fence = { mark: fenceOpen[1], info, body: [] };
+      quote = null;
       out.push(muted(line.slice(0, at)) + span("md-info", esc(info)));
       continue;
     }
     if (RULE.test(line)) {
+      quote = null;
       out.push(muted(line));
       continue;
     }
-    const marker = paintMarker(line.match(LINE_MARKER)?.[1] ?? "");
-    let body = paintInline(line.slice((line.match(LINE_MARKER)?.[1] ?? "").length));
+    const callout = quote === "plain" ? null : line.match(CALLOUT_LINE);
+    quote = QUOTE_LINE.test(line) ? (callout ? "callout" : (quote ?? "plain")) : null;
+    const lead = line.match(LINE_MARKER)?.[1] ?? "";
+    const marker = paintMarker(lead);
+    const rest = line.slice(lead.length);
+    // The marker begins the text after the quote's `>` and spaces.
+    let body = callout
+      ? span("md-callout", esc(callout[1])) + paintInline(rest.slice(callout[1].length))
+      : paintInline(rest);
     if (marker.heading) body = strong(body);
     if (marker.quote) body = span("md-quote", body);
     out.push(marker.html + body);
@@ -301,6 +320,16 @@ function paintLines(lines: string[], atStart: boolean, depth = 0): string {
   // A fence the file never closes runs to its end, as the parser reads it.
   if (fence?.body.length) out.push(paintFenceBody(fence.body, fence.info, depth));
   return out.join("\n");
+}
+
+/**
+ * A `markdown` code block's text painted as the Markdown view paints a note,
+ * one line per line: read mid-note (a leading `---` is a divider, not
+ * properties) and one fence deep, with no end-of-text spacer (the block's
+ * lines take their own height).
+ */
+export function paintMarkdownCode(text: string): string {
+  return paintLines(text.split("\n"), false, 1);
 }
 
 /**

@@ -1754,6 +1754,7 @@ const EditorArea = memo(
                               onBlockSelect={setSelectedBlockId}
                               onImageDragPress={imageDragPress}
                               onImageCopyImage={handleImageCopyImage}
+                              showToast={showToast}
                               onUpdateBlockProperty={updateBlockProperty}
                               onEditFrontmatter={editFrontmatter}
                               onRemoveEmptyFrontmatter={removeEmptyFrontmatter}
@@ -1833,6 +1834,10 @@ const EditorArea = memo(
                           },
                         };
                       })()}
+                      onEditLink={() => {
+                        setBlockMenu(null);
+                        openBlock(note.content.blocks[selectedRun.from].id);
+                      }}
                       onClose={() => setBlockMenu(null)}
                     />
                   )}

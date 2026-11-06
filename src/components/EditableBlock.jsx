@@ -146,6 +146,7 @@ const EditableBlock = memo(
     onBlockSelect,
     onImageDragPress,
     onImageCopyImage,
+    showToast,
     onUpdateBlockProperty,
     onEditFrontmatter,
     onRemoveEmptyFrontmatter,
@@ -413,7 +414,9 @@ const EditableBlock = memo(
           noteTitleSet={noteTitleSet}
           hostNote={noteId}
           isSelected={isBlockSelected}
+          selectedAlone={isOnlyBlockSelected}
           onSelect={() => onBlockSelect(block.id)}
+          onNotice={showToast}
           onUpdate={(fields) => onUpdateBlockProperty(noteId, blockIndex, fields)}
         />,
         { padding: "4px 0" },

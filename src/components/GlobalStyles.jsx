@@ -569,11 +569,15 @@ ${tagPillCss(theme)}
         }
         [data-block-id] .embed-edit .embed-link-field {
           flex: 0 1 auto;
-          min-width: 0;
+          /* As wide as its text, whatever the characters, so the closing ]] follows it. */
+          field-sizing: content;
+          min-width: 1ch;
           border: 0;
           outline: none;
           background: transparent;
           color: ${theme.TEXT.primary};
+          /* The picked block it sits in hides the editor's caret: the field draws its own. */
+          caret-color: ${theme.caretColor};
           font: inherit;
           padding: 0;
         }
@@ -885,19 +889,22 @@ ${tagPillCss(theme)}
           color: ${theme.TEXT.primary};
           overflow: hidden;
         }
-        /* What each part of the file is, by colour alone: nothing here may
+        /* What each part of the file is, by colour alone, in the Markdown view
+           and a \`markdown\` code block alike (paintMarkdown): nothing here may
            change a character's width, or the layer slides from the field. */
-        .source-layer .md-mark { color: ${theme.TEXT.muted}; }
-        .source-layer .md-meta,
-        .source-layer .md-info,
-        .source-layer .md-quote { color: ${theme.TEXT.secondary}; }
-        .source-layer .md-strong { font-weight: 600; }
-        .source-layer .md-hmark,
-        .source-layer .md-link,
-        .source-layer .md-wiki,
-        .source-layer .md-tag { color: ${theme.ACCENT.text}; }
-        .source-layer .md-list { color: ${theme.sourceView.list}; }
-        .source-layer .md-code { background-color: ${theme.inlineCode.bg}; border-radius: 3px; }
+        :is(.source-layer, .code-overlay) .md-mark { color: ${theme.TEXT.muted}; }
+        :is(.source-layer, .code-overlay) :is(.md-meta, .md-info, .md-quote) {
+          color: ${theme.TEXT.secondary};
+        }
+        :is(.source-layer, .code-overlay) .md-strong { font-weight: 600; }
+        :is(.source-layer, .code-overlay) :is(.md-hmark, .md-link, .md-wiki, .md-tag, .md-callout) {
+          color: ${theme.ACCENT.text};
+        }
+        :is(.source-layer, .code-overlay) .md-list { color: ${theme.sourceView.list}; }
+        :is(.source-layer, .code-overlay) .md-code {
+          background-color: ${theme.inlineCode.bg};
+          border-radius: 3px;
+        }
         /* One toolbar on every code block (CodeBlock), top right: shown on
            the pointer or while the block has focus, held while its language
            menu is open. The language, then icons, copy always last; a diagram's
