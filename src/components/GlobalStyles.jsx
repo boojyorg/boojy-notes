@@ -700,7 +700,7 @@ ${tagPillCss(theme)}
         .code-textarea {
           display: block;
           width: 100%;
-          min-height: 22px;
+          min-height: 1lh;
           padding: 0;
           margin: 0;
           background: transparent;
@@ -908,8 +908,8 @@ ${tagPillCss(theme)}
            header's is for the Markdown view. */
         .code-tools {
           position: absolute;
-          top: 4px;
-          right: 4px;
+          top: 2px;
+          right: 2px;
           z-index: 2;
           /* The block's own ground: invisible over the padding, and over a first line
              that runs under it the toolbar stays legible. */
