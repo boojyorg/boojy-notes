@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { selectTagName, tagName, tagNameRange } from "../../src/utils/tagName";
+import { selectTagName, tagName, tagNameRange, tagRange } from "../../src/utils/tagName";
 
 function pill(html: string) {
   const host = document.createElement("div");
@@ -23,7 +23,7 @@ describe("tagName", () => {
     tag.append(document.createTextNode("/home"));
     const anchor = document.createElement("span");
     anchor.className = "caret-anchor";
-    anchor.textContent = "​";
+    anchor.textContent = "\u200B";
     tag.append(anchor);
     expect(tagName(tag)).toBe("area/home");
   });
@@ -38,7 +38,14 @@ describe("tagNameRange / selectTagName", () => {
   });
 
   it("ends before a trailing caret anchor's U+200B in the text", () => {
-    const tag = pill('<span class="inline-tag">#todo​</span>');
+    const tag = pill('<span class="inline-tag">#todo\u200B</span>');
     expect(tagNameRange(tag)?.toString()).toBe("todo");
+  });
+});
+
+describe("tagRange", () => {
+  it("is the whole tag with its #, for Cut and Copy", () => {
+    const tag = pill('<span class="inline-tag">#area/work</span>');
+    expect(tagRange(tag)?.toString()).toBe("#area/work");
   });
 });

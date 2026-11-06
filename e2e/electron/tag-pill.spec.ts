@@ -95,3 +95,39 @@ test("a tag's right-click menu searches it or edits this one; a click still sear
     await h.close();
   }
 });
+
+// A right-click on a tag selects it whole, `#` and nested parts, as a Mac
+// selects a right-clicked word: Cut and Copy take all of it.
+test("a right-click selects the whole tag, so Cut takes all of it and Paste puts it back", async () => {
+  const h = await launchApp({ "Note.md": "see #area/work and more\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pill = page.locator("[data-editor] .inline-tag");
+    const box = (await pill.boundingBox())!;
+    await page.mouse.click(box.x + box.width * 0.6, box.y + box.height / 2, { button: "right" });
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("#area/work");
+    await expect(menu.getByRole("menuitem", { name: /^Cut/ })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await menu.getByRole("menuitem", { name: /^Cut/ }).click();
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see  and more\n");
+
+    await page.locator("[data-editor] [data-block-id]").first().click();
+    await page.keyboard.press(END_OF_LINE);
+    await page.keyboard.type(" ");
+    const block = (await page.locator("[data-editor] [data-block-id]").first().boundingBox())!;
+    await page.mouse.click(block.x + block.width - 4, block.y + block.height / 2, {
+      button: "right",
+    });
+    await menu.getByRole("menuitem", { name: /^Paste/ }).click();
+    // The file only: a pasted tag is drawn as a pill at the next repaint
+    // (a known gap of every paste, apart from this menu).
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see  and more #area/work\n");
+  } finally {
+    await h.close();
+  }
+});

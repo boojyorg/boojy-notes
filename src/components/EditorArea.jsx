@@ -99,7 +99,7 @@ import { linkTargetIn } from "../utils/embedTarget";
 import { useEmbedFence } from "../hooks/editor/useEmbedFence";
 import { besideLine } from "../utils/marqueeSelect";
 import { withAlpha } from "../utils/selectionBand";
-import { selectTagName, tagName } from "../utils/tagName";
+import { selectTagName, tagName, tagRange } from "../utils/tagName";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -1221,6 +1221,16 @@ const EditorArea = memo(
             sel.removeAllRanges();
             sel.addRange(target);
             range = target.cloneRange();
+          }
+        }
+        // A tag outside the selection is selected whole, `#` and all, as a
+        // word is: Cut and Copy take all of it.
+        if (tagEl && !field && !(range && pointInRange(range, x, y))) {
+          const whole = tagRange(tagEl);
+          if (whole) {
+            sel.removeAllRanges();
+            sel.addRange(whole);
+            range = whole.cloneRange();
           }
         }
         let hangFrom = range;

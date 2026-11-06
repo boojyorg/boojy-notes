@@ -19,24 +19,28 @@ export function tagName(tag: Element): string {
   return tagTexts(tag)
     .map((t) => t.data)
     .join("")
-    .replace(/​/g, "")
+    .replace(/\u200B/g, "")
     .replace(/^#/, "");
 }
 
 /**
- * The name's range, the `#` left out, so typing over it renames this one tag
- * and it stays a tag. Null when the pill holds no `#` (it never does).
+ * The tag's range: whole with its `#` (a right-click selects it so, for Cut
+ * and Copy), or the name alone, so typing over it renames this one tag and it
+ * stays a tag (Edit tag). Null when the pill holds no `#` (it never does).
  */
-export function tagNameRange(tag: Element): Range | null {
+export function tagRange(tag: Element, withHash = true): Range | null {
   const texts = tagTexts(tag);
   const first = texts.find((t) => t.data.includes("#"));
   const last = texts[texts.length - 1];
   if (!first || !last) return null;
   const range = document.createRange();
-  range.setStart(first, first.data.indexOf("#") + 1);
-  range.setEnd(last, last.data.replace(/​+$/, "").length);
+  range.setStart(first, first.data.indexOf("#") + (withHash ? 0 : 1));
+  range.setEnd(last, last.data.replace(/\u200B+$/, "").length);
   return range;
 }
+
+/** The name's range, the `#` left out. */
+export const tagNameRange = (tag: Element) => tagRange(tag, false);
 
 /** Selects the tag's name (Edit tag), in its editor. */
 export function selectTagName(tag: Element): boolean {
