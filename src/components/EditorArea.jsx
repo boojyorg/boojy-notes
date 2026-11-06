@@ -1817,8 +1817,8 @@ const EditorArea = memo(
                         deleteWholeBlock(activeNote, selectedRun.from, selectedRun.to);
                       }}
                       fold={(() => {
-                        // One callout: Add fold writes `-` (starts folded),
-                        // Remove fold takes away `-` or `+`. An edit, undoable.
+                        // One callout: Make foldable writes `-` (starts
+                        // folded); Always open takes away `-` or `+`. An edit.
                         if (selectedRun.from !== selectedRun.to) return undefined;
                         const b = note.content.blocks[selectedRun.from];
                         if (b?.type !== "callout") return undefined;

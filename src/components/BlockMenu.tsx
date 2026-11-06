@@ -6,13 +6,14 @@ import { shortcutLabel } from "./Tooltip";
 import { cssZoom } from "../utils/domHelpers";
 import {
   ChevronLeftIcon,
-  ChevronRightIcon,
   ClipboardIcon,
+  FoldIcon,
   CopyIcon,
   LinkIcon,
   SlashCommandIcon,
   TrashIcon,
   TurnIntoIcon,
+  UnfoldIcon,
 } from "./Icons";
 
 /**
@@ -157,8 +158,8 @@ export default function BlockMenu({
   const items: MenuItem[] = [];
   if (!turning && fold && types.length === 1)
     items.push({
-      label: fold.written ? "Remove fold" : "Add fold",
-      icon: <ChevronRightIcon />,
+      label: fold.written ? "Always open" : "Make foldable",
+      icon: fold.written ? <UnfoldIcon /> : <FoldIcon />,
       action: fold.onChange,
     });
   if (!turning && onEditLink && types.length === 1 && types[0] === "embed")

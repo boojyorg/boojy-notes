@@ -4,7 +4,7 @@
  * never folds. The chevron is a named button saying its state; a folded body
  * is out of reach (inert) and the caret never stays in it; the arrows step
  * over it; Find opens it to show a match. Whether it can fold is the grip
- * menu's Add fold and Remove fold, an edit.
+ * menu's Make foldable and Always open, an edit.
  * The file's sign rules again whenever the open note changes.
  */
 import { expect, test, type Page } from "@playwright/test";
@@ -196,8 +196,8 @@ test("the chevron is a Tab stop after the title; Enter and Space fold and unfold
   await unchanged();
 });
 
-// Whether a callout folds is the file's sign, set from the grip's menu: Add
-// fold writes `-` and folds it now, Remove fold writes no sign (a `+` too).
+// Whether a callout folds is the file's sign, set from the grip's menu: Make
+// foldable writes `-` and folds it now; Always open writes no sign (a `+` too).
 // One undo step each way; a sign brought back folds as the chevron does, so
 // the caret leaves the body. The menu never folds or opens a callout: that is
 // the chevron's.
@@ -220,14 +220,16 @@ async function gripMenu(page: Page, n: number) {
   return menu;
 }
 
-test("the grip's menu offers Add fold or Remove fold, never Fold or Unfold", async () => {
+test("the grip's menu offers Make foldable or Always open, never Fold or Unfold", async () => {
   const folded = await gripMenu(h.page, 0);
-  await expect(folded.getByRole("menuitem", { name: "Remove fold" })).toBeVisible();
-  await expect(folded.getByRole("menuitem", { name: /^(Fold|Unfold|Add fold)$/ })).toHaveCount(0);
+  await expect(folded.getByRole("menuitem", { name: "Always open" })).toBeVisible();
+  await expect(folded.getByRole("menuitem", { name: /^(Fold|Unfold|Make foldable)$/ })).toHaveCount(
+    0,
+  );
   await h.page.keyboard.press("Escape");
   const plain = await gripMenu(h.page, 2);
-  await expect(plain.getByRole("menuitem", { name: "Add fold" })).toBeVisible();
-  await expect(plain.getByRole("menuitem", { name: "Remove fold" })).toHaveCount(0);
+  await expect(plain.getByRole("menuitem", { name: "Make foldable" })).toBeVisible();
+  await expect(plain.getByRole("menuitem", { name: "Always open" })).toHaveCount(0);
   await h.page.keyboard.press("Escape");
   // The type menu is the type alone.
   await callout(h.page, 2).getByRole("button", { name: "Change callout type" }).click();
@@ -237,9 +239,9 @@ test("the grip's menu offers Add fold or Remove fold, never Fold or Unfold", asy
   await unchanged();
 });
 
-test("Add fold writes `-` and folds the callout; ⌘Z takes it back", async () => {
+test("Make foldable writes `-` and folds the callout; ⌘Z takes it back", async () => {
   const menu = await gripMenu(h.page, 2);
-  await menu.getByRole("menuitem", { name: "Add fold" }).click();
+  await menu.getByRole("menuitem", { name: "Make foldable" }).click();
   await expect(menu).toHaveCount(0);
   await expect(chevron(h.page, 2)).toHaveAttribute("aria-expanded", "false");
   await expect.poll(() => shown(h.page, 2)).toBe(false);
@@ -254,11 +256,11 @@ test("Add fold writes `-` and folds the callout; ⌘Z takes it back", async () =
   expect(h.pageErrors).toEqual([]);
 });
 
-test("Remove fold takes away `-` or `+` and opens the callout; ⌘Z folds it again, the caret leaving its body", async () => {
-  await (await gripMenu(h.page, 0)).getByRole("menuitem", { name: "Remove fold" }).click();
+test("Always open takes away `-` or `+` and opens the callout; ⌘Z folds it again, the caret leaving its body", async () => {
+  await (await gripMenu(h.page, 0)).getByRole("menuitem", { name: "Always open" }).click();
   await expect(chevron(h.page, 0)).toHaveCount(0);
   await expect.poll(() => shown(h.page, 0)).toBe(true);
-  await (await gripMenu(h.page, 1)).getByRole("menuitem", { name: "Remove fold" }).click();
+  await (await gripMenu(h.page, 1)).getByRole("menuitem", { name: "Always open" }).click();
   await expect
     .poll(() => h.vault.read(NOTE))
     .toBe(

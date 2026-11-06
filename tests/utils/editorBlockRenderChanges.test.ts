@@ -58,7 +58,7 @@ describe("haveEditorBlockRenderChanges", () => {
     expect(haveEditorBlockRenderChanges(note, retitled)).toBe(true);
   });
 
-  // Add fold writes only the sign; unpainted, the callout neither folded nor
+  // Make foldable writes only the sign; unpainted, the callout neither folded nor
   // grew its chevron while the file said `-`.
   it("repaints a callout whose fold sign changed", () => {
     const plain = [{ id: "c", type: "callout" as const, text: "b", calloutType: "note" }];

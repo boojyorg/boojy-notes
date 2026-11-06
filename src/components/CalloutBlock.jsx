@@ -152,7 +152,7 @@ export default memo(function CalloutBlock({
     setFolded(next);
   }, []);
   // A new note puts the view back as the file says; a change of the sign
-  // itself (Add or Remove fold, its undo, an outside edit) folds or opens as the
+  // itself (the grip menu, its undo, an outside edit) folds or opens as the
   // chevron does, so the caret leaves a body that goes inert.
   const signRef = useRef(block.calloutFold);
   useEffect(() => {

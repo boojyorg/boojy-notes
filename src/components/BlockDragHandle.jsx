@@ -62,10 +62,12 @@ const OWN_FIRST_ROW = "hr";
 const TOOLBAR_ROW = ":scope > .code-tools, :scope > .code-block > .code-tools";
 
 /**
- * A callout's first row is its title, even empty: an empty title's word is
- * CSS (no text node), so the first text found would be the body's.
+ * A callout is a box: its grip stands level with the box's top edge, one icon
+ * row tall, as a code block's meets its toolbar; never on the body's first
+ * line (an empty title's word is CSS, no text node, so the walk found the body).
  */
-const CALLOUT_TITLE = ":scope .callout-title";
+const CALLOUT_BOX = ":scope .callout-block";
+const CALLOUT_ROW = ".callout-icon-btn";
 
 const MODIFIER_KEYS = new Set(["Shift", "Meta", "Control", "Alt"]);
 
@@ -80,8 +82,11 @@ function firstLineRect(el, zoom) {
   if (toolbar) return toolbar.getBoundingClientRect();
   const ownRow = el.querySelector(OWN_FIRST_ROW);
   if (ownRow) return ownRow.getBoundingClientRect();
-  const title = el.querySelector(CALLOUT_TITLE);
-  if (title && !title.textContent.trim()) return title.getBoundingClientRect();
+  const box = el.querySelector(CALLOUT_BOX);
+  const row = box?.querySelector(CALLOUT_ROW);
+  if (box && row) {
+    return { top: box.getBoundingClientRect().top, height: row.getBoundingClientRect().height };
+  }
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
   });
