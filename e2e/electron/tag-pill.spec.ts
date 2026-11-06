@@ -198,3 +198,68 @@ test("after typing a tag with no suggestions, the next click lands", async () =>
     await h.close();
   }
 });
+
+// Enter's modified forms keep their meaning inside a tag being edited, and
+// fields that own their keys (a table cell, a callout body) finish a tag on
+// plain Enter as a paragraph does.
+async function editTag(page: import("@playwright/test").Page, scope: string) {
+  const pill = page.locator(`${scope} .inline-tag`).first();
+  await pill.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Edit tag" }).click();
+  // The caret just inside the name, after its `#`.
+  await page.keyboard.press("ArrowLeft");
+  return pill;
+}
+
+test("Shift+Enter inside a tag being edited breaks the line after the tag, never inside it", async () => {
+  const h = await launchApp({ "Note.md": "see #area/home and more\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pill = await editTag(page, "[data-editor]");
+    await page.keyboard.press("Shift+Enter");
+    await expect(pill).toHaveText("#area/home");
+    // On disk: the break after the whole tag (on screen the space after it is
+    // a U+00A0, as a line's leading space is drawn).
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see #area/home\n and more\n");
+    await expect(page.locator("[data-editor] > [data-block-id]")).toHaveCount(2);
+  } finally {
+    await h.close();
+  }
+});
+
+test("plain Enter in a tag being edited in a table cell finishes it, adding no row", async () => {
+  const h = await launchApp({ "Note.md": "| Tag |\n| --- |\n| #area/home x |\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const rows = page.locator("[data-editor] table tr");
+    await expect(rows).toHaveCount(2);
+    const pill = await editTag(page, "[data-editor] td");
+    await page.keyboard.press("Enter");
+    await expect(rows).toHaveCount(2);
+    await expect(pill).not.toHaveAttribute("data-editing", "");
+    await page.keyboard.type("!");
+    await waitForFile(h.vault.file("Note.md"), (t) => t.includes("| #area/home! x |"));
+  } finally {
+    await h.close();
+  }
+});
+
+test("plain Enter in a tag being edited in a callout body finishes it, breaking no line", async () => {
+  const h = await launchApp({ "Note.md": "> [!note] Title\n> see #area/home x\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pill = await editTag(page, "[data-editor] .callout-body");
+    await page.keyboard.press("Enter");
+    await expect(pill).not.toHaveAttribute("data-editing", "");
+    await page.keyboard.type("!");
+    await waitForFile(
+      h.vault.file("Note.md"),
+      (t) => t === "> [!note] Title\n> see #area/home! x\n",
+    );
+  } finally {
+    await h.close();
+  }
+});

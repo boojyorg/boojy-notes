@@ -1,3 +1,5 @@
+import { caretAfterTag } from "./domHelpers";
+
 /**
  * The tag being edited is the one the selection is in: no mode to keep, so
  * Edit tag and arrowing in are the same, and leaving it any way ends it.
@@ -38,4 +40,33 @@ export function enterWouldSplit(tag: Element): boolean {
   after.setStart(range.endContainer, range.endOffset);
   after.setEnd(tag, tag.childNodes.length);
   return after.toString().replace(/\u200B/g, "") !== "";
+}
+
+/**
+ * Enter in the tag being edited, in any field that edits text (a block, a
+ * table cell, a callout body), where it would split the tag. Plain Enter
+ * finishes it: the caret after the tag, nothing else (true: handled).
+ * Shift+Enter steps the caret past the tag and leaves its line break to the
+ * field (false). Enter with Cmd, Ctrl or Alt, a key a menu has taken, and
+ * Enter at a tag's end are untouched.
+ */
+export function enterInTag(
+  e: {
+    key: string;
+    shiftKey: boolean;
+    metaKey: boolean;
+    ctrlKey: boolean;
+    altKey: boolean;
+    defaultPrevented: boolean;
+    preventDefault(): void;
+  },
+  field: Element | null | undefined,
+): boolean {
+  if (e.key !== "Enter" || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return false;
+  const tag = editingTag(field);
+  if (!tag || !enterWouldSplit(tag)) return false;
+  caretAfterTag(tag);
+  if (e.shiftKey) return false;
+  e.preventDefault();
+  return true;
 }

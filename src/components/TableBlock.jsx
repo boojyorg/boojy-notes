@@ -18,6 +18,7 @@ import TableContextMenu from "./TableContextMenu";
 import TableHandles from "./TableHandles";
 import { PlusIcon } from "./Icons";
 import { Z } from "../constants/zIndex";
+import { enterInTag } from "../utils/tagEditing";
 
 /** The add-row and add-column boxes' thickness. */
 export const ADD_BAR = 18;
@@ -289,6 +290,9 @@ export default memo(function TableBlock({
 
   const handleCellKeyDown = useCallback(
     (e, rowIdx, colIdx) => {
+      // A tag being edited in the cell finishes on Enter as in a paragraph,
+      // never moving down a row; Shift+Enter breaks the line after it.
+      if (enterInTag(e, e.currentTarget)) return;
       const lastRow = rows.length - 1;
       const lastCol = colCount - 1;
       if (e.key === "Escape") {

@@ -107,8 +107,8 @@ through state.**
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
   reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at its end lands
-  outside it. A click searches, except on the tag holding the caret (fainter, `tagEditing`); its
-  menu's Edit tag selects the name; Enter inside jumps past it. `tag-pill.spec.ts`.
+  outside it. A click searches, except on the tag holding the caret (`tagEditing`); its
+  menu's Edit tag selects the name; Enter jumps past it, in any field. `tag-pill.spec.ts`.
 - **A backslash escape is its symbol alone, sealed**: one caret character, read back with its
   backslash; as written in code, addresses and wikilinks. `escapes.spec.ts`.
 - Bare URLs autolink in prose only; `<url>` is text. **`LINK_DEST` is the one reading of a link
