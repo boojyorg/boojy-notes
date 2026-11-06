@@ -59,8 +59,7 @@ through state.**
 ## Keys and focus: the closest active surface owns them
 
 - **Tab outside a list goes to the open note's sidebar row** (`focusBeyondNote`; Shift+Tab the
-  name); lists indent, cells and code keep their Tab.
-  `keyboard-walkthrough.spec.ts`.
+  name). `keyboard-walkthrough.spec.ts`.
 - **A surface that takes a key prevents its default; one that reads a key checks
   `defaultPrevented` first.** The shell (`useAppKeyboard`) is the last, bubble-phase window
   listener; a surface never adds its own.
@@ -107,7 +106,8 @@ through state.**
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
-  reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at a pill's end lands outside it. `tag-pill.spec.ts`.
+  reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at a pill's end lands outside it. A click
+  searches; Edit tag in its menu selects the name, this one only. `tag-pill.spec.ts`.
 - **A backslash escape is its symbol alone, sealed**: one caret character, read back with its
   backslash; as written in code, addresses and wikilinks. `escapes.spec.ts`.
 - Bare URLs autolink in prose only; `<url>` is text. **`LINK_DEST` is the one reading of a link
@@ -141,7 +141,7 @@ through state.**
 
 ## Right-click
 
-- `EditorContextMenu`: a misspelled word's or a link's actions, then Cut, Copy, Paste; a field
+- `EditorContextMenu`: a misspelled word's, link's or tag's actions, then Cut, Copy, Paste; a field
   outside the note gets the same (`TextFieldMenu`). **Items run the keys' own path.** Never
   focused, so the selection stays blue. `text-context-menu.spec.ts`.
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is late),

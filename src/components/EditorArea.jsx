@@ -99,6 +99,7 @@ import { linkTargetIn } from "../utils/embedTarget";
 import { useEmbedFence } from "../hooks/editor/useEmbedFence";
 import { besideLine } from "../utils/marqueeSelect";
 import { withAlpha } from "../utils/selectionBand";
+import { selectTagName, tagName } from "../utils/tagName";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -749,8 +750,11 @@ const EditorArea = memo(
       // Under the run the menu acts on (the held block and its nested items,
       // or the selection the hold kept), never on it: a block it covered
       // would be one its Delete or Turn into changes unseen.
-      onRelease: (id) => {
+      onRelease: (id, x, y) => {
         const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
+        // A hold that began on a tag: its menu leads with the tag's rows.
+        const under = document.elementFromPoint(x, y)?.closest?.(".inline-tag");
+        const tagEl = under && editorRef.current?.contains(under) ? under : null;
         const i = blocks.findIndex((b) => b.id === id);
         const run = heldIdsRef.current;
         const kept = run.includes(id);
@@ -766,6 +770,7 @@ const EditorArea = memo(
           left: first.left,
           right: first.left,
           under: true,
+          tagEl,
         });
       },
       onDragStart: (id, x, y) => holdDragRef.current?.start(id, x, y) ?? false,
@@ -1200,7 +1205,9 @@ const EditorArea = memo(
         // and the table gets its Delete table.
         const cell = e.target.closest('[data-block-type="table"] th, [data-block-type="table"] td');
         const tableId = cell?.closest("[data-block-id]")?.getAttribute("data-block-id") ?? null;
-        const linkEl = anchor || wikilink;
+        const tagEl = e.target.closest(".inline-tag");
+        // A tag is left as it is, as a link is: its menu is about the tag.
+        const linkEl = anchor || wikilink || tagEl;
         // A right-click on a word outside the selection selects the word, as
         // a Mac text field does; inside the selection it keeps it. A link is
         // left as it is: its menu is about the link.
@@ -1232,7 +1239,10 @@ const EditorArea = memo(
             ? field.selectionStart !== field.selectionEnd
             : !!range && !range.collapsed,
         };
-        if (anchor) {
+        if (tagEl) {
+          menu.tag = tagName(tagEl);
+          menu.element = tagEl;
+        } else if (anchor) {
           menu.linkType = "external";
           menu.url = anchor.getAttribute("data-url") || anchor.getAttribute("href");
           menu.element = anchor;
@@ -1685,11 +1695,9 @@ const EditorArea = memo(
                       }
                       const tag = e.target.closest(".inline-tag");
                       if (tag) {
-                        // The pill's text, not `data-tag`: the attribute is written
-                        // at paint, and a tag that grew by typing keeps its first
-                        // letter's.
-                        const tagName = tag.textContent.replace(/\u200B/g, "").replace(/^#/, "");
-                        if (tagName && onTagClick) onTagClick(tagName);
+                        // A click searches; editing is the tag's menu's (Edit tag).
+                        const name = tagName(tag);
+                        if (name && onTagClick) onTagClick(name);
                         return;
                       }
                       // An embed's arrow opens its source, as a link to it would.
@@ -1816,6 +1824,23 @@ const EditorArea = memo(
                         setBlockMenu(null);
                         deleteWholeBlock(activeNote, selectedRun.from, selectedRun.to);
                       }}
+                      tag={(() => {
+                        const el = blockMenu.tagEl;
+                        if (!el?.isConnected) return undefined;
+                        return {
+                          name: tagName(el),
+                          onSearch: () => {
+                            setBlockMenu(null);
+                            setSelectedBlockId(null);
+                            if (onTagClick) onTagClick(tagName(el));
+                          },
+                          onEdit: () => {
+                            setBlockMenu(null);
+                            setSelectedBlockId(null);
+                            selectTagName(el);
+                          },
+                        };
+                      })()}
                       fold={(() => {
                         // One callout: Make foldable writes `-` (starts
                         // folded); Always open takes away `-` or `+`. An edit.
@@ -1905,6 +1930,17 @@ const EditorArea = memo(
               <EditorContextMenu
                 anchor={linkCtxMenu.anchor}
                 link={linkCtxMenu.linkType}
+                tag={linkCtxMenu.tag}
+                onSearchTag={() => {
+                  const { tag } = linkCtxMenu;
+                  dismissCtxMenu();
+                  if (tag && onTagClick) onTagClick(tag);
+                }}
+                onEditTag={() => {
+                  const { element } = linkCtxMenu;
+                  dismissCtxMenu();
+                  if (element?.isConnected) selectTagName(element);
+                }}
                 suggestions={linkCtxMenu.suggestions}
                 // Typed over the word, as the keys would: one undoable edit.
                 onReplaceWord={(w) =>

@@ -55,3 +55,43 @@ test("a tag is a pill from its first letter; a space after it is prose, a letter
     await h.close();
   }
 });
+
+// A click on a tag searches it; its right-click menu offers Search and Edit
+// tag. Edit tag selects the name (the `#` left out), so typing renames only
+// this occurrence and it stays a tag.
+test("a tag's right-click menu searches it or edits this one; a click still searches", async () => {
+  const h = await launchApp({ "Note.md": "see #area/work and #area/work again\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pills = page.locator("[data-editor] .inline-tag");
+    await expect(pills).toHaveText(["#area/work", "#area/work"]);
+
+    await pills.first().click();
+    const palette = page.getByRole("dialog", { name: /search/i });
+    await expect(palette).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(palette).toHaveCount(0);
+
+    await pills.first().click({ button: "right" });
+    const menu = page.getByRole("menu");
+    await expect(menu.getByRole("menuitem", { name: "Search #area/work" })).toBeVisible();
+    await menu.getByRole("menuitem", { name: "Search #area/work" }).click();
+    await expect(palette).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await pills.first().click({ button: "right" });
+    await menu.getByRole("menuitem", { name: "Edit tag" }).click();
+    await expect(menu).toHaveCount(0);
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("area/work");
+    await page.keyboard.type("area/home");
+    await expect(pills).toHaveText(["#area/home", "#area/work"]);
+    await waitForFile(
+      h.vault.file("Note.md"),
+      (t) => t === "see #area/home and #area/work again\n",
+    );
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

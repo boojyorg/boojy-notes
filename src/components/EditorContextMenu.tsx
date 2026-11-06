@@ -8,6 +8,7 @@ import {
   OpenNoteIcon,
   PasteIcon,
   PencilIcon,
+  SearchIcon,
   TidyTableIcon,
   TrashIcon,
   UnlinkIcon,
@@ -31,6 +32,10 @@ interface EditorContextMenuProps {
    */
   anchor: MenuAnchor;
   link: ContextLinkKind | null;
+  /** A right-clicked `#tag`'s name: Search it, or Edit tag (this occurrence). */
+  tag?: string | null;
+  onSearchTag?: () => void;
+  onEditTag?: () => void;
   /** Given for one misspelled word: the checker's guesses, at most three (maybe none). */
   suggestions?: string[] | null;
   onReplaceWord: (word: string) => void;
@@ -57,7 +62,7 @@ interface EditorContextMenuProps {
 
 /**
  * The editor's right-click menu (Electron supplies none): a misspelled word's
- * guesses and Add to dictionary, or a link's own actions, then Cut, Copy and
+ * guesses and Add to dictionary, or a link's or a tag's own actions, then Cut, Copy and
  * Paste with their shortcuts, as every native text menu has.
  *
  * In a table cell it is the same menu, with Tidy table (only while its
@@ -72,6 +77,9 @@ interface EditorContextMenuProps {
 export default function EditorContextMenu({
   anchor,
   link,
+  tag,
+  onSearchTag,
+  onEditTag,
   suggestions,
   onReplaceWord,
   onAddWord,
@@ -104,7 +112,12 @@ export default function EditorContextMenu({
       action: onAddWord,
     });
   }
-  if (link === "external") {
+  if (tag) {
+    items.push(
+      { label: `Search #${tag}`, icon: <SearchIcon />, action: onSearchTag },
+      { label: "Edit tag", icon: <PencilIcon />, action: onEditTag },
+    );
+  } else if (link === "external") {
     items.push(
       { label: "Open link", icon: <OpenLinkIcon />, action: onOpenLink },
       { label: "Copy link", icon: <CopyIcon />, action: onCopyLink },
@@ -165,7 +178,7 @@ export default function EditorContextMenu({
   return (
     <Menu
       items={items}
-      label={link ? "Link options" : "Edit"}
+      label={link ? "Link options" : tag ? "Tag options" : "Edit"}
       idPrefix="editor-menu-item"
       anchor={anchor}
       gapY={MENU_GAP}

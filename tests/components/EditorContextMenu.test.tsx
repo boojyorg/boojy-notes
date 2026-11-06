@@ -62,3 +62,39 @@ describe("EditorContextMenu spelling", () => {
     expect(mount(null).labels).toEqual(["Cut", "Copy", "Paste"]);
   });
 });
+
+describe("EditorContextMenu on a tag", () => {
+  it("leads with Search and Edit tag, then Cut, Copy and Paste", () => {
+    const onSearchTag = vi.fn();
+    const onEditTag = vi.fn();
+    render(
+      <EditorContextMenu
+        anchor={{ top: 100, bottom: 120, left: 200, right: 240 }}
+        link={null}
+        tag="area/work"
+        onSearchTag={onSearchTag}
+        onEditTag={onEditTag}
+        onReplaceWord={vi.fn()}
+        onAddWord={vi.fn()}
+        onOpenLink={vi.fn()}
+        onCopyLink={vi.fn()}
+        onEditLink={vi.fn()}
+        onRemoveLink={vi.fn()}
+        canCutCopy={false}
+        canPaste
+        onCut={vi.fn()}
+        onCopy={vi.fn()}
+        onPaste={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const labels = screen
+      .getAllByRole("menuitem")
+      .map((r) => r.textContent?.replace(/(⌘|Ctrl\+).$/, ""));
+    expect(labels).toEqual(["Search #area/work", "Edit tag", "Cut", "Copy", "Paste"]);
+    expect(screen.getByRole("menu")).toHaveAccessibleName("Tag options");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Edit tag" }));
+    expect(onEditTag).toHaveBeenCalledOnce();
+    expect(onSearchTag).not.toHaveBeenCalled();
+  });
+});
