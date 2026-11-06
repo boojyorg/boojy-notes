@@ -17,6 +17,7 @@
 // domHelpers itself.
 import {
   ESCAPE_CLASS,
+  caretLength,
   caretOffsetAt,
   makeCaretAnchor,
   getCaretOffset,
@@ -28,6 +29,7 @@ import {
   inlineMarkdownToHtml,
   nodeToMarkdown,
 } from "./inlineFormatting";
+import { COMMENT_CLASS } from "./comments";
 import { markdownAfter, markdownBefore } from "./crossBlockEdit";
 
 /**
@@ -204,6 +206,11 @@ export function typedFormatHit(el, native) {
   if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
   const { anchorNode: node, anchorOffset: offset } = sel;
   if (!node || !el.contains(node)) return null;
+  // A comment is literal: nothing typed in one converts or seals.
+  if (
+    (node.nodeType === Node.TEXT_NODE ? node.parentElement : node)?.closest?.(`.${COMMENT_CLASS}`)
+  )
+    return null;
   const escaped = typedEscapeHit(el, node, offset);
   if (escaped) return escaped;
   if (!MARKER_CHARS.has(data)) return null;
@@ -341,6 +348,60 @@ export function repaintBlockId(el, text, native, noteTitles) {
 }
 
 /**
+ * Each drawn comment in `root` as its visible offset and its text, in order:
+ * the caret anchor's U+200B dropped and a typed U+00A0 read as the space it
+ * stands for, so the page and a fresh drawing of its text compare alike.
+ */
+function commentPlaces(root) {
+  const clean = (t) => t.replace(/\u200B/g, "").replace(/\u00A0/g, " ");
+  const places = [];
+  for (const c of root.querySelectorAll(`.${COMMENT_CLASS}`)) {
+    const before = document.createRange();
+    before.setStart(root, 0);
+    before.setEndBefore(c);
+    places.push(`${clean(before.toString()).length}:${clean(c.textContent ?? "")}`);
+  }
+  return places.join("\u0000");
+}
+
+/**
+ * A comment's grey follows its markers as they are typed or removed: once the
+ * comments the text makes (each one's text and place) differ from those
+ * drawn, the block is painted from its text and the caret put back at its
+ * offset. Typing inside a comment changes both alike, so nothing repaints;
+ * a marker that moves, even with a comment still drawn, does.
+ */
+export function repaintComments(el, text, native, noteTitles) {
+  if (!native || native.isComposing) return;
+  if (!text.includes("%%") && !el.querySelector(`.${COMMENT_CLASS}`)) return;
+  const html = inlineMarkdownToHtml(text, noteTitles);
+  const fresh = document.createElement("div");
+  fresh.innerHTML = html;
+  if (commentPlaces(fresh) === commentPlaces(el)) return;
+  // The caret is put back by the Markdown before it, not by visible
+  // characters: closing a comment shows markers a drawn format had hidden
+  // (`**y**` typed bold, then literal), so the visible count moves.
+  const sel = window.getSelection();
+  const at =
+    sel?.rangeCount && el.contains(sel.anchorNode)
+      ? markdownBefore(el, sel.anchorNode, sel.anchorOffset).length
+      : -1;
+  el.innerHTML = html;
+  if (at >= 0) placeCaretAtMarkdown(el, at);
+}
+
+/** The caret at the first place in `el` with `length` characters of Markdown before it. */
+function placeCaretAtMarkdown(el, length) {
+  const max = caretLength(el);
+  for (let v = 0; v <= max; v++) {
+    placeCaret(el, v);
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    if (markdownBefore(el, sel.anchorNode, sel.anchorOffset).length >= length) return;
+  }
+}
+
+/**
  * A field's text after a keystroke (a table cell, a callout's body), with a
  * typed closing marker painted as a text block paints it: `` `tag` `` typed in
  * a cell became code only on the next repaint from state, which a field that
@@ -352,6 +413,7 @@ export function fieldTextAfterTyping(el, native, noteTitles) {
   const hit = native ? typedFormatHit(el, native) : null;
   if (!hit) {
     repaintBlockId(el, text, native, noteTitles);
+    repaintComments(el, text, native, noteTitles);
     return text;
   }
   const painted = hit.rewritten ? hit.newText : text;

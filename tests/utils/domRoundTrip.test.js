@@ -158,6 +158,15 @@ describe("inline bytes that only the DOM road could corrupt", () => {
     "soft\nbreak\nlines",
     "trailing space ",
     "a < b & c > d",
+    // Comments: literal, markers kept, nothing inside drawn or rewritten.
+    "visible %%hidden **raw** [[Note]] #tag \\* `c`%% after",
+    "%%one%% and %%two%%",
+    "%%%%",
+    "odd %% marker",
+    "\\%%not a comment%%",
+    "\\\\%%a comment%%",
+    "`%%code%%` and %%c%%",
+    "%%\nA whole paragraph\n%%",
   ];
   for (const text of cases) {
     it(JSON.stringify(text), () => expectRoundTrip(text));

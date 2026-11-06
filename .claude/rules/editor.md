@@ -20,8 +20,8 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
   `undo-scope.spec.ts`.
 - **One keystroke is one entry**: Enter's split and Backspace's join set text and blocks in one
   commit. `undo-steps.spec.ts`.
-- The rebuild after an outside delete keeps
-  drafts and dirty notes from the ref. A vault switch flushes, empties, then switches. A
+- The rebuild after an outside delete keeps drafts and dirty notes from the ref. A vault switch
+  flushes, empties, then switches. A
   version already written is not written again. `note-ownership.spec.ts`,
   `pending-edits-lifecycle.spec.ts`.
 
@@ -91,15 +91,15 @@ through state.**
 ## Links: the caret stays outside
 
 - **A caret at a link's edge rests on a U+200B inside a `caret-anchor` span**, placed only by
-  `placeCaret`. Walkers drop U+200B only inside a
-  `caret-anchor`; elsewhere it is the file's byte. Never strip it by value.
+  `placeCaret`. Walkers drop U+200B only inside a `caret-anchor`; elsewhere it is the file's
+  byte. Never strip it by value.
 - **The browser's caret is fixed at the keystroke** (`caretOutOfLinkEnd`/`Start`), never on
   `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
   (`utils/wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the
   picker to fix; a file opens (`fileForTarget`); a heading or `^id` is found as Obsidian finds
   it (`headingTarget.ts`, a child only in its parent; `blockTarget.ts`), as a visit
-  (`historyJump`); a missing one is said. It reads `Note > Heading` (`data-label`). An ID is
+  (`historyJump`); a missing one is said. An ID is
   drawn quietly only while it ends its block. `link-resolution.spec.ts`,
   `heading-links.spec.ts`, `block-links.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for every way in; it writes the shortest clear target
@@ -121,9 +121,10 @@ through state.**
   never the text alone. **The paint is verified**
   (`paintTypedFormat`): paired differently, the old DOM and caret come back.
   `typed-formatting.spec.ts`.
-- **A code span is literal** (`codeSpans.js`): nothing in it is
-  drawn; untouched it keeps its spelling (`data-md`), edited only what changed; only ⌘E acts in
-  one. `literal-code.spec.ts`.
+- **A code span is literal** (`codeSpans.js`): nothing in it is drawn; untouched it keeps its
+  spelling (`data-md`), edited only what changed; only ⌘E acts in one. `literal-code.spec.ts`.
+  **So is a `%%` comment, muted**, no format acting; its grey follows its markers
+  (`repaintComments`). `comments.spec.ts`.
 - **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the next letters
   take the caret's own formatting, never a deleted run's; overtyping keeps its style.
   `typing-style.spec.ts`.
@@ -155,7 +156,7 @@ through state.**
   (`BlockDragHandle`) in the gutter; nested (`data-indent`), on its parent's marker
   (`gripX`), clear of a wide number; on hover, `aria-hidden`.
 - A key hides the grip (not a lone modifier: Shift-click). **Blur cancels a press
-  unconditionally** (Cmd-Tab: a phantom drag). `grip-reveal.spec.ts`.
+  unconditionally**. `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`): moved, it drags; let go,
   `BlockMenu` (on a tag, the tag's menu). A scroll, a double-tap or selected text is the browser's. A lone new finger ends
   a lost hold (Android reuses ids). `hold-to-grab.spec.ts`.
@@ -174,7 +175,7 @@ through state.**
   menu and keys (`filterSlashCommands()`). Rows take selection on real mouse movement.
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
 - **Every menu's keys are one rule** (`useMenuKeys`); a suggestion under the caret
-  (`suggestion: true`) leaves typing keys to typing and is a `listbox`. `menuKeys.test.ts`,
+  (`suggestion: true`) is a `listbox`. `menuKeys.test.ts`,
   `callout-picker.spec.ts`.
 - **The editor column never carries a transform** (it would contain the `fixed` menus).
   `editor-menus.spec.ts`.
@@ -219,8 +220,8 @@ keeps its own view, saved** (`useSourceView`).
 ## The paragraph model
 
 - **A paragraph holds every adjacent plain line** (`structureParagraphs`), joined by `\n`.
-  Enter makes a paragraph;
-  Shift+Enter a soft break. **Enter in a quote is a soft break**; on an empty last line it
+  Enter makes a paragraph; Shift+Enter a soft break. **Enter in a quote is a soft break**; on an
+  empty last line it
   leaves the quote (adjacent quote blocks are one quote on disk).
 - **One blank line between any two blocks is structure; each further blank is an empty row.**
   Spacing comes from the block's kind, never from blank lines.
@@ -305,7 +306,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **The grip's click opens `BlockMenu` on its run** or text's lines (`gripSelection`;
   right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
 - **Arrows stop on a divider, image or embed and enter every block with a field**;
-  deletion steps over code (`landingBefore` vs `caretLandingBefore`).
+  deletion steps over code.
 - **Taking the caret back never scrolls the note** (`preventScroll`).
   `caret-navigation.spec.ts`.
 

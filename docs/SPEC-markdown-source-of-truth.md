@@ -156,6 +156,10 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   paragraph, or alone after a list, quote or table for all of it) is followed, found as
   Obsidian finds it, and an unpiped link shows `Note > Heading` while the file keeps the
   target. A `^id` ending a block is drawn quietly; its bytes are the file's.
+- `%%comment%%` within one block (markers paired left to right; none inside a code span; `\%`
+  escapes) is drawn muted and literal, markers shown and nothing inside formatted, so its bytes
+  are the file's. It is visible and searchable, never private, and a `#tag` in it counts as a
+  tag (as in Obsidian). A comment across blocks stays plain text, preserved byte for byte.
 - `![[Note]]`, `![[Note#Heading]]` and `![[#^id]]` draw what the same link reaches, read-only;
   only the embed's own `![[…]]` is edited here, and it is written as typed.
 - Typing `_italic_` or `__bold__` is committed in the star form the renderer speaks; an imported

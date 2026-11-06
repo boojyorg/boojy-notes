@@ -373,3 +373,49 @@ describe("a code span is literal: only code acts inside one", () => {
     expect(formatBlockedByCode(range, "bold", root)).toBe(true);
   });
 });
+
+describe("formatBlockedByCode: a comment is literal for every format", () => {
+  function line(
+    pick: (n: { before: Text; comment: Text; after: Text }) => [Node, number, Node, number],
+  ) {
+    const root = document.createElement("div");
+    root.innerHTML = 'before <span class="md-comment">%%comment%%</span> after';
+    document.body.appendChild(root);
+    const before = root.firstChild as Text;
+    const comment = root.querySelector(".md-comment")?.firstChild as Text;
+    const after = root.lastChild as Text;
+    const [sn, so, en, eo] = pick({ before, comment, after });
+    const range = document.createRange();
+    range.setStart(sn, so);
+    range.setEnd(en, eo);
+    const sel = window.getSelection() as Selection;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return { root, sel, range };
+  }
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("refuses a selection holding a whole comment, ends outside it, and leaves the DOM alone", () => {
+    const { root, sel, range } = line(({ before, after }) => [before, 0, after, 6]);
+    for (const format of ["bold", "italic", "code", "highlight", "link"] as const) {
+      expect(formatBlockedByCode(range, format, root)).toBe(true);
+      expect(applyDomFormat(sel, format, root)).toBe(false);
+    }
+    expect(root.innerHTML).toBe('before <span class="md-comment">%%comment%%</span> after');
+  });
+
+  it("refuses inside a comment and across its edge, code included", () => {
+    let { root, range } = line(({ comment }) => [comment, 3, comment, 6]);
+    expect(formatBlockedByCode(range, "code", root)).toBe(true);
+    document.body.innerHTML = "";
+    ({ root, range } = line(({ before, comment }) => [before, 0, comment, 4]));
+    expect(formatBlockedByCode(range, "bold", root)).toBe(true);
+  });
+
+  it("formats a selection beside a comment, touching none of it", () => {
+    const { root, range } = line(({ before }) => [before, 0, before, 6]);
+    expect(formatBlockedByCode(range, "bold", root)).toBe(false);
+  });
+});

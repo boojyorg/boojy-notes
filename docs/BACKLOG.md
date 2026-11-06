@@ -128,8 +128,9 @@ the test its rule names when it is built.
   compatibility, below).
 - **The Obsidian extensions, explicitly.** Drawn and edited: wikilinks and aliases,
   `[[Note#Heading]]` and `#^block-id` (drawn quietly), note embeds (drawn read-only, a heading's section or a block), embeds with a size (`#page=`: a file card that opens that page), callouts,
-  `==highlight==`, `#tags`, frontmatter (as properties), maths, Mermaid. **Preserved only**, byte for
-  byte and shown as text: footnotes, `%%comments%%`, task states beyond `[ ]`/`[x]`,
+  `==highlight==`, `#tags`, frontmatter (as properties), maths, Mermaid, `%%comments%%` within a
+  block (muted, literal). **Preserved only**, byte for
+  byte and shown as text: footnotes, comments across blocks, task states beyond `[ ]`/`[x]`,
   HTML, reference-style links, plugin syntax. The spec takes this list when the work lands.
 
 **Connected notes** (one link index)
