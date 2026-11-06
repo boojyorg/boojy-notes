@@ -440,8 +440,11 @@ test("a link with a | suffix is refused and said, never saved without it", async
     await expect(root.locator(".embed-link-reason")).toHaveText(
       "Text after | can't be kept here yet. Remove it to save.",
     );
-    // Enter keeps it open, nothing written.
+    // Enter keeps it open, nothing written; so does Done.
     await h.page.keyboard.press("Enter");
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue("Guide#Quotes|label");
+    await root.getByRole("button", { name: "Done", exact: true }).click();
     await expect(field).toBeFocused();
     await expect(field).toHaveValue("Guide#Quotes|label");
     await h.page.keyboard.press("Escape");
