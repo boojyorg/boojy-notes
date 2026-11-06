@@ -370,6 +370,9 @@ export default memo(function CodeBlock({
       <textarea
         ref={textareaRef}
         className="code-textarea"
+        // A textarea is two rows unless told, and autoResize's scrollHeight
+        // never goes below that: a one-line block carried an empty line.
+        rows={1}
         onChange={handleInput}
         onKeyDown={handleKeyDown}
         // Arrowing or tabbing into a diagram's code opens it, as a press does.
