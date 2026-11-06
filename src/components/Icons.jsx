@@ -150,9 +150,6 @@ const contentIcon =
 export const ChevronDownIcon = contentIcon(LuChevronDown);
 export const ChevronRightIcon = contentIcon(LuChevronRight);
 export const ChevronLeftIcon = contentIcon(LuChevronLeft);
-/** A callout's fold sign in the block menu: Make foldable, Always open. */
-export const FoldIcon = contentIcon(LuChevronsDownUp);
-export const UnfoldIcon = contentIcon(LuChevronsUpDown);
 /** A section's fold control (Properties): chrome, so the navigation stroke. */
 export const FoldChevronIcon = navIcon(LuChevronDown);
 
@@ -268,6 +265,10 @@ export const CopyIcon = navIcon(LuCopy);
 /** Copy to the clipboard (a note's or blocks' Copy); Duplicate keeps the two sheets. */
 export const ClipboardIcon = navIcon(LuClipboard);
 export const TurnIntoIcon = navIcon(LuRepeat2);
+/** A callout's fold sign in the block menu (Make foldable, Always open): its
+ *  rows' stroke, as Copy's and Delete's. */
+export const FoldIcon = navIcon(LuChevronsDownUp);
+export const UnfoldIcon = navIcon(LuChevronsUpDown);
 /** Tidy table: lines a table's columns up. */
 export const TidyTableIcon = navIcon(LuColumns3);
 /** A table column's alignment: the three text-align glyphs. */
