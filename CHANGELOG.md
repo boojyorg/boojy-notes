@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-## v0.22.0 — 2026-11-06
-
 ### Improvements
 
 - **Callouts look and read as they do in Obsidian** — A callout with no title now shows its type as the title, the way Obsidian does (`[!important]` reads Important), without writing anything into the file, and changing a callout's type no longer adds a title you didn't type. `[!failure]`, `[!fail]` and `[!missing]` are a red type of their own. Each type takes Obsidian's colour on a lighter background, and the text inside reads like the rest of the note. The menu for choosing a type is the same menu as everywhere else, each type with its coloured icon.
