@@ -15,8 +15,8 @@
  * colour of the parent. Brand marks (the Notes wordmark) are image assets, not icons.
  */
 import {
-  FoldVertical as LuFoldVertical,
-  UnfoldVertical as LuUnfoldVertical,
+  ChevronsDownUp as LuChevronsDownUp,
+  ChevronsUpDown as LuChevronsUpDown,
   ALargeSmall as LuALargeSmall,
   ArrowDownAZ as LuArrowDownAZ,
   ArrowDownToLine as LuArrowDownToLine,
@@ -151,8 +151,8 @@ export const ChevronDownIcon = contentIcon(LuChevronDown);
 export const ChevronRightIcon = contentIcon(LuChevronRight);
 export const ChevronLeftIcon = contentIcon(LuChevronLeft);
 /** A callout's fold sign in the block menu: Make foldable, Always open. */
-export const FoldIcon = contentIcon(LuFoldVertical);
-export const UnfoldIcon = contentIcon(LuUnfoldVertical);
+export const FoldIcon = contentIcon(LuChevronsDownUp);
+export const UnfoldIcon = contentIcon(LuChevronsUpDown);
 /** A section's fold control (Properties): chrome, so the navigation stroke. */
 export const FoldChevronIcon = navIcon(LuChevronDown);
 
