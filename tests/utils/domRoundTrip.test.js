@@ -174,6 +174,8 @@ describe("inline bytes that only the DOM road could corrupt", () => {
     "\\[^1] escaped and `[^2]` code",
     "[^1]: mid-sentence colon",
     "%%[^1]%% in a comment",
+    "Text.[^a%%b%%] after",
+    "Text.^[a %%b%% c] after",
   ];
   for (const text of cases) {
     it(JSON.stringify(text), () => expectRoundTrip(text));

@@ -77,6 +77,13 @@ describe("literalRuns: comments and footnotes, each drawn as written", () => {
     expect(literalRuns(md).map(({ cls }) => cls)).toEqual([COMMENT_CLASS]);
   });
 
+  it("a reference that would run into a comment is text: the runs never overlap", () => {
+    const md = "Text.[^a%%b%%] after";
+    expect(literalRuns(md).map(({ start, end, cls }) => [cls, md.slice(start, end)])).toEqual([
+      [COMMENT_CLASS, "%%b%%"],
+    ]);
+  });
+
   it("an inline footnote that would hold a comment's marker is text", () => {
     const md = "a ^[x %%y%% z] b";
     expect(literalRuns(md).map(({ cls }) => cls)).toEqual([COMMENT_CLASS]);

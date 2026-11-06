@@ -14,15 +14,51 @@ export interface BlockSelection {
   grip?: string;
 }
 
-/** A paragraph indented two spaces or a tab: under a footnote, another of its paragraphs. */
-const CONTINUES_FOOTNOTE = /^(?: {2,}|\t)\S/;
-const continuesFootnote = (b: Block | undefined) =>
-  b?.type === "p" && CONTINUES_FOOTNOTE.test(b.text || "");
-const blankRow = (b: Block | undefined) => b?.type === "p" && (b.text || "") === "";
+/** Two spaces or a tab in: under a footnote, more of the footnote. */
+const INDENTED = /^(?: {2,}|\t)/;
 
 /**
- * The last index of footnote `i`'s group: the indented paragraphs after it,
- * blank rows between them, which Markdown reads as more of the footnote.
+ * Whether a block's first line stands indented in the file, read from what
+ * the parser kept of it: a paragraph's own leading space, a list item's depth
+ * or spelling, the indent before a picture, an embed, a fence, a formula, a
+ * table or a quote. Under a footnote such a block is the footnote's content,
+ * as Markdown reads it, so it goes wherever the footnote goes.
+ */
+function indentedInFile(b: Block): boolean {
+  const k = b as Block & {
+    fenceSource?: { open?: string };
+    mathSource?: { lines?: string[] };
+    tableSource?: { header?: string };
+  };
+  switch (b.type) {
+    case "p":
+      return INDENTED.test(b.text || "") && (b.text || "").trim() !== "";
+    case "bullet":
+    case "numbered":
+    case "checkbox":
+      return (b.indent || 0) > 0 || INDENTED.test(b.indentStr || "");
+    case "code":
+      return INDENTED.test(k.fenceSource?.open || "");
+    case "math":
+      return INDENTED.test(k.mathSource?.lines?.[0] || "");
+    case "table":
+      return INDENTED.test(k.tableSource?.header || "");
+    case "blockquote":
+    case "callout":
+      return INDENTED.test(b.indentStr || "");
+    default:
+      return INDENTED.test(b.lead || "");
+  }
+}
+
+const continuesFootnote = (b: Block | undefined) => !!b && indentedInFile(b);
+/** A blank row: empty, or holding only spaces (a blank line to every reader). */
+const blankRow = (b: Block | undefined) => b?.type === "p" && (b.text || "").trim() === "";
+
+/**
+ * The last index of footnote `i`'s group: the indented blocks after it
+ * (`indentedInFile`), blank rows between them, which Markdown reads as more
+ * of the footnote.
  */
 function footnoteEnd(blocks: readonly Block[], i: number): number {
   let end = i;

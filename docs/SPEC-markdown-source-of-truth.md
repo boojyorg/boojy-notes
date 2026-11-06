@@ -165,8 +165,9 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   brackets inside balanced) muted, both literal like a comment. A definition (`[^label]:`, up
   to three spaces in) is its own block, its label shown beside its text; its indent, the gap
   after the colon and any trailing space are kept. A line under it with no blank between is
-  its text; an indented paragraph after it (two spaces or a tab) stays its own block but
-  belongs to it: selected, moved and deleted with it. A missing definition leaves the
+  its text; an indented block after it (two spaces or a tab: a paragraph, a list, a fence,
+  across blank lines, spaces-only ones too) stays its own block but belongs to it: selected,
+  moved and deleted with it. A footnote never overlaps a comment. A missing definition leaves the
   reference as written. Meaning is judged by `markdown-it-footnote`, Obsidian where they differ.
 - `![[Note]]`, `![[Note#Heading]]` and `![[#^id]]` draw what the same link reaches, read-only;
   only the embed's own `![[…]]` is edited here, and it is written as typed.

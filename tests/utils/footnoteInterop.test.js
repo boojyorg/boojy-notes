@@ -45,6 +45,8 @@ function footnotesOf(source) {
       current = { label: t.meta.label ?? "(inline)", paragraphs: [] };
       notes.push(current);
     } else if (t.type === "footnote_close") current = null;
+    else if (current && (t.type === "fence" || t.type === "code_block"))
+      current.paragraphs.push(`code:${t.content}`);
     else if (t.type === "inline") {
       const text = inlineText(t.children);
       if (current) current.paragraphs.push(text);
@@ -133,6 +135,32 @@ describe("footnotes keep their meaning through an edit", () => {
     );
     const byLabel = (m) => Object.fromEntries(m.notes.map((n) => [n.label, n.paragraphs]));
     expect(byLabel(footnotesOf(saved))).toEqual(byLabel(footnotesOf(source)));
+  });
+
+  const byLabel = (m) => Object.fromEntries(m.notes.map((n) => [n.label, n.paragraphs]));
+  /** The source with footnote `label` moved one step down by ⌘⇧↓, saved. */
+  const movedDown = (source, label) => {
+    const blocks = markdownToBlocks(source);
+    const i = blocks.findIndex((b) => b.type === "footnote" && b.label === label);
+    return blocksToMarkdown(moveStep(blocks, i, 1));
+  };
+
+  it("moving a footnote takes its indented list with it", () => {
+    const source =
+      "One.[^list] Two.[^b]\n\n[^list]: Ingredients:\n\n    - flour\n    - water\n\n[^b]: Definition B.\n";
+    expect(byLabel(footnotesOf(movedDown(source, "list")))).toEqual(byLabel(footnotesOf(source)));
+  });
+
+  it("moving a footnote takes an indented code block with it", () => {
+    const source =
+      "One.[^code] Two.[^b]\n\n[^code]: Example:\n\n    ```\n    x = 1\n    ```\n\n[^b]: Definition B.\n";
+    expect(byLabel(footnotesOf(movedDown(source, "code")))).toEqual(byLabel(footnotesOf(source)));
+  });
+
+  it("a blank line holding spaces does not part a footnote from its later paragraph", () => {
+    const source =
+      "One.[^long] Two.[^b]\n\n[^long]: First paragraph.\n   \n    Second paragraph.\n\n[^b]: Definition B.\n";
+    expect(byLabel(footnotesOf(movedDown(source, "long")))).toEqual(byLabel(footnotesOf(source)));
   });
 
   it("a definition the app makes reads back as a footnote", () => {

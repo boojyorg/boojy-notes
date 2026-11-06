@@ -67,12 +67,15 @@ function inlineEnd(md: string, i: number, codes: Span[], skip: Span[]): number {
 /**
  * Every reference and inline footnote in a block's text, in order. A code
  * span wins, as do the `skip` ranges (comments): nothing in one is a
- * footnote. A backslash escapes the next punctuation mark.
+ * footnote, and one that would run into a comment is text, so no two drawn
+ * runs ever overlap (the renderer would draw the shared text twice). A
+ * backslash escapes the next punctuation mark.
  */
 export function findFootnotes(md: string, skip: Span[] = []): FootnoteSpan[] {
   const found: FootnoteSpan[] = [];
   if (!md || (!md.includes("[^") && !md.includes("^["))) return found;
   const codes = findCodeSpans(md) as Span[];
+  const clear = (start: number, end: number) => !skip.some((s) => s.start < end && s.end > start);
   for (let i = 0; i < md.length; ) {
     const over = codes.find((c) => c.start === i) ?? skip.find((s) => s.start === i);
     if (over) {
@@ -85,7 +88,7 @@ export function findFootnotes(md: string, skip: Span[] = []): FootnoteSpan[] {
     }
     if (md[i] === "[" && md[i + 1] === "^") {
       const end = refEnd(md, i);
-      if (end > 0) {
+      if (end > 0 && clear(i, end)) {
         found.push({ start: i, end, kind: "ref" });
         i = end;
         continue;
@@ -93,7 +96,7 @@ export function findFootnotes(md: string, skip: Span[] = []): FootnoteSpan[] {
     }
     if (md[i] === "^" && md[i + 1] === "[") {
       const end = inlineEnd(md, i, codes, skip);
-      if (end > 0) {
+      if (end > 0 && clear(i, end)) {
         found.push({ start: i, end, kind: "inline" });
         i = end;
         continue;

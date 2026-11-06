@@ -258,6 +258,24 @@ describe("a footnote's continuation paragraphs belong to it", () => {
     expect(subtreeEnd(notes, 5)).toBe(6);
   });
 
+  it("a blank row holding spaces is a blank row, not the group's end", () => {
+    const ws: Block = { id: "w", type: "p", text: "   " };
+    expect(subtreeEnd([fn("r", "1"), ws, cont("r2"), p("after")], 0)).toBe(2);
+  });
+
+  it("an indented list, picture or code block after it is its content too", () => {
+    const item = { id: "i", type: "bullet", text: "flour", indent: 2 } as Block;
+    const pic = { id: "m", type: "image", src: "a.png", text: "", lead: "    " } as Block;
+    const code = {
+      id: "c",
+      type: "code",
+      text: "x",
+      fenceSource: { open: "    ```", close: "    ```" },
+    } as Block;
+    const top = { id: "t", type: "bullet", text: "not in it" } as Block;
+    expect(subtreeEnd([fn("r", "1"), item, pic, code, top], 0)).toBe(3);
+  });
+
   it("stop at the first block that is not indented text", () => {
     expect(subtreeEnd([fn("r", "1"), blank("x"), p("after")], 0)).toBe(0);
   });
