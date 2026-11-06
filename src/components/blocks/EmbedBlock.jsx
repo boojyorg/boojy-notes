@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNoteData } from "../../context/NoteDataContext";
 import { useTheme } from "../../hooks/useTheme";
 import {
@@ -8,6 +8,7 @@ import {
   writtenEmbedTarget,
 } from "../../utils/embedTarget";
 import { BAND_REACH, bandFill } from "../../utils/selectionBand";
+import { registerBlockOpener } from "../../utils/blockOpen";
 import { isMac } from "../../utils/platform";
 import { fontStack } from "../../tokens/typography";
 import { EmbedOpenIcon } from "../Icons";
@@ -59,9 +60,30 @@ function EmbedView({
   // The link being edited (picked, its field open): drawn as typed while it
   // names something real, saved once when the edit ends.
   const [draft, setDraft] = useState(null);
+  // Its panel is open or shut apart from the pick, as a formula's source is:
+  // a click opens it, finishing shuts it and the embed stays picked.
+  // `focusGen` counts the asks (Edit link) that put the caret in the link.
+  const [open, setOpen] = useState(false);
+  const [focusGen, setFocusGen] = useState(0);
+  const shut = () => {
+    setOpen(false);
+    setFocusGen(0);
+  };
   useEffect(() => {
-    if (!selectedAlone) setDraft(null);
+    if (selectedAlone) return;
+    setDraft(null);
+    setOpen(false);
+    setFocusGen(0);
   }, [selectedAlone]);
+  // The block menu's Edit link (blockOpen). An embed drawn inside one is not
+  // the note's block.
+  useLayoutEffect(() => {
+    if (depth > 0) return undefined;
+    return registerBlockOpener(block.id, () => {
+      setOpen(true);
+      setFocusGen((g) => g + 1);
+    });
+  }, [block.id, depth]);
 
   // A key that would edit the copy: the chip says where to edit, at once.
   useEffect(() => {
@@ -194,8 +216,8 @@ function EmbedView({
 
   if (depth > 0) return body;
 
-  // The note's own block: picked by a click that selects no text, its source
-  // underneath while picked.
+  // The note's own block: picked by a click that selects no text, which opens
+  // its link underneath.
   return (
     <div
       data-selection-surface
@@ -205,6 +227,7 @@ function EmbedView({
         const sel = window.getSelection();
         if (sel && !sel.isCollapsed) return;
         onSelect?.();
+        setOpen(true);
       }}
       style={{
         // The link's panel hangs from here.
@@ -217,13 +240,15 @@ function EmbedView({
     >
       {body}
       {/* The link is this embed's alone: picked with other blocks, just the band. */}
-      {selectedAlone && (
+      {selectedAlone && open && (
         <EmbedLinkEditor
           block={block}
           draft={draft}
           setDraft={setDraft}
           reason={reason}
           onSave={onUpdate}
+          onShut={shut}
+          focusGen={focusGen}
         />
       )}
     </div>
@@ -234,10 +259,11 @@ function EmbedView({
  * A picked embed's link, `![[…]]`, in a panel underneath that floats over the
  * text below, as a formula's source does (MathBlock). The embed is drawn as
  * typed while the link names something real (EmbedView); the edit is saved
- * once, in one step, on Enter, Done or leaving; Escape puts it back. A press
- * anywhere else on the panel puts the caret in the link.
+ * once, in one step, on Enter, Done or leaving; Escape puts it back. Enter,
+ * Done and Escape shut the panel and hand the keys to the editor, the embed
+ * still picked. A press anywhere else on the panel puts the caret in the link.
  */
-function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
+function EmbedLinkEditor({ block, draft, setDraft, reason, onSave, onShut, focusGen }) {
   const { theme } = useTheme();
   const written = writtenEmbedTarget(block);
   const ref = useRef(null);
@@ -256,6 +282,28 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
     const fields = keep && draft != null ? embedFieldsFrom(`![[${draft}]]`) : null;
     setDraft(null);
     if (fields && draft.trim() !== written) onSave?.(fields);
+  };
+  // Edit link: the caret in the link, at its end.
+  useEffect(() => {
+    const el = ref.current;
+    if (!focusGen || !el) return;
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [focusGen]);
+  // Enter, Done, Escape: the editor takes the keys back, so the field's blur
+  // ends the edit (kept, or put back), and the panel shuts.
+  const keepOnBlur = useRef(true);
+  const end = (keep) => {
+    // A link these fields can't hold stays open, its reason said, never saved
+    // without what it can't keep: Enter and Done alike.
+    if (keep && draft != null && embedLinkProblem(draft)) return;
+    const el = ref.current;
+    if (el && document.activeElement === el) {
+      keepOnBlur.current = keep;
+      el.closest("[data-editor]")?.focus({ preventScroll: true });
+      keepOnBlur.current = true;
+    } else finish(keep);
+    onShut();
   };
   const field = (
     <input
@@ -276,17 +324,14 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
         e.stopPropagation();
         if (e.key === "Enter") {
           e.preventDefault();
-          // A link these fields can't hold stays open, its reason said, never
-          // saved without what it can't keep.
-          if (draft != null && embedLinkProblem(draft)) return;
-          e.currentTarget.blur();
+          end(true);
         } else if (e.key === "Escape") {
           e.preventDefault();
-          setDraft(null);
-          requestAnimationFrame(() => ref.current?.blur());
+          end(false);
         }
       }}
-      onBlur={() => finish(true)}
+      // A press away keeps the edit and leaves the panel be.
+      onBlur={() => finish(keepOnBlur.current)}
       onMouseUp={(e) => e.stopPropagation()}
     />
   );
@@ -339,7 +384,7 @@ function EmbedLinkEditor({ block, draft, setDraft, reason, onSave }) {
             e.stopPropagation();
             doneTip.handlers.onMouseDown();
           }}
-          onClick={() => ref.current?.blur()}
+          onClick={() => end(true)}
           style={{
             flex: "none",
             alignSelf: "center",

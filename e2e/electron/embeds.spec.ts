@@ -150,8 +150,9 @@ test("the link underneath redraws the embed as typed, says a bad one, and saves 
 });
 
 // The link field is inside a picked block, whose caret the editor hides: the
-// field draws its own. Done, as on a formula's source, saves as Enter does.
-test("the link shows its caret, and Done saves it as Enter does", async () => {
+// field draws its own. Done, as on a formula's source, saves as Enter does
+// and closes the panel.
+test("the link shows its caret, and Done saves it and closes the panel", async () => {
   const h = await launchApp(FILES);
   try {
     await h.openNote("Host");
@@ -171,8 +172,9 @@ test("the link shows its caret, and Done saves it as Enter does", async () => {
     for (let i = 0; i < "Quotes".length; i++) await h.page.keyboard.press("Backspace");
     await h.page.keyboard.type("Next");
     await done.click();
-    await expect(field).not.toBeFocused();
-    await expect(done).toHaveCount(0);
+    // As a formula's source: the panel goes, the embed stays picked.
+    await expect(panel).toHaveCount(0);
+    await expect(root).toHaveAttribute("data-selected", "true");
     await sleep(SETTLE_MS);
     expect(h.vault.read("Host.md")).toBe(HOST.replace("![[Guide#Quotes]]", "![[Guide#Next]]"));
     expect(h.pageErrors).toEqual([]);
@@ -195,7 +197,9 @@ test("the link shows only for an embed picked alone, and fits its text", async (
     const gap = await field.evaluate((el) => {
       const ctx = document.createElement("canvas").getContext("2d")!;
       ctx.font = getComputedStyle(el).font;
-      return el.getBoundingClientRect().width - ctx.measureText(el.value).width;
+      return (
+        el.getBoundingClientRect().width - ctx.measureText((el as HTMLInputElement).value).width
+      );
     });
     expect(Math.abs(gap)).toBeLessThan(1);
     // The open panel floats over the short embed below: extend the pick from
@@ -207,6 +211,58 @@ test("the link shows only for an embed picked alone, and fits its text", async (
     await expect(roots.nth(0)).toHaveAttribute("data-selected", "true");
     await expect(roots.nth(1)).toHaveAttribute("data-selected", "true");
     await expect(h.page.locator(".embed-edit")).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// The panel is open or shut, apart from the pick, as a formula's source is:
+// a click opens it; Enter and Escape in it shut it, the embed still picked
+// (Backspace still removes it); arrowing on only picks; the block menu's
+// Edit link opens it with the caret in the link, the keyboard's way in.
+test("the link panel opens on a click or Edit link, and Enter or Escape shuts it", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await h.openNote("Host");
+    const root = h.page.locator('[data-editor] > [data-block-type="embed"]').first();
+    const panel = root.locator(".embed-edit");
+    const field = panel.locator(".embed-link-field");
+    await root.locator('[data-block-type="blockquote"]').click();
+    await expect(panel).toHaveCount(1);
+    await field.click();
+    await h.page.keyboard.press("Enter");
+    await expect(panel).toHaveCount(0);
+    await expect(root).toHaveAttribute("data-selected", "true");
+    // A press on it again opens it again; Escape shuts it.
+    await root.locator('[data-block-type="blockquote"]').click();
+    await expect(panel).toHaveCount(1);
+    await field.click();
+    await h.page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(root).toHaveAttribute("data-selected", "true");
+    await unchanged(h, FILES);
+
+    // Arrowed on, picked only.
+    await h.page.locator("[data-editor] > [data-block-id]", { hasText: /^Intro\.$/ }).click();
+    await h.page.keyboard.press("ArrowDown");
+    await expect(root).toHaveAttribute("data-selected", "true");
+    await expect(panel).toHaveCount(0);
+    // Edit link, from the block menu by keys: the caret in the link, at its end.
+    await h.page.keyboard.press("Shift+F10");
+    await h.page
+      .getByRole("menu", { name: "Block options" })
+      .getByRole("menuitem", { name: "Edit link" })
+      .click();
+    await expect(field).toBeFocused();
+    expect(await field.evaluate((el) => (el as HTMLInputElement).selectionStart)).toBe(
+      "Guide#Quotes".length,
+    );
+    await h.page.keyboard.press("Escape");
+    // Shut, still picked: Backspace removes the embed.
+    await h.page.keyboard.press("Backspace");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Host.md")).toBe(HOST.replace("![[Guide#Quotes]]\n\n", ""));
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
