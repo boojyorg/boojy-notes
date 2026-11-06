@@ -236,15 +236,15 @@ never holds a byte sequence the syntax cannot.**
 - Read with the editor's reader, commit every input through `commitTextChange`; a typed closing
   marker converts there as in a block (`fieldTextAfterTyping`).
 - **`data-inline-field`** (cell, callout body) marks a field that owns its inline formatting
-  (`formatInlineField`); Chromium's `Cmd+B` must never run in a field.
-  `special-block-fields.spec.ts`.
+  (`formatInlineField`). `special-block-fields.spec.ts`.
 - **A field repaints only when it doesn't hold the ref's latest text** (`useOwnedField`);
   structural operations reshape the block as the ref holds it.
 - The serializer enforces the syntax: a cell's newline is `<br>`, a callout title's a space.
 - **An empty callout title shows its type word, title-cased, and is never written**
   (`shownTitle`); a type change leaves the title alone. `callout-picker.spec.ts`.
 - **A callout's fold is a view, never an edit**: `-` folded, `+` open, reset when the note
-  changes; folded, the body is `inert` and Find opens it. `callout-fold.spec.ts`.
+  changes; folded, the body is `inert` and Find opens it. The grip menu sets the sign:
+  Make foldable, Always open. `callout-fold.spec.ts`.
 
 ## Properties
 

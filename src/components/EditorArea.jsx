@@ -1817,20 +1817,19 @@ const EditorArea = memo(
                         deleteWholeBlock(activeNote, selectedRun.from, selectedRun.to);
                       }}
                       fold={(() => {
-                        // One callout with a fold sign: its fold state is the
-                        // callout's own (view-only), read from what it draws.
+                        // One callout: Make foldable writes `-` (starts
+                        // folded); Always open takes away `-` or `+`. An edit.
                         if (selectedRun.from !== selectedRun.to) return undefined;
                         const b = note.content.blocks[selectedRun.from];
-                        if (b?.type !== "callout" || !["-", "+"].includes(b.calloutFold))
-                          return undefined;
-                        const drawn = editorRef.current?.querySelector(
-                          `[data-editor] > [data-block-id="${b.id}"] .callout-block`,
-                        );
+                        if (b?.type !== "callout") return undefined;
+                        const written = b.calloutFold === "-" || b.calloutFold === "+";
                         return {
-                          folded: drawn?.hasAttribute("data-folded") ?? false,
-                          onToggle: () => {
+                          written,
+                          onChange: () => {
                             setBlockMenu(null);
-                            openBlock(b.id, "toggle");
+                            updateBlockProperty(activeNote, selectedRun.from, {
+                              calloutFold: written ? "" : "-",
+                            });
                           },
                         };
                       })()}

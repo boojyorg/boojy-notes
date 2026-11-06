@@ -15,6 +15,8 @@
  * colour of the parent. Brand marks (the Notes wordmark) are image assets, not icons.
  */
 import {
+  ChevronsDownUp as LuChevronsDownUp,
+  ChevronsUpDown as LuChevronsUpDown,
   ALargeSmall as LuALargeSmall,
   ArrowDownAZ as LuArrowDownAZ,
   ArrowDownToLine as LuArrowDownToLine,
@@ -263,6 +265,10 @@ export const CopyIcon = navIcon(LuCopy);
 /** Copy to the clipboard (a note's or blocks' Copy); Duplicate keeps the two sheets. */
 export const ClipboardIcon = navIcon(LuClipboard);
 export const TurnIntoIcon = navIcon(LuRepeat2);
+/** A callout's fold sign in the block menu (Make foldable, Always open): its
+ *  rows' stroke, as Copy's and Delete's. */
+export const FoldIcon = navIcon(LuChevronsDownUp);
+export const UnfoldIcon = navIcon(LuChevronsUpDown);
 /** Tidy table: lines a table's columns up. */
 export const TidyTableIcon = navIcon(LuColumns3);
 /** A table column's alignment: the three text-align glyphs. */

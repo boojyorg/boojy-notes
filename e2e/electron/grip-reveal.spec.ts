@@ -191,3 +191,58 @@ test("a number wider than its column, at any depth, keeps clear of its grip", as
     await g.close();
   }
 });
+
+// A callout's grip stands level with its box's top edge, written title or
+// not: an empty title's word is CSS (no text node), so the first text found
+// was the body's, a line lower.
+test("a callout's grip stands level with its box's top edge, the title empty or written", async () => {
+  const g = await launchApp({
+    "Callouts.md": "> [!note]\n> A plain note.\n\n> [!tip] Written\n> Body.\n",
+  });
+  try {
+    await g.openNote("Callouts");
+    const blocks = g.page.locator("[data-editor] > [data-block-id]");
+    for (const n of [0, 1]) {
+      const block = blocks.nth(n);
+      const id = await block.getAttribute("data-block-id");
+      const handle = g.page.locator(`[data-testid="block-drag-handle"][data-target-block="${id}"]`);
+      await expect(async () => {
+        const box = (await block.boundingBox())!;
+        await g.page.mouse.move(box.x + 200, box.y + box.height - 6);
+        await expect(handle).toBeVisible({ timeout: 500 });
+      }).toPass();
+      const hb = (await handle.boundingBox())!;
+      const top = (await block.locator(".callout-block").boundingBox())!.y;
+      expect(Math.abs(hb.y - top)).toBeLessThanOrEqual(1);
+    }
+  } finally {
+    await g.close();
+  }
+});
+
+// Only a callout block takes the callout's place for its grip: an embed whose
+// note holds a callout lower down keeps its grip at its own start.
+test("an embed holding a callout keeps its grip at the embed's start", async () => {
+  const lines = Array.from({ length: 12 }, (_, i) => `Line ${i + 1}.`).join("\n\n");
+  const g = await launchApp({
+    "Host.md": "Above.\n\n![[Source]]\n\nBelow.\n",
+    "Source.md": `${lines}\n\n> [!note] Inside\n> Body.\n`,
+  });
+  try {
+    await g.openNote("Host");
+    const embed = g.page.locator('[data-editor] > [data-block-type="embed"]');
+    await expect(embed.locator(".callout-block")).toHaveCount(1);
+    const id = await embed.getAttribute("data-block-id");
+    const handle = g.page.locator(`[data-testid="block-drag-handle"][data-target-block="${id}"]`);
+    await expect(async () => {
+      const box = (await embed.boundingBox())!;
+      await g.page.mouse.move(box.x + 200, box.y + 10);
+      await expect(handle).toBeVisible({ timeout: 500 });
+    }).toPass();
+    const hb = (await handle.boundingBox())!;
+    const top = (await embed.boundingBox())!.y;
+    expect(hb.y - top).toBeLessThan(60);
+  } finally {
+    await g.close();
+  }
+});

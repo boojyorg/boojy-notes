@@ -139,10 +139,6 @@ export default memo(function CalloutBlock({
   foldedRef.current = folded;
   // Set while the body slides, so it clips only then (open, it overflows freely).
   const [moving, setMoving] = useState(false);
-  useEffect(() => {
-    setFolded(block.calloutFold === "-");
-  }, [noteId, block.calloutFold]);
-
   const setFold = useCallback((next) => {
     if (next === foldedRef.current) return;
     // The caret never stays in hidden text: folding from the body takes it to
@@ -155,6 +151,16 @@ export default memo(function CalloutBlock({
     setMoving(true);
     setFolded(next);
   }, []);
+  // A new note puts the view back as the file says; a change of the sign
+  // itself (the grip menu, its undo, an outside edit) folds or opens as the
+  // chevron does, so the caret leaves a body that goes inert.
+  const signRef = useRef(block.calloutFold);
+  useEffect(() => {
+    const signChanged = signRef.current !== block.calloutFold;
+    signRef.current = block.calloutFold;
+    if (signChanged) setFold(block.calloutFold === "-");
+    else setFolded(block.calloutFold === "-");
+  }, [noteId, block.calloutFold, setFold]);
   useEffect(() => {
     if (!moving) return undefined;
     // Ends on the slide's end, or at once without one (reduced motion).
@@ -162,7 +168,7 @@ export default memo(function CalloutBlock({
     return () => window.clearTimeout(timer);
   }, [moving]);
 
-  // The block menu and Find ask by id (blockOpen): "fold", "unfold", "toggle".
+  // Find asks by id (blockOpen) to open a folded callout holding a match.
   // Only the note's own block answers, never a copy drawn in an embed or a
   // past version (they share its id).
   useLayoutEffect(() => {
@@ -171,9 +177,7 @@ export default memo(function CalloutBlock({
       ?.closest("[data-block-id]")
       ?.parentElement?.matches("[data-editor]");
     if (!own) return undefined;
-    return registerBlockOpener(block.id, ({ what }) =>
-      setFold(what === "fold" ? true : what === "unfold" ? false : !foldedRef.current),
-    );
+    return registerBlockOpener(block.id, () => setFold(false));
   }, [block.id, foldable, setFold]);
   const isFolded = foldable && folded;
 

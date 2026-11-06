@@ -3,7 +3,8 @@
  * and `+`): `[!type]-` opens folded, `[!type]+` open, a callout with neither
  * never folds. The chevron is a named button saying its state; a folded body
  * is out of reach (inert) and the caret never stays in it; the arrows step
- * over it; Find opens it to show a match; the block menu folds it by keys.
+ * over it; Find opens it to show a match. Whether it can fold is the grip
+ * menu's Make foldable and Always open, an edit.
  * The file's sign rules again whenever the open note changes.
  */
 import { expect, test, type Page } from "@playwright/test";
@@ -143,29 +144,6 @@ test("Find opens a folded callout to show a match, and steps between matches ins
   await unchanged();
 });
 
-test("the block menu folds and unfolds a callout by keys", async () => {
-  // The grip's menu on the folded callout.
-  const box = (await callout(h.page, 0).boundingBox())!;
-  await h.page.mouse.move(box.x + 40, box.y + 12);
-  const id = await h.page
-    .locator("[data-editor] > [data-block-id]")
-    .filter({ has: h.page.locator(".callout-block") })
-    .first()
-    .getAttribute("data-block-id");
-  const grip = h.page.locator(`[data-testid="block-drag-handle"][data-target-block="${id}"]`);
-  await grip.click();
-  const menu = h.page.getByRole("menu", { name: "Block options" });
-  await expect(menu).toBeVisible();
-  await menu.getByRole("menuitem", { name: "Unfold" }).click();
-  await expect(chevron(h.page, 0)).toHaveAttribute("aria-expanded", "true");
-  // Picked whole, Shift+F10: the same menu, now offering Fold.
-  await h.page.keyboard.press("Shift+F10");
-  await expect(menu).toBeVisible();
-  await menu.getByRole("menuitem", { name: "Fold" }).click();
-  await expect(chevron(h.page, 0)).toHaveAttribute("aria-expanded", "false");
-  await unchanged();
-});
-
 // A step to a match in a folded callout scrolls once the callout has opened;
 // a newer step before then wins, and the old one never scrolls back.
 test("stepping on before a folded callout has opened keeps the newer match in view", async () => {
@@ -216,4 +194,89 @@ test("the chevron is a Tab stop after the title; Enter and Space fold and unfold
   await h.page.keyboard.press("Shift+Tab");
   await expect(title).toBeFocused();
   await unchanged();
+});
+
+// Whether a callout folds is the file's sign, set from the grip's menu: Make
+// foldable writes `-` and folds it now; Always open writes no sign (a `+` too).
+// One undo step each way; a sign brought back folds as the chevron does, so
+// the caret leaves the body. The menu never folds or opens a callout: that is
+// the chevron's.
+const UNDO = isMac ? "Meta+z" : "Control+z";
+async function gripMenu(page: Page, n: number) {
+  const block = page
+    .locator("[data-editor] > [data-block-id]")
+    .filter({ has: page.locator(".callout-block") })
+    .nth(n);
+  const id = await block.getAttribute("data-block-id");
+  const grip = page.locator(`[data-testid="block-drag-handle"][data-target-block="${id}"]`);
+  await expect(async () => {
+    const box = (await callout(page, n).boundingBox())!;
+    await page.mouse.move(box.x + 40, box.y + 12);
+    await expect(grip).toBeVisible({ timeout: 500 });
+  }).toPass();
+  await grip.click();
+  const menu = page.getByRole("menu", { name: "Block options" });
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+test("the grip's menu offers Make foldable or Always open, never Fold or Unfold", async () => {
+  const folded = await gripMenu(h.page, 0);
+  await expect(folded.getByRole("menuitem", { name: "Always open" })).toBeVisible();
+  await expect(folded.getByRole("menuitem", { name: /^(Fold|Unfold|Make foldable)$/ })).toHaveCount(
+    0,
+  );
+  await h.page.keyboard.press("Escape");
+  const plain = await gripMenu(h.page, 2);
+  await expect(plain.getByRole("menuitem", { name: "Make foldable" })).toBeVisible();
+  await expect(plain.getByRole("menuitem", { name: "Always open" })).toHaveCount(0);
+  await h.page.keyboard.press("Escape");
+  // The type menu is the type alone.
+  await callout(h.page, 2).getByRole("button", { name: "Change callout type" }).click();
+  const types = h.page.getByRole("menu", { name: "Callout type" });
+  await expect(types).toBeVisible();
+  await expect(types.getByRole("menuitemcheckbox")).toHaveCount(0);
+  await unchanged();
+});
+
+test("Make foldable writes `-` and folds the callout; ⌘Z takes it back", async () => {
+  const menu = await gripMenu(h.page, 2);
+  await menu.getByRole("menuitem", { name: "Make foldable" }).click();
+  await expect(menu).toHaveCount(0);
+  await expect(chevron(h.page, 2)).toHaveAttribute("aria-expanded", "false");
+  await expect.poll(() => shown(h.page, 2)).toBe(false);
+  await expect
+    .poll(() => h.vault.read(NOTE))
+    .toBe(FILE.replace("[!note] No sign", "[!note]- No sign"));
+
+  await h.page.keyboard.press(UNDO);
+  await expect.poll(() => h.vault.read(NOTE)).toBe(FILE);
+  await expect(chevron(h.page, 2)).toHaveCount(0);
+  await expect.poll(() => shown(h.page, 2)).toBe(true);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("Always open takes away `-` or `+` and opens the callout; ⌘Z folds it again, the caret leaving its body", async () => {
+  await (await gripMenu(h.page, 0)).getByRole("menuitem", { name: "Always open" }).click();
+  await expect(chevron(h.page, 0)).toHaveCount(0);
+  await expect.poll(() => shown(h.page, 0)).toBe(true);
+  await (await gripMenu(h.page, 1)).getByRole("menuitem", { name: "Always open" }).click();
+  await expect
+    .poll(() => h.vault.read(NOTE))
+    .toBe(
+      FILE.replace("[!warning]- Folded", "[!warning] Folded").replace(
+        "[!tip]+ Starts",
+        "[!tip] Starts",
+      ),
+    );
+
+  // Back to `-` with the caret in the body: it folds, and the caret goes to the title.
+  await h.page.keyboard.press(UNDO);
+  const body = callout(h.page, 0).locator(".callout-body");
+  await body.click();
+  await expect(body).toBeFocused();
+  await h.page.keyboard.press(UNDO);
+  await expect.poll(() => h.vault.read(NOTE)).toBe(FILE);
+  await expect(chevron(h.page, 0)).toHaveAttribute("aria-expanded", "false");
+  await expect(callout(h.page, 0).locator(".callout-title")).toBeFocused();
 });
