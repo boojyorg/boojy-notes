@@ -3,6 +3,7 @@ import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import CodeLangMenu from "./CodeLangMenu";
 import { canonicalLang, sameLang } from "../utils/codeLanguage";
 import { highlightCode } from "../utils/codeHighlight";
+import { paintMarkdownCode } from "../utils/sourceView";
 import Menu, { pointAnchor } from "./Menu";
 import {
   CheckIcon,
@@ -42,9 +43,12 @@ const LANGUAGES = [
   { value: "typescript", label: "TypeScript" },
 ];
 
-// The highlight overlay: each line wrapped in a span.
+// The highlight overlay: each line wrapped in a span. Markdown is painted as
+// the Markdown view paints it, so it reads the same in both.
 function overlayHtml(text, langKey) {
-  return highlightCode(text, langKey)
+  const html =
+    canonicalLang(langKey) === "markdown" ? paintMarkdownCode(text) : highlightCode(text, langKey);
+  return html
     .split("\n")
     .map((lineHtml) => `<span class="code-line">${lineHtml}</span>`)
     .join("");

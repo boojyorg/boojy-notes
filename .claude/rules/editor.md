@@ -206,8 +206,8 @@ keeps its own view, saved** (`useSourceView`).
   `markdownToBlocks` and committed via `commitTextChange`.
 - **It repaints only when the blocks aren't the ones it committed** (by identity). The caret
   crosses by block (`utils/sourceView.ts`). `source-view.spec.ts`.
-- **Colour says what each part is; nothing may change a character's width** (the field lies
-  over the layer): no ligatures in either box. `sourceView.test.ts`.
+- **Colour says what each part is; nothing may change a character's width**:
+  no ligatures in either box. `sourceView.test.ts`.
 
 ## Lists
 
@@ -271,7 +271,8 @@ never holds a byte sequence the syntax cannot.**
 
 Every `.code-line` takes at least `1lh` (or the layers drift). **One hover toolbar per code
 block.** `code-language.spec.ts`. **A `mermaid` fence is drawn** (`DiagramView`), its code
-open until `</>` closes it. `diagram.spec.ts`.
+open until `</>` closes it. `diagram.spec.ts`. **A `markdown` one is painted as the Markdown
+view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens one.
 
 ## Images
 

@@ -50,6 +50,8 @@ describe("code block colours", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(container.querySelectorAll(".code-overlay .token").length).toBeGreaterThan(0);
+    // Markdown is painted as the Markdown view paints it (its `md-` inks), the rest by Prism.
+    const painted = ".code-overlay .token, .code-overlay [class^='md-']";
+    expect(container.querySelectorAll(painted).length).toBeGreaterThan(0);
   });
 });

@@ -110,6 +110,34 @@ describe("CodeBlock", () => {
     }
   });
 
+  // Markdown reads as the Markdown view paints it (paintMarkdownCode), under
+  // either name; every other language keeps its grammar.
+  it("paints a markdown block as the Markdown view does, md or markdown", () => {
+    for (const lang of ["markdown", "md"]) {
+      const { container, unmount } = render(
+        <CodeBlock
+          {...defaultProps}
+          block={{ ...defaultProps.block, text: "- item\n> [!note] Hi", lang }}
+        />,
+      );
+      const overlay = container.querySelector(".code-overlay");
+      expect(overlay.querySelector(".md-list")?.textContent, lang).toBe("- ");
+      expect(overlay.querySelector(".md-callout")?.textContent, lang).toBe("[!note]");
+      expect([...overlay.querySelectorAll(".code-line")].map((l) => l.textContent)).toEqual([
+        "- item",
+        "> [!note] Hi",
+      ]);
+      unmount();
+    }
+    const { container } = render(
+      <CodeBlock
+        {...defaultProps}
+        block={{ ...defaultProps.block, text: "- item", lang: "python" }}
+      />,
+    );
+    expect(container.querySelector(".code-overlay .md-list")).toBeNull();
+  });
+
   // The chip names the control on hover or keyboard focus, never over its own menu.
   it("names the language button with a chip, hidden while its menu is open", () => {
     // jsdom never matches `:focus-visible`; say what the browser would for a Tab.
