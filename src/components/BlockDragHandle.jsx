@@ -82,7 +82,8 @@ function firstLineRect(el, zoom) {
   if (toolbar) return toolbar.getBoundingClientRect();
   const ownRow = el.querySelector(OWN_FIRST_ROW);
   if (ownRow) return ownRow.getBoundingClientRect();
-  const box = el.querySelector(CALLOUT_BOX);
+  // A callout block's own box only: an embed can draw a callout far down.
+  const box = el.dataset.blockType === "callout" ? el.querySelector(CALLOUT_BOX) : null;
   const row = box?.querySelector(CALLOUT_ROW);
   if (box && row) {
     return { top: box.getBoundingClientRect().top, height: row.getBoundingClientRect().height };
