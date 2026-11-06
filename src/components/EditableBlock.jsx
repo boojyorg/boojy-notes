@@ -483,7 +483,7 @@ const EditableBlock = memo(
     }
 
     // A footnote definition as Obsidian's editing view shows it: its label,
-    // small and muted, then its text. The label is the file's and is never
+    // small, raised and muted, then its text. The label is the file's and is never
     // renumbered; the Markdown view edits it.
     if (block.type === "footnote") {
       return (
@@ -495,7 +495,8 @@ const EditableBlock = memo(
             contain: "content",
             display: "flex",
             alignItems: "baseline",
-            gap: LIST_TEXT_GAP,
+            // The label sits just before the text, as Obsidian draws it.
+            gap: "0.3em",
             margin: `0 0 ${rhythm.paragraphGap}px`,
             fontSize: rhythm.bodySize,
             lineHeight: rhythm.lineHeight,
@@ -507,10 +508,14 @@ const EditableBlock = memo(
             suppressContentEditableWarning
             aria-hidden="true"
             data-footnote-label=""
+            // Raised, small and muted like its reference (`.md-fn-ref`), so the
+            // two read as a pair and never as a numbered list's marker. A flex
+            // item takes no vertical-align: it is lifted instead.
             style={{
               color: TEXT.muted,
               fontSize: "0.75em",
-              minWidth: LIST_MARKER_W,
+              position: "relative",
+              top: "-0.45em",
               flexShrink: 0,
               whiteSpace: "nowrap",
               userSelect: "none",
