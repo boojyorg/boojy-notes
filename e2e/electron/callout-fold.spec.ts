@@ -217,3 +217,54 @@ test("the chevron is a Tab stop after the title; Enter and Space fold and unfold
   await expect(title).toBeFocused();
   await unchanged();
 });
+
+// Foldable, in the type menu, is an edit: ticked it writes `-` and folds the
+// callout now; unticked it writes no sign. One undo step each way. A `+`
+// already in the file reads as ticked and is never turned into `-`.
+const UNDO = isMac ? "Meta+z" : "Control+z";
+async function foldableRow(page: Page, n: number) {
+  await callout(page, n).getByRole("button", { name: "Change callout type" }).click();
+  const menu = page.getByRole("menu", { name: "Callout type" });
+  await expect(menu).toBeVisible();
+  return menu.getByRole("menuitemcheckbox", { name: "Foldable" });
+}
+
+test("Foldable writes `-` and folds the callout, the caret leaving its body; ⌘Z takes it back", async () => {
+  await callout(h.page, 2).locator(".callout-body").click();
+  const row = await foldableRow(h.page, 2);
+  await expect(row).toHaveAttribute("aria-checked", "false");
+  await row.click();
+  await expect(h.page.getByRole("menu", { name: "Callout type" })).toHaveCount(0);
+  await expect(chevron(h.page, 2)).toHaveAttribute("aria-expanded", "false");
+  await expect.poll(() => shown(h.page, 2)).toBe(false);
+  await expect(callout(h.page, 2).locator(".callout-title")).toBeFocused();
+  await expect
+    .poll(() => h.vault.read(NOTE))
+    .toBe(FILE.replace("[!note] No sign", "[!note]- No sign"));
+
+  await h.page.keyboard.press(UNDO);
+  await expect.poll(() => h.vault.read(NOTE)).toBe(FILE);
+  await expect(chevron(h.page, 2)).toHaveCount(0);
+  await expect.poll(() => shown(h.page, 2)).toBe(true);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("unticking Foldable removes the sign and opens the callout; `+` reads as ticked", async () => {
+  const folded = await foldableRow(h.page, 0);
+  await expect(folded).toHaveAttribute("aria-checked", "true");
+  await folded.click();
+  await expect(chevron(h.page, 0)).toHaveCount(0);
+  await expect.poll(() => shown(h.page, 0)).toBe(true);
+
+  const open = await foldableRow(h.page, 1);
+  await expect(open).toHaveAttribute("aria-checked", "true");
+  await open.click();
+  await expect
+    .poll(() => h.vault.read(NOTE))
+    .toBe(
+      FILE.replace("[!warning]- Folded", "[!warning] Folded").replace(
+        "[!tip]+ Starts",
+        "[!tip] Starts",
+      ),
+    );
+});

@@ -10,6 +10,7 @@ interface EditorRenderBlock {
   rows?: string[][];
   alignments?: string[];
   calloutType?: string;
+  calloutFold?: string;
   title?: string;
   src?: string;
   alt?: string;
@@ -26,7 +27,7 @@ interface EditorRenderBlock {
  * contentEditable, and equally a code block's textarea, which paints its
  * own highlight overlay as it is typed into. What React paints is the
  * structure around a field: a table's rows, a code block's language, a
- * callout's type and the title that follows a type change.
+ * callout's type, its fold sign, and the title that follows a type change.
  *
  * A note's properties are rows React paints from the frontmatter's text, so
  * a change to that text is React's to paint (its YAML field is a field, and
@@ -67,6 +68,7 @@ export function haveEditorBlockRenderChanges(
     if (
       previousBlock.type === "callout" &&
       (previousBlock.calloutType !== nextBlock.calloutType ||
+        previousBlock.calloutFold !== nextBlock.calloutFold ||
         previousBlock.title !== nextBlock.title)
     ) {
       return true;

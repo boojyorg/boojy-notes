@@ -58,6 +58,14 @@ describe("haveEditorBlockRenderChanges", () => {
     expect(haveEditorBlockRenderChanges(note, retitled)).toBe(true);
   });
 
+  // Foldable writes only the sign; unpainted, the callout neither folded nor
+  // grew its chevron while the file said `-`.
+  it("repaints a callout whose fold sign changed", () => {
+    const plain = [{ id: "c", type: "callout" as const, text: "b", calloutType: "note" }];
+    const foldable = [{ ...plain[0], calloutFold: "-" }];
+    expect(haveEditorBlockRenderChanges(plain, foldable)).toBe(true);
+  });
+
   // A media block has no field of its own: every pixel of it is React's. The
   // drag wrote the new width onto the DOM itself, so the first resize looked
   // right and the file was correct, but the block kept its old props — and the

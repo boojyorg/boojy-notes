@@ -139,10 +139,6 @@ export default memo(function CalloutBlock({
   foldedRef.current = folded;
   // Set while the body slides, so it clips only then (open, it overflows freely).
   const [moving, setMoving] = useState(false);
-  useEffect(() => {
-    setFolded(block.calloutFold === "-");
-  }, [noteId, block.calloutFold]);
-
   const setFold = useCallback((next) => {
     if (next === foldedRef.current) return;
     // The caret never stays in hidden text: folding from the body takes it to
@@ -155,6 +151,16 @@ export default memo(function CalloutBlock({
     setMoving(true);
     setFolded(next);
   }, []);
+  // A new note puts the view back as the file says; a change of the sign
+  // itself (Foldable, its undo, an outside edit) folds or opens as the
+  // chevron does, so the caret leaves a body that goes inert.
+  const signRef = useRef(block.calloutFold);
+  useEffect(() => {
+    const signChanged = signRef.current !== block.calloutFold;
+    signRef.current = block.calloutFold;
+    if (signChanged) setFold(block.calloutFold === "-");
+    else setFolded(block.calloutFold === "-");
+  }, [noteId, block.calloutFold, setFold]);
   useEffect(() => {
     if (!moving) return undefined;
     // Ends on the slide's end, or at once without one (reduced motion).
@@ -268,6 +274,15 @@ export default memo(function CalloutBlock({
     },
     [calloutType, noteId, blockIndex, onUpdateBlock, saveScroll],
   );
+
+  // Foldable is an edit, unlike the chevron: ticked it writes `-` (Obsidian's
+  // "starts folded"), unticked no sign. A `+` already written reads as
+  // ticked and is never turned into `-`.
+  const handleFoldableToggle = useCallback(() => {
+    setPickerOpen(false);
+    saveScroll();
+    onUpdateBlock(noteId, blockIndex, { calloutFold: foldable ? "" : "-" });
+  }, [foldable, noteId, blockIndex, onUpdateBlock, saveScroll]);
 
   /* ─── Keyboard: title ─── */
 
@@ -526,17 +541,27 @@ export default memo(function CalloutBlock({
           maxHeight={CALLOUT_MENU_MAX_H}
           takesFocus={false}
           onClose={() => setPickerOpen(false)}
-          items={CALLOUT_TYPE_KEYS.map((key) => {
-            const TypeIcon = CALLOUT_TYPES[key].icon;
-            return {
-              label: CALLOUT_TYPES[key].defaultTitle,
-              // Each type's own ink: the row shows what the callout will look like.
-              icon: <TypeIcon size={16} color={theme.callouts[key].colour} strokeWidth={1.8} />,
-              role: "menuitemradio",
-              checked: key === calloutType,
-              action: () => handleTypeSelect(key),
-            };
-          })}
+          items={[
+            ...CALLOUT_TYPE_KEYS.map((key) => {
+              const TypeIcon = CALLOUT_TYPES[key].icon;
+              return {
+                label: CALLOUT_TYPES[key].defaultTitle,
+                // Each type's own ink: the row shows what the callout will look like.
+                icon: <TypeIcon size={16} color={theme.callouts[key].colour} strokeWidth={1.8} />,
+                role: "menuitemradio",
+                checked: key === calloutType,
+                action: () => handleTypeSelect(key),
+              };
+            }),
+            {
+              label: "Foldable",
+              icon: <ChevronRight size={16} strokeWidth={1.8} />,
+              role: "menuitemcheckbox",
+              checked: foldable,
+              rule: true,
+              action: handleFoldableToggle,
+            },
+          ]}
         />
       )}
     </div>
