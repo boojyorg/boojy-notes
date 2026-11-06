@@ -1,8 +1,5 @@
 # UI chrome, theme and icons
 
-Design intent and the constraints a change must not break. The code owns exact values.
-Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
-
 ## Theme and colour
 
 `src/constants/themes.js` is the only colour authority.
@@ -14,8 +11,8 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
   sidebar, `BG.surface` content hover, `BG.hover` row, menu and icon-button hover *and* selected, `BG.divider`
   borders. Text is `primary` / `secondary` / `muted`.
 - **The accent is two tokens.** `ACCENT.primary` is the mark (fills, bars, markers);
-  `ACCENT.text` is accent as readable ink; `onAccent` (white) is for shapes only. The tag
-  pill alone has its own ink (`tagText`), deep enough for its ground.
+  `ACCENT.text` is accent as readable ink; `onAccent` is for shapes only. The tag
+  pill alone has its own ink (`tagText`).
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   **One button, bordered and neutral**: the asked-for action is bold, Delete red ink.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`),
@@ -23,16 +20,16 @@ Editor behaviour: `editor.md`. Files: `files-and-watcher.md`.
 - **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
   alone. A choice is ticked in the row's ink, never accent; a surface it cannot be uses `menuSurface`. `Menu.test.tsx`.
-- **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
+- **Every ink reads on every ground it can sit on**,
   hover included. `themeContrast.test.js`, `e2e/accessibility.spec.ts`.
-- **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);
+- **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark;
   tree rows draw it inset. Keyboard focus only, and a lone modifier is not keyboard
   (`focusRing.ts`); never `outline: none` on a control.
 
 ## Toasts
 
-A quiet surface (`BG.elevated`, primary text) with **one coloured glyph that carries the
-meaning**; never an accent fill. `done` fades (a click dismisses); `notice`, `warning`, `error`
+A quiet surface with **one coloured glyph that carries the
+meaning**. `done` fades (a click dismisses); `notice`, `warning`, `error`
 wait for their × (a timed save failure is one nobody saw). **Notices about one condition share
 a key, the newer replacing the older, and end when it stops being true** (`writeRecovered`).
 `toasts.spec.ts`.
@@ -43,7 +40,7 @@ a key, the newer replacing the older, and end when it stops being true** (`write
   every `::-webkit-scrollbar-*` rule. They live only in `@supports not
   selector(::-webkit-scrollbar)`.
 - State rules set `background-color`, never `background` (it resets the clip).
-- The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the path); its track
+- The editor keeps `scrollbar-gutter: stable`; its track
   starts below the chrome row.
 - `.editor-scroll` stays a class: components query it.
 - **The phone styles no scrollbar**: Android's own is drawn over the content.
@@ -85,19 +82,19 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   portalled above every surface, placed via `cssZoom`. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
 - **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes and files opened
   (`useNoteHistory`, memory only), as do the desktop's ← → before the path. `⌘K` is link,
-  not Search. `⇧⌘L`/`E`/`R` align a table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`. Sort has none.
+  not Search. `⇧⌘L`/`E`/`R` align a table column, claimed only in a cell. Sort has none.
 - **`⌘0`–`9` apply a block kind, never toggle** (`KIND_KEYS`); Actual Size is `⇧⌘0`.
   `block-kind-keys.spec.ts`.
 - **The collapsed header carries the sidebar's three controls**, never both sets at once. Only the hidden sidebar's chrome row and action
-  block are `inert` (the whole column broke rename). `header-controls.spec.ts`.
+  block are `inert`. `header-controls.spec.ts`.
 
 ## Settings, setup and UI scale
 
-- Settings is one pane on the palette's surface. Accent never marks the chosen pill.
+- Settings is one pane on the palette's surface.
 - **Spelling: a Mac's system chooses the language**, so that row opens Keyboard settings, never a
   dead control; elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
-- **Interface size is one segmented control; every press applies at once** (a debounce
-  overwrote newer values). The figure is a field committed on Enter/blur; an outside change
+- **Interface size is one segmented control; every press applies at once**. The figure is a
+  field committed on Enter/blur; an outside change
   cancels an unfinished edit. `stepScale` is the one rule shared with `⌘±`.
 - **Settings keeps the scale it opened with**, so the pane holds still. Centred by a wrapper,
   never a transform (it would contain the `fixed` children). A menu inside it passes
@@ -112,13 +109,13 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 ## Motion is two clocks
 
 `tokens/motion.js`: the panel's clock moves the sidebar (`.panel-motion`); the small one
-(`MOTION_*`) moves popovers, dialogs, toasts, ticks and presses; never a spring. No third clock.
+(`MOTION_*`) moves popovers, dialogs, toasts, ticks and presses; never a spring.
 
 - **A surface leaves by unmounting at once and leaving a copy** (`useExitGhost`: inert,
   timer-removed), never by staying mounted (it would keep its focus trap and keys). Its root
   is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
-- **A press shades the button and dips an icon-only one's glyph, never scales the button**
-  (an edge press was lost). `.press` opts a control in. **On the phone a press is the row grey,
+- **A press shades the button and dips an icon-only one's glyph, never scales the button**.
+  `.press` opts a control in. **On the phone a press is the row grey,
   fading out; no tap flash.** `phone-press.spec.ts`.
 - Reduced motion plays no keyframe, makes no copy; the suites run with it, `motion.spec.ts`
   without.
@@ -127,8 +124,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 ## The note's path is centred in the chrome row
 
-- `NotePath`: folders (secondary, clickable) / name (primary, weight 500, editable, never
-  accent). A root note shows its name alone.
+- `NotePath`: folders (secondary, clickable) / name (primary, editable). A root note shows its
+  name alone.
 - **The empty name's placeholder is CSS on the DOM**, never a class from debounced state; the
   field keeps the placeholder's width while editing.
 - **Where it sits is CSS; what it shows is JavaScript.** Sticky band with `chromePathInset()`
@@ -144,28 +141,27 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - `PathTreeMenu` shows the crumb's parent's contents with the path to the open note expanded
   (`crumbScope`); `…` shows the root. A root note's path carries a folder glyph to
   click. Click only, never hover.
-- Tree keys on a document listener; **a press outside closes and is not swallowed** (no
-  backdrop: a first press on a top-row button read as dead).
+- Tree keys on a document listener; **a press outside closes and is not swallowed** (no backdrop).
 - **Rows drag with the sidebar's drag** (`useSidebarDrag`); the head row (`data-drop-scope`) is
   the drop "up into this folder". Only folder rows and the head row are targets.
 - **The same surface is the Move to… picker** (`pick`): folders only, root first, current
   folder ticked. Choosing (row body) and expanding (chevron) are separate. A folder being moved
   and its subtree are disabled in place. `breadcrumb-tree.spec.ts`, `move-to.spec.ts`.
 - **Every move ends in `moveNotesTo` / `moveFolderTo`**: notes via `bulkMoveNotes`
-  (`adoptNoteData`, not undoable). **The destination is shown, never announced**: revealed and
+  (`adoptNoteData`). **The destination is shown, never announced**: revealed and
   pill-marked in the sidebar if it is showing, no toast; a sidebar drag skips the reveal.
 
 ## Sidebar
 
 - Three rows then the tree: the window row (wordmark, Search, toggle), the `New note` pill (the
-  one labelled action, neutral, never a filled accent), the vault row (New folder, Sort,
+  one labelled action), the vault row (New folder, Sort,
   on hover; never more than three glyphs). **Only the tree scrolls**; the rows above it share its
   drop zone (`data-drop-zone`).
 - **The row shows the storage location's name** (its folder's, or a label; code: vault). It
   and ⌘O open `VaultMenu`, a switcher; Settings manages. **Both A–Z (`vaultEntries`).** A
   Settings row's menu leaves out what cannot work. `vault-switcher.spec.ts`.
-- **A file that is not a note** follows its folder's notes, extension muted; a click shows it
-  in the note's place; menu Open in Default App, Show in Finder, Delete; never
+- **A file that is not a note** follows its folder's notes, extension muted; menu Open in
+  Default App, Show in Finder, Delete; never
   renamed or dragged. The attachment store is the root's last row.
 - The wordmark is generated per theme (`dev/wordmarks.sh`), never the master PNG.
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
@@ -198,7 +194,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - `SearchPalette.tsx` (Cmd+P, Search button, tag click): opens fresh; Escape closes at once.
   An excerpt only when the title doesn't explain the hit. Empty: **Recent**
   (`utils/recentNotes.ts`).
-- **A result is a note, a folder (own name, two at most) or a file (never the attachment
+- **A result is a note, a folder (own name) or a file (never the attachment
   store)**, in one order: `orderResults` (a note or file named as well as a folder stays
   first). `#` lists tags, nested (`nestTags`). A tag (exact set) or folder (subfolders in) is a
   chip; chips combine; Backspace returns the last as text.
@@ -217,7 +213,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - Its controls stand left of the ··· and the path ends before them (`chromePathRightInset`).
 - **Link Page in Note** (⌥⌘L): the page's link at the left note's cursor, written as the picker's.
 
-## Narrow desktop is desktop; the phone, two screens
+## Narrow desktop and the phone
 
 - **No touch layout, no overlay sidebar** at any desktop width.
 - **The phone is Home (the sidebar, full width) or the note, never both**; else the desktop's
