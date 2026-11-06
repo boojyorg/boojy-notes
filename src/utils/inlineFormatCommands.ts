@@ -1,3 +1,5 @@
+import { LITERAL_SELECTOR } from "./footnotes";
+
 /**
  * The inline formats as DOM operations, and which surface may carry one.
  *
@@ -248,10 +250,10 @@ function codeAround(node: Node | null, boundary: Node | null): Element | null {
   return null;
 }
 
-/** The `%%` comment `node` is inside, below `boundary`, or null: literal, as code is. */
+/** The `%%` comment or footnote `node` is inside, below `boundary`, or null: literal, as code is. */
 function commentAround(node: Node | null, boundary: Node | null): Element | null {
   for (let n = node; n && n !== boundary; n = n.parentNode) {
-    if ((n as Element).classList?.contains("md-comment")) return n as Element;
+    if ((n as Element).matches?.(LITERAL_SELECTOR)) return n as Element;
   }
   return null;
 }

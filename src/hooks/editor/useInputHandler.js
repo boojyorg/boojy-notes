@@ -7,12 +7,14 @@ import {
   repaintComments,
   typedFormatHit,
 } from "../../utils/typedFormatting";
+import { LITERAL_SELECTOR } from "../../utils/footnotes";
 import { liftTypedSpace } from "../../utils/inlineFormatCommands";
 import { genBlockId } from "../../utils/storage";
 import { TAG_TAIL_RE } from "../../utils/tags";
 import { SLASH_COMMANDS } from "../../constants/data";
 import {
   LINE_MARKER_ON_TEXT_RE,
+  typedFootnote,
   TYPED_IMAGE_RE,
   TYPED_TABLE_RE,
   lineKind,
@@ -170,6 +172,31 @@ export function useInputHandler({
       return;
     }
 
+    // `[^label]: ` typed at a paragraph's start makes the line that footnote's
+    // definition, as a line kind's marker makes its kind; ⌘Z brings it back.
+    const footnote =
+      currentBlock.type === "p" &&
+      native?.inputType === "insertText" &&
+      !native.isComposing &&
+      /^[\s\u00a0]$/.test(native.data ?? "")
+        ? typedFootnote(text)
+        : null;
+    if (footnote && getCaretOffset(el) === footnote.length) {
+      commitNoteData(
+        editBlocks(noteId, (blks) => {
+          blks[blockIndex] = {
+            id: currentBlock.id,
+            type: "footnote",
+            label: footnote.label,
+            text: footnote.rest,
+          };
+        }),
+      );
+      focusBlockId.current = currentBlock.id;
+      focusCursorPos.current = 0;
+      return;
+    }
+
     // A marker typed at the start of a line with text: the space just typed
     // is the marker's, and the caret sits right after it.
     const lineMarker =
@@ -254,11 +281,11 @@ export function useInputHandler({
       }
     }
 
-    // Typed inside a `%%` comment, nothing is offered: a comment is literal.
+    // Typed inside a `%%` comment or a footnote, nothing is offered: both are literal.
     const caretNode = window.getSelection()?.anchorNode;
     const inComment = !!(
       caretNode?.nodeType === Node.TEXT_NODE ? caretNode.parentElement : caretNode
-    )?.closest?.(".md-comment");
+    )?.closest?.(LITERAL_SELECTOR);
 
     // Wikilink menu detection: open [[ not yet closed
     const wikiMatch = inComment ? null : text.match(WIKILINK_OPEN_RE);

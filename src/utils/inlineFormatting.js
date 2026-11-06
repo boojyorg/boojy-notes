@@ -7,7 +7,7 @@ import { LINK_DEST } from "./linkDestination";
 import { TAG_RE } from "./tags";
 import { BLOCK_ID_END_RE } from "./blockTarget";
 import { codeSourceText, codeSpanSource, editedCodeSpanSource, findCodeSpans } from "./codeSpans";
-import { COMMENT_CLASS, findComments } from "./comments";
+import { literalRuns } from "./footnotes";
 
 /** Step 1 of the renderer, for prose that has been read back to characters. */
 const escapeHtml = (text) =>
@@ -188,17 +188,18 @@ function shieldCodeSpans(md, codes) {
 const CODE_TOKEN_RE = /\x00CODE(\d+)\x00/g;
 
 /**
- * `md` with each comment replaced by a token, its source pushed onto
- * `comments`. Before everything else, code spans included: nothing in a
- * comment is drawn, so its text is the file's, read back as written.
+ * `md` with each literal run (a comment, a footnote reference, an inline
+ * footnote: utils/footnotes `literalRuns`) replaced by a token, its source and
+ * class pushed onto `comments`. Before everything else, code spans included:
+ * nothing in one is drawn, so its text is the file's, read back as written.
  */
 function shieldComments(md, comments) {
-  const found = findComments(md);
+  const found = literalRuns(md);
   if (!found.length) return md;
   let out = "";
   let last = 0;
-  for (const { start, end } of found) {
-    comments.push(md.slice(start, end));
+  for (const { start, end, cls } of found) {
+    comments.push({ src: md.slice(start, end), cls });
     out += `${md.slice(last, start)}\x00CMT${comments.length - 1}\x00`;
     last = end;
   }
@@ -217,12 +218,12 @@ function restoreComments(html, comments) {
     escapeHtml(src).replace(/"/g, "&quot;").replace(/\r/g, "&#13;").replace(/\n/g, "&#10;");
   return html
     .replace(/<[^>]*>/g, (tag) =>
-      tag.replace(COMMENT_TOKEN_RE, (_, i) => attr(comments[Number(i)])),
+      tag.replace(COMMENT_TOKEN_RE, (_, i) => attr(comments[Number(i)].src)),
     )
-    .replace(
-      COMMENT_TOKEN_RE,
-      (_, i) => `<span class="${COMMENT_CLASS}">${escapeHtml(comments[Number(i)])}</span>`,
-    );
+    .replace(COMMENT_TOKEN_RE, (_, i) => {
+      const { src, cls } = comments[Number(i)];
+      return `<span class="${cls}">${escapeHtml(src)}</span>`;
+    });
 }
 
 /**
@@ -248,8 +249,9 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   if (!md) return "";
   let s = md;
 
-  // 0a. Comments (`%%…%%`), literal and muted: set aside whole, before even
-  // code spans (a marker inside a code span is no marker: utils/comments).
+  // 0a. Comments (`%%…%%`) and footnotes (`[^1]`, `^[…]`), literal and muted:
+  // set aside whole, before even code spans (a marker inside a code span is
+  // no marker: utils/comments, utils/footnotes).
   const comments = [];
   s = shieldComments(s, comments);
 

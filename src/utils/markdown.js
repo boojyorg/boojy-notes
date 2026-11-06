@@ -15,6 +15,7 @@ import {
   separatorStyle,
 } from "./tableAlign";
 import { MAX_INDENT } from "./blockKinds";
+import { FOOTNOTE_DEF_RE } from "./footnotes";
 
 /** A line that is one `![alt](src)` and nothing else; `src` may hold balanced parens. */
 const MD_IMAGE_LINE_RE = new RegExp(String.raw`^!\[([^\]]*)\]\((${LINK_DEST})\)$`);
@@ -96,6 +97,12 @@ const calloutKey = (block) =>
 // continuation and belongs to the item, as it does to every Markdown reader.
 
 const isListItem = (b) => b.type === "bullet" || b.type === "numbered" || b.type === "checkbox";
+/**
+ * A footnote definition with text takes a following plain line as its own,
+ * as a paragraph does (a lazy continuation); an empty one takes nothing, as
+ * an empty list item takes nothing.
+ */
+const isFootnoteWithText = (b) => b.type === "footnote" && (b.text || "") !== "";
 /** An item with no text: `- `, `1. `, `- [ ] `, or the bare marker alone. */
 const isEmptyListItem = (b) => isListItem(b) && (b.text || "") === "";
 /** A blank source line: an empty paragraph block, or one holding only whitespace. */
@@ -111,7 +118,8 @@ const isTextParagraph = (b) => b.type === "p" && !isBlankParagraph(b);
  * inside the item, and an empty item has none, so `- ` over `foo` is an
  * empty item and then a paragraph to every reader.
  */
-const absorbsFollowingLine = (b) => isTextParagraph(b) || (isListItem(b) && !isEmptyListItem(b));
+const absorbsFollowingLine = (b) =>
+  isTextParagraph(b) || (isListItem(b) && !isEmptyListItem(b)) || isFootnoteWithText(b);
 /**
  * A block that needs the single separator blank after an absorbing block: a
  * text paragraph, or a divider. Without the blank a reader folds the paragraph
@@ -267,7 +275,7 @@ const afterMarker = (block, text = block.text || "") =>
 // is written as a space, as a callout title's is.
 
 /** A line that could open a block: the cheap test before the parser is asked. */
-const MARKER_START = /^[ \t]*[-*+#>`~|!$\d]/;
+const MARKER_START = /^[ \t]*[-*+#>`~|!$\d[]/;
 /** The first ASCII punctuation character of a line, where the escape goes. */
 const FIRST_PUNCTUATION = /[!-/:-@[-`{-~]/;
 
@@ -363,6 +371,11 @@ export function blocksToMarkdown(blocks) {
         break;
       case "spacer":
         lines.push(block.dividerSource ?? "---");
+        break;
+      case "footnote":
+        lines.push(
+          `${block.lead ?? ""}[^${block.label}]:${afterMarker(block, itemText(block))}${block.trail ?? ""}`,
+        );
         break;
       case "image": {
         const src = block.src || "";
@@ -905,7 +918,7 @@ export function markdownToBlocks(md) {
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
     const indent = Math.min(MAX_INDENT, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string }; checkMark?: "X"; dividerSource?: string; gap?: string; lead?: string; trail?: string }} */
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string }; checkMark?: "X"; dividerSource?: string; gap?: string; lead?: string; trail?: string; label?: string }} */
     let block;
     const applyListIndent = (b) => {
       if (indent > 0) b.indent = indent;
@@ -982,6 +995,21 @@ export function markdownToBlocks(md) {
       if (m[1] || suffix !== headingSuffix(text) || gap !== (block.bare ? "" : " ")) {
         block.headingSource = { indent: m[1], gap, suffix };
       }
+    } else if ((m = raw.match(FOOTNOTE_DEF_RE))) {
+      // A footnote definition (`[^label]: text`), as Obsidian and
+      // markdown-it-footnote read it: up to three spaces in, a label with no
+      // whitespace. The indent before it, the gap after the colon and any
+      // whitespace after the text are kept as written.
+      block = { id: `md-${++_parseBlockId}`, type: "footnote", label: m[2], text: "" };
+      if (m[1]) block.lead = m[1];
+      const rest = raw.slice(m[0].length).replace(/\r$/, "");
+      const gap = rest.match(/^[ \t]*/)[0];
+      const body = rest.slice(gap.length);
+      const trail = body.match(/[ \t]+$/)?.[0] ?? "";
+      block.text = body.slice(0, body.length - trail.length);
+      if (!rest) block.bare = true;
+      else if (gap !== " ") block.gap = gap;
+      if (trail) block.trail = trail;
     } else if (MD_IMAGE_LINE_RE.test(line)) {
       const m = line.match(MD_IMAGE_LINE_RE);
       // Obsidian-style width suffix in the alt: ![alt|350](url)

@@ -82,6 +82,7 @@ import {
   selectionRange,
   stepHead,
   subtreeEnd,
+  inFootnoteGroup,
 } from "../utils/blockRun";
 import { selectedLinesOf } from "../utils/selectedLines";
 import { reorderFloor } from "../utils/blockOrder";
@@ -1821,6 +1822,9 @@ const EditorArea = memo(
                               syncGen={syncGeneration.current}
                               accentColor={accentColor}
                               numberedIndex={block.type === "numbered" ? numberedIndex : undefined}
+                              continuesFootnote={
+                                block.type === "p" && inFootnoteGroup(note.content.blocks, i)
+                              }
                               onUpdateText={updateBlockText}
                               onUpdateCalloutTitle={updateCalloutTitle}
                               onUpdateTableCell={updateTableCell}

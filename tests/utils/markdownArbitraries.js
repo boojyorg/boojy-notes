@@ -45,6 +45,11 @@ const inline = fc.constantFrom(
   "<span>html</span>",
   "$x$",
   "%%comment%%",
+  "[^1]",
+  "[^note]",
+  "^[inline [x] note]",
+  "[^",
+  "^[",
   "%%**raw** [[Note]] #t%%",
 );
 
@@ -116,6 +121,32 @@ const embed = fc
   )
   .map(([lead, line, trail]) => lead + line + trail);
 
+// A footnote definition, lazy and indented continuation lines, a later
+// paragraph (two or four spaces in, after a blank line), and neighbours.
+const footnote = fc
+  .tuple(
+    fc.constantFrom("", " ", "   "),
+    fc.constantFrom("1", "note", "a-b"),
+    fc.constantFrom(" ", "", "\t", "  "),
+    fc.oneof(text, fc.constant("")),
+    fc.array(
+      fc.oneof(
+        text,
+        text.map((t) => `  ${t}`),
+        text.map((t) => `    ${t}`),
+      ),
+      { maxLength: 2 },
+    ),
+    fc.option(fc.tuple(fc.constantFrom("  ", "    ", "\t"), text), { nil: null }),
+  )
+  .map(([lead, label, gap, first, lazy, later]) =>
+    [
+      `${lead}[^${label}]:${first ? gap + first : ""}`,
+      ...(first ? lazy : []),
+      ...(later ? ["", later[0] + later[1]] : []),
+    ].join("\n"),
+  );
+
 const block = fc.oneof(
   { weight: 6, arbitrary: paragraph },
   { weight: 2, arbitrary: heading },
@@ -127,6 +158,7 @@ const block = fc.oneof(
   { weight: 1, arbitrary: divider },
   { weight: 1, arbitrary: html },
   { weight: 1, arbitrary: embed },
+  { weight: 2, arbitrary: footnote },
 );
 
 const frontmatter = fc.constantFrom(

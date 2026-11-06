@@ -135,6 +135,7 @@ const EditableBlock = memo(
     syncGen,
     accentColor,
     numberedIndex,
+    continuesFootnote,
     onUpdateText,
     onUpdateCalloutTitle,
     onUpdateTableCell,
@@ -461,6 +462,8 @@ const EditableBlock = memo(
           // Its depth, for the grip to stand by it (BlockDragHandle).
           data-indent={block.indent || undefined}
           data-placeholder="Type / for blocks"
+          // Another paragraph of the footnote above (utils/blockRun): its guide line.
+          data-footnote-continuation={continuesFootnote ? "" : undefined}
           className={placeholder ? "empty-block" : undefined}
           role="textbox"
           aria-multiline="true"
@@ -476,6 +479,58 @@ const EditableBlock = memo(
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
         />
+      );
+    }
+
+    // A footnote definition as Obsidian's editing view shows it: its label,
+    // small, raised and muted, then its text. The label is the file's and is never
+    // renumbered; the Markdown view edits it.
+    if (block.type === "footnote") {
+      return (
+        <div
+          data-block-id={block.id}
+          data-block-type={block.type}
+          suppressContentEditableWarning
+          style={{
+            contain: "content",
+            display: "flex",
+            alignItems: "baseline",
+            // The label sits just before the text, as Obsidian draws it.
+            gap: "0.3em",
+            margin: `0 0 ${rhythm.paragraphGap}px`,
+            fontSize: rhythm.bodySize,
+            lineHeight: rhythm.lineHeight,
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift("p", rhythm) } : null),
+          }}
+        >
+          <span
+            contentEditable="false"
+            suppressContentEditableWarning
+            aria-hidden="true"
+            data-footnote-label=""
+            // Raised, small and muted like its reference (`.md-fn-ref`), so the
+            // two read as a pair and never as a numbered list's marker. A flex
+            // item takes no vertical-align: it is lifted instead.
+            style={{
+              color: TEXT.muted,
+              fontSize: "0.75em",
+              position: "relative",
+              top: "-0.45em",
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+              userSelect: "none",
+            }}
+          >
+            {block.label}
+          </span>
+          <span
+            ref={elRef}
+            role="textbox"
+            aria-multiline="true"
+            aria-label={`Footnote ${block.label}`}
+            style={{ color: TEXT.primary, outline: "none", flex: 1, minWidth: 0 }}
+          />
+        </div>
       );
     }
 
@@ -666,6 +721,8 @@ const EditableBlock = memo(
       prev.syncGen === next.syncGen &&
       prev.accentColor === next.accentColor &&
       prev.numberedIndex === next.numberedIndex &&
+      prev.continuesFootnote === next.continuesFootnote &&
+      prev.block.label === next.block.label &&
       prev.isBlockSelected === next.isBlockSelected &&
       prev.isOnlyBlockSelected === next.isOnlyBlockSelected &&
       (prev.block.text === "") === (next.block.text === "") &&

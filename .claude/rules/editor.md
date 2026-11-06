@@ -2,9 +2,8 @@
 
 ## One owner for note state
 
-Note state has two copies: React state and `useHistory`'s keystroke ref, which runs ahead of
-state. **Every change goes through a `useHistory` action;
-the raw setter is not exposed.** Six actions; a seventh is a smell.
+Note state has two copies: React state and `useHistory`'s keystroke ref, which runs ahead.
+**Every change goes through a `useHistory` action; the raw setter is not exposed.** Six actions; a seventh is a smell.
 
 | Action | For | Undo |
 | --- | --- | --- |
@@ -71,7 +70,7 @@ through state.**
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
   completion. The `[[` picker is a dialog and takes focus.
 - A completion from a native listener commits at once. A triple-click selects the block or its
-  field by the app's hand (`selectClickedBlock`). A caret rescue never takes focus back, nor
+  field, by the app (`selectClickedBlock`). A caret rescue never takes focus back, nor
   follows a link's click.
 - ArrowUp with nothing above reaches the note's name, ArrowDown comes back; Shift+Arrow is
   always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
@@ -82,10 +81,10 @@ through state.**
 
 ## Backspace sheds the kind before it merges
 
-- Backspace at the start of a heading, list item, quote or task makes it a paragraph and nothing
+- Backspace at the start of a heading, list item, quote, task or footnote makes it a paragraph, nothing
   else (`DEMOTES_TO_PARAGRAPH`); an indented item outdents first; only a paragraph merges.
   Enter at the start of a titled heading opens a paragraph above.
-- **Caret positions count visible characters** (`caretLength`), never Markdown length. A split
+- **Caret positions count visible characters** (`caretLength`), not Markdown. A split
   on a soft break's edge spends the break. `enter-backspace.spec.ts`.
 
 ## Links: the caret stays outside
@@ -123,8 +122,8 @@ through state.**
   `typed-formatting.spec.ts`.
 - **A code span is literal** (`codeSpans.js`): nothing in it is drawn; untouched it keeps its
   spelling (`data-md`), edited only what changed; only ⌘E acts in one. `literal-code.spec.ts`.
-  **So is a `%%` comment, muted**, no format acting; its grey follows its markers
-  (`repaintComments`). `comments.spec.ts`.
+  **So are a `%%` comment and a footnote, muted** (`literalRuns`), no format acting; the grey
+  follows the markers (`repaintComments`). `comments.spec.ts`, `footnotes.spec.ts`.
 - **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the next letters
   take the caret's own formatting, never a deleted run's; overtyping keeps its style.
   `typing-style.spec.ts`.
@@ -155,10 +154,10 @@ through state.**
 - **On the desktop text never starts a block drag; a picture does.** One floating grip
   (`BlockDragHandle`) in the gutter; nested (`data-indent`), on its parent's marker
   (`gripX`), clear of a wide number; on hover, `aria-hidden`.
-- A key hides the grip (not a lone modifier: Shift-click). **Blur cancels a press
-  unconditionally**. `grip-reveal.spec.ts`.
+- A key hides the grip (not a lone modifier: Shift-click). **Blur always cancels
+  a press**. `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`): moved, it drags; let go,
-  `BlockMenu` (on a tag, the tag's menu). A scroll, a double-tap or selected text is the browser's. A lone new finger ends
+  `BlockMenu` (on a tag, the tag's menu). A scroll, double-tap or text selection is the browser's. A lone new finger ends
   a lost hold (Android reuses ids). `hold-to-grab.spec.ts`.
 - **Commits on drop**, one entry, only if order changed; Escape, blur or the sidebar
   cancel. A selection drags as one run; moved blocks glide
@@ -172,7 +171,7 @@ through state.**
 ## Menus
 
 - **The slash menu is tiered**: `advanced: true` rows stay off the opening screen, one rule for
-  menu and keys (`filterSlashCommands()`). Rows take selection on real mouse movement.
+  menu and keys (`filterSlashCommands()`). Rows select on real mouse movement.
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
 - **Every menu's keys are one rule** (`useMenuKeys`); a suggestion under the caret
   (`suggestion: true`) is a `listbox`. `menuKeys.test.ts`,
@@ -184,9 +183,9 @@ through state.**
 
 ## Maths
 
-- **A `$$` formula never moves; its source opens underneath** (`MathBlock`; ⌘Z stays the
+- **A `$$` formula never moves; its source opens underneath** (`MathBlock`; ⌘Z is the
   note's); ↑/↓ at its edges walk out. `math-block.spec.ts`.
-- **`$x$` in a sentence is one sealed element** (`data-math`): one caret character; the closing
+- **`$x$` in a sentence is one sealed element** (`data-math`): one caret character; its closing
   `$` converts it, a press opens its source (`InlineMathPanel`). `inline-math.spec.ts`.
 - **`\` completes the `\word` the caret ends**; a choice is one undo entry
   (`closeTypingGroup`). `latex-menu.spec.ts`.
@@ -198,11 +197,11 @@ shows `Heading N` from CSS. `heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file
 
-`SourceView`: the note as `blocksToMarkdown` writes it, a plain monospace field. **Each note
+`SourceView`: the note as `blocksToMarkdown` writes it, plain monospace. **Each note
 keeps its own view, saved** (`useSourceView`).
 
-- **Switching commits nothing**, so it changes no byte. Each input is parsed with
-  `markdownToBlocks` and committed via `commitTextChange`.
+- **Switching commits nothing**, so it changes no byte. Each input is parsed
+  (`markdownToBlocks`) and committed (`commitTextChange`).
 - **It repaints only when the blocks aren't the ones it committed** (by identity). The caret
   crosses by block (`utils/sourceView.ts`). `source-view.spec.ts`.
 - **Colour says what each part is; nothing may change a character's width**:
@@ -251,7 +250,7 @@ never holds a byte sequence the syntax cannot.**
 ## Properties
 
 - **Frontmatter is the note's properties** (`PropertiesBlock`), read with `yaml`
-  (`readProperties`), never written by it. YAML the rows can't read opens as YAML. The YAML field is a real field, kept literal. Never moved (`reorderFloor`). `properties-view.spec.ts`,
+  (`readProperties`), never written by it. YAML the rows can't read opens as YAML, a real field kept literal. Never moved (`reorderFloor`). `properties-view.spec.ts`,
   `frontmatter-order.spec.ts`.
 - **A row edit is one `editFrontmatter` commit** that splices only that property's text, run
   by name on the latest text and read back first (`runChange`), else refused and the YAML
@@ -295,8 +294,8 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 ## Whole-block selection
 
 - **Any block can be selected whole** (`blockRun.ts`): the grip, the gutter, Escape (every
-  block a text selection touches), a press on a divider, image, table or embed; Shift-click extends. **A list item brings its nested
-  items** (`subtreeEnd`). Text blocks wear the band, the caret hidden.
+  block a text selection touches), a press on a divider, image, table or embed; Shift-click extends. **A list item or footnote brings what nests
+  under it** (`subtreeEnd`; drops land after, `dropBoundary`). Text blocks wear the band, the caret hidden.
 - Backspace/Delete remove a selection in one commit, ⌘C/⌘X copy it whole (`wholeBlocksCopy`);
   a letter deselects and types; a press off `data-selection-surface` deselects.
 - **A drag from the left margin, a gutter strip or between blocks draws a box**

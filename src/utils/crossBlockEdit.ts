@@ -16,7 +16,14 @@ import { htmlToInlineMarkdown, sanitizeInlineHtml } from "./inlineFormatting";
 import { LIST_TYPES } from "./blockKinds";
 
 /** Blocks whose Markdown may span lines, so Shift+Enter puts a soft break inside them. */
-export const SOFT_BREAK_TYPES = new Set(["p", "bullet", "numbered", "checkbox", "blockquote"]);
+export const SOFT_BREAK_TYPES = new Set([
+  "p",
+  "bullet",
+  "numbered",
+  "checkbox",
+  "blockquote",
+  "footnote",
+]);
 
 export interface BlockPoint {
   blockIndex: number;

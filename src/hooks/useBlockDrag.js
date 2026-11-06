@@ -2,7 +2,7 @@ import { useRef, useEffect } from "react";
 import { EASE_ENTER, currentSettleMs, prefersReducedMotion } from "../tokens/motion";
 import { cssZoom, runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 import { reorderFloor } from "../utils/blockOrder";
-import { selectedIds, subtreeEnd } from "../utils/blockRun";
+import { dropBoundary, selectedIds, subtreeEnd } from "../utils/blockRun";
 import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
 import { EDGE_GAP, gapY, placeMarker } from "../utils/dropMarker";
 import { selectedLinesOf } from "../utils/selectedLines";
@@ -277,6 +277,8 @@ export function useBlockDrag({
     }
     // Never above the frontmatter: the highest position is the gap under it.
     targetIndex = Math.max(reorderFloor(blocks), Math.min(targetIndex, blocks.length));
+    // Never between a footnote and its later paragraphs (utils/blockRun).
+    targetIndex = dropBoundary(blocks, targetIndex);
 
     // Releasing outside the editor's scroll area (over the sidebar, say) is a
     // cancel, so the marker disappears the moment the pointer crosses out.
