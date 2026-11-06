@@ -5,7 +5,9 @@ import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
 import { shortcutLabel } from "./Tooltip";
 import { cssZoom } from "../utils/domHelpers";
 import {
+  ChevronDownIcon,
   ChevronLeftIcon,
+  ChevronRightIcon,
   ClipboardIcon,
   CopyIcon,
   LinkIcon,
@@ -92,6 +94,8 @@ interface BlockMenuProps {
   onDuplicate: () => void;
   onCopy: () => void;
   onDelete: () => void;
+  /** A foldable callout's: whether it is folded now, and the toggle (never an edit). */
+  fold?: { folded: boolean; onToggle: () => void };
   /** An embed's: opens its link underneath, the keyboard's way in. */
   onEditLink?: () => void;
   onClose: () => void;
@@ -117,6 +121,7 @@ export default function BlockMenu({
   onDuplicate,
   onCopy,
   onDelete,
+  fold,
   onEditLink,
   onClose,
   under = false,
@@ -150,6 +155,12 @@ export default function BlockMenu({
   }));
   const turnable = types.some((t) => TURNABLE.has(t));
   const items: MenuItem[] = [];
+  if (!turning && fold && types.length === 1)
+    items.push({
+      label: fold.folded ? "Unfold" : "Fold",
+      icon: fold.folded ? <ChevronRightIcon /> : <ChevronDownIcon />,
+      action: fold.onToggle,
+    });
   if (!turning && onEditLink && types.length === 1 && types[0] === "embed")
     items.push({ label: "Edit link", icon: <LinkIcon />, action: onEditLink });
   if (turning) {

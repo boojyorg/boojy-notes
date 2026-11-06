@@ -1023,6 +1023,36 @@ ${tagPillCss(theme)}
           pointer-events: none;
         }
         .callout-title[data-empty]:focus::before { opacity: 0.35; }
+        /* A foldable callout's body slides on the small clock (grid rows, as a
+           diagram's code); it clips only while folded or sliding. */
+        .callout-fold {
+          display: grid;
+          grid-template-rows: 1fr;
+          transition: grid-template-rows var(--motion-enter) var(--ease-enter);
+        }
+        .callout-fold[data-folded] { grid-template-rows: 0fr; }
+        .callout-fold-inner { min-height: 0; }
+        .callout-fold:is([data-folded], [data-moving]) > .callout-fold-inner { overflow: hidden; }
+        .callout-fold-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex: none;
+          width: 22px;
+          height: 22px;
+          margin-left: 2px;
+          padding: 0;
+          border: none;
+          border-radius: 4px;
+          background: transparent;
+          cursor: pointer;
+        }
+        .callout-fold-btn svg { transition: transform var(--motion-fast); }
+        .callout-fold-btn[aria-expanded="true"] svg { transform: rotate(90deg); }
+        @media (hover: hover) { .callout-fold-btn:hover { background: ${theme.calloutIconHover}; } }
+        @media (prefers-reduced-motion: reduce) {
+          .callout-fold, .callout-fold-btn svg { transition: none; }
+        }
         .callout-body[data-empty]::before {
           content: attr(data-placeholder);
           color: ${theme.TEXT.muted};

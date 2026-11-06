@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
 
-// The callout type picker keeps the caret in the callout and takes only the
-// menu keys (useMenuKeys, as a suggestion menu): arrows wrap, Enter chooses,
-// Escape closes; the field under it never sees them.
+// The callout's type menu is the shared menu (Menu): radio rows, the chosen
+// one ticked in the row's own ink (never the type's colour), the menus' keys:
+// arrows wrap, Enter chooses, Escape closes. It never takes focus, so the
+// caret stays in the callout.
 
-test("the callout picker walks its options by keyboard and chooses with Enter", async ({
+test("the callout type menu is the shared menu: walked by keys, ticked in the row's ink", async ({
   page,
 }) => {
   await page.goto("/");
@@ -16,23 +17,37 @@ test("the callout picker walks its options by keyboard and chooses with Enter", 
   await expect(trigger).toBeVisible();
 
   await trigger.click();
-  const picker = page.getByRole("listbox", { name: "Callout type" });
-  await expect(picker).toBeVisible();
+  const menu = page.getByRole("menu", { name: "Callout type" });
+  await expect(menu).toBeVisible();
   await expect(trigger).toHaveAttribute("aria-expanded", "true");
-  const options = picker.getByRole("option");
-  const count = await options.count();
-  await expect(options.first()).toHaveAttribute("aria-selected", "true");
+  const rows = menu.getByRole("menuitemradio");
+  const count = await rows.count();
+  const checked = menu.locator('[role="menuitemradio"][aria-checked="true"]');
+  await expect(checked).toHaveCount(1);
+  await expect(checked).toHaveText("Note");
+  // The tick is the row's ink, not the type's colour.
+  const tick = page.getByTestId("callout-type-check");
+  const [tickInk, rowInk] = await Promise.all([
+    tick.evaluate((el) => getComputedStyle(el).color),
+    checked.evaluate((el) => getComputedStyle(el).color),
+  ]);
+  expect(tickInk).toBe(rowInk);
 
+  // The arrows walk the rows and wrap.
+  const active = () => menu.getAttribute("aria-activedescendant");
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(active).toBe("callout-type-item-0");
   // Up from the first wraps to the last; down comes back round.
   await page.keyboard.press("ArrowUp");
-  await expect(options.nth(count - 1)).toHaveAttribute("aria-selected", "true");
+  await expect.poll(active).toBe(`callout-type-item-${count - 1}`);
   await page.keyboard.press("ArrowDown");
+  await expect.poll(active).toBe("callout-type-item-0");
   await page.keyboard.press("ArrowDown");
-  await expect(options.nth(1)).toHaveAttribute("aria-selected", "true");
-  const chosen = (await options.nth(1).innerText()).trim();
+  const chosenId = (await active())!;
+  const chosen = (await page.locator(`#${chosenId}`).innerText()).trim();
 
   await page.keyboard.press("Enter");
-  await expect(picker).toHaveCount(0);
+  await expect(menu).toHaveCount(0);
   // An empty title stays empty (nothing is written to the file): it is shown
   // as the new type's name.
   const title = page.locator(".callout-title").first();
@@ -40,9 +55,9 @@ test("the callout picker walks its options by keyboard and chooses with Enter", 
   await expect(title).toHaveAttribute("data-placeholder", chosen);
 
   await trigger.click();
-  await expect(picker).toBeVisible();
+  await expect(menu).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(picker).toHaveCount(0);
+  await expect(menu).toHaveCount(0);
 });
 
 // An empty title is the type's name, and that is the title the reader sees:

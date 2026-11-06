@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, cleanup } from "@testing-library/react";
+import { render, cleanup, fireEvent } from "@testing-library/react";
 
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
@@ -36,13 +36,17 @@ vi.mock("../../src/utils/inlineFormatting", () => ({
   domNodeToMarkdown: (el) => el?.textContent || "",
 }));
 
-vi.mock("lucide-react", () => {
+// The callout's own icons, named for the tests; the rest (the shared menu's
+// icon set) stay real.
+vi.mock("lucide-react", async (importOriginal) => {
+  const real = await importOriginal();
   const icon = (name) => {
     const Comp = (props) => <svg data-testid={`icon-${name}`} {...props} />;
     Comp.displayName = name;
     return Comp;
   };
   return {
+    ...real,
     Pencil: icon("Pencil"),
     Info: icon("Info"),
     Lightbulb: icon("Lightbulb"),
@@ -55,6 +59,7 @@ vi.mock("lucide-react", () => {
     Bug: icon("Bug"),
     FileText: icon("FileText"),
     XCircle: icon("XCircle"),
+    ChevronRight: icon("ChevronRight"),
   };
 });
 
@@ -198,5 +203,56 @@ describe("CalloutBlock", () => {
     expect(container.querySelector(".callout-block").style.background).toBe(
       "rgba(247, 118, 142, 0.14)",
     );
+  });
+
+  // Folding is how the note is viewed, never an edit: `-` opens folded, `+`
+  // open, no sign never folds; the chevron is a named button saying its state;
+  // a folded body is out of reach (inert); the file's sign rules again when
+  // the open note changes.
+  describe("folding", () => {
+    const fold = (calloutFold, extra = {}) => ({
+      ...defaultProps,
+      ...extra,
+      block: { ...defaultProps.block, calloutFold },
+    });
+    const chevron = (c) => c.querySelector("button.callout-fold-btn");
+    const body = (c) => c.querySelector(".callout-fold");
+
+    it("opens as its sign says, and a callout with none has no chevron", () => {
+      const folded = render(<CalloutBlock {...fold("-")} />);
+      expect(chevron(folded.container).getAttribute("aria-expanded")).toBe("false");
+      expect(chevron(folded.container).getAttribute("aria-label")).toBe("Expand callout");
+      expect(body(folded.container).hasAttribute("inert")).toBe(true);
+      folded.unmount();
+      const open = render(<CalloutBlock {...fold("+")} />);
+      expect(chevron(open.container).getAttribute("aria-expanded")).toBe("true");
+      expect(chevron(open.container).getAttribute("aria-label")).toBe("Collapse callout");
+      expect(body(open.container).hasAttribute("inert")).toBe(false);
+      open.unmount();
+      const plain = render(<CalloutBlock {...fold("")} />);
+      expect(chevron(plain.container)).toBeNull();
+    });
+
+    it("toggles on the chevron and writes nothing", () => {
+      const { container } = render(<CalloutBlock {...fold("-")} />);
+      fireEvent.click(chevron(container));
+      expect(chevron(container).getAttribute("aria-expanded")).toBe("true");
+      expect(body(container).hasAttribute("inert")).toBe(false);
+      fireEvent.click(chevron(container));
+      expect(chevron(container).getAttribute("aria-expanded")).toBe("false");
+      expect(defaultProps.onUpdateBlock).not.toHaveBeenCalled();
+      expect(defaultProps.onUpdateTitle).not.toHaveBeenCalled();
+      expect(defaultProps.onUpdateText).not.toHaveBeenCalled();
+    });
+
+    it("starts again from its sign when the open note changes, or the sign does", () => {
+      const { container, rerender } = render(<CalloutBlock {...fold("-")} />);
+      fireEvent.click(chevron(container));
+      expect(chevron(container).getAttribute("aria-expanded")).toBe("true");
+      rerender(<CalloutBlock {...fold("-", { noteId: "note-2" })} />);
+      expect(chevron(container).getAttribute("aria-expanded")).toBe("false");
+      rerender(<CalloutBlock {...fold("+", { noteId: "note-2" })} />);
+      expect(chevron(container).getAttribute("aria-expanded")).toBe("true");
+    });
   });
 });

@@ -247,6 +247,8 @@ never holds a byte sequence the syntax cannot.**
 - The serializer enforces the syntax: a cell's newline is `<br>`, a callout title's a space.
 - **An empty callout title shows its type word, title-cased, and is never written**
   (`shownTitle`); a type change leaves the title alone. `callout-picker.spec.ts`.
+- **A callout's fold is a view, never an edit**: `-` folded, `+` open, reset when the note
+  changes; folded, the body is `inert` and Find opens it. `callout-fold.spec.ts`.
 
 ## Properties
 

@@ -660,6 +660,7 @@ const EditableBlock = memo(
       prev.block.lang === next.block.lang &&
       prev.block.calloutType === next.block.calloutType &&
       prev.block.calloutTypeRaw === next.block.calloutTypeRaw &&
+      prev.block.calloutFold === next.block.calloutFold &&
       prev.block.title === next.block.title &&
       prev.blockIndex === next.blockIndex &&
       prev.syncGen === next.syncGen &&

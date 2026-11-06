@@ -1816,6 +1816,24 @@ const EditorArea = memo(
                         setBlockMenu(null);
                         deleteWholeBlock(activeNote, selectedRun.from, selectedRun.to);
                       }}
+                      fold={(() => {
+                        // One callout with a fold sign: its fold state is the
+                        // callout's own (view-only), read from what it draws.
+                        if (selectedRun.from !== selectedRun.to) return undefined;
+                        const b = note.content.blocks[selectedRun.from];
+                        if (b?.type !== "callout" || !["-", "+"].includes(b.calloutFold))
+                          return undefined;
+                        const drawn = editorRef.current?.querySelector(
+                          `[data-editor] > [data-block-id="${b.id}"] .callout-block`,
+                        );
+                        return {
+                          folded: drawn?.hasAttribute("data-folded") ?? false,
+                          onToggle: () => {
+                            setBlockMenu(null);
+                            openBlock(b.id, "toggle");
+                          },
+                        };
+                      })()}
                       onEditLink={() => {
                         setBlockMenu(null);
                         openBlock(note.content.blocks[selectedRun.from].id);
