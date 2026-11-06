@@ -55,3 +55,231 @@ test("a tag is a pill from its first letter; a space after it is prose, a letter
     await h.close();
   }
 });
+
+// A click on a tag searches it; its right-click menu offers Search and Edit
+// tag. Edit tag selects the name (the `#` left out), so typing renames only
+// this occurrence and it stays a tag.
+test("a tag's right-click menu searches it or edits this one; a click still searches", async () => {
+  const h = await launchApp({ "Note.md": "see #area/work and #area/work again\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pills = page.locator("[data-editor] .inline-tag");
+    await expect(pills).toHaveText(["#area/work", "#area/work"]);
+
+    await pills.first().click();
+    const palette = page.getByRole("dialog", { name: /search/i });
+    await expect(palette).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(palette).toHaveCount(0);
+
+    await pills.first().click({ button: "right" });
+    const menu = page.getByRole("menu");
+    await expect(menu.getByRole("menuitem", { name: "Search #area/work" })).toBeVisible();
+    await menu.getByRole("menuitem", { name: "Search #area/work" }).click();
+    await expect(palette).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await pills.first().click({ button: "right" });
+    await menu.getByRole("menuitem", { name: "Edit tag" }).click();
+    await expect(menu).toHaveCount(0);
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("area/work");
+    await page.keyboard.type("area/home");
+    await expect(pills).toHaveText(["#area/home", "#area/work"]);
+    await waitForFile(
+      h.vault.file("Note.md"),
+      (t) => t === "see #area/home and #area/work again\n",
+    );
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// A right-click on a tag selects it whole, `#` and nested parts, as a Mac
+// selects a right-clicked word: Cut and Copy take all of it.
+test("a right-click selects the whole tag, so Cut takes all of it", async () => {
+  const h = await launchApp({ "Note.md": "see #area/work and more\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pill = page.locator("[data-editor] .inline-tag");
+    const box = (await pill.boundingBox())!;
+    await page.mouse.click(box.x + box.width * 0.6, box.y + box.height / 2, { button: "right" });
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("#area/work");
+    await expect(menu.getByRole("menuitem", { name: /^Cut/ })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await menu.getByRole("menuitem", { name: /^Cut/ }).click();
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see  and more\n");
+  } finally {
+    await h.close();
+  }
+});
+
+// The cut tag pasted back from the right-click menu past the end of a line
+// that ends in a typed space. On the Windows runner the tag lands on a new
+// line of its own ("see  and more \n\n#area/work"); Mac and Linux put it
+// after the space. Cause unconfirmed (BACKLOG, Known issues): expected to
+// fail on Windows until it is reproduced and fixed there.
+test("a cut tag pasted from the right-click menu past a line's end lands on that line", async () => {
+  test.fail(process.platform === "win32", "Windows: the paste lands on a new line (BACKLOG)");
+  const h = await launchApp({ "Note.md": "see #area/work and more\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pill = page.locator("[data-editor] .inline-tag");
+    const box = (await pill.boundingBox())!;
+    await page.mouse.click(box.x + box.width * 0.6, box.y + box.height / 2, { button: "right" });
+    const menu = page.getByRole("menu");
+    await menu.getByRole("menuitem", { name: /^Cut/ }).click();
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see  and more\n");
+
+    await page.locator("[data-editor] [data-block-id]").first().click();
+    await page.keyboard.press(END_OF_LINE);
+    await page.keyboard.type(" ");
+    const block = (await page.locator("[data-editor] [data-block-id]").first().boundingBox())!;
+    await page.mouse.click(block.x + block.width - 4, block.y + block.height / 2, {
+      button: "right",
+    });
+    await menu.getByRole("menuitem", { name: /^Paste/ }).click();
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see  and more #area/work\n");
+  } finally {
+    await h.close();
+  }
+});
+
+// The tag holding the caret is being edited: a click on it places the caret
+// (a click on any other tag still searches), it wears a ring, and Enter
+// finishes, the caret after it, never splitting it.
+test("the tag being edited takes clicks as text, wears a ring, and Enter finishes it", async () => {
+  const h = await launchApp({ "Note.md": "see #area/home and #area/work\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pills = page.locator("[data-editor] .inline-tag");
+    const home = pills.first();
+    const palette = page.getByRole("dialog", { name: /search/i });
+
+    await home.click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Edit tag" }).click();
+    await expect(home).toHaveAttribute("data-editing", "");
+    await expect(pills.nth(1)).not.toHaveAttribute("data-editing", "");
+
+    // A click just before the `h`: the caret goes there, no Search.
+    const h0 = await home.evaluate((el) => {
+      const text = el.firstChild as Text;
+      const r = document.createRange();
+      r.setStart(text, text.data.indexOf("h"));
+      r.setEnd(text, text.data.indexOf("h") + 1);
+      const b = r.getBoundingClientRect();
+      return { x: b.left + 1, y: b.top + b.height / 2 };
+    });
+    await page.mouse.click(h0.x, h0.y);
+    await expect(palette).toHaveCount(0);
+    await page.keyboard.type("o");
+    await expect(home).toHaveText("#area/ohome");
+
+    // Enter finishes: the caret after the tag, the block whole, the ring gone.
+    const blocks = page.locator("[data-editor] > [data-block-id]");
+    const count = await blocks.count();
+    await page.keyboard.press("Enter");
+    await expect(home).not.toHaveAttribute("data-editing", "");
+    await expect(blocks).toHaveCount(count);
+    await page.keyboard.type("!");
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see #area/ohome! and #area/work\n");
+
+    // Not being edited, a click on a tag searches again.
+    await pills.nth(1).click();
+    await expect(palette).toBeVisible();
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// A new tag with nothing to suggest leaves no unseen backdrop: the next press
+// lands (it used to be swallowed, closing a menu nobody could see).
+test("after typing a tag with no suggestions, the next click lands", async () => {
+  const h = await launchApp({ "Note.md": "see #area/work here\n\nnext\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    await page.locator("[data-editor] [data-block-id]").nth(1).click();
+    await page.keyboard.press(END_OF_LINE);
+    await page.keyboard.type(" #zzqq");
+    await expect(page.getByRole("listbox", { name: "Tag suggestions" })).toHaveCount(0);
+    await page.locator("[data-editor] .inline-tag", { hasText: "#area/work" }).click();
+    await expect(page.getByRole("dialog", { name: /search/i })).toBeVisible();
+  } finally {
+    await h.close();
+  }
+});
+
+// Enter's modified forms keep their meaning inside a tag being edited, and
+// fields that own their keys (a table cell, a callout body) finish a tag on
+// plain Enter as a paragraph does.
+async function editTag(page: import("@playwright/test").Page, scope: string) {
+  const pill = page.locator(`${scope} .inline-tag`).first();
+  await pill.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Edit tag" }).click();
+  // The caret just inside the name, after its `#`.
+  await page.keyboard.press("ArrowLeft");
+  return pill;
+}
+
+test("Shift+Enter inside a tag being edited breaks the line after the tag, never inside it", async () => {
+  const h = await launchApp({ "Note.md": "see #area/home and more\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pill = await editTag(page, "[data-editor]");
+    await page.keyboard.press("Shift+Enter");
+    await expect(pill).toHaveText("#area/home");
+    // On disk: the break after the whole tag (on screen the space after it is
+    // a U+00A0, as a line's leading space is drawn).
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see #area/home\n and more\n");
+    await expect(page.locator("[data-editor] > [data-block-id]")).toHaveCount(2);
+  } finally {
+    await h.close();
+  }
+});
+
+test("plain Enter in a tag being edited in a table cell finishes it, adding no row", async () => {
+  const h = await launchApp({ "Note.md": "| Tag |\n| --- |\n| #area/home x |\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const rows = page.locator("[data-editor] table tr");
+    await expect(rows).toHaveCount(2);
+    const pill = await editTag(page, "[data-editor] td");
+    await page.keyboard.press("Enter");
+    await expect(rows).toHaveCount(2);
+    await expect(pill).not.toHaveAttribute("data-editing", "");
+    await page.keyboard.type("!");
+    await waitForFile(h.vault.file("Note.md"), (t) => t.includes("| #area/home! x |"));
+  } finally {
+    await h.close();
+  }
+});
+
+test("plain Enter in a tag being edited in a callout body finishes it, breaking no line", async () => {
+  const h = await launchApp({ "Note.md": "> [!note] Title\n> see #area/home x\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    const pill = await editTag(page, "[data-editor] .callout-body");
+    await page.keyboard.press("Enter");
+    await expect(pill).not.toHaveAttribute("data-editing", "");
+    await page.keyboard.type("!");
+    await waitForFile(
+      h.vault.file("Note.md"),
+      (t) => t === "> [!note] Title\n> see #area/home! x\n",
+    );
+  } finally {
+    await h.close();
+  }
+});

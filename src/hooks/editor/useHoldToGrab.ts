@@ -151,8 +151,8 @@ interface Touch {
 }
 
 export interface HoldHandlers {
-  /** A finger kept still on a block: it is held (selected). */
-  onHold: (blockId: string) => void;
+  /** A finger kept still on a block, at (x, y): it is held (selected). */
+  onHold: (blockId: string, x: number, y: number) => void;
   /** Let go without moving: the block's menu, at the finger. */
   onRelease: (blockId: string, x: number, y: number) => void;
   /** The held finger moved: the block lifts. False if it cannot move. */
@@ -261,7 +261,7 @@ export function useHoldToGrab({
       if (!touch.keyboard) blurEditor();
       // Felt once, as the hold is recognised; a drag that follows adds nothing.
       window.boojyPhoneAPI?.holdFelt();
-      on.current.onHold(id);
+      on.current.onHold(id, touch.x, touch.y);
     };
 
     const onTouchStart = (e: TouchEvent) => {

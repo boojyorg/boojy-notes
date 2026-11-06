@@ -77,53 +77,61 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
 
   if (!shown) return null;
 
+  // The backdrop that closes it stands only while it shows rows: a tag with
+  // nothing to offer left an unseen one that swallowed the next press.
   return (
-    <div
-      className="motion-pop"
-      ref={menuRef}
-      role="listbox"
-      aria-label="Tag suggestions"
-      style={{
-        position: "fixed",
-        top: position.top,
-        left: position.left,
-        background: BG.elevated,
-        border: `1px solid ${BG.divider}`,
-        borderRadius: MENU_RADIUS,
-        padding: MENU_PAD,
-        boxShadow: theme.modalShadow,
-        zIndex: Z.WIKILINK_MENU,
-        maxHeight: 200,
-        overflowY: "auto",
-        minWidth: 180,
-      }}
-    >
-      {rows.map((t, i) => (
-        <div
-          key={t.tag}
-          role="option"
-          aria-selected={i === selectedIndex}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            onSelect(t.tag);
-          }}
-          onMouseEnter={(e) => {
-            if (fromTouch(e)) return;
-            setSelectedIndex(i);
-          }}
-          style={{
-            padding: "7px 10px",
-            borderRadius: MENU_ROW_RADIUS,
-            fontSize: 12.5,
-            cursor: "pointer",
-            color: TEXT.primary,
-            background: i === selectedIndex ? BG.hover : "transparent",
-            transition: "background var(--motion-fast)",
-          }}
-        >
-          #{t.tag}
-        </div>
-      ))}
-    </div>
+    <>
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: Z.MENU_BACKDROP }}
+        onMouseDown={onDismiss}
+      />
+      <div
+        className="motion-pop"
+        ref={menuRef}
+        role="listbox"
+        aria-label="Tag suggestions"
+        style={{
+          position: "fixed",
+          top: position.top,
+          left: position.left,
+          background: BG.elevated,
+          border: `1px solid ${BG.divider}`,
+          borderRadius: MENU_RADIUS,
+          padding: MENU_PAD,
+          boxShadow: theme.modalShadow,
+          zIndex: Z.WIKILINK_MENU,
+          maxHeight: 200,
+          overflowY: "auto",
+          minWidth: 180,
+        }}
+      >
+        {rows.map((t, i) => (
+          <div
+            key={t.tag}
+            role="option"
+            aria-selected={i === selectedIndex}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(t.tag);
+            }}
+            onMouseEnter={(e) => {
+              if (fromTouch(e)) return;
+              setSelectedIndex(i);
+            }}
+            style={{
+              padding: "7px 10px",
+              borderRadius: MENU_ROW_RADIUS,
+              fontSize: 12.5,
+              cursor: "pointer",
+              color: TEXT.primary,
+              background: i === selectedIndex ? BG.hover : "transparent",
+              transition: "background var(--motion-fast)",
+            }}
+          >
+            #{t.tag}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

@@ -20,6 +20,8 @@ export const TAG_PILL_FONT = "0.92em";
 /** Ground alpha by theme name (`day` / `night`), rest and hover. */
 export const TAG_PILL_ALPHA = { day: 0.3, night: 0.22 } as const;
 export const TAG_PILL_HOVER_ALPHA = { day: 0.4, night: 0.32 } as const;
+/** Being edited (the caret in it): a fainter ground, text for now, not a button. */
+export const TAG_PILL_EDIT_ALPHA = { day: 0.12, night: 0.1 } as const;
 
 /**
  * The × that removes a list item or a tag, as a share of its ink (muted beside a list item,
@@ -58,5 +60,11 @@ export function tagPillCss(theme: Theme) {
         }
         [data-block-id] .inline-tag:hover {
           background: ${tagPillGround(theme, true)};
+        }
+        /* Being edited (the caret is in it): text for now, so a fainter ground. */
+        [data-block-id] .inline-tag[data-editing],
+        [data-block-id] .inline-tag[data-editing]:hover {
+          background: ${withAlpha(theme.ACCENT.primary, TAG_PILL_EDIT_ALPHA[key(theme)])};
+          cursor: text;
         }`;
 }

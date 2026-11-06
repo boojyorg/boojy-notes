@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { registerBlockOpener } from "../utils/blockOpen";
+import { enterInTag } from "../utils/tagEditing";
 import { withAlpha } from "../utils/selectionBand";
 import { fieldTextAfterTyping } from "../utils/typedFormatting";
 import Menu from "./Menu";
@@ -326,6 +327,8 @@ export default memo(function CalloutBlock({
 
   const handleBodyKeyDown = useCallback(
     (e) => {
+      // A tag being edited here finishes on Enter as in a paragraph.
+      if (enterInTag(e, bodyRef.current)) return;
       if (e.key === "Backspace") {
         const bodyEmpty = !domNodeToMarkdown(bodyRef.current).trim();
         if (bodyEmpty) {

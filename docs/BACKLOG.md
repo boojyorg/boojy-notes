@@ -371,6 +371,15 @@ references (Public Beta).
   with #432's existence and inode lines to see whether the file looked present or the inode
   search missed.
 
+- [ ] **Paste from the right-click menu past a line's end lands on a new line on Windows**
+  (`tag-pill.spec.ts`, `test.fail` on win32 there; #489's CI, 2026-11-06). Seen: a tag cut
+  from the right-click menu, a space typed at the line's end, a right-click past the end, then
+  Paste: the Windows runner wrote `see  and more \n\n#area/work`; Mac and Linux put the tag
+  after the space. Plain clipboard text pasted past a line with no trailing space works there
+  (`text-context-menu.spec.ts`). Cause unconfirmed; one guess is Chromium's own right-click
+  selection on Windows (the app leaves it to Chromium for spelling). Reproduce in the Windows
+  VM before fixing.
+
 ### Data safety / reliability
 
 **First-edit mutations.** The first edit of an affected note can rewrite third-party content.

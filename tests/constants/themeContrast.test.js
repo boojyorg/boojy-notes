@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { NIGHT, DAY } from "../../src/constants/themes.js";
-import { REMOVE_X_ALPHA, TAG_PILL_ALPHA, TAG_PILL_HOVER_ALPHA } from "../../src/styles/tagPill";
+import {
+  REMOVE_X_ALPHA,
+  TAG_PILL_ALPHA,
+  TAG_PILL_EDIT_ALPHA,
+  TAG_PILL_HOVER_ALPHA,
+} from "../../src/styles/tagPill";
 
 // WCAG 2 contrast: 4.5:1 for words, 3:1 for a glyph that carries meaning
 // (the toast's icon). Every ink is checked on every ground it can sit on,
@@ -106,6 +111,8 @@ for (const theme of [NIGHT, DAY]) {
       const pills = [
         over(theme.ACCENT.primary, TAG_PILL_ALPHA[key], theme.BG.editor),
         over(theme.ACCENT.primary, TAG_PILL_HOVER_ALPHA[key], theme.BG.editor),
+        // Being edited: the fainter ground.
+        over(theme.ACCENT.primary, TAG_PILL_EDIT_ALPHA[key], theme.BG.editor),
         over(theme.ACCENT.primary, TAG_PILL_ALPHA[key], theme.BG.elevated),
       ];
       for (const pill of pills)

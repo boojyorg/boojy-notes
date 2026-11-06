@@ -619,6 +619,11 @@ export function caretOutOfTagEnd(root) {
   return selectAnchor(anchorAfterLink, tag);
 }
 
+/** The caret just after `tag`, on its anchor: Enter's end to editing a tag (`tagEditing`). */
+export function caretAfterTag(tag) {
+  return selectAnchor(anchorAfterLink, tag);
+}
+
 /** The collapsed caret inside `root`, when it rests in a text node that is not a link's icon. */
 function collapsedTextCaret(root) {
   if (!root) return null;

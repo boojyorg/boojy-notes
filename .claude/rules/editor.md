@@ -25,7 +25,7 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
   version already written is not written again. `note-ownership.spec.ts`,
   `pending-edits-lifecycle.spec.ts`.
 
-### The DOM is painted from the ref; a programmatic edit is read back
+### Painting from the ref
 
 - **A text block is painted only on a signal** (mount, a `syncGen` bump, a title-set change),
   from `latestBlock(noteDataRef)`, never from the render, caret restored,
@@ -59,8 +59,7 @@ through state.**
 ## Keys and focus: the closest active surface owns them
 
 - **Tab outside a list goes to the open note's sidebar row** (`focusBeyondNote`; Shift+Tab the
-  name); lists indent, cells and code keep their Tab.
-  `keyboard-walkthrough.spec.ts`.
+  name). `keyboard-walkthrough.spec.ts`.
 - **A surface that takes a key prevents its default; one that reads a key checks
   `defaultPrevented` first.** The shell (`useAppKeyboard`) is the last, bubble-phase window
   listener; a surface never adds its own.
@@ -107,7 +106,9 @@ through state.**
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
-  reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at a pill's end lands outside it. `tag-pill.spec.ts`.
+  reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at its end lands
+  outside it. A click searches, except on the tag holding the caret; its
+  Edit tag selects the name; Enter jumps past it, in any field. `tag-pill.spec.ts`.
 - **A backslash escape is its symbol alone, sealed**: one caret character, read back with its
   backslash; as written in code, addresses and wikilinks. `escapes.spec.ts`.
 - Bare URLs autolink in prose only; `<url>` is text. **`LINK_DEST` is the one reading of a link
@@ -141,7 +142,7 @@ through state.**
 
 ## Right-click
 
-- `EditorContextMenu`: a misspelled word's or a link's actions, then Cut, Copy, Paste; a field
+- `EditorContextMenu`: a misspelled word's, link's or tag's actions, then Cut, Copy, Paste; a field
   outside the note gets the same (`TextFieldMenu`). **Items run the keys' own path.** Never
   focused, so the selection stays blue. `text-context-menu.spec.ts`.
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is late),
@@ -156,7 +157,7 @@ through state.**
 - A key hides the grip (not a lone modifier: Shift-click). **Blur cancels a press
   unconditionally** (Cmd-Tab: a phantom drag). `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`): moved, it drags; let go,
-  `BlockMenu`. A scroll, a double-tap or selected text is the browser's. A lone new finger ends
+  `BlockMenu` (on a tag, the tag's menu). A scroll, a double-tap or selected text is the browser's. A lone new finger ends
   a lost hold (Android reuses ids). `hold-to-grab.spec.ts`.
 - **Commits on drop**, one entry, only if order changed; Escape, blur or the sidebar
   cancel. A selection drags as one run; moved blocks glide
@@ -274,7 +275,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 
 ## Images
 
-- **A width is CSS pixels** (Obsidian's `|350`), capped at the column; none means natural size,
+- **A width is CSS pixels**, capped at the column; none means natural size,
   never enlarged. Showing an image never rewrites it. `image-controls.spec.ts`.
 - **A missing attachment is a `Not found` card**; Find it… copies the file in under the linked
   name. `missing-attachments.spec.ts`.

@@ -99,6 +99,8 @@ import { linkTargetIn } from "../utils/embedTarget";
 import { useEmbedFence } from "../hooks/editor/useEmbedFence";
 import { besideLine } from "../utils/marqueeSelect";
 import { withAlpha } from "../utils/selectionBand";
+import { selectTagName, tagName, tagRange } from "../utils/tagName";
+import { editingTag } from "../utils/tagEditing";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -742,14 +744,21 @@ const EditorArea = memo(
       mountKey: `${activeNote}:${hasNote}:${sourceView}`,
       // A hold through the open menu's backdrop closes it.
       // A hold on a block already selected keeps the run, so its menu acts on all of it.
-      onHold: (id) => {
+      onHold: (id, x, y) => {
         setBlockMenu(null);
+        // A hold on a tag is the tag's (its menu, on release), never the block's.
+        if (tagAtPoint(x, y)) return;
         if (!heldIdsRef.current.includes(id)) setSelectedBlockId(id);
       },
       // Under the run the menu acts on (the held block and its nested items,
       // or the selection the hold kept), never on it: a block it covered
       // would be one its Delete or Turn into changes unseen.
-      onRelease: (id) => {
+      onRelease: (id, x, y) => {
+        const tagEl = tagAtPoint(x, y);
+        if (tagEl) {
+          openTagMenu(tagEl, x, y);
+          return;
+        }
         const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
         const i = blocks.findIndex((b) => b.id === id);
         const run = heldIdsRef.current;
@@ -1172,7 +1181,64 @@ const EditorArea = memo(
     // on one, then Cut, Copy and Paste (EditorContextMenu). What the menu acts
     // on is taken now, before it takes focus: the selection's range and the
     // field that held focus (a code block's textarea keeps its own selection).
+    // The tag being edited (the selection is in it, `tagEditing`) wears
+    // `data-editing`, and is read at each press, before the press moves the
+    // caret, so a first click on a tag still searches.
+    const tagAtPressRef = useRef(null);
+    useEffect(() => {
+      let shown = null;
+      const mark = () => {
+        const tag = editingTag(editorRef.current);
+        if (tag === shown) return;
+        shown?.removeAttribute("data-editing");
+        tag?.setAttribute("data-editing", "");
+        shown = tag;
+      };
+      const press = () => {
+        tagAtPressRef.current = editingTag(editorRef.current);
+      };
+      document.addEventListener("selectionchange", mark);
+      document.addEventListener("pointerdown", press, true);
+      return () => {
+        document.removeEventListener("selectionchange", mark);
+        document.removeEventListener("pointerdown", press, true);
+        shown?.removeAttribute("data-editing");
+      };
+    }, [editorRef]);
+
     const [linkCtxMenu, setLinkCtxMenu] = useState(null);
+
+    /** The note's tag under a point (a hold's finger), if any. */
+    const tagAtPoint = (x, y) => {
+      const el = document.elementFromPoint(x, y)?.closest?.(".inline-tag");
+      return el && editorRef.current?.contains(el) ? el : null;
+    };
+
+    // The phone's hold on a tag opens the tag's menu, the desktop's
+    // right-click one (Search, Edit tag, Cut, Copy), the tag selected whole as
+    // a right-click selects it, and no block held.
+    const openTagMenu = (tagEl, x, y) => {
+      const whole = tagRange(tagEl);
+      if (!whole) return;
+      setSelectedBlockId(null);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(whole);
+      const hangFrom = document.createRange();
+      hangFrom.selectNodeContents(tagEl);
+      const cell = tagEl.closest('[data-block-type="table"] th, [data-block-type="table"] td');
+      setLinkCtxMenu({
+        anchor: menuAnchorFor(hangFrom, x, y),
+        linkType: null,
+        range: whole.cloneRange(),
+        field: null,
+        host: cell,
+        tableId: cell?.closest("[data-block-id]")?.getAttribute("data-block-id") ?? null,
+        canCutCopy: true,
+        tag: tagName(tagEl),
+        element: tagEl,
+      });
+    };
     // The latest right-click's spelling question: an older answer is dropped.
     const spellAsk = useRef(0);
 
@@ -1200,7 +1266,9 @@ const EditorArea = memo(
         // and the table gets its Delete table.
         const cell = e.target.closest('[data-block-type="table"] th, [data-block-type="table"] td');
         const tableId = cell?.closest("[data-block-id]")?.getAttribute("data-block-id") ?? null;
-        const linkEl = anchor || wikilink;
+        const tagEl = e.target.closest(".inline-tag");
+        // A tag is left as it is, as a link is: its menu is about the tag.
+        const linkEl = anchor || wikilink || tagEl;
         // A right-click on a word outside the selection selects the word, as
         // a Mac text field does; inside the selection it keeps it. A link is
         // left as it is: its menu is about the link.
@@ -1214,6 +1282,16 @@ const EditorArea = memo(
             sel.removeAllRanges();
             sel.addRange(target);
             range = target.cloneRange();
+          }
+        }
+        // A tag outside the selection is selected whole, `#` and all, as a
+        // word is: Cut and Copy take all of it.
+        if (tagEl && !field && !(range && pointInRange(range, x, y))) {
+          const whole = tagRange(tagEl);
+          if (whole) {
+            sel.removeAllRanges();
+            sel.addRange(whole);
+            range = whole.cloneRange();
           }
         }
         let hangFrom = range;
@@ -1232,7 +1310,10 @@ const EditorArea = memo(
             ? field.selectionStart !== field.selectionEnd
             : !!range && !range.collapsed,
         };
-        if (anchor) {
+        if (tagEl) {
+          menu.tag = tagName(tagEl);
+          menu.element = tagEl;
+        } else if (anchor) {
           menu.linkType = "external";
           menu.url = anchor.getAttribute("data-url") || anchor.getAttribute("href");
           menu.element = anchor;
@@ -1685,11 +1766,12 @@ const EditorArea = memo(
                       }
                       const tag = e.target.closest(".inline-tag");
                       if (tag) {
-                        // The pill's text, not `data-tag`: the attribute is written
-                        // at paint, and a tag that grew by typing keeps its first
-                        // letter's.
-                        const tagName = tag.textContent.replace(/\u200B/g, "").replace(/^#/, "");
-                        if (tagName && onTagClick) onTagClick(tagName);
+                        // The tag being edited when the press began takes the
+                        // click as text: the caret lands where it was.
+                        if (tag === tagAtPressRef.current) return;
+                        // A click searches; editing is the tag's menu's (Edit tag).
+                        const name = tagName(tag);
+                        if (name && onTagClick) onTagClick(name);
                         return;
                       }
                       // An embed's arrow opens its source, as a link to it would.
@@ -1905,6 +1987,17 @@ const EditorArea = memo(
               <EditorContextMenu
                 anchor={linkCtxMenu.anchor}
                 link={linkCtxMenu.linkType}
+                tag={linkCtxMenu.tag}
+                onSearchTag={() => {
+                  const { tag } = linkCtxMenu;
+                  dismissCtxMenu();
+                  if (tag && onTagClick) onTagClick(tag);
+                }}
+                onEditTag={() => {
+                  const { element } = linkCtxMenu;
+                  dismissCtxMenu();
+                  if (element?.isConnected) selectTagName(element);
+                }}
                 suggestions={linkCtxMenu.suggestions}
                 // Typed over the word, as the keys would: one undoable edit.
                 onReplaceWord={(w) =>
@@ -1954,6 +2047,8 @@ const EditorArea = memo(
                 }}
                 canCutCopy={linkCtxMenu.canCutCopy}
                 canPaste={!!getAPI()?.paste}
+                // The phone has no way to paste from a menu: no row for it.
+                pasteRow={!isPhone}
                 onCut={() => runOnSelection(() => document.execCommand("cut"))}
                 onCopy={() => runOnSelection(() => document.execCommand("copy"))}
                 onPaste={() => runOnSelection(() => getAPI()?.paste?.())}

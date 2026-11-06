@@ -38,6 +38,7 @@ import { editBlocks } from "../../utils/editBlocks";
 import { LINE_KIND_TYPES, LIST_TYPES } from "../../utils/blockKinds";
 import { isTodoKey, todoFlip } from "../../utils/todoToggle";
 import { selectedLines } from "../../utils/selectedLines";
+import { enterInTag } from "../../utils/tagEditing";
 
 /**
  * Blocks a Backspace at their start turns into a plain paragraph before it
@@ -162,6 +163,10 @@ export function useKeyboardHandlers({
     const text = el
       ? htmlToInlineMarkdown(sanitizeInlineHtml(el.innerHTML)).replace(/\n$/, "")
       : "";
+
+    // Enter inside the tag being edited finishes it, the caret after the tag;
+    // Shift+Enter breaks the line after it. A tag is never split (tagEditing).
+    if (enterInTag(e, el)) return;
 
     // Shift+Enter — a line break inside the block, never a new block. Chromium
     // inserts the <br> and fires `input`, so the ordinary commit path stores
