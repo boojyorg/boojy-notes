@@ -28,13 +28,13 @@ const blockRects = {
   b2: { top: 80, height: 51 }, // two-line paragraph
   b3: { top: 140, height: 30 },
   hr: { top: 80, height: 17, rule: { top: 88, height: 1 } }, // a divider: 8px, the rule, 8px
-  // A fence opening on a blank line: its toolbar 4px down (26px tall), then
+  // A fence opening on a blank line: its toolbar 2px down (26px tall), then
   // rows of 21px from 15px down; the first row holds nothing, the second holds
   // the first characters.
   code: {
     top: 80,
     height: 90,
-    toolbar: { top: 84, height: 26 },
+    toolbar: { top: 82, height: 26 },
     rows: [
       { top: 95, height: 21 },
       { top: 116, height: 21 },

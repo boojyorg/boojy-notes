@@ -50,8 +50,8 @@ export const DEFAULT_RHYTHM: Rhythm = {
   headingAbove: 28,
   headingBelow: 8,
   blockGap: 16,
-  codePadTop: 28,
-  codePadBottom: 28,
+  codePadTop: 26,
+  codePadBottom: 26,
   measure: 43,
 };
 
