@@ -61,6 +61,12 @@ const OWN_FIRST_ROW = "hr";
  */
 const TOOLBAR_ROW = ":scope > .code-tools, :scope > .code-block > .code-tools";
 
+/**
+ * A callout's first row is its title, even empty: an empty title's word is
+ * CSS (no text node), so the first text found would be the body's.
+ */
+const CALLOUT_TITLE = ":scope .callout-title";
+
 const MODIFIER_KEYS = new Set(["Shift", "Meta", "Control", "Alt"]);
 
 /** What the grip's chip says: the gesture, then what it does. */
@@ -74,6 +80,8 @@ function firstLineRect(el, zoom) {
   if (toolbar) return toolbar.getBoundingClientRect();
   const ownRow = el.querySelector(OWN_FIRST_ROW);
   if (ownRow) return ownRow.getBoundingClientRect();
+  const title = el.querySelector(CALLOUT_TITLE);
+  if (title && !title.textContent.trim()) return title.getBoundingClientRect();
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
   });

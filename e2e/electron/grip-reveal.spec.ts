@@ -191,3 +191,30 @@ test("a number wider than its column, at any depth, keeps clear of its grip", as
     await g.close();
   }
 });
+
+// A callout's grip meets its title row, written or not: an empty title's word
+// is CSS (no text node), so the first text found was the body's, a line lower.
+test("a callout's grip meets its title row, the title empty or written", async () => {
+  const g = await launchApp({
+    "Callouts.md": "> [!note]\n> A plain note.\n\n> [!tip] Written\n> Body.\n",
+  });
+  try {
+    await g.openNote("Callouts");
+    const blocks = g.page.locator("[data-editor] > [data-block-id]");
+    for (const n of [0, 1]) {
+      const block = blocks.nth(n);
+      const id = await block.getAttribute("data-block-id");
+      const handle = g.page.locator(`[data-testid="block-drag-handle"][data-target-block="${id}"]`);
+      await expect(async () => {
+        const box = (await block.boundingBox())!;
+        await g.page.mouse.move(box.x + 200, box.y + box.height - 6);
+        await expect(handle).toBeVisible({ timeout: 500 });
+      }).toPass();
+      const hb = (await handle.boundingBox())!;
+      const tb = (await block.locator(".callout-title").boundingBox())!;
+      expect(Math.abs(hb.y + hb.height / 2 - (tb.y + tb.height / 2))).toBeLessThanOrEqual(2);
+    }
+  } finally {
+    await g.close();
+  }
+});
