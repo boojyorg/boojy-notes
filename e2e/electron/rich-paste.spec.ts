@@ -93,3 +93,35 @@ test("a copy from a code editor (Cursor, VS Code) pastes its text: Markdown head
   });
   expect(text).toBe("Start\n\n# Title\n\nSome words.\n");
 });
+
+// A pasted `#tag` is a pill at once, as a typed one is from its first letter,
+// wherever it lands in the line and however it came (plain text, or a copy
+// carrying HTML); the caret stays after what was pasted.
+test("a pasted tag is drawn as a pill at once, plain or formatted, mid-line too", async () => {
+  const para = h.page.locator('[data-block-type="p"]').nth(1);
+  await h.page.keyboard.type("see  here");
+  for (let i = 0; i < " here".length; i++) await h.page.keyboard.press("ArrowLeft");
+  await paste("#area/work", "");
+  await expect(para.locator(".inline-tag")).toHaveText(["#area/work"]);
+  await h.page.keyboard.type(" and");
+  await waitForFile(h.vault.file("P.md"), (t) => t === "Start\n\nsee #area/work and here\n");
+
+  await h.page.keyboard.press("End");
+  await h.page.keyboard.type(" ");
+  await paste("#area/home", '<span class="inline-tag">#area/home</span>');
+  await expect(para.locator(".inline-tag")).toHaveText(["#area/work", "#area/home"]);
+  await waitForFile(
+    h.vault.file("P.md"),
+    (t) => t === "Start\n\nsee #area/work and here #area/home\n",
+  );
+});
+
+// A paste with a tag paints its whole line, as the next paint would: other
+// Markdown in it is drawn too (bold here), and the file keeps what was pasted.
+test("a pasted line with a tag and other Markdown draws both, the file as pasted", async () => {
+  const para = h.page.locator('[data-block-type="p"]').nth(1);
+  await paste("**bold** #tag", "");
+  await expect(para.locator(".inline-tag")).toHaveText(["#tag"]);
+  await expect(para.locator("strong, b")).toHaveText(["bold"]);
+  await waitForFile(h.vault.file("P.md"), (t) => t === "Start\n\n**bold** #tag\n");
+});
