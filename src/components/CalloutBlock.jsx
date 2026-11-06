@@ -441,11 +441,11 @@ export default memo(function CalloutBlock({
         />
         {foldable && (
           <>
-            {/* A named button, not a Tab stop: Tab in a note goes to its
-                sidebar row; the block menu is the keyboard's way. */}
+            {/* A named button saying its state, the Tab stop after the title
+                (the callout's fields own their keys); the block menu folds
+                too. */}
             <button
               type="button"
-              tabIndex={-1}
               className="callout-fold-btn"
               aria-expanded={!isFolded}
               aria-label={isFolded ? "Expand callout" : "Collapse callout"}

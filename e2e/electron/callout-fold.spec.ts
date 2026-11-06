@@ -165,3 +165,55 @@ test("the block menu folds and unfolds a callout by keys", async () => {
   await expect(chevron(h.page, 0)).toHaveAttribute("aria-expanded", "false");
   await unchanged();
 });
+
+// A step to a match in a folded callout scrolls once the callout has opened;
+// a newer step before then wins, and the old one never scrolls back.
+test("stepping on before a folded callout has opened keeps the newer match in view", async () => {
+  const filler = Array.from({ length: 80 }, (_, i) => `Line ${i + 1}.`).join("\n\n");
+  const far = `Intro.\n\n> [!warning]- Far\n> zebra inside.\n\n${filler}\n\nzebra end.\n`;
+  const g = await launchApp({ "Far.md": far });
+  try {
+    await g.openNote("Far");
+    await g.page.locator("[data-editor] > [data-block-id]", { hasText: /^Intro\.$/ }).click();
+    await g.page.keyboard.press(FIND);
+    const input = g.page.getByPlaceholder("Find in note...");
+    await input.fill("zebra");
+    await expect(g.page.getByText("1 of 2")).toBeVisible();
+    // At once, before the callout's slide has ended: the next match.
+    await input.press("Enter");
+    await expect(g.page.getByText("2 of 2")).toBeVisible();
+    const activeOnScreen = () =>
+      g.page.evaluate(() => {
+        const r = CSS.highlights.get("find-active")?.values().next().value as Range | undefined;
+        if (!r) return "none";
+        const b = r.getBoundingClientRect();
+        const text = r.startContainer.parentElement?.closest("[data-block-id]")?.textContent;
+        return `${text} ${b.top >= 0 && b.bottom <= window.innerHeight ? "on" : "off"}`;
+      });
+    await expect.poll(activeOnScreen).toBe("zebra end. on");
+    // Past the slide's end: still there, never scrolled back to the first.
+    await sleep(1200);
+    expect(await activeOnScreen()).toBe("zebra end. on");
+  } finally {
+    await g.close();
+  }
+});
+
+// The chevron is reached directly by keys: Tab from the title lands on it,
+// Enter and Space fold and unfold, and it says its state.
+test("the chevron is a Tab stop after the title; Enter and Space fold and unfold it", async () => {
+  const title = callout(h.page, 1).locator(".callout-title");
+  await title.click();
+  await h.page.keyboard.press("Tab");
+  await expect(chevron(h.page, 1)).toBeFocused();
+  await expect(chevron(h.page, 1)).toHaveAttribute("aria-expanded", "true");
+  await h.page.keyboard.press("Enter");
+  await expect(chevron(h.page, 1)).toHaveAttribute("aria-expanded", "false");
+  await expect(chevron(h.page, 1)).toBeFocused();
+  await h.page.keyboard.press("Space");
+  await expect(chevron(h.page, 1)).toHaveAttribute("aria-expanded", "true");
+  // Shift+Tab goes back to the title.
+  await h.page.keyboard.press("Shift+Tab");
+  await expect(title).toBeFocused();
+  await unchanged();
+});

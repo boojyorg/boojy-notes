@@ -8,12 +8,16 @@ import { revealFolded } from "../utils/calloutFold";
 
 /**
  * A match brought into view: a folded callout holding it opens first, and the
- * scroll waits for it, so it lands where the words finally sit.
+ * scroll waits for it, so it lands where the words finally sit. Only the
+ * newest request scrolls: `seq` counts them, and a step, a new query or the
+ * bar closing before an earlier one has opened makes that one stale.
  */
-function showMatch(range) {
-  revealFolded(range.startContainer).then(() =>
-    range.startContainer.parentElement?.scrollIntoView({ behavior: "smooth", block: "center" }),
-  );
+function showMatch(range, seq) {
+  const mine = ++seq.current;
+  revealFolded(range.startContainer).then(() => {
+    if (mine !== seq.current) return;
+    range.startContainer.parentElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 }
 
 /** Put `replacement` where `range` is, on screen. */
@@ -69,6 +73,8 @@ export default function FindBar({
 
   // Find matches using CSS Custom Highlight API. `active` is the match to
   // land on, clamped: a replace keeps the user's place in the list.
+  // The newest scroll request (showMatch): older ones never scroll.
+  const showSeq = useRef(0);
   const findMatches = useCallback(
     (term, active = 0) => {
       if (typeof CSS === "undefined" || !CSS.highlights) {
@@ -79,6 +85,8 @@ export default function FindBar({
       CSS.highlights.delete("find-matches");
       CSS.highlights.delete("find-active");
 
+      // A new query: any scroll still waiting for a callout is stale.
+      showSeq.current++;
       if (!term || !editorRef.current) {
         setMatches([]);
         setActiveMatchIndex(0);
@@ -118,7 +126,7 @@ export default function FindBar({
         const highlight = new Highlight(...ranges);
         CSS.highlights.set("find-matches", highlight);
         CSS.highlights.set("find-active", new Highlight(ranges[idx]));
-        showMatch(ranges[idx]);
+        showMatch(ranges[idx], showSeq);
       }
     },
     [editorRef],
@@ -134,12 +142,13 @@ export default function FindBar({
     if (matches.length === 0) return;
     const idx = Math.min(activeMatchIndex, matches.length - 1);
     CSS.highlights.set("find-active", new Highlight(matches[idx]));
-    showMatch(matches[idx]);
+    showMatch(matches[idx], showSeq);
   }, [activeMatchIndex, matches]);
 
-  // Clean up highlights on unmount
+  // Clean up highlights on unmount; a scroll still waiting never runs.
   useEffect(() => {
     return () => {
+      showSeq.current++;
       if (typeof CSS !== "undefined" && CSS.highlights) {
         CSS.highlights.delete("find-matches");
         CSS.highlights.delete("find-active");
