@@ -143,6 +143,11 @@ describe("EditorContextMenu footnotes", () => {
     expect(insert).toHaveBeenCalled();
   });
 
+  it("leaves Insert footnote off a misspelled word's menu, which is about the word", () => {
+    const { labels } = mount(["receive"], { onInsertFootnote: vi.fn() });
+    expect(labels).toEqual(["receive", "Add to dictionary", "Cut", "Copy", "Paste"]);
+  });
+
   it("offers neither where they cannot act", () => {
     expect(mount(null).labels).toEqual(["Cut", "Copy", "Paste"]);
   });
