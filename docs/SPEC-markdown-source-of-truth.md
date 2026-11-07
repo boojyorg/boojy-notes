@@ -169,6 +169,8 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   across blank lines, spaces-only ones too) stays its own block but belongs to it: selected,
   moved and deleted with it. A footnote never overlaps a comment. A missing definition leaves the
   reference as written. Meaning is judged by `markdown-it-footnote`, Obsidian where they differ.
+  Insert footnote adds only `[^n]` and an empty `[^n]:` at the note's end, `n` one above every
+  numeric label; nothing else in the file moves or is renumbered.
 - `![[Note]]`, `![[Note#Heading]]` and `![[#^id]]` draw what the same link reaches, read-only;
   only the embed's own `![[…]]` is edited here, and it is written as typed.
 - Typing `_italic_` or `__bold__` is committed in the star form the renderer speaks; an imported

@@ -86,6 +86,16 @@ export const SLASH_COMMANDS = [
     type: "frontmatter",
     advanced: true,
   },
+  // An empty line made the next footnote's definition (`[^n]: `); its
+  // reference, mid-sentence, is Insert footnote's (Format menu, right-click).
+  {
+    id: "footnote",
+    label: "Footnote",
+    hint: "[^1]:",
+    icon: "footnote",
+    type: "footnote",
+    advanced: true,
+  },
   {
     id: "embed",
     label: "Embed note",

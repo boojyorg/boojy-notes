@@ -70,6 +70,7 @@ export function useAppKeyboard({
   setBlockKind,
   // Format → Check Off: ⌘Enter's to-dos (`todoFlip`).
   checkTodos,
+  insertFootnote,
   duplicateBlocks,
   blockSelectionIds,
   // The phone's ⇤ ⇥: what Tab and Shift+Tab run (`indentSpan`).
@@ -122,6 +123,7 @@ export function useAppKeyboard({
     applyFormat,
     setBlockKind,
     checkTodos,
+    insertFootnote,
     duplicateBlocks,
     blockSelectionIds,
     updateBlockIndent,
@@ -584,6 +586,8 @@ function runMenuCommand(id, L, titleRef) {
       return L.openFind?.("prev");
     case "replace":
       return L.openFind?.("replace");
+    case "footnote":
+      return L.insertFootnote?.();
   }
   if (id in ALIGN_COMMANDS) {
     alignColumn(L, ALIGN_COMMANDS[id]);

@@ -2,8 +2,10 @@ import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
 import { shortcutLabel } from "./Tooltip";
 import {
   AddToDictionaryIcon,
+  ArrowDownToLineIcon,
   CopyIcon,
   CutIcon,
+  FootnoteIcon,
   OpenLinkIcon,
   OpenNoteIcon,
   PasteIcon,
@@ -44,6 +46,10 @@ interface EditorContextMenuProps {
   onCopyLink: () => void;
   onEditLink: () => void;
   onRemoveLink: () => void;
+  /** Given on a footnote reference: the caret to its definition, a visit Back returns from. */
+  onGoToFootnote?: () => void;
+  /** Given where a reference can go (one text block): Insert footnote. */
+  onInsertFootnote?: () => void;
   /** Cut and Copy act on a selection; with only a caret there is nothing to take. */
   canCutCopy: boolean;
   /** Desktop only: a page cannot read the clipboard from a menu item. */
@@ -64,8 +70,9 @@ interface EditorContextMenuProps {
 
 /**
  * The editor's right-click menu (Electron supplies none): a misspelled word's
- * guesses and Add to dictionary, or a link's or a tag's own actions, then Cut, Copy and
- * Paste with their shortcuts, as every native text menu has.
+ * guesses and Add to dictionary, or a link's, a tag's or a footnote reference's own
+ * actions, then Cut, Copy and Paste with their shortcuts, as every native text menu
+ * has, then Insert footnote where one can go.
  *
  * In a table cell it is the same menu, with Tidy table (only while its
  * columns are not lined up) and Delete table last under a rule:
@@ -89,6 +96,8 @@ export default function EditorContextMenu({
   onCopyLink,
   onEditLink,
   onRemoveLink,
+  onGoToFootnote,
+  onInsertFootnote,
   canCutCopy,
   canPaste,
   pasteRow = true,
@@ -114,6 +123,9 @@ export default function EditorContextMenu({
       rule: true,
       action: onAddWord,
     });
+  }
+  if (onGoToFootnote) {
+    items.push({ label: "Go to footnote", icon: <ArrowDownToLineIcon />, action: onGoToFootnote });
   }
   if (tag) {
     items.push(
@@ -166,6 +178,14 @@ export default function EditorContextMenu({
       hint: shortcutLabel({ key: "V" }),
       disabled: !canPaste,
     });
+  if (onInsertFootnote) {
+    items.push({
+      label: "Insert footnote",
+      icon: <FootnoteIcon />,
+      action: onInsertFootnote,
+      rule: true,
+    });
+  }
   if (onTidyTable) {
     items.push({ label: "Tidy table", icon: <TidyTableIcon />, action: onTidyTable, rule: true });
   }

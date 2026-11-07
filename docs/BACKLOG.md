@@ -504,10 +504,9 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ### Editor and organisation
 
-- **Footnotes, next** (2026-11-06): a read-only preview of a reference's definition; `/footnote`
-  (the next number above every numeric label, references included); whether a click on a
-  reference jumps or places the caret, settled by trying both. No shortcut yet (⌥⌘F is AltGr+F
-  on some Windows layouts).
+- **Footnotes, later**: Insert footnote in a table cell or a callout's body (offered only in
+  text blocks for now); a shortcut for it (⌥⌘F is AltGr+F on some Windows layouts); the phone's
+  key bar.
 - **Someday (Tyr, 2026-09-30), each as Obsidian does it:** unlinked mentions
   under the backlinks; a linked note previewed on hover; moving a selection into a new note,
   leaving a link; emoji by `:name:`; smart quotes and arrows (never in code); the Mac Share

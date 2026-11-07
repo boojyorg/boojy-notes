@@ -99,6 +99,16 @@ function materialise(pasted: PastedBlock, id: string): Block {
     if (pasted.checked !== undefined) (block as { checked?: boolean }).checked = pasted.checked;
     if (pasted.indent) block.indent = pasted.indent;
     if (pasted.headingSource) Object.assign(block, { headingSource: pasted.headingSource });
+    // A footnote's label is what it is: dropped, it was written `[^undefined]:`.
+    // Footnotes on adjacent lines stay adjacent (`tightAbove`).
+    if (pasted.type === "footnote") {
+      const { label, bare, tightAbove } = pasted as {
+        label?: string;
+        bare?: true;
+        tightAbove?: true;
+      };
+      Object.assign(block, { label }, bare ? { bare } : null, tightAbove ? { tightAbove } : null);
+    }
     return block;
   }
   const { fullBlock: _fullBlock, ...rest } = pasted;

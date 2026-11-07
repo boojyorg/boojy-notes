@@ -119,6 +119,7 @@ import {
   TextAlignEnd as LuTextAlignEnd,
   TextAlignStart as LuTextAlignStart,
   TextQuote as LuTextQuote,
+  Superscript as LuSuperscript,
   Trash as LuTrash,
   TriangleAlert as LuTriangleAlert,
   Type as LuType,
@@ -288,6 +289,8 @@ export const AddToDictionaryIcon = navIcon(LuBookPlus);
 export const OpenLinkIcon = navIcon(LuExternalLink);
 export const OpenNoteIcon = navIcon(LuFileText);
 export const UnlinkIcon = navIcon(LuUnlink);
+/** Insert footnote: a raised mark, what a reference is. */
+export const FootnoteIcon = navIcon(LuSuperscript);
 /** The link picker's address row. */
 export const LinkIcon = navIcon(LuLink);
 /** An embed's open arrow: a control, so at the controls' stroke. */
@@ -347,6 +350,7 @@ const SLASH_GLYPHS = {
   paperclip: LuPaperclip,
   link: LuLink,
   properties: LuTableProperties,
+  footnote: LuSuperscript,
 };
 
 /**
