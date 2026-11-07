@@ -639,7 +639,8 @@ ${tagPillCss(theme)}
            file), shown on hover or with the caret in the line; always on a
            touch screen, which has no hover. */
         [data-editor] [data-block-type="footnote"]:has([data-footnote-label][data-n]) > [role="textbox"]::after {
-          content: "↩";
+          /* Drawn only: its named twin is the line's menu, Back to reference. */
+          content: "↩" / "";
           color: ${theme.TEXT.muted};
           margin-left: 0.35em;
           cursor: pointer;

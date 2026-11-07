@@ -123,3 +123,23 @@ test("a download that fails says so, and Try again brings the note", async () =>
     await h.close();
   }
 });
+
+// The editor that takes an offloaded note's place once it downloads is a new
+// element: what the editor draws over its text (footnote numbers) must reach
+// it on the first open, not only after switching away and back.
+test("a downloaded note's footnotes are numbered on the first open", async () => {
+  const { h } = await launchOffloaded(
+    { "Cited.md": "Claim.[^a] More.[^b]\n\n[^a]: Ay.\n[^b]: Bee.\n", "Local.md": "Here.\n" },
+    ["Cited.md"],
+  );
+  try {
+    await row(h, "Cited").click();
+    await expect.poll(() => noteText(h.page), { timeout: 5_000 }).toContain("Claim.");
+    const refs = h.page.locator("[data-editor] .md-fn-ref");
+    await expect(refs.nth(0)).toHaveAttribute("data-n", "1");
+    await expect(refs.nth(1)).toHaveAttribute("data-n", "2");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

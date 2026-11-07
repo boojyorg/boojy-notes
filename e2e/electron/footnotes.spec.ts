@@ -390,3 +390,49 @@ test("Edit reference changes the label a reference names, and says what it reach
   await expect(refs(h.page).nth(1)).toHaveAttribute("data-n", "1");
   expect(h.pageErrors).toEqual([]);
 });
+
+test("Edit reference never leaves a half-typed label: Done waits for a valid one; Escape or a press away restore the original", async () => {
+  const md = "Claim.[^b] More.\n\n[^b]: Bee.\n";
+  await open(md);
+  const field = h.page.getByRole("textbox", { name: "Footnote label" });
+  const editRef = async () => {
+    await refs(h.page).first().click({ button: "right" });
+    await h.page.getByRole("menuitem", { name: "Edit reference…" }).click();
+    await expect(field).toBeFocused();
+  };
+  // Typed a letter at a time: "bad" is valid on the way, "bad label" is not.
+  await editRef();
+  await h.page.keyboard.type("bad label");
+  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("A label has no spaces");
+  // Done is greyed (aria-disabled); a press on it, or Enter, closes nothing.
+  const done = h.page.getByRole("button", { name: "Done" });
+  await expect(done).toHaveAttribute("aria-disabled", "true");
+  await done.click({ force: true });
+  await h.page.keyboard.press("Enter");
+  await expect(field).toBeVisible();
+  await h.page.keyboard.press("Escape");
+  await expect(field).toHaveCount(0);
+  await waitForFile(h.vault.file("F.md"), (t) => t === md, { label: "the original label back" });
+  await sleep(SETTLE_MS);
+  // The same by a press elsewhere in the note.
+  await editRef();
+  await h.page.keyboard.type("bad label");
+  await row(h.page, "Bee.").getByText("Bee.").click();
+  await expect(field).toHaveCount(0);
+  await sleep(SETTLE_MS);
+  expect(file()).toBe(md);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("Back to reference: ↩ by name in a footnote's menu, opened from the keyboard with Shift+F10", async () => {
+  await open("One.[^a] Two.\n\n[^a]: Ay.\n");
+  await defs(h.page).getByText("Ay.").click();
+  await h.page.keyboard.press("Shift+F10");
+  const back = h.page.getByRole("menuitem", { name: "Back to reference" });
+  await expect(back).toBeVisible();
+  await h.page.keyboard.press("ArrowDown");
+  await h.page.keyboard.press("Enter");
+  await h.page.keyboard.type("~");
+  await waitForFile(h.vault.file("F.md"), (t) => t.startsWith("One.[^a]~ Two.\n"));
+  expect(h.pageErrors).toEqual([]);
+});

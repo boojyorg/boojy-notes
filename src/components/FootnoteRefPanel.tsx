@@ -36,8 +36,9 @@ const refsIn = (el: HTMLElement | null | undefined) =>
  * A sealed footnote reference's label, under it: which footnote it
  * points to. Each valid input rewrites the reference's source and reads the
  * block back (the editor's rule for a programmatic text edit); the line
- * under the field says what that label reaches. Enter, Escape, Done or a
- * press elsewhere closes, the caret after the reference. The phone reaches it
+ * under the field says what that label reaches. Enter or Done closes with a
+ * valid label; Escape or a press elsewhere closes, an invalid label giving
+ * way to the one it opened with. The caret goes after the reference. The phone reaches it
  * from a hold's menu; its field is a touch target and brings the keyboard.
  */
 export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, onClose }: Props) {
@@ -50,6 +51,8 @@ export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, 
   const ref = () => refsIn(block())[target.index] ?? null;
 
   const [label, setLabel] = useState(() => ref()?.getAttribute("data-fn") ?? "");
+  // The label it opened with: what a close with an invalid label puts back.
+  const original = useRef(label);
   const [anchor, setAnchor] = useState(() => {
     const r = ref();
     return r ? rectAnchor(r) : null;
@@ -70,16 +73,44 @@ export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, 
     return () => r.removeAttribute("data-editing");
   }, []);
 
+  /** The reference's label as `value`, read back into the block. */
+  const write = (value: string) => {
+    const r = ref();
+    if (!r) return;
+    r.setAttribute("data-fn", value);
+    const src = r.querySelector(`.${FOOTNOTE_SRC_CLASS}`);
+    if (src) src.textContent = `[^${value}]`;
+    reRead({ rangeCount: 1, anchorNode: r });
+    setAnchor(rectAnchor(r));
+  };
+
+  /**
+   * Leaving with a label the readers would not take (a space, nothing): the
+   * label it opened with goes back, never the last valid prefix typed.
+   */
+  const settle = () => {
+    if (validLabel(fieldRef.current?.value ?? "")) return;
+    if (ref()?.getAttribute("data-fn") !== original.current) write(original.current);
+  };
+
   // A press anywhere else closes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: settle reads the live field and reference
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
-      if (!panelRef.current?.contains(e.target as Node)) onClose();
+      if (panelRef.current?.contains(e.target as Node)) return;
+      settle();
+      onClose();
     };
     document.addEventListener("pointerdown", onDown, true);
     return () => document.removeEventListener("pointerdown", onDown, true);
   }, [onClose]);
 
-  const finish = () => {
+  /** Enter and Done close only with a valid label; Escape always does, settling it first. */
+  const finish = (leaving = false) => {
+    if (!validLabel(fieldRef.current?.value ?? "")) {
+      if (!leaving) return;
+      settle();
+    }
     const r = ref();
     onClose();
     const el = block();
@@ -90,13 +121,7 @@ export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, 
 
   const onInput = (value: string) => {
     setLabel(value);
-    const r = ref();
-    if (!r || !validLabel(value)) return;
-    r.setAttribute("data-fn", value);
-    const src = r.querySelector(`.${FOOTNOTE_SRC_CLASS}`);
-    if (src) src.textContent = `[^${value}]`;
-    reRead({ rangeCount: 1, anchorNode: r });
-    setAnchor(rectAnchor(r));
+    if (validLabel(value)) write(value);
   };
 
   const valid = validLabel(label);
@@ -144,7 +169,7 @@ export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, 
             e.stopPropagation();
             if (e.key === "Enter" || e.key === "Escape") {
               e.preventDefault();
-              finish();
+              finish(e.key === "Escape");
             }
           }}
           style={{
@@ -165,7 +190,8 @@ export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, 
           type="button"
           className="settings-button"
           onMouseDown={(e) => e.preventDefault()}
-          onClick={finish}
+          onClick={() => finish()}
+          aria-disabled={!validLabel(label) || undefined}
           style={{
             height: h,
             padding: "0 10px",
@@ -177,6 +203,7 @@ export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, 
             fontWeight: 500,
             fontFamily: "inherit",
             cursor: "pointer",
+            opacity: valid ? 1 : 0.45,
           }}
         >
           Done

@@ -200,12 +200,22 @@ export function footnoteBackAt(target: EventTarget | null, x: number, y: number)
     : null;
 }
 
-/** Number the footnotes under `root` now and whenever its text changes; returns the stop. */
-export function watchFootnoteNumbers(root: Element): () => void {
+/** The note's editor inside `host`, if one is showing (a past version, an offloaded note: none). */
+export const editorIn = (host: Element): Element | null => host.querySelector("[data-editor]");
+
+/**
+ * Number the footnotes of the editor inside `host` now and whenever anything
+ * under `host` changes; returns the stop. `host` is an element that outlives
+ * the editor (the scroller): the editor is a new element after an offloaded
+ * note downloads, a past version closes or an unreadable note opens, with the
+ * same note open, and an observer on the old one would number nothing.
+ */
+export function watchFootnoteNumbers(host: Element): () => void {
   let queued = false;
   const run = () => {
     queued = false;
-    numberFootnotes(root);
+    const editor = editorIn(host);
+    if (editor) numberFootnotes(editor);
   };
   run();
   const observer = new MutationObserver(() => {
@@ -213,7 +223,7 @@ export function watchFootnoteNumbers(root: Element): () => void {
     queued = true;
     queueMicrotask(run);
   });
-  observer.observe(root, {
+  observer.observe(host, {
     childList: true,
     subtree: true,
     attributes: true,

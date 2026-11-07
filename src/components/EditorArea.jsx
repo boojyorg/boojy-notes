@@ -105,6 +105,7 @@ import { selectTagName, tagName, tagRange } from "../utils/tagName";
 import { editingTag } from "../utils/tagEditing";
 import {
   describeFootnote,
+  editorIn,
   findFootnoteDefinition,
   footnoteBackAt,
   footnoteRefKey,
@@ -607,25 +608,31 @@ const EditorArea = memo(
     }, [activeNote, hasNote, editorRef, sourceView, blockRefs]);
 
     // Footnotes are numbered as Reading view numbers them, whatever puts one
-    // in the editor (utils/footnoteTarget `numberFootnotes`).
+    // in the editor (utils/footnoteTarget `numberFootnotes`). Watched from the
+    // scroller, which outlives the editor element: that is replaced, the note
+    // unchanged, when an offloaded note downloads or a past version closes.
     useEffect(() => {
-      const el = editorRef.current;
-      if (!el) return;
-      const stop = watchFootnoteNumbers(el);
+      const host = editorScrollRef.current;
+      if (!host) return;
+      const stop = watchFootnoteNumbers(host);
       // ← → and Backspace cross a sealed reference in one press (footnoteRefKey).
       const onKey = (e) => {
         if (e.shiftKey || e.altKey || e.metaKey || e.ctrlKey || e.isComposing) return;
-        if (footnoteRefKey(e.key, el)) e.preventDefault();
+        const editor = editorIn(host);
+        if (editor?.contains(e.target) && footnoteRefKey(e.key, editor)) e.preventDefault();
       };
-      el.addEventListener("keydown", onKey, true);
-      const onSel = () => markCaretFootnote(el);
+      host.addEventListener("keydown", onKey, true);
+      const onSel = () => {
+        const editor = editorIn(host);
+        if (editor) markCaretFootnote(editor);
+      };
       document.addEventListener("selectionchange", onSel);
       return () => {
         stop();
-        el.removeEventListener("keydown", onKey, true);
+        host.removeEventListener("keydown", onKey, true);
         document.removeEventListener("selectionchange", onSel);
       };
-    }, [activeNote, hasNote, editorRef, sourceView]);
+    }, [editorScrollRef]);
 
     // A reference's label, edited in a field under it (FootnoteRefPanel).
     const [fnRefTarget, setFnRefTarget] = useState(null);
@@ -1434,13 +1441,21 @@ const EditorArea = memo(
         const tableId = cell?.closest("[data-block-id]")?.getAttribute("data-block-id") ?? null;
         const tagEl = e.target.closest(".inline-tag");
         const fnRef = ownFootnoteRef(e.target);
+        // In a numbered footnote: Back to reference, its ↩ by name.
+        const fnRow = e.target.closest?.('[data-block-type="footnote"]');
+        const backTo =
+          fnRow && editorRef.current?.contains(fnRow) && !fnRow.closest("[data-embed-source]")
+            ? (fnRow.querySelector("[data-footnote-label][data-n]")?.getAttribute("data-fn") ??
+              null)
+            : null;
         // A tag or a footnote reference is left as it is, as a link is: its
         // menu is about it.
         const linkEl = anchor || wikilink || tagEl || fnRef;
         // A right-click on a word outside the selection selects the word, as
         // a Mac text field does; inside the selection it keeps it. A link is
         // left as it is: its menu is about the link.
-        if (!field && !linkEl && !(range && pointInRange(range, x, y))) {
+        // From the keyboard (Shift+F10) the selection is the caret's, kept as it is.
+        if (!field && !linkEl && !e.fromKeyboard && !(range && pointInRange(range, x, y))) {
           const word = editorRef.current && wordRangeAt(editorRef.current, x, y);
           // Not on a word: the caret goes to the pointer, so Paste lands where
           // the right-click was. Chromium does this on Linux and not on a Mac;
@@ -1481,6 +1496,7 @@ const EditorArea = memo(
           // menu of a link, tag or reference, which is about that.
           canFootnote: !field && !linkEl && canInsertFootnote(),
           footnote: fnRef,
+          backTo,
         };
         if (tagEl) {
           menu.tag = tagName(tagEl);
@@ -1896,6 +1912,28 @@ const EditorArea = memo(
                       }
                       // Selected whole blocks (utils/blockRun) take the key first.
                       if (selectedBlockId && handleSelectedBlockKey(e)) return;
+                      // Shift+F10 opens the text menu at the caret, as a right-click
+                      // there would (a Mac sends no menu event for it).
+                      if (e.key === "F10" && e.shiftKey && !mod && !e.altKey && !isPhone) {
+                        const sel = window.getSelection();
+                        const node = sel?.rangeCount ? sel.focusNode : null;
+                        const target =
+                          node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+                        if (target && editorRef.current?.contains(target)) {
+                          e.preventDefault();
+                          const r = sel.getRangeAt(0).getBoundingClientRect();
+                          const at = r.height ? r : target.getBoundingClientRect();
+                          handleEditorContextMenu({
+                            target,
+                            clientX: at.left,
+                            clientY: at.top + at.height / 2,
+                            defaultPrevented: false,
+                            preventDefault() {},
+                            fromKeyboard: true,
+                          });
+                          return;
+                        }
+                      }
                       handleEditorKeyDown(e);
                     }}
                     onInput={handleEditorInput}
@@ -2251,6 +2289,15 @@ const EditorArea = memo(
                         const ref = linkCtxMenu.footnote;
                         dismissCtxMenu();
                         goToFootnote(ref);
+                      }
+                    : undefined
+                }
+                onBackToReference={
+                  linkCtxMenu.backTo
+                    ? () => {
+                        const label = linkCtxMenu.backTo;
+                        dismissCtxMenu();
+                        goToReference(label);
                       }
                     : undefined
                 }

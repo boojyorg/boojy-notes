@@ -107,8 +107,8 @@ through state.**
   its definition (the last of its label), a visit. Insert footnote is one commit, painted
   at once (`flushSync`). `footnotes.spec.ts`.
 - **A definition shows `n.`; an unused one a dash**, its label above the row on hover or
-  caret, nothing moved. Its ↩ (CSS) is Back while that jump is the visit open, else the
-  first reference. Footnotes stay in file order.
+  caret, nothing moved. Its ↩ (CSS; the menu's Back to reference) is Back while that jump
+  is the visit open, else the first reference.
 - **One link picker** (`LinkPicker.tsx`) for every way in; it writes the shortest clear target
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
@@ -151,7 +151,8 @@ through state.**
 ## Right-click
 
 - `EditorContextMenu`: a misspelled word's, link's or tag's actions, then Cut, Copy, Paste; a field
-  outside the note gets the same (`TextFieldMenu`). **Items run the keys' own path.** `text-context-menu.spec.ts`.
+  outside the note gets the same (`TextFieldMenu`); Shift+F10 at the caret. **Items
+  run the keys' own path.** `text-context-menu.spec.ts`.
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is late),
   never in code, tags or links; guesses only on a marked word.
   `spelling.spec.ts`, `spelling-line.spec.ts`.
@@ -288,8 +289,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
   (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, and an edited
   one fitting a lined-up header takes its columns. `table-preservation.spec.ts`.
-- **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root (the
-  scroller clips); one write, on drop. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column. `table-handles.spec.ts`.
+- **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root; one write, on drop. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column. `table-handles.spec.ts`.
 
 ## Whole-block selection
 
@@ -312,8 +312,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 ## Embeds: drawn by the editor, read-only
 
 - **An embed is drawn by `ReadOnlyBlocks`**, found as its
-  link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is
-  said.
+  link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is said.
 - **The copy is fenced by the selection, never the target**:
   `useEmbedFence` cancels an edit in it and its chip says where to edit.
 - **A click opens its `![[…]]` underneath** (keys: Edit link), drawn as typed, saved once; Done, ↵ or Esc shuts it, still picked. `embeds.spec.ts`.

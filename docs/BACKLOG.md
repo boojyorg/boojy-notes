@@ -283,6 +283,12 @@ none blocks a stage.
 
 ## Known issues
 
+- [ ] **Inline maths is not drawn on the first open of a note iCloud had offloaded** (found
+  2026-11-07): `drawInlineMath` watches the editor element, which is a new one once the note
+  downloads (or a past version closes) with the note unchanged; switching away and back draws
+  it. Footnote numbering had the same fault and now watches the scroller (#495); the same fix
+  applies.
+
 ### From the September 2026 review
 
 Still reproduce on master, in the review's order. Those named in Public Beta's requirements
