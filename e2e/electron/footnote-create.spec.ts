@@ -240,3 +240,23 @@ test("the ghost shows in the note open at launch and in a new note", async () =>
   await h.page.keyboard.type("Fresh[^");
   await expect(ghost()).toHaveAttribute("data-ghost", "1]");
 });
+
+test("a draft whose line changed outside is never lost: a notice keeps its text to copy", async () => {
+  await open("Bread.\n");
+  await atEnd("Bread.");
+  await menuClick(h, "footnote");
+  await expect(field()).toBeFocused();
+  await h.page.keyboard.type("Kept text.");
+  // Another app rewrites the line the reference was to go in.
+  h.vault.write("F.md", "Bread, rewritten.\n");
+  await expect(row(h.page, "rewritten")).toBeVisible();
+  await h.page.getByRole("button", { name: "Done" }).click();
+  const notice = h.page.getByText("Footnote not added", { exact: false });
+  await expect(notice).toBeVisible();
+  await h.page.getByRole("button", { name: "Copy text" }).click();
+  await expect
+    .poll(() => h.app.evaluate(({ clipboard }) => clipboard.readText()))
+    .toBe("Kept text.");
+  await sleep(600);
+  expect(h.vault.read("F.md")).toBe("Bread, rewritten.\n");
+});

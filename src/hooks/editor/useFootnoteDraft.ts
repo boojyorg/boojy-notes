@@ -39,6 +39,8 @@ interface Deps {
   noteDataRef: MutableRefObject<NoteData>;
   activeNote: string | null;
   commitFootnoteDraft: (draft: FootnoteDraft, text: string) => boolean;
+  /** A draft that could not be attached (its line changed meanwhile): its text, kept for the user. */
+  onNotAdded: (text: string) => void;
 }
 
 const blocksIn = (data: NoteData, noteId: string) =>
@@ -76,6 +78,7 @@ export function useFootnoteDraft({
   noteDataRef,
   activeNote,
   commitFootnoteDraft,
+  onNotAdded,
 }: Deps) {
   const { closeTypingGroup } = useNoteDataActions() as { closeTypingGroup: () => void };
   // Read through a ref: the listeners below are set up once per note, and a
@@ -159,14 +162,22 @@ export function useFootnoteDraft({
     [blockRefs, setOffer],
   );
 
-  /** Done, or a leave: the draft written if it holds text, then closed. */
+  const onNotAddedRef = useRef(onNotAdded);
+  onNotAddedRef.current = onNotAdded;
+
+  /**
+   * Done, or a leave: the draft written if it holds text, then closed. Where
+   * it can no longer go (its line changed meanwhile, as another app or a sync
+   * can change it) it is refused, never put elsewhere, and its text is handed
+   * on (`onNotAdded`), never dropped.
+   */
   const settle = useCallback(() => {
     const d = draftRef.current;
     if (!d) return;
     const text = draftText.current.trim();
     draftRef.current = null;
     setDraft(null);
-    if (text) commitFootnoteDraft(d, text);
+    if (text && !commitFootnoteDraft(d, text)) onNotAddedRef.current(text);
   }, [commitFootnoteDraft]);
 
   /** Escape: nothing written, the caret back where it was. */

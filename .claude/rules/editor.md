@@ -105,9 +105,10 @@ through state.**
   (`numberFootnotes`, first reference first), which copies and saves.
   A caret anchor follows; ←/→ take it whole, Backspace its `]` (`footnoteRefKey`). A click goes to
   its definition (its label's last), a visit. `footnotes.spec.ts`.
-- **A footnote is made in its panel** (`useFootnoteDraft`): `[^` shows a faint `n]` (CSS, read
-  by nothing), Enter/Tab types it; an undefined typed label or Insert footnote opens it too. A
-  draft till Done or a leave; `flushAll` settles it, a blur never. `footnote-create.spec.ts`.
+- **A footnote is made in its panel** (`useFootnoteDraft`): `[^` shows a faint `n]` (CSS),
+  Enter/Tab types it; a typed new label or Insert footnote too. A
+  draft till Done or a leave (`flushAll` too, a blur never); refused, its text waits in a
+  notice. `footnote-create.spec.ts`.
 - **A definition shows `n.`; an unused one a dash**, its label above on hover or caret.
   Its ↩ (menu: Back to reference) is Back while that jump is the visit open, else the first
   reference, tinted as an element (`tintElement`).

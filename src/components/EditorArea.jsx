@@ -643,6 +643,12 @@ const EditorArea = memo(
       noteDataRef,
       activeNote,
       commitFootnoteDraft,
+      // Kept, never dropped: it waits for its × with the text to copy.
+      onNotAdded: (text) =>
+        showToast?.("Footnote not added: its line changed while you wrote it.", "warning", {
+          key: "footnote-not-added",
+          action: { label: "Copy text", run: () => navigator.clipboard.writeText(text) },
+        }),
     });
 
     // A reference's label, edited in a field under it (FootnoteRefPanel).
