@@ -12,6 +12,8 @@ import { COMMENT_CLASS, findComments } from "./comments";
 
 /** The class of a drawn reference: small, raised, muted, literal. */
 export const FOOTNOTE_REF_CLASS = "md-fn-ref";
+/** A sealed reference's source text, hidden once it shows its number (`data-n`). */
+export const FOOTNOTE_SRC_CLASS = "md-fn-src";
 /** The class of a drawn inline footnote: muted, literal. */
 export const FOOTNOTE_INLINE_CLASS = "md-fn-inline";
 /** Every literal run's element: a comment, a reference, an inline footnote. */

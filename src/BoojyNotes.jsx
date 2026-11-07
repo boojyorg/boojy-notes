@@ -1841,6 +1841,7 @@ export default function BoojyNotes() {
                   onPathRowPointerDown={handleSidebarPointerDown}
                   onShowFolder={isPhone ? showFolder : undefined}
                   noteHistory={noteHistory}
+                  noteHistoryRef={noteHistoryRef}
                   headingNavRef={headingNavRef}
                   onTitleBlur={settleTitle}
                   pastVersion={versionHistory.state.past}

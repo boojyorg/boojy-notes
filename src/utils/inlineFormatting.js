@@ -7,7 +7,8 @@ import { LINK_DEST } from "./linkDestination";
 import { TAG_RE } from "./tags";
 import { BLOCK_ID_END_RE } from "./blockTarget";
 import { codeSourceText, codeSpanSource, editedCodeSpanSource, findCodeSpans } from "./codeSpans";
-import { literalRuns } from "./footnotes";
+import { FOOTNOTE_REF_CLASS, FOOTNOTE_SRC_CLASS, literalRuns } from "./footnotes";
+import { refLabel } from "./footnoteLabel";
 
 /** Step 1 of the renderer, for prose that has been read back to characters. */
 const escapeHtml = (text) =>
@@ -222,6 +223,13 @@ function restoreComments(html, comments) {
     )
     .replace(COMMENT_TOKEN_RE, (_, i) => {
       const { src, cls } = comments[Number(i)];
+      // A footnote reference is sealed, one caret character: it holds its
+      // source, read back as written, and shows its number over it once the
+      // note's numbering finds its definition (`numberFootnotes`).
+      // A caret anchor follows it: at a line's end Chromium has no place for
+      // a caret after an uneditable element, and End put it before the number.
+      if (cls === FOOTNOTE_REF_CLASS)
+        return `<span class="${cls}" contenteditable="false" data-fn="${attr(refLabel(src))}"><span class="${FOOTNOTE_SRC_CLASS}">${escapeHtml(src)}</span></span><span class="${CARET_ANCHOR_CLASS}">\u200B</span>`;
       return `<span class="${cls}">${escapeHtml(src)}</span>`;
     });
 }

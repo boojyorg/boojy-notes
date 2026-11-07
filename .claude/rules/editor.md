@@ -101,10 +101,14 @@ through state.**
   (`historyJump`); a missing one is said. An ID is
   drawn quietly only while it ends its block. `link-resolution.spec.ts`,
   `heading-links.spec.ts`, `block-links.spec.ts`.
-- **A footnote reference reads as a link** (`footnoteTarget.ts`): its chip is the definition
-  (the last of its label); a click puts the caret at its end, a visit, unless it holds the
-  caret. Insert footnote is one commit, painted at once (`flushSync`).
-  `footnotes.spec.ts`.
+- **A footnote reference is one sealed character showing `[n]`** over its source
+  (`numberFootnotes`: by first reference, defined labels only), which copies and saves.
+  A caret anchor follows; ←/→/Backspace take it whole (`footnoteRefKey`). A click goes to
+  its definition (the last of its label), a visit. Insert footnote is one commit, painted
+  at once (`flushSync`). `footnotes.spec.ts`.
+- **A definition shows `n.`; an unused one a dash**, its label above the row on hover or
+  caret, nothing moved. Its ↩ (CSS) is Back while that jump is the visit open, else the
+  first reference. Footnotes stay in file order.
 - **One link picker** (`LinkPicker.tsx`) for every way in; it writes the shortest clear target
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
@@ -126,7 +130,7 @@ through state.**
   `typed-formatting.spec.ts`.
 - **A code span is literal** (`codeSpans.js`): nothing in it is drawn; untouched it keeps its
   spelling (`data-md`), edited only what changed; only ⌘E acts in one. `literal-code.spec.ts`.
-  **So are a `%%` comment and a footnote, muted** (`literalRuns`), no format acting; the grey
+  **So are a `%%` comment and an inline footnote, muted** (`literalRuns`), no format acting; the grey
   follows the markers (`repaintComments`). `comments.spec.ts`, `footnotes.spec.ts`.
 - **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the next letters
   take the caret's own formatting, never a deleted run's; overtyping keeps its style.
@@ -207,7 +211,7 @@ keeps its own view, saved** (`useSourceView`).
 - **It repaints only when the blocks aren't the ones it committed** (by identity). The caret
   crosses by block (`utils/sourceView.ts`). `source-view.spec.ts`.
 - **Colour says what each part is; nothing may change a character's width**:
-  no ligatures in either box. `sourceView.test.ts`.
+  no ligatures. `sourceView.test.ts`.
 
 ## Lists
 
@@ -246,8 +250,7 @@ never holds a byte sequence the syntax cannot.**
 - **An empty callout title shows its type word, title-cased, and is never written**
   (`shownTitle`); a type change leaves the title alone. `callout-picker.spec.ts`.
 - **A callout's fold is a view, never an edit**: `-` folded, `+` open, reset when the note
-  changes; folded, the body is `inert` and Find opens it. The grip menu sets the sign:
-  Make foldable, Always open. `callout-fold.spec.ts`.
+  changes; folded, the body is `inert` and Find opens it. `callout-fold.spec.ts`.
 
 ## Properties
 
@@ -260,8 +263,6 @@ never holds a byte sequence the syntax cannot.**
   the property being edited sets the draft aside, with Restore. `properties.spec.ts`.
 - **A list is edited an item at a time** (`replaceItem`, `removeItem`, `insertItem`), each
   splicing only that item's bytes. `property-lists.spec.ts`.
-- **Remove all properties** (the title's menu) is one commit (`removeFrontmatter`).
-  `properties-view.spec.ts`.
 - **Add property and `/properties`** (`PropertyPicker`): a picked type is a draft row
   (`freeName`), written once on Enter, Tab or a press elsewhere; Escape writes nothing. `---` on
   a note's first line opens it at the third dash (`opensProperties`). An empty value's type is
@@ -269,8 +270,7 @@ never holds a byte sequence the syntax cannot.**
 
 ## Code blocks
 
-Every `.code-line` takes at least `1lh` (or the layers drift). **One hover toolbar per code
-block.** `code-language.spec.ts`. **A `mermaid` fence is drawn** (`DiagramView`), its code
+**One hover toolbar per code block.** `code-language.spec.ts`. **A `mermaid` fence is drawn** (`DiagramView`), its code
 open until `</>` closes it. `diagram.spec.ts`. **A `markdown` one is painted as the Markdown
 view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens one.
 
@@ -290,7 +290,6 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
   one fitting a lined-up header takes its columns. `table-preservation.spec.ts`.
 - **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root (the
   scroller clips); one write, on drop. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column. `table-handles.spec.ts`.
-- Wraps at words, then scrolls; a short column never wraps. `table-widths.spec.ts`.
 
 ## Whole-block selection
 

@@ -597,6 +597,72 @@ ${tagPillCss(theme)}
           line-height: 0;
         }
         [data-block-id] .md-fn-inline { color: ${theme.TEXT.muted}; }
+        /* A numbered footnote (numberFootnotes): its number over its hidden
+           source. A reference reads as a link, in the accent's ink, with room
+           for a finger or a pointer; one with no definition stays its text. */
+        [data-editor] :is(.md-fn-ref, [data-footnote-label])[data-n] > .md-fn-src { display: none; }
+        /* A definition shows "1." (EditableBlock draws its column). */
+        [data-editor] [data-footnote-label][data-n]::after { content: attr(data-n) "."; }
+        /* A footnote no reference names: a dash. Hovered, or holding the caret
+           (so the keys and a phone's tap reach it too), its label floats above
+           the dash as a chip, so nothing in the row moves however long it is. */
+        [data-editor] [data-footnote-label]:not([data-n]) > .md-fn-src { display: none; }
+        [data-editor] [data-footnote-label]:not([data-n])::after { content: "–"; }
+        [data-editor] [data-block-type="footnote"]:has([data-footnote-label]:not([data-n])):is(:hover, [data-fn-caret])::before {
+          content: attr(data-fn-label);
+          position: absolute;
+          left: 0;
+          bottom: calc(100% + 2px);
+          z-index: 1;
+          width: max-content;
+          max-width: min(360px, 100%);
+          box-sizing: border-box;
+          padding: 3px 8px;
+          border-radius: 8px;
+          border: 1px solid ${theme.BG.divider};
+          background: ${theme.BG.elevated};
+          color: ${theme.TEXT.primary};
+          font-size: 13px;
+          font-weight: 500;
+          line-height: 18px;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          pointer-events: none;
+        }
+        /* The divider above the footnotes that end the note. */
+        [data-editor] [data-fn-group] {
+          margin-top: 28px !important;
+          padding-top: 16px;
+          border-top: 1px solid ${theme.BG.divider};
+        }
+        /* The way back up: ↩ after a numbered footnote's text (never in the
+           file), shown on hover or with the caret in the line; always on a
+           touch screen, which has no hover. */
+        [data-editor] [data-block-type="footnote"]:has([data-footnote-label][data-n]) > [role="textbox"]::after {
+          content: "↩";
+          color: ${theme.TEXT.muted};
+          margin-left: 0.35em;
+          cursor: pointer;
+          user-select: none;
+          transition: opacity 120ms;
+        }
+        @media (hover: hover) {
+          [data-editor] [data-block-type="footnote"]:not(:hover):not([data-fn-caret]) > [role="textbox"]::after { opacity: 0; }
+        }
+        /* A reference reads [1], as Reading view draws it: never mistaken for a power. */
+        [data-editor] .md-fn-ref[data-n]::after { content: "[" attr(data-n) "]"; }
+        /* Footnotes on adjacent lines in the file sit tight, as a list's items do. */
+        [data-block-type="footnote"]:has(+ [data-block-type="footnote"][data-tight-above]) {
+          margin-bottom: 0 !important;
+        }
+        [data-block-id] .md-fn-ref[data-n] {
+          color: ${theme.ACCENT.text};
+          font-size: 0.8em;
+          font-weight: 500;
+          padding: 0;
+          cursor: pointer;
+          font-variant-numeric: tabular-nums;
+        }
         /* A footnote's later paragraph: a faint guide line, as Obsidian draws. */
         p[data-footnote-continuation] {
           border-left: 1px solid ${theme.BG.divider};

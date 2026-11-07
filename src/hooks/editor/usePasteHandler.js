@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { getCaretOffset, isEditableBlock, placeCaret } from "../../utils/domHelpers";
+import { caretLength, getCaretOffset, isEditableBlock, placeCaret } from "../../utils/domHelpers";
 import { TAG_RE } from "../../utils/tags";
 import {
   sanitizeInlineFragment,
@@ -60,11 +60,14 @@ export function usePasteHandler({
    * and the caret put back at its offset (visible characters).
    */
   const paintPastedTags = (el, pasted) => {
-    if (!el || !new RegExp(TAG_RE.source, "u").test(pasted)) return;
-    const offset = getCaretOffset(el);
+    // A pasted footnote reference too: sealed into its number at once.
+    if (!el || !(new RegExp(TAG_RE.source, "u").test(pasted) || pasted.includes("[^"))) return;
+    // Counted from the end: what follows the caret was already painted and
+    // reads the same, while a pasted reference shrinks to one character.
+    const after = caretLength(el) - getCaretOffset(el);
     const text = htmlToInlineMarkdown(sanitizeInlineHtml(el.innerHTML)).replace(/\n$/, "");
     el.innerHTML = text ? inlineMarkdownToHtml(text, noteTitleSetRef?.current) : "<br>";
-    placeCaret(el, offset);
+    placeCaret(el, Math.max(0, caretLength(el) - after));
   };
 
   const handleEditorPaste = useCallback((e) => {

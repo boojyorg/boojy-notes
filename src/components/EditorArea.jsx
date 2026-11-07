@@ -32,6 +32,7 @@ import FloatingToolbar from "./FloatingToolbar";
 import LinkTooltip from "./LinkTooltip";
 import EditorContextMenu from "./EditorContextMenu";
 import InlineMathPanel from "./InlineMathPanel";
+import FootnoteRefPanel from "./FootnoteRefPanel";
 import { menuAnchorFor, pointInRange, spellableWord, wordRangeAt } from "../utils/contextSelection";
 import {
   INLINE_MATH_CLASS,
@@ -103,11 +104,16 @@ import { withAlpha } from "../utils/selectionBand";
 import { selectTagName, tagName, tagRange } from "../utils/tagName";
 import { editingTag } from "../utils/tagEditing";
 import {
-  caretFootnoteRef,
+  describeFootnote,
   findFootnoteDefinition,
+  footnoteBackAt,
+  footnoteRefKey,
+  markCaretFootnote,
   ownFootnoteRef,
   refLabel,
+  watchFootnoteNumbers,
 } from "../utils/footnoteTarget";
+import { FOOTNOTE_REF_CLASS } from "../utils/footnotes";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -200,6 +206,9 @@ const EditorArea = memo(
     onShowFolder,
     // Back and Forward through the notes opened, beside the path (useNoteHistory).
     noteHistory,
+    // The same, always current: the editor skips renders, so a step it takes
+    // later (a footnote's ↩) reads the history as it is then.
+    noteHistoryRef,
     // A heading link's way in (useWikilinkHandlers): the place now, a place
     // put back, a section revealed.
     headingNavRef,
@@ -446,6 +455,9 @@ const EditorArea = memo(
     // at the end of its definition, the last of that label (Obsidian's
     // reading), a visit of its own, so Back returns to the reference. A
     // label with no definition is said, the caret left where it is.
+    // The latest jump from a reference: ↩ on its footnote is Back while that
+    // jump is still the visit open.
+    const lastFootnoteJump = useRef(null);
     const goToFootnote = (refEl) => {
       const label = refLabel(refEl?.textContent || "");
       const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
@@ -466,9 +478,57 @@ const EditorArea = memo(
       }
       const place = currentPlace();
       if (place) noteHistory?.recordPlace?.(activeNote, place);
-      noteHistory?.jump?.(activeNote);
+      const visit = noteHistory?.jump?.(activeNote);
+      lastFootnoteJump.current = { label, ref: refEl, visit };
       placeCaret(el, caretLength(el), { reveal: false });
       el.scrollIntoView?.({ block: "nearest" });
+      // Where it landed, tinted a moment as a heading link's section is.
+      const landed = document.createRange();
+      landed.selectNodeContents(el);
+      tintRanges([landed]);
+    };
+
+    // A footnote's ↩. Came here from one of its references, and nowhere since
+    // (the jump is still the visit open): Back, to that very reference and
+    // the scroll it had. Otherwise: its first reference, a visit of its own.
+    // Either way the reference is tinted a moment.
+    const goToReference = (label) => {
+      const tintRef = (r) => {
+        const tint = document.createRange();
+        tint.selectNode(r);
+        tintRanges([tint]);
+      };
+      const last = lastFootnoteJump.current;
+      if (
+        last?.label === label &&
+        last.ref?.isConnected &&
+        last.visit !== undefined &&
+        noteHistoryRef?.current?.currentVisit?.() === last.visit
+      ) {
+        lastFootnoteJump.current = null;
+        noteHistoryRef.current.back();
+        tintRef(last.ref);
+        return;
+      }
+      const ref = [...(editorRef.current?.querySelectorAll(`.${FOOTNOTE_REF_CLASS}`) ?? [])].find(
+        (r) => r.getAttribute("data-fn") === label && ownFootnoteRef(r),
+      );
+      if (!ref) return;
+      const place = currentPlace();
+      if (place) noteHistory?.recordPlace?.(activeNote, place);
+      noteHistory?.jump?.(activeNote);
+      const after = document.createRange();
+      const anchor = ref.nextSibling;
+      if (anchor?.classList?.contains("caret-anchor") && anchor.firstChild)
+        after.setStart(anchor.firstChild, anchor.firstChild.length);
+      else after.setStartAfter(ref);
+      after.collapse(true);
+      editorRef.current?.focus({ preventScroll: true });
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(after);
+      ref.scrollIntoView?.({ block: "nearest" });
+      tintRef(ref);
     };
 
     // A note opens at its top. The scroller is not keyed by the note (only
@@ -545,6 +605,41 @@ const EditorArea = memo(
         setMathTarget(null);
       };
     }, [activeNote, hasNote, editorRef, sourceView, blockRefs]);
+
+    // Footnotes are numbered as Reading view numbers them, whatever puts one
+    // in the editor (utils/footnoteTarget `numberFootnotes`).
+    useEffect(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      const stop = watchFootnoteNumbers(el);
+      // ← → and Backspace cross a sealed reference in one press (footnoteRefKey).
+      const onKey = (e) => {
+        if (e.shiftKey || e.altKey || e.metaKey || e.ctrlKey || e.isComposing) return;
+        if (footnoteRefKey(e.key, el)) e.preventDefault();
+      };
+      el.addEventListener("keydown", onKey, true);
+      const onSel = () => markCaretFootnote(el);
+      document.addEventListener("selectionchange", onSel);
+      return () => {
+        stop();
+        el.removeEventListener("keydown", onKey, true);
+        document.removeEventListener("selectionchange", onSel);
+      };
+    }, [activeNote, hasNote, editorRef, sourceView]);
+
+    // A reference's label, edited in a field under it (FootnoteRefPanel).
+    const [fnRefTarget, setFnRefTarget] = useState(null);
+    const closeFnRef = useCallback(() => setFnRefTarget(null), []);
+    const openFnRefPanel = (refEl) => {
+      const root = refEl?.closest("[data-block-id]");
+      const blockId = root?.getAttribute("data-block-id");
+      const text = blockId && blockRefs.current[blockId];
+      if (!text?.contains(refEl)) return;
+      const index = [...text.querySelectorAll(`.${FOOTNOTE_REF_CLASS}`)].indexOf(refEl);
+      setFnRefTarget({ blockId, index });
+    };
+    const describeLabel = (label) =>
+      describeFootnote(noteDataRef.current?.[activeNote]?.content?.blocks ?? [], label);
 
     // One native input listener for what Chromium does beside the app's own
     // handlers: a deletion's remembered style is forgotten, and
@@ -784,8 +879,9 @@ const EditorArea = memo(
       // A hold on a block already selected keeps the run, so its menu acts on all of it.
       onHold: (id, x, y) => {
         setBlockMenu(null);
-        // A hold on a tag is the tag's (its menu, on release), never the block's.
-        if (tagAtPoint(x, y)) return;
+        // A hold on a tag or a footnote reference is its own (its menu, on
+        // release), never the block's.
+        if (tagAtPoint(x, y) || fnRefAtPoint(x, y)) return;
         if (!heldIdsRef.current.includes(id)) setSelectedBlockId(id);
       },
       // Under the run the menu acts on (the held block and its nested items,
@@ -795,6 +891,11 @@ const EditorArea = memo(
         const tagEl = tagAtPoint(x, y);
         if (tagEl) {
           openTagMenu(tagEl, x, y);
+          return;
+        }
+        const refEl = fnRefAtPoint(x, y);
+        if (refEl) {
+          openFnRefMenu(refEl, x, y);
           return;
         }
         const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
@@ -1223,7 +1324,6 @@ const EditorArea = memo(
     // `data-editing`, and is read at each press, before the press moves the
     // caret, so a first click on a tag still searches.
     const tagAtPressRef = useRef(null);
-    const fnRefAtPressRef = useRef(null);
     useEffect(() => {
       let shown = null;
       const mark = () => {
@@ -1235,7 +1335,6 @@ const EditorArea = memo(
       };
       const press = () => {
         tagAtPressRef.current = editingTag(editorRef.current);
-        fnRefAtPressRef.current = caretFootnoteRef(editorRef.current);
       };
       document.addEventListener("selectionchange", mark);
       document.addEventListener("pointerdown", press, true);
@@ -1252,6 +1351,33 @@ const EditorArea = memo(
     const tagAtPoint = (x, y) => {
       const el = document.elementFromPoint(x, y)?.closest?.(".inline-tag");
       return el && editorRef.current?.contains(el) ? el : null;
+    };
+
+    /** The open note's footnote reference under a point (a hold's finger), if any. */
+    const fnRefAtPoint = (x, y) => {
+      const el = ownFootnoteRef(document.elementFromPoint(x, y));
+      return el && editorRef.current?.contains(el) ? el : null;
+    };
+
+    // The phone's hold on a footnote reference: its menu (Go to footnote,
+    // Edit reference, Cut, Copy), the reference selected whole.
+    const openFnRefMenu = (refEl, x, y) => {
+      setSelectedBlockId(null);
+      const whole = document.createRange();
+      whole.selectNode(refEl);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(whole);
+      setLinkCtxMenu({
+        anchor: menuAnchorFor(whole, x, y),
+        linkType: null,
+        range: whole.cloneRange(),
+        field: null,
+        host: null,
+        tableId: null,
+        canCutCopy: true,
+        footnote: refEl,
+      });
     };
 
     // The phone's hold on a tag opens the tag's menu, the desktop's
@@ -1787,10 +1913,8 @@ const EditorArea = memo(
                       if (!e.shiftKey && e.button === 0) {
                         const anchor = e.target.closest("a");
                         const wikilink = e.target.closest(".wikilink");
-                        // A reference jumps, unless it holds the caret (its text then).
-                        const fnRef = ownFootnoteRef(e.target);
-                        const jumps = fnRef && fnRef !== fnRefAtPressRef.current;
-                        if (anchor || wikilink || jumps) e.preventDefault();
+                        // A footnote reference is sealed: a press jumps, never places a caret.
+                        if (anchor || wikilink || ownFootnoteRef(e.target)) e.preventDefault();
                       }
                     }}
                     onMouseUp={handleEditorMouseUp}
@@ -1813,12 +1937,16 @@ const EditorArea = memo(
                         }
                         return;
                       }
-                      // A footnote reference jumps to its definition; the one
-                      // holding the caret when the press began takes the click
-                      // as text, as a tag does.
+                      // A footnote's ↩ goes back up to its reference.
+                      const backTo = footnoteBackAt(e.target, e.clientX, e.clientY);
+                      if (backTo) {
+                        e.preventDefault();
+                        goToReference(backTo);
+                        return;
+                      }
+                      // A footnote reference jumps to its definition.
                       const fnRef = ownFootnoteRef(e.target);
                       if (fnRef) {
-                        if (fnRef === fnRefAtPressRef.current) return;
                         goToFootnote(fnRef);
                         return;
                       }
@@ -2043,6 +2171,17 @@ const EditorArea = memo(
               />
             )}
 
+            {fnRefTarget && (
+              <FootnoteRefPanel
+                key={`${fnRefTarget.blockId}:${fnRefTarget.index}`}
+                target={fnRefTarget}
+                blockRefs={blockRefs}
+                describe={describeLabel}
+                reRead={reReadBlockFromDom}
+                onClose={closeFnRef}
+              />
+            )}
+
             {/* Right-click menu */}
             {linkCtxMenu && (
               <EditorContextMenu
@@ -2112,6 +2251,15 @@ const EditorArea = memo(
                         const ref = linkCtxMenu.footnote;
                         dismissCtxMenu();
                         goToFootnote(ref);
+                      }
+                    : undefined
+                }
+                onEditFootnoteRef={
+                  linkCtxMenu.footnote
+                    ? () => {
+                        const ref = linkCtxMenu.footnote;
+                        dismissCtxMenu();
+                        openFnRefPanel(ref);
                       }
                     : undefined
                 }
