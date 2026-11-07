@@ -720,11 +720,9 @@ test("a hold on a footnote number opens its menu; Edit reference changes the lab
   await refMenu.getByRole("menuitem", { name: "Edit reference…" }).click();
   const field = page.getByRole("textbox", { name: "Footnote label" });
   await expect(field).toBeFocused();
-  await expect(page.getByTestId("footnote-ref-reaches")).toHaveText("Bee.");
+  await expect(page.getByTestId("footnote-ref-reaches")).toHaveText("→ Bee.");
   await field.fill("zz");
-  await expect(page.getByTestId("footnote-ref-reaches")).toHaveText(
-    "No footnote by this label yet",
-  );
+  await expect(page.getByTestId("footnote-ref-reaches")).toHaveText("No footnote by this label");
   await page.keyboard.press("Enter");
   await expect(field).toHaveCount(0);
   await expect(refs.nth(1)).toHaveText("[^zz]");

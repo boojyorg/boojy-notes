@@ -63,7 +63,7 @@ import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges"
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
 import { capturePlace, resolveAnchor, resolveCaret } from "../utils/notePlace";
-import { tintRanges } from "../utils/searchHighlight";
+import { tintElement, tintRanges } from "../utils/searchHighlight";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import { useSpellingMarks } from "../hooks/editor/useSpellingMarks";
 import { useHoldToGrab } from "../hooks/editor/useHoldToGrab";
@@ -113,6 +113,7 @@ import {
   ownFootnoteRef,
   refLabel,
   watchFootnoteNumbers,
+  footnoteNumbers,
 } from "../utils/footnoteTarget";
 import { FOOTNOTE_REF_CLASS } from "../utils/footnotes";
 
@@ -492,13 +493,9 @@ const EditorArea = memo(
     // A footnote's ↩. Came here from one of its references, and nowhere since
     // (the jump is still the visit open): Back, to that very reference and
     // the scroll it had. Otherwise: its first reference, a visit of its own.
-    // Either way the reference is tinted a moment.
+    // Either way the reference is tinted a moment: the element itself, as its
+    // [1] is CSS over hidden source text, which a highlight cannot paint.
     const goToReference = (label) => {
-      const tintRef = (r) => {
-        const tint = document.createRange();
-        tint.selectNode(r);
-        tintRanges([tint]);
-      };
       const last = lastFootnoteJump.current;
       if (
         last?.label === label &&
@@ -508,7 +505,7 @@ const EditorArea = memo(
       ) {
         lastFootnoteJump.current = null;
         noteHistoryRef.current.back();
-        tintRef(last.ref);
+        tintElement(last.ref);
         return;
       }
       const ref = [...(editorRef.current?.querySelectorAll(`.${FOOTNOTE_REF_CLASS}`) ?? [])].find(
@@ -529,7 +526,7 @@ const EditorArea = memo(
       sel?.removeAllRanges();
       sel?.addRange(after);
       ref.scrollIntoView?.({ block: "nearest" });
-      tintRef(ref);
+      tintElement(ref);
     };
 
     // A note opens at its top. The scroller is not keyed by the note (only
@@ -647,6 +644,8 @@ const EditorArea = memo(
     };
     const describeLabel = (label) =>
       describeFootnote(noteDataRef.current?.[activeNote]?.content?.blocks ?? [], label);
+    const footnoteNumberOf = (label) =>
+      footnoteNumbers(noteDataRef.current?.[activeNote]?.content?.blocks ?? []).get(label);
 
     // One native input listener for what Chromium does beside the app's own
     // handlers: a deletion's remembered style is forgotten, and
@@ -2215,6 +2214,7 @@ const EditorArea = memo(
                 target={fnRefTarget}
                 blockRefs={blockRefs}
                 describe={describeLabel}
+                numberOf={footnoteNumberOf}
                 reRead={reReadBlockFromDom}
                 onClose={closeFnRef}
               />

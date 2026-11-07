@@ -3,6 +3,7 @@ import {
   addFootnote,
   describeFootnote,
   findFootnoteDefinition,
+  footnoteNumbers,
   nextFootnoteNumber,
   numberFootnotes,
   ownFootnoteRef,
@@ -142,5 +143,28 @@ describe("numberFootnotes: Reading view's numbers, drawn over the source", () =>
     numberFootnotes(root);
     expect(n("[data-footnote-label]")).toEqual(["1", "2"]);
     expect(n("[data-embed-source] .md-fn-ref")).toEqual([null]);
+  });
+});
+
+describe("footnoteNumbers: the numbers numberFootnotes draws, read from the blocks", () => {
+  it("numbers by first reference; a repeat shares; no definition, no number", () => {
+    const b = blocks(
+      "See[^proof] and[^1], again[^proof], and[^x].\n\n[^1]: One.\n\n[^proof]: Proof.\n\n[^lonely]: Alone.",
+    );
+    // The same note as numberFootnotes's first case, so the two agree.
+    expect([...footnoteNumbers(b)]).toEqual([
+      ["proof", 1],
+      ["1", 2],
+    ]);
+  });
+
+  it("counts a callout's title before its body, never code or a comment", () => {
+    const b = blocks(
+      "> [!note] Title[^t]\n> Body[^b]\n\n`[^c]` %%[^m]%%\n\n[^b]: B.\n\n[^t]: T.\n\n[^c]: C.\n\n[^m]: M.",
+    );
+    expect([...footnoteNumbers(b)]).toEqual([
+      ["t", 1],
+      ["b", 2],
+    ]);
   });
 });

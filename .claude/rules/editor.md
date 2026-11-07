@@ -36,7 +36,7 @@ Note state has two copies: React state and `useHistory`'s keystroke ref, which r
 
 ## One edit, one block root
 
-The editor is one contentEditable over React-owned block roots; Chromium edits across two and
+The editor is one contentEditable over React-owned block roots; an edit across two
 breaks the next commit. **An edit that reaches beyond one block root is the app's, made
 through state.**
 
@@ -106,9 +106,9 @@ through state.**
   A caret anchor follows; ←/→/Backspace take it whole (`footnoteRefKey`). A click goes to
   its definition (the last of its label), a visit. Insert footnote is one commit, painted
   at once (`flushSync`). `footnotes.spec.ts`.
-- **A definition shows `n.`; an unused one a dash**, its label above the row on hover or
-  caret, nothing moved. Its ↩ (CSS; the menu's Back to reference) is Back while that jump
-  is the visit open, else the first reference.
+- **A definition shows `n.`; an unused one a dash**, its label above on hover or caret.
+  Its ↩ (menu: Back to reference) is Back while that jump is the visit open, else the first
+  reference, tinted as an element (`tintElement`): highlights miss CSS text.
 - **One link picker** (`LinkPicker.tsx`) for every way in; it writes the shortest clear target
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
@@ -200,7 +200,7 @@ through state.**
 ## Headings
 
 **Every editor spacing value lives in `DEFAULT_RHYTHM`.** New headings are ATX; an empty one
-shows `Heading N` from CSS. `heading-placeholder.spec.ts`.
+shows `Heading N` (CSS). `heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file
 
@@ -241,8 +241,8 @@ keeps its own view, saved** (`useSourceView`).
 **The field holds what state holds, and the file
 never holds a byte sequence the syntax cannot.**
 
-- Read with the editor's reader, commit every input through `commitTextChange`; a typed closing
-  marker converts there as in a block (`fieldTextAfterTyping`).
+- Read with the editor's reader, every input committed (`commitTextChange`); a typed closing
+  marker converts there too (`fieldTextAfterTyping`).
 - **`data-inline-field`** (cell, callout body) marks a field that owns its inline formatting
   (`formatInlineField`). `special-block-fields.spec.ts`.
 - **A field repaints only when it doesn't hold the ref's latest text** (`useOwnedField`);

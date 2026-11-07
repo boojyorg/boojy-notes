@@ -712,6 +712,14 @@ ${tagPillCss(theme)}
               SEARCH_HIT_ALPHA[theme.name === "night" ? "night" : "day"][i],
             )}; }`,
         ).join("\n        ")}
+        /* The same tint on what a highlight cannot paint (tintElement). */
+        ${SEARCH_HIT_STEPS.map(
+          (_, i) =>
+            `[data-tint="${i}"] { background-color: ${withAlpha(
+              theme.ACCENT.primary,
+              SEARCH_HIT_ALPHA[theme.name === "night" ? "night" : "day"][i],
+            )}; border-radius: 3px; }`,
+        ).join("\n        ")}
         /* A misspelled word's line (hooks/editor/useSpellingMarks): laid
            over the text, as Chromium drew its own (2px dots, about 2px apart,
            touching the letters); the hook places and spaces each one. */

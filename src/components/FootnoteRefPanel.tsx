@@ -21,6 +21,8 @@ interface Props {
   blockRefs: { current: Record<string, HTMLElement | null> };
   /** What the label points at, for the line under the field (`describeFootnote`). */
   describe: (label: string) => { label: string; missing?: boolean; sub?: string };
+  /** The number a label shows in the note (`footnoteNumbers`), if it has one. */
+  numberOf: (label: string) => number | undefined;
   /** Read a block back from the DOM and commit it at the text grain. */
   reRead: (sel: { rangeCount: number; anchorNode: Node }) => void;
   onClose: () => void;
@@ -41,7 +43,14 @@ const refsIn = (el: HTMLElement | null | undefined) =>
  * way to the one it opened with. The caret goes after the reference. The phone reaches it
  * from a hold's menu; its field is a touch target and brings the keyboard.
  */
-export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, onClose }: Props) {
+export default function FootnoteRefPanel({
+  target,
+  blockRefs,
+  describe,
+  numberOf,
+  reRead,
+  onClose,
+}: Props) {
   const { theme } = useTheme();
   const panelRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement>(null);
@@ -126,6 +135,7 @@ export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, 
 
   const valid = validLabel(label);
   const reaches = valid ? describe(label) : null;
+  const number = valid ? numberOf(label) : undefined;
   const h = isPhone ? TOUCH : 32;
 
   return createPortal(
@@ -152,6 +162,13 @@ export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, 
         boxShadow: theme.modalShadow,
       }}
     >
+      {/* The number the note shows, tied to the label the file holds. */}
+      <div
+        data-testid="footnote-ref-heading"
+        style={{ fontSize: 12, lineHeight: "16px", color: theme.TEXT.muted, padding: "0 2px" }}
+      >
+        {number === undefined ? "Footnote · label" : `Footnote ${number} · label`}
+      </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ color: theme.TEXT.muted, fontSize: 13 }}>[^</span>
         <input
@@ -224,10 +241,10 @@ export default function FootnoteRefPanel({ target, blockRefs, describe, reRead, 
         {!valid
           ? "A label has no spaces"
           : reaches?.missing
-            ? "No footnote by this label yet"
+            ? "No footnote by this label"
             : reaches?.sub === "empty footnote"
-              ? "An empty footnote"
-              : reaches?.label.split("\n")[0]}
+              ? "→ An empty footnote"
+              : `→ ${reaches?.label.split("\n")[0]}`}
       </div>
     </div>,
     document.body,

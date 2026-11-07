@@ -358,6 +358,21 @@ test("↩ returns to the reference that was clicked while that jump is the visit
   expect(h.pageErrors).toEqual([]);
 });
 
+test("↩ tints the [1] it lands on, visibly, then lets it go", async () => {
+  await open("One.[^a]\n\nMore text.\n\n[^a]: Ay.\n");
+  const ref = refs(h.page).first();
+  await expect(ref).toHaveAttribute("data-n", "1");
+  // Judged on the pixels: the [1] is drawn by CSS over hidden source text.
+  const plain = await ref.screenshot();
+  await defs(h.page).getByText("Ay.").click();
+  await backArrow(h.page, "Ay.");
+  await expect.poll(async () => (await ref.screenshot()).equals(plain)).toBe(false);
+  await expect
+    .poll(async () => (await ref.screenshot()).equals(plain), { timeout: 5000 })
+    .toBe(true);
+  expect(h.pageErrors).toEqual([]);
+});
+
 test("an unused footnote's label shows above its dash with the caret in the line, the row unmoved", async () => {
   await open(
     "Flour.[^a]\n\n[^a]: One.\n[^a-much-longer-unused-label]: Nobody points here, and this line wraps on a narrow window.\n",
@@ -381,9 +396,17 @@ test("Edit reference changes the label a reference names, and says what it reach
   await h.page.getByRole("menuitem", { name: "Edit reference…" }).click();
   const field = h.page.getByRole("textbox", { name: "Footnote label" });
   await expect(field).toBeFocused();
-  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("Bee.");
+  // The heading ties the [2] the note shows to the label the file holds.
+  const heading = h.page.getByTestId("footnote-ref-heading");
+  await expect(heading).toHaveText("Footnote 2 · label");
+  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("→ Bee.");
   await field.fill("a");
-  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("Ay.");
+  await expect(heading).toHaveText("Footnote 1 · label");
+  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("→ Ay.");
+  await field.fill("zz");
+  await expect(heading).toHaveText("Footnote · label");
+  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("No footnote by this label");
+  await field.fill("a");
   await h.page.keyboard.press("Enter");
   await waitForFile(h.vault.file("F.md"), (t) => t.startsWith("Claim.[^a] More.[^a]\n"));
   // [^b] now has no reference: a dash.

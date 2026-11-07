@@ -41,11 +41,40 @@ export function describeFootnote(blocks: readonly Block[], label: string): LinkD
   return { label: paragraphs.join("\n"), wrap: true };
 }
 
-/** Every piece of inline text a block holds: its text, a callout's title, a table's cells. */
+/** Every piece of inline text a block holds, in the order it is drawn: a callout's title, its text, a table's cells. */
 function inlineTexts(b: Block): string[] {
   if (b.type === "code" || b.type === "math" || b.type === "frontmatter") return [];
   const k = b as Block & { title?: string; rows?: string[][] };
-  return [b.text || "", k.title || "", ...(k.rows?.flat() ?? [])];
+  return [k.title || "", b.text || "", ...(k.rows?.flat() ?? [])];
+}
+
+/** Every reference label in the note, in reading order. */
+function refLabels(blocks: readonly Block[]): string[] {
+  const labels: string[] = [];
+  for (const b of blocks) {
+    for (const text of inlineTexts(b)) {
+      for (const f of findFootnotes(text, findComments(text))) {
+        if (f.kind === "ref") labels.push(refLabel(text.slice(f.start, f.end)));
+      }
+    }
+  }
+  return labels;
+}
+
+/**
+ * The number each label shows, as `numberFootnotes` draws it, read from the
+ * blocks rather than the DOM (for what the DOM is not asked: the Edit
+ * reference panel's heading). Labels without a definition have none.
+ */
+export function footnoteNumbers(blocks: readonly Block[]): Map<string, number> {
+  const defined = new Set(
+    blocks.filter((b) => b.type === "footnote").map((b) => (b as { label?: string }).label),
+  );
+  const order = new Map<string, number>();
+  for (const label of refLabels(blocks)) {
+    if (defined.has(label) && !order.has(label)) order.set(label, order.size + 1);
+  }
+  return order;
 }
 
 /**
@@ -58,14 +87,8 @@ export function nextFootnoteNumber(blocks: readonly Block[]): number {
   const take = (label: string) => {
     if (/^\d+$/.test(label)) max = Math.max(max, Number(label));
   };
-  for (const b of blocks) {
-    if (b.type === "footnote") take((b as { label?: string }).label || "");
-    for (const text of inlineTexts(b)) {
-      for (const f of findFootnotes(text, findComments(text))) {
-        if (f.kind === "ref") take(refLabel(text.slice(f.start, f.end)));
-      }
-    }
-  }
+  for (const b of blocks) if (b.type === "footnote") take((b as { label?: string }).label || "");
+  for (const label of refLabels(blocks)) take(label);
   return max + 1;
 }
 
