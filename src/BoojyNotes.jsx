@@ -67,6 +67,8 @@ import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
 import { describeWikilink } from "./utils/linkDescription";
+import { describeFootnote, ownFootnoteRef, refLabel } from "./utils/footnoteTarget";
+import { FOOTNOTE_REF_CLASS } from "./utils/footnotes";
 import { linkTargetIn } from "./utils/embedTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isPhone, isWeb, keyBarInWeb } from "./utils/platform";
@@ -1207,12 +1209,19 @@ export default function BoojyNotes() {
     [reReadBlockFromDom],
   );
   // What the chip says a link points at: the URL, or where a wikilink goes
-  // (utils/linkDescription), a missing note, heading or block said.
+  // (utils/linkDescription), a missing note, heading or block said; a
+  // footnote reference's definition (utils/footnoteTarget).
   const describeLink = useCallback(
     (el) => {
       if (el.tagName === "A") {
         const url = el.getAttribute("data-url") || el.getAttribute("href");
         return url ? { label: url } : null;
+      }
+      if (el.classList.contains(FOOTNOTE_REF_CLASS)) {
+        // One in an embed is the embedded note's: no chip.
+        if (!ownFootnoteRef(el)) return null;
+        const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks ?? [];
+        return describeFootnote(blocks, refLabel(el.textContent || ""));
       }
       return describeWikilink(linkTargetIn(el), noteDataRef.current, activeNoteRef.current);
     },
@@ -1507,6 +1516,7 @@ export default function BoojyNotes() {
     indentBlockRange,
     moveBlock: blockOps.moveBlock,
     checkTodos: blockOps.checkTodos,
+    insertFootnote: editorHandlers.insertFootnote,
     updateTableRows: blockOps.updateTableRows,
     openFind: (mode) => openFindRef.current?.(mode),
     detectActiveFormats,

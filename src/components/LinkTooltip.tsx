@@ -9,6 +9,8 @@ export interface LinkDescription {
   sub?: string;
   /** A note, heading or block that is missing, or a name two notes share: the notice's glyph. */
   missing?: boolean;
+  /** Prose that wraps (a footnote's text), a few lines at most, never one ellipsised line. */
+  wrap?: boolean;
 }
 
 interface LinkTooltipProps {
@@ -53,7 +55,7 @@ export default function LinkTooltip({ description, position }: LinkTooltipProps)
         maxWidth: 360,
         overflow: "hidden",
         textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
+        whiteSpace: description.wrap ? "pre-line" : "nowrap",
         pointerEvents: "none",
         zIndex: Z.TOOLBAR,
       }}
@@ -66,7 +68,20 @@ export default function LinkTooltip({ description, position }: LinkTooltipProps)
           <ToastIcon name="info" size={14} />
         </span>
       )}
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{description.label}</span>
+      <span
+        style={
+          description.wrap
+            ? {
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 6,
+                overflow: "hidden",
+              }
+            : { overflow: "hidden", textOverflow: "ellipsis" }
+        }
+      >
+        {description.label}
+      </span>
       {description.sub && (
         <span
           style={{

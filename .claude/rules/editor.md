@@ -95,19 +95,23 @@ through state.**
 - **The browser's caret is fixed at the keystroke** (`caretOutOfLinkEnd`/`Start`), never on
   `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
-  (`utils/wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the
+  (`wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the
   picker to fix; a file opens (`fileForTarget`); a heading or `^id` is found as Obsidian finds
   it (`headingTarget.ts`, a child only in its parent; `blockTarget.ts`), as a visit
   (`historyJump`); a missing one is said. An ID is
   drawn quietly only while it ends its block. `link-resolution.spec.ts`,
   `heading-links.spec.ts`, `block-links.spec.ts`.
+- **A footnote reference reads as a link** (`footnoteTarget.ts`): its chip is the definition
+  (the last of its label); a click puts the caret at its end, a visit, unless it holds the
+  caret. Insert footnote is one commit, painted at once (`flushSync`).
+  `footnotes.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for every way in; it writes the shortest clear target
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
-  reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at its end lands
-  outside it. A click searches, except on the tag holding the caret; its
-  Edit tag selects the name; Enter jumps past it, in any field. `tag-pill.spec.ts`.
+  reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at its
+  end lands outside it. A click searches, except on the tag holding the caret; Enter jumps
+  past it, in any field. `tag-pill.spec.ts`.
 - **A backslash escape is its symbol alone, sealed**: one caret character, read back with its
   backslash; as written in code, addresses and wikilinks. `escapes.spec.ts`.
 - Bare URLs autolink in prose only; `<url>` is text. **`LINK_DEST` is the one reading of a link
@@ -134,7 +138,7 @@ through state.**
 
 ## The selection toolbar
 
-- Shows on mouse-up or at rest; hides at once on collapse. Measured once when shown.
+- Shows on mouse-up or at rest; hides at once on collapse.
 - **It shows only where it can act**: any text block; in a block with its own fields, only
   inside one `data-inline-field`, without Link.
 - **`FORMATS` in `FloatingToolbar.jsx` must match `useKeyboardHandlers`.**
@@ -143,8 +147,7 @@ through state.**
 ## Right-click
 
 - `EditorContextMenu`: a misspelled word's, link's or tag's actions, then Cut, Copy, Paste; a field
-  outside the note gets the same (`TextFieldMenu`). **Items run the keys' own path.** Never
-  focused, so the selection stays blue. `text-context-menu.spec.ts`.
+  outside the note gets the same (`TextFieldMenu`). **Items run the keys' own path.** `text-context-menu.spec.ts`.
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is late),
   never in code, tags or links; guesses only on a marked word.
   `spelling.spec.ts`, `spelling-line.spec.ts`.
@@ -160,8 +163,7 @@ through state.**
   `BlockMenu` (on a tag, the tag's menu). A scroll, double-tap or text selection is the browser's. A lone new finger ends
   a lost hold (Android reuses ids). `hold-to-grab.spec.ts`.
 - **Commits on drop**, one entry, only if order changed; Escape, blur or the sidebar
-  cancel. A selection drags as one run; moved blocks glide
-  (`settleBlocks`). `motion.spec.ts`.
+  cancel. A selection drags as one run. `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (`moveStep`).
   `list-move.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (UI scale).
@@ -171,7 +173,7 @@ through state.**
 ## Menus
 
 - **The slash menu is tiered**: `advanced: true` rows stay off the opening screen, one rule for
-  menu and keys (`filterSlashCommands()`). Rows select on real mouse movement.
+  menu and keys (`filterSlashCommands()`).
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
 - **Every menu's keys are one rule** (`useMenuKeys`); a suggestion under the caret
   (`suggestion: true`) is a `listbox`. `menuKeys.test.ts`,
@@ -258,8 +260,7 @@ never holds a byte sequence the syntax cannot.**
   the property being edited sets the draft aside, with Restore. `properties.spec.ts`.
 - **A list is edited an item at a time** (`replaceItem`, `removeItem`, `insertItem`), each
   splicing only that item's bytes. `property-lists.spec.ts`.
-- **The title's menu** (right-click, Shift+F10, a hold): Show Markdown and Remove all
-  properties, the whole block in one commit (`removeFrontmatter`).
+- **Remove all properties** (the title's menu) is one commit (`removeFrontmatter`).
   `properties-view.spec.ts`.
 - **Add property and `/properties`** (`PropertyPicker`): a picked type is a draft row
   (`freeName`), written once on Enter, Tab or a press elsewhere; Escape writes nothing. `---` on
@@ -295,7 +296,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 
 - **Any block can be selected whole** (`blockRun.ts`): the grip, the gutter, Escape (every
   block a text selection touches), a press on a divider, image, table or embed; Shift-click extends. **A list item or footnote brings what nests
-  under it** (`subtreeEnd`; drops land after, `dropBoundary`). Text blocks wear the band, the caret hidden.
+  under it** (`subtreeEnd`; drops land after, `dropBoundary`).
 - Backspace/Delete remove a selection in one commit, ⌘C/⌘X copy it whole (`wholeBlocksCopy`);
   a letter deselects and types; a press off `data-selection-surface` deselects.
 - **A drag from the left margin, a gutter strip or between blocks draws a box**

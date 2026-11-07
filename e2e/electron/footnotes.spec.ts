@@ -11,6 +11,7 @@ import {
   END_OF_LINE,
   launchApp,
   MOD,
+  menuClick,
   SETTLE_MS,
   START_OF_LINE,
   sleep,
@@ -148,5 +149,99 @@ test("a selected footnote brings its later paragraph: copied whole, deleted in o
   await waitForFile(h.vault.file("F.md"), (t) => t === TWO, { label: "one undo brings both" });
   await sleep(SETTLE_MS);
   expect(file()).toBe(TWO);
+  expect(h.pageErrors).toEqual([]);
+});
+
+const BACK = process.platform === "darwin" ? "Meta+BracketLeft" : "Alt+ArrowLeft";
+
+test("a reference's hover shows its definition, later paragraphs too; a missing one is said", async () => {
+  await open(`${NOTE}\nNowhere.[^x]\n`);
+  const chip = h.page.getByTestId("link-tooltip");
+  const chipFor = async (label: string, want: string) => {
+    await expect(async () => {
+      await h.page.mouse.move(5, 5);
+      await refs(h.page).filter({ hasText: label }).hover();
+      await expect(chip).toHaveText(want, { timeout: 1_500 });
+    }).toPass({ timeout: 10_000 });
+  };
+  await chipFor("[^proof]", "Twelve hours.\nThe cold slows the yeast.");
+  await expect(h.page.getByTestId("link-tooltip-mark")).toHaveCount(0);
+  await chipFor("[^x]", "[^x]no footnote by this label");
+  await expect(h.page.getByTestId("link-tooltip-mark")).toHaveCount(1);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("a click on a reference puts the caret at its definition's end; Back returns to it", async () => {
+  await open(NOTE);
+  await refs(h.page).filter({ hasText: "[^1]" }).click();
+  await h.page.keyboard.type(" Strong.");
+  await waitForFile(h.vault.file("F.md"), (t) => t.includes("[^1]: Bread flour. Strong.\n"));
+  // Back returns to the reference: the next letters land beside it.
+  await h.page.keyboard.press(BACK);
+  await h.page.keyboard.type("~");
+  await waitForFile(h.vault.file("F.md"), (t) => /\[\^1\]~|~\[\^1\]/.test(t.split("\n")[0]));
+  await h.page.keyboard.press("Backspace");
+
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("a click on the reference holding the caret is the text's: no jump", async () => {
+  await open("Claim.[^1]\n\n[^1]: Source.\n");
+  await row(h.page, "Claim.").click();
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.press("ArrowLeft");
+  await refs(h.page).first().click();
+  await h.page.keyboard.type("x");
+  await waitForFile(
+    h.vault.file("F.md"),
+    (t) => /^Claim\.\[\^1?x1?\]\n\n\[\^1\]: Source\.\n$/.test(t),
+    {
+      label: "typed inside the reference, not at its definition",
+    },
+  );
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("right-click on a reference: Go to footnote; elsewhere Insert footnote puts the next number in, one undo takes both", async () => {
+  const md = "Claim one.[^1] Claim two.\n\n[^1]: First.\n";
+  await open(md);
+  await refs(h.page).first().click({ button: "right" });
+  await h.page.getByRole("menuitem", { name: "Go to footnote" }).click();
+  await h.page.keyboard.type("!");
+  await waitForFile(h.vault.file("F.md"), (t) => t.endsWith("[^1]: First.!\n"));
+  await h.page.keyboard.press("Backspace");
+  await waitForFile(h.vault.file("F.md"), (t) => t === md);
+
+  // From the menu bar: after "two", before the full stop.
+  await row(h.page, "Claim two.").click();
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.press("ArrowLeft");
+  // Typed at once: a letter must never reach the line before the reference does.
+  await menuClick(h, "footnote");
+  await h.page.keyboard.type("Second.");
+  const inserted = "Claim one.[^1] Claim two[^2].\n\n[^1]: First.\n\n[^2]: Second.\n";
+  await waitForFile(h.vault.file("F.md"), (t) => t === inserted);
+  await expect(refs(h.page)).toHaveText(["[^1]", "[^2]"]);
+
+  await h.page.keyboard.press(`${MOD}+z`); // the typing
+  await h.page.keyboard.press(`${MOD}+z`); // the reference and its definition, together
+  await waitForFile(h.vault.file("F.md"), (t) => t === md, { label: "one undo took both" });
+
+  // The right-click menu's row runs the same command, at the word clicked.
+  await row(h.page, "Claim two.").getByText("Claim two.").click({ button: "right" });
+  await h.page.getByRole("menuitem", { name: "Insert footnote" }).click();
+  await waitForFile(h.vault.file("F.md"), (t) => t.includes("[^2]") && t.endsWith("[^2]: \n"));
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("`/footnote` on an empty line makes the next footnote's definition", async () => {
+  await open("Claim.[^4]\n\nNext\n");
+  await row(h.page, "Next").click();
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.press("Enter");
+  await h.page.keyboard.type("/footnote");
+  await h.page.keyboard.press("Enter");
+  await h.page.keyboard.type("Its text.");
+  await waitForFile(h.vault.file("F.md"), (t) => t === "Claim.[^4]\n\nNext\n\n[^5]: Its text.\n");
   expect(h.pageErrors).toEqual([]);
 });

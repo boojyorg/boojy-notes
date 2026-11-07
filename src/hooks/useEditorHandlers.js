@@ -7,6 +7,7 @@ import { usePasteHandler } from "./editor/usePasteHandler";
 import { useDragDropHandlers } from "./editor/useDragDropHandlers";
 import { useMouseHandlers } from "./editor/useMouseHandlers";
 import { useCrossBlockEdit } from "./editor/useCrossBlockEdit";
+import { useFootnoteCommands } from "./editor/useFootnoteCommands";
 import { typedPaste } from "../utils/pasteBlocks";
 
 export function useEditorHandlers({
@@ -71,6 +72,7 @@ export function useEditorHandlers({
     selectBlock,
   });
   const { executeSlashCommand } = useSlashCommands({ ...shared, onError });
+  const { insertFootnote, canInsertFootnote } = useFootnoteCommands(shared);
   const { handleEditorInput } = useInputHandler({
     ...shared,
     slashMenuRef,
@@ -160,5 +162,7 @@ export function useEditorHandlers({
     handleEditorDragLeave,
     handleEditorDrop,
     executeSlashCommand,
+    insertFootnote,
+    canInsertFootnote,
   };
 }

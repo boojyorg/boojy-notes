@@ -43,13 +43,14 @@ describe("SLASH_COMMANDS", () => {
       "file",
       "embed",
       "frontmatter",
+      "footnote",
     ]);
     for (const cmd of SLASH_COMMANDS) {
       expect(validTypes.has(cmd.type)).toBe(true);
     }
   });
 
-  it("keeps Text, deeper headings, maths, diagram, callout, file, properties and embed off the opening screen", () => {
+  it("keeps Text, deeper headings, maths, diagram, callout, file, properties, footnote and embed off the opening screen", () => {
     const advanced = SLASH_COMMANDS.filter((c) => c.advanced).map((c) => c.id);
     expect(advanced).toEqual([
       "text",
@@ -61,6 +62,7 @@ describe("SLASH_COMMANDS", () => {
       "callout",
       "file",
       "properties",
+      "footnote",
       "embed",
     ]);
   });

@@ -242,6 +242,8 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
           checked: state.formats.includes("link"),
           icon: icon("link"),
         }),
+        // `[^n]` at the caret, its empty definition at the note's end.
+        note("footnote", "Insert Footnote"),
         { type: "separator" },
         // Cmd + a number applies a kind (never toggles it): 0 Text, 1–6 the
         // headings, 7–9 the lists. H4–H6 wait in a submenu, as in the `/` menu.
