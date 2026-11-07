@@ -195,7 +195,8 @@ export default function EditorContextMenu({
       hint: shortcutLabel({ key: "V" }),
       disabled: !canPaste,
     });
-  if (onInsertFootnote) {
+  // Not on a misspelled word: that menu is about the word, as a link's is about the link.
+  if (onInsertFootnote && !suggestions) {
     items.push({
       label: "Insert footnote",
       icon: <FootnoteIcon />,
