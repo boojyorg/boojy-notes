@@ -264,7 +264,7 @@ const refAnchor = (n: Node | null | undefined): Element | null =>
     : null;
 
 /** The reference just before the collapsed caret (its anchor between them or not), if any. */
-function refBeforeCaret(node: Node, offset: number): Element | null {
+export function refBeforeCaret(node: Node, offset: number): Element | null {
   if (node.nodeType === Node.TEXT_NODE) {
     // In the anchor, only while nothing typed stands before the caret: text
     // typed there is prose, and Backspace takes it first.

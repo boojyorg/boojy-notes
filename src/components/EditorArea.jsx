@@ -33,6 +33,8 @@ import LinkTooltip from "./LinkTooltip";
 import EditorContextMenu from "./EditorContextMenu";
 import InlineMathPanel from "./InlineMathPanel";
 import FootnoteRefPanel from "./FootnoteRefPanel";
+import { FootnoteDraftPanel, FootnoteUnavailable } from "./FootnoteDraft";
+import { useFootnoteDraft } from "../hooks/editor/useFootnoteDraft";
 import { menuAnchorFor, pointInRange, spellableWord, wordRangeAt } from "../utils/contextSelection";
 import {
   INLINE_MATH_CLASS,
@@ -287,6 +289,7 @@ const EditorArea = memo(
       detectActiveFormats,
       applyFormat,
       insertFootnote,
+      commitFootnoteDraft,
       canInsertFootnote,
       deleteBlockRange,
       duplicateBlockRange,
@@ -632,6 +635,15 @@ const EditorArea = memo(
         document.removeEventListener("selectionchange", onSel);
       };
     }, [editorScrollRef, reReadBlockFromDom]);
+
+    // A new footnote, made from where the caret is (useFootnoteDraft).
+    const footnoteDraft = useFootnoteDraft({
+      editorRef,
+      blockRefs,
+      noteDataRef,
+      activeNote,
+      commitFootnoteDraft,
+    });
 
     // A reference's label, edited in a field under it (FootnoteRefPanel).
     const [fnRefTarget, setFnRefTarget] = useState(null);
@@ -2210,6 +2222,22 @@ const EditorArea = memo(
               />
             )}
 
+            {footnoteDraft.unavailable && !footnoteDraft.draft && (
+              <FootnoteUnavailable
+                rect={footnoteDraft.unavailable.rect}
+                text={footnoteDraft.unavailable.text}
+              />
+            )}
+            {footnoteDraft.draft && (
+              <FootnoteDraftPanel
+                key={`${footnoteDraft.draft.blockId}:${footnoteDraft.draft.kind}`}
+                draft={footnoteDraft.draft}
+                number={footnoteDraft.number}
+                draftText={footnoteDraft.draftText}
+                onDone={footnoteDraft.done}
+                onCancel={footnoteDraft.cancel}
+              />
+            )}
             {fnRefTarget && (
               <FootnoteRefPanel
                 key={`${fnRefTarget.blockId}:${fnRefTarget.index}`}

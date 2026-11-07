@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { SETTLE_DRAFTS_EVENT } from "../utils/footnoteDraft";
 import { isElectron, isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 import { blocksToMarkdown } from "../utils/markdown";
@@ -629,7 +630,12 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // have reached state (and so were never marked dirty); more than one can be
   // edited inside a debounce. A note leaves the set only once a write of its
   // newest content succeeds, so a failed write keeps it.
-  const flushAll = useCallback(() => {
+  //
+  // A draft a surface holds (a new footnote's panel) goes into the note first,
+  // so a quit, a switch or a save point keeps it; a window blur passes
+  // `drafts: false`, leaving the panel open for the user to come back to.
+  const flushAll = useCallback(({ drafts = true } = {}) => {
+    if (drafts) window.dispatchEvent(new Event(SETTLE_DRAFTS_EVENT));
     const links = editorLinksRef.current;
     return flushRef.current(
       links?.latestNoteDataRef?.current,
