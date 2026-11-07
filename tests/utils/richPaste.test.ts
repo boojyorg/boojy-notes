@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
 import { markdownToBlocks } from "../../src/utils/markdown";
-import { richPasteMarkdown } from "../../src/utils/richPaste";
+import { clipboardHtml, richPasteMarkdown } from "../../src/utils/richPaste";
+import { domNodeToMarkdown, sanitizeInlineFragment } from "../../src/utils/inlineFormatting";
 
 /** The blocks a paste of `html` becomes, as type and text. */
 const blocks = (html: string) =>
@@ -109,5 +110,23 @@ describe("richPasteMarkdown", () => {
     expect(richPasteMarkdown(vscode)).toBeNull();
     expect(richPasteMarkdown("<p>just</p><p>text</p>")).toBeNull();
     expect(richPasteMarkdown("")).toBeNull();
+  });
+});
+
+describe("clipboardHtml: Windows wraps the clipboard's HTML", () => {
+  // Chromium on Windows hands back CF_HTML: the copied run between fragment
+  // markers, inside a document whose line endings are CRLF.
+  const wrapped =
+    "<html>\r\n<body>\r\n<!--StartFragment-->Flour.<strong>[^a]</strong><!--EndFragment-->\r\n</body>\r\n</html>";
+
+  it("is the copied run alone, so a one-line paste stays on its line", () => {
+    const frag = sanitizeInlineFragment(clipboardHtml(wrapped));
+    const div = document.createElement("div");
+    div.appendChild(frag);
+    expect(domNodeToMarkdown(div)).toBe("Flour.**[^a]**");
+  });
+
+  it("leaves HTML without markers as it is", () => {
+    expect(clipboardHtml("<b>x</b>")).toBe("<b>x</b>");
   });
 });

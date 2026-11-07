@@ -18,7 +18,7 @@ import {
   isTextBlockType,
   stripIncidentalLineEnding,
 } from "../../utils/pasteBlocks";
-import { richPasteMarkdown } from "../../utils/richPaste";
+import { clipboardHtml, richPasteMarkdown } from "../../utils/richPaste";
 import { editBlocks } from "../../utils/editBlocks";
 
 export function usePasteHandler({
@@ -195,7 +195,7 @@ export function usePasteHandler({
     // (VS Code, Cursor: `vscode-editor-data`) is its text, whatever its
     // highlighting looks like: that text is the Markdown source.
     const fromCodeEditor = Array.from(e.clipboardData.types ?? []).includes("vscode-editor-data");
-    const htmlData = fromCodeEditor ? "" : e.clipboardData.getData("text/html");
+    const htmlData = fromCodeEditor ? "" : clipboardHtml(e.clipboardData.getData("text/html"));
     const caretInEmptyBlock = () => !crossing && scope.start.el.textContent.trim() === "";
     if (textData.includes("\n") || (isStructuredMarkdownLine(textData) && caretInEmptyBlock())) {
       const rich = textData.includes("\n") && htmlData ? richPasteMarkdown(htmlData) : null;
