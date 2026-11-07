@@ -18,7 +18,7 @@ import EditorContextMenu from "../../src/components/EditorContextMenu";
 
 afterEach(cleanup);
 
-function mount(suggestions?: string[] | null) {
+function mount(suggestions?: string[] | null, extra: Record<string, unknown> = {}) {
   const props = {
     anchor: { top: 100, bottom: 120, left: 200, right: 240 },
     link: null,
@@ -35,6 +35,7 @@ function mount(suggestions?: string[] | null) {
     onCopy: vi.fn(),
     onPaste: vi.fn(),
     onClose: vi.fn(),
+    ...extra,
   };
   render(<EditorContextMenu {...props} />);
   const rows = screen.getAllByRole("menuitem");
@@ -127,5 +128,27 @@ describe("EditorContextMenu without a paste route", () => {
       .getAllByRole("menuitem")
       .map((r) => r.textContent?.replace(/(⌘|Ctrl\+).$/, ""));
     expect(labels).toEqual(["Search #area/work", "Edit tag", "Cut", "Copy"]);
+  });
+});
+
+describe("EditorContextMenu footnotes", () => {
+  it("leads with Go to footnote on a reference, and ends with Insert footnote where one can go", () => {
+    const go = vi.fn();
+    const insert = vi.fn();
+    const { labels, rows } = mount(null, { onGoToFootnote: go, onInsertFootnote: insert });
+    expect(labels).toEqual(["Go to footnote", "Cut", "Copy", "Paste", "Insert footnote"]);
+    fireEvent.click(rows[0]);
+    expect(go).toHaveBeenCalled();
+    fireEvent.click(rows[4]);
+    expect(insert).toHaveBeenCalled();
+  });
+
+  it("leaves Insert footnote off a misspelled word's menu, which is about the word", () => {
+    const { labels } = mount(["receive"], { onInsertFootnote: vi.fn() });
+    expect(labels).toEqual(["receive", "Add to dictionary", "Cut", "Copy", "Paste"]);
+  });
+
+  it("offers neither where they cannot act", () => {
+    expect(mount(null).labels).toEqual(["Cut", "Copy", "Paste"]);
   });
 });

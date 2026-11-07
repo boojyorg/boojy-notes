@@ -8,6 +8,7 @@ import { insertedImageWidth } from "../../utils/imageSize";
 import { editBlocks } from "../../utils/editBlocks";
 import { OUTSIDE_ADDS_NO_FILES } from "../../utils/vaultNotes";
 import { saveFileAsBlock } from "../../utils/savedFile";
+import { nextFootnoteNumber } from "../../utils/footnoteTarget";
 
 // The special blocks with a field of their own (a textarea, a title, a
 // cell). Chosen from the menu, one of these owns the next keystroke: the
@@ -205,6 +206,24 @@ export function useSlashCommands({
         type: "table",
         rows: [emptyRow(), emptyRow()],
       });
+      return;
+    }
+
+    // The next footnote's definition, in the line's place: the label one
+    // above every number already a label (`nextFootnoteNumber`).
+    if (command.type === "footnote") {
+      updateBlocks((blks) => {
+        const def = {
+          ...blks[blockIndex],
+          text: "",
+          type: "footnote",
+          label: String(nextFootnoteNumber(blks)),
+        };
+        delete def.checked;
+        delete def.indent;
+        blks[blockIndex] = def;
+      });
+      refocusSlashBlock();
       return;
     }
 

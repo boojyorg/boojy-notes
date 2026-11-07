@@ -273,3 +273,15 @@ describe("typedPaste", () => {
     expect(typedPaste(typed("a\nb", "insertReplacementText"))).toBeNull();
   });
 });
+
+describe("buildPastedBlocks: footnotes", () => {
+  it("pasted footnotes keep their labels, and the Markdown comes back as written", () => {
+    const source = "Claim.[^flour] Time.[^time]\n\n[^time]: Twelve hours.\n[^flour]: Strong.\n";
+    const r = buildPastedBlocks({ id: "dest", type: "p", text: "" }, pasted(source), "", "", genId);
+    expect(r.blocks.filter((b) => b.type === "footnote").map((b) => b.label)).toEqual([
+      "time",
+      "flour",
+    ]);
+    expect(blocksToMarkdown(r.blocks)).toBe(source);
+  });
+});

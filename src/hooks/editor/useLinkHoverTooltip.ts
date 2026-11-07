@@ -1,5 +1,6 @@
 import { type MouseEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import type { LinkDescription } from "../../components/LinkTooltip";
+import { FOOTNOTE_REF_CLASS } from "../../utils/footnotes";
 
 const HOVER_DELAY_MS = 500;
 
@@ -20,7 +21,8 @@ interface PendingHover {
  * inside a link, by the arrows or Home and End, shows the same chip after
  * the same rest, and it goes the moment the caret leaves. `describe` says
  * what a link is: the URL, or the note's name and folder, or that no note
- * (or two) answers to it.
+ * (or two) answers to it. A footnote reference (`.md-fn-ref`) is one too: its
+ * chip is the definition, read-only.
  *
  * The pending hover is tracked as an object holding both the timer and the
  * link (a timer handle is a number in the browser and takes no property). The
@@ -28,7 +30,7 @@ interface PendingHover {
  */
 const linkAt = (node: Node | null): HTMLElement | null => {
   const el = (node && (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement)) || null;
-  return (el?.closest("a, .wikilink") as HTMLElement | null) ?? null;
+  return (el?.closest(`a, .wikilink, .${FOOTNOTE_REF_CLASS}`) as HTMLElement | null) ?? null;
 };
 
 export function useLinkHoverTooltip(

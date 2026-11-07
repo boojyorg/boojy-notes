@@ -102,6 +102,12 @@ import { besideLine } from "../utils/marqueeSelect";
 import { withAlpha } from "../utils/selectionBand";
 import { selectTagName, tagName, tagRange } from "../utils/tagName";
 import { editingTag } from "../utils/tagEditing";
+import {
+  caretFootnoteRef,
+  findFootnoteDefinition,
+  ownFootnoteRef,
+  refLabel,
+} from "../utils/footnoteTarget";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
 // tests and the iOS simulator's look at it.
@@ -269,6 +275,8 @@ const EditorArea = memo(
       removeFrontmatter,
       detectActiveFormats,
       applyFormat,
+      insertFootnote,
+      canInsertFootnote,
       deleteBlockRange,
       duplicateBlockRange,
       indentBlockRange,
@@ -433,6 +441,35 @@ const EditorArea = memo(
         },
       };
     }
+
+    // A footnote reference followed (a click, or Go to footnote): the caret
+    // at the end of its definition, the last of that label (Obsidian's
+    // reading), a visit of its own, so Back returns to the reference. A
+    // label with no definition is said, the caret left where it is.
+    const goToFootnote = (refEl) => {
+      const label = refLabel(refEl?.textContent || "");
+      const blocks = noteDataRef.current?.[activeNote]?.content?.blocks ?? [];
+      const at = findFootnoteDefinition(blocks, label);
+      const el = at >= 0 ? blockRefs.current[blocks[at].id] : null;
+      if (!el) {
+        showToast?.(`No footnote [^${label}] in this note`, "info");
+        return;
+      }
+      // Back returns to just after the reference, never inside it.
+      if (refEl.isConnected && editorRef.current?.contains(refEl)) {
+        const after = document.createRange();
+        after.setStartAfter(refEl);
+        after.collapse(true);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(after);
+      }
+      const place = currentPlace();
+      if (place) noteHistory?.recordPlace?.(activeNote, place);
+      noteHistory?.jump?.(activeNote);
+      placeCaret(el, caretLength(el), { reveal: false });
+      el.scrollIntoView?.({ block: "nearest" });
+    };
 
     // A note opens at its top. The scroller is not keyed by the note (only
     // the column inside it is), so the previous note's scroll would carry
@@ -1186,6 +1223,7 @@ const EditorArea = memo(
     // `data-editing`, and is read at each press, before the press moves the
     // caret, so a first click on a tag still searches.
     const tagAtPressRef = useRef(null);
+    const fnRefAtPressRef = useRef(null);
     useEffect(() => {
       let shown = null;
       const mark = () => {
@@ -1197,6 +1235,7 @@ const EditorArea = memo(
       };
       const press = () => {
         tagAtPressRef.current = editingTag(editorRef.current);
+        fnRefAtPressRef.current = caretFootnoteRef(editorRef.current);
       };
       document.addEventListener("selectionchange", mark);
       document.addEventListener("pointerdown", press, true);
@@ -1268,8 +1307,10 @@ const EditorArea = memo(
         const cell = e.target.closest('[data-block-type="table"] th, [data-block-type="table"] td');
         const tableId = cell?.closest("[data-block-id]")?.getAttribute("data-block-id") ?? null;
         const tagEl = e.target.closest(".inline-tag");
-        // A tag is left as it is, as a link is: its menu is about the tag.
-        const linkEl = anchor || wikilink || tagEl;
+        const fnRef = ownFootnoteRef(e.target);
+        // A tag or a footnote reference is left as it is, as a link is: its
+        // menu is about it.
+        const linkEl = anchor || wikilink || tagEl || fnRef;
         // A right-click on a word outside the selection selects the word, as
         // a Mac text field does; inside the selection it keeps it. A link is
         // left as it is: its menu is about the link.
@@ -1310,6 +1351,10 @@ const EditorArea = memo(
           canCutCopy: field
             ? field.selectionStart !== field.selectionEnd
             : !!range && !range.collapsed,
+          // Where the selection now ends, a reference could go; never in the
+          // menu of a link, tag or reference, which is about that.
+          canFootnote: !field && !linkEl && canInsertFootnote(),
+          footnote: fnRef,
         };
         if (tagEl) {
           menu.tag = tagName(tagEl);
@@ -1742,7 +1787,10 @@ const EditorArea = memo(
                       if (!e.shiftKey && e.button === 0) {
                         const anchor = e.target.closest("a");
                         const wikilink = e.target.closest(".wikilink");
-                        if (anchor || wikilink) e.preventDefault();
+                        // A reference jumps, unless it holds the caret (its text then).
+                        const fnRef = ownFootnoteRef(e.target);
+                        const jumps = fnRef && fnRef !== fnRefAtPressRef.current;
+                        if (anchor || wikilink || jumps) e.preventDefault();
                       }
                     }}
                     onMouseUp={handleEditorMouseUp}
@@ -1763,6 +1811,15 @@ const EditorArea = memo(
                             window.open(url, "_blank");
                           }
                         }
+                        return;
+                      }
+                      // A footnote reference jumps to its definition; the one
+                      // holding the caret when the press began takes the click
+                      // as text, as a tag does.
+                      const fnRef = ownFootnoteRef(e.target);
+                      if (fnRef) {
+                        if (fnRef === fnRefAtPressRef.current) return;
+                        goToFootnote(fnRef);
                         return;
                       }
                       const tag = e.target.closest(".inline-tag");
@@ -2049,6 +2106,18 @@ const EditorArea = memo(
                   dismissCtxMenu();
                   onRemoveLink?.(el);
                 }}
+                onGoToFootnote={
+                  linkCtxMenu.footnote
+                    ? () => {
+                        const ref = linkCtxMenu.footnote;
+                        dismissCtxMenu();
+                        goToFootnote(ref);
+                      }
+                    : undefined
+                }
+                onInsertFootnote={
+                  linkCtxMenu.canFootnote ? () => runOnSelection(insertFootnote) : undefined
+                }
                 canCutCopy={linkCtxMenu.canCutCopy}
                 canPaste={!!getAPI()?.paste}
                 // The phone has no way to paste from a menu: no row for it.
