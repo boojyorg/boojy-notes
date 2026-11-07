@@ -245,3 +245,23 @@ test("`/footnote` on an empty line makes the next footnote's definition", async 
   await waitForFile(h.vault.file("F.md"), (t) => t === "Claim.[^4]\n\nNext\n\n[^5]: Its text.\n");
   expect(h.pageErrors).toEqual([]);
 });
+
+test("pasted footnotes keep their labels, byte for byte", async () => {
+  await open("Here\n");
+  const pasted =
+    "Flour.[^flour] Time.[^time] Again.[^flour]\n\n[^time]: Twelve hours.\n[^flour]: Strong.\n[^unused]: Nobody.";
+  await h.app.evaluate(({ clipboard }, t) => clipboard.writeText(t), pasted);
+  await row(h.page, "Here").click();
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.press("Enter");
+  await h.page.keyboard.press(`${MOD}+v`);
+  await waitForFile(h.vault.file("F.md"), (t) => t === `Here\n\n${pasted}\n`, {
+    label: "the pasted footnotes as written",
+  });
+  await expect(defs(h.page).locator("[data-footnote-label]")).toHaveText([
+    "time",
+    "flour",
+    "unused",
+  ]);
+  expect(h.pageErrors).toEqual([]);
+});
