@@ -103,9 +103,9 @@ through state.**
   `heading-links.spec.ts`, `block-links.spec.ts`.
 - **A footnote reference is one sealed character showing `[n]`** over its source
   (`numberFootnotes`: by first reference, defined labels only), which copies and saves.
-  A caret anchor follows; ←/→/Backspace take it whole (`footnoteRefKey`). A click goes to
-  its definition (the last of its label), a visit. Insert footnote is one commit, painted
-  at once (`flushSync`). `footnotes.spec.ts`.
+  A caret anchor follows; ←/→ take it whole, Backspace its `]` (`footnoteRefKey`). A click goes to
+  its definition (its label's last), a visit. Insert footnote is one commit, painted
+  at once. `footnotes.spec.ts`.
 - **A definition shows `n.`; an unused one a dash**, its label above on hover or caret.
   Its ↩ (menu: Back to reference) is Back while that jump is the visit open, else the first
   reference, tinted as an element (`tintElement`): highlights miss CSS text.

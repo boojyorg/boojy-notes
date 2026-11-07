@@ -8,7 +8,7 @@
 import type { LinkDescription } from "../components/LinkTooltip";
 import type { Block } from "../types/notes";
 import { subtreeEnd } from "./blockRun";
-import { FOOTNOTE_REF_CLASS, findFootnotes } from "./footnotes";
+import { FOOTNOTE_REF_CLASS, FOOTNOTE_SRC_CLASS, findFootnotes } from "./footnotes";
 import { findComments } from "./comments";
 import { stripMarkdownFormatting } from "./inlineFormatting";
 import { refLabel } from "./footnoteLabel";
@@ -297,11 +297,17 @@ function refAfterCaret(node: Node, offset: number): Element | null {
 /**
  * The keys at a sealed reference: ← and → cross the number and
  * the caret anchor after it in one press (the anchor is a place for the
- * caret at a line's end, never a stop of its own); Backspace just after it
- * takes the number, never only the anchor's invisible character. Returns
- * whether the key was answered here (the caller prevents its default).
+ * caret at a line's end, never a stop of its own). Backspace just after it
+ * takes its closing `]`, as typing that made the number: the reference is
+ * its text again (`[^label`), the caret at its end, and `reRead` commits the
+ * block from the DOM. Returns whether the key was answered here (the caller
+ * prevents its default).
  */
-export function footnoteRefKey(key: string, root: Element): boolean {
+export function footnoteRefKey(
+  key: string,
+  root: Element,
+  reRead?: (sel: { rangeCount: number; anchorNode: Node }) => void,
+): boolean {
   const sel = window.getSelection();
   if (!sel?.rangeCount || !sel.isCollapsed || !sel.anchorNode) return false;
   if (!root.contains(sel.anchorNode)) return false;
@@ -334,9 +340,16 @@ export function footnoteRefKey(key: string, root: Element): boolean {
   }
   if (key === "Backspace") {
     const ref = refBeforeCaret(node, offset);
-    // Just after the number: the browser's own Backspace then takes it whole.
-    if (ref) place((r) => r.setStartAfter(ref));
-    return false;
+    if (!ref?.parentNode) return false;
+    const source = ref.querySelector(`.${FOOTNOTE_SRC_CLASS}`)?.textContent ?? "";
+    if (!source.endsWith("]")) return false;
+    // Its anchor holds only the invisible character here (refBeforeCaret).
+    refAnchor(ref.nextSibling)?.remove();
+    const text = document.createTextNode(source.slice(0, -1));
+    ref.replaceWith(text);
+    place((r) => r.setStart(text, text.data.length));
+    reRead?.({ rangeCount: 1, anchorNode: text });
+    return true;
   }
   return false;
 }

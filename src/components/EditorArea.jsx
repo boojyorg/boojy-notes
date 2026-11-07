@@ -612,11 +612,13 @@ const EditorArea = memo(
       const host = editorScrollRef.current;
       if (!host) return;
       const stop = watchFootnoteNumbers(host);
-      // ← → and Backspace cross a sealed reference in one press (footnoteRefKey).
+      // ← → cross a sealed reference in one press; Backspace opens it back
+      // into its text (footnoteRefKey).
       const onKey = (e) => {
         if (e.shiftKey || e.altKey || e.metaKey || e.ctrlKey || e.isComposing) return;
         const editor = editorIn(host);
-        if (editor?.contains(e.target) && footnoteRefKey(e.key, editor)) e.preventDefault();
+        if (editor?.contains(e.target) && footnoteRefKey(e.key, editor, reReadBlockFromDom))
+          e.preventDefault();
       };
       host.addEventListener("keydown", onKey, true);
       const onSel = () => {
@@ -629,7 +631,7 @@ const EditorArea = memo(
         host.removeEventListener("keydown", onKey, true);
         document.removeEventListener("selectionchange", onSel);
       };
-    }, [editorScrollRef]);
+    }, [editorScrollRef, reReadBlockFromDom]);
 
     // A reference's label, edited in a field under it (FootnoteRefPanel).
     const [fnRefTarget, setFnRefTarget] = useState(null);

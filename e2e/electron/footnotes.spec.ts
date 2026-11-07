@@ -286,7 +286,7 @@ test("numbers follow first reference: repeats share one, a missing definition st
   expect(h.pageErrors).toEqual([]);
 });
 
-test("a reference is one character: arrows cross it, Backspace takes it whole, one undo brings it back", async () => {
+test("a reference is one character to the arrows; Backspace opens it back into its text, one character at a time; one undo brings it back", async () => {
   const md = "Flour.[^proof] Time.[^1]\n\n[^1]: One.\n[^proof]: Two.\n";
   await open(md);
   const first = () => file().split("\n")[0];
@@ -301,8 +301,20 @@ test("a reference is one character: arrows cross it, Backspace takes it whole, o
   await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^1]");
   await sleep(SETTLE_MS);
   await h.page.keyboard.press(END_OF_LINE);
+  // Backspace takes the closing ], as typing it made the number: [^1 again,
+  // the caret at its end, shown as the text it now is.
   await h.page.keyboard.press("Backspace");
-  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^1");
+  await expect(refs(h.page)).toHaveCount(1);
+  await expect(row(h.page, "Time.")).toContainText("Time.[^1");
+  await h.page.keyboard.press("Backspace");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^");
+  // Typed back, the ] seals it again.
+  await h.page.keyboard.type("1]");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^1]");
+  await expect(refs(h.page)).toHaveCount(2);
+  await h.page.keyboard.press("Backspace");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^1");
   await sleep(SETTLE_MS);
   await h.page.keyboard.press(`${MOD}+z`);
   await waitForFile(h.vault.file("F.md"), () => file() === md, { label: "one undo" });
