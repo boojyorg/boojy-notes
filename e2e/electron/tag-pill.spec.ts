@@ -121,12 +121,10 @@ test("a right-click selects the whole tag, so Cut takes all of it", async () => 
 });
 
 // The cut tag pasted back from the right-click menu past the end of a line
-// that ends in a typed space. On the Windows runner the tag lands on a new
-// line of its own ("see  and more \n\n#area/work"); Mac and Linux put it
-// after the space. Cause unconfirmed (BACKLOG, Known issues): expected to
-// fail on Windows until it is reproduced and fixed there.
+// that ends in a typed space. On Windows it once landed on a new line of its
+// own: the clipboard's HTML came wrapped in CF_HTML, whose CRLFs read as a
+// blank line (`clipboardHtml`).
 test("a cut tag pasted from the right-click menu past a line's end lands on that line", async () => {
-  test.fail(process.platform === "win32", "Windows: the paste lands on a new line (BACKLOG)");
   const h = await launchApp({ "Note.md": "see #area/work and more\n" });
   try {
     const page = h.page;
