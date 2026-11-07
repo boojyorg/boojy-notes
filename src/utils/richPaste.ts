@@ -247,3 +247,17 @@ function table(el: Element): string {
     `| ${Array.from({ length: width }, (_, i) => cells[i] ?? "").join(" | ")} |`;
   return [line(rows[0]), `|${" --- |".repeat(width)}`, ...rows.slice(1).map(line)].join("\n");
 }
+
+/**
+ * The copied run of a clipboard's HTML. Chromium on Windows hands back the
+ * whole CF_HTML document, the run between `<!--StartFragment-->` and
+ * `<!--EndFragment-->` and CRLF line endings around it; read as it is, those
+ * line endings became a blank line and a one-line paste a new paragraph.
+ * HTML without the markers (the Mac's, Linux's) is returned as it is.
+ */
+export function clipboardHtml(html: string): string {
+  const start = html.indexOf("<!--StartFragment-->");
+  const end = html.indexOf("<!--EndFragment-->");
+  if (start < 0 || end < start) return html;
+  return html.slice(start + "<!--StartFragment-->".length, end);
+}

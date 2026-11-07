@@ -96,13 +96,20 @@ export function useNoteHistory({
 
   /**
    * A heading link followed inside the note open: a visit of its own, so Back
-   * returns to where the link was. The ref moves at once, so the scroll the
+   * returns to where the link was. Returns the new visit. The ref moves at once, so the scroll the
    * jump makes is recorded as the new visit's place, never the old one's.
    */
-  const jump = useCallback((key: string) => {
+  const jump = useCallback((key: string): number => {
     const next = historyJump(historyRef.current, key);
     historyRef.current = next;
     setHistory(next);
+    return next.visits[next.at];
+  }, []);
+
+  /** The visit open now: a footnote's ↩ asks whether its jump is still it. */
+  const currentVisit = useCallback(() => {
+    const h = historyRef.current;
+    return h.visits[h.at] ?? -1;
   }, []);
 
   /**
@@ -140,6 +147,7 @@ export function useNoteHistory({
     recordPlace,
     takeRestore,
     jump,
+    currentVisit,
     back: useCallback(() => step(-1), [step]),
     forward: useCallback(() => step(1), [step]),
     canBack: historyTarget(history, -1, exists) >= 0,

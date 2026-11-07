@@ -3,6 +3,7 @@ import { shortcutLabel } from "./Tooltip";
 import {
   AddToDictionaryIcon,
   ArrowDownToLineIcon,
+  ArrowUpToLineIcon,
   CopyIcon,
   CutIcon,
   FootnoteIcon,
@@ -48,6 +49,10 @@ interface EditorContextMenuProps {
   onRemoveLink: () => void;
   /** Given on a footnote reference: the caret to its definition, a visit Back returns from. */
   onGoToFootnote?: () => void;
+  /** Given in a numbered footnote: its ↩, by name, for the keyboard and a screen reader. */
+  onBackToReference?: () => void;
+  /** Given on a footnote reference: its label in a field under it (FootnoteRefPanel). */
+  onEditFootnoteRef?: () => void;
   /** Given where a reference can go (one text block): Insert footnote. */
   onInsertFootnote?: () => void;
   /** Cut and Copy act on a selection; with only a caret there is nothing to take. */
@@ -97,6 +102,8 @@ export default function EditorContextMenu({
   onEditLink,
   onRemoveLink,
   onGoToFootnote,
+  onBackToReference,
+  onEditFootnoteRef,
   onInsertFootnote,
   canCutCopy,
   canPaste,
@@ -126,6 +133,16 @@ export default function EditorContextMenu({
   }
   if (onGoToFootnote) {
     items.push({ label: "Go to footnote", icon: <ArrowDownToLineIcon />, action: onGoToFootnote });
+  }
+  if (onBackToReference) {
+    items.push({
+      label: "Back to reference",
+      icon: <ArrowUpToLineIcon />,
+      action: onBackToReference,
+    });
+  }
+  if (onEditFootnoteRef) {
+    items.push({ label: "Edit reference…", icon: <PencilIcon />, action: onEditFootnoteRef });
   }
   if (tag) {
     items.push(

@@ -685,3 +685,46 @@ test("a hold on a tag, moved, drags the block", async ({ page }) => {
   await f.up();
   await expect(paragraphs(page)).toHaveText(["Two", "Three", "One #tag"]);
 });
+
+// A hold on a footnote's number is about the reference: its own menu (Go to
+// footnote, Edit reference, Cut, Copy), never the block's; Edit reference's
+// field takes the keyboard and says which footnote a label reaches.
+test("a hold on a footnote number opens its menu; Edit reference changes the label", async ({
+  page,
+}) => {
+  await page.goto("/?hold");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Refs");
+  await paragraphs(page).first().click();
+  await page.keyboard.type("Claim.[^a] More.[^b]");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("[^b]: Bee.");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("[^a]: Ay.");
+  const refs = page.locator("[data-editor] .md-fn-ref");
+  await expect(refs.nth(1)).toHaveAttribute("data-n", "2");
+
+  const f = finger(await page.context().newCDPSession(page));
+  const b = (await refs.nth(1).boundingBox())!;
+  await f.down(b.x + b.width / 2, b.y + b.height / 2);
+  await page.waitForTimeout(HOLD);
+  await f.up();
+  const refMenu = page.getByRole("menu");
+  await expect(refMenu).toBeVisible();
+  await expect(menu(page)).toHaveCount(0);
+  const labels = (await refMenu.getByRole("menuitem").allTextContents()).map((t) =>
+    t.replace(/(⌘|Ctrl\+).$/, ""),
+  );
+  expect(labels.slice(0, 4)).toEqual(["Go to footnote", "Edit reference…", "Cut", "Copy"]);
+
+  await refMenu.getByRole("menuitem", { name: "Edit reference…" }).click();
+  const field = page.getByRole("textbox", { name: "Footnote label" });
+  await expect(field).toBeFocused();
+  await expect(page.getByTestId("footnote-ref-reaches")).toHaveText("→ Bee.");
+  await field.fill("zz");
+  await expect(page.getByTestId("footnote-ref-reaches")).toHaveText("No footnote by this label");
+  await page.keyboard.press("Enter");
+  await expect(field).toHaveCount(0);
+  await expect(refs.nth(1)).toHaveText("[^zz]");
+  await expect(refs.nth(1)).not.toHaveAttribute("data-n", /./);
+});

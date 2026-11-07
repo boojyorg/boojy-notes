@@ -36,7 +36,7 @@ Note state has two copies: React state and `useHistory`'s keystroke ref, which r
 
 ## One edit, one block root
 
-The editor is one contentEditable over React-owned block roots; Chromium edits across two and
+The editor is one contentEditable over React-owned block roots; an edit across two
 breaks the next commit. **An edit that reaches beyond one block root is the app's, made
 through state.**
 
@@ -101,10 +101,14 @@ through state.**
   (`historyJump`); a missing one is said. An ID is
   drawn quietly only while it ends its block. `link-resolution.spec.ts`,
   `heading-links.spec.ts`, `block-links.spec.ts`.
-- **A footnote reference reads as a link** (`footnoteTarget.ts`): its chip is the definition
-  (the last of its label); a click puts the caret at its end, a visit, unless it holds the
-  caret. Insert footnote is one commit, painted at once (`flushSync`).
-  `footnotes.spec.ts`.
+- **A footnote reference is one sealed character showing `[n]`** over its source
+  (`numberFootnotes`: by first reference, defined labels only), which copies and saves.
+  A caret anchor follows; ←/→ take it whole, Backspace its `]` (`footnoteRefKey`). A click goes to
+  its definition (its label's last), a visit. Insert footnote is one commit, painted
+  at once. `footnotes.spec.ts`.
+- **A definition shows `n.`; an unused one a dash**, its label above on hover or caret.
+  Its ↩ (menu: Back to reference) is Back while that jump is the visit open, else the first
+  reference, tinted as an element (`tintElement`): highlights miss CSS text.
 - **One link picker** (`LinkPicker.tsx`) for every way in; it writes the shortest clear target
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
@@ -126,7 +130,7 @@ through state.**
   `typed-formatting.spec.ts`.
 - **A code span is literal** (`codeSpans.js`): nothing in it is drawn; untouched it keeps its
   spelling (`data-md`), edited only what changed; only ⌘E acts in one. `literal-code.spec.ts`.
-  **So are a `%%` comment and a footnote, muted** (`literalRuns`), no format acting; the grey
+  **So are a `%%` comment and an inline footnote, muted** (`literalRuns`), no format acting; the grey
   follows the markers (`repaintComments`). `comments.spec.ts`, `footnotes.spec.ts`.
 - **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the next letters
   take the caret's own formatting, never a deleted run's; overtyping keeps its style.
@@ -147,7 +151,8 @@ through state.**
 ## Right-click
 
 - `EditorContextMenu`: a misspelled word's, link's or tag's actions, then Cut, Copy, Paste; a field
-  outside the note gets the same (`TextFieldMenu`). **Items run the keys' own path.** `text-context-menu.spec.ts`.
+  outside the note gets the same (`TextFieldMenu`); Shift+F10 at the caret. **Items
+  run the keys' own path.** `text-context-menu.spec.ts`.
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is late),
   never in code, tags or links; guesses only on a marked word.
   `spelling.spec.ts`, `spelling-line.spec.ts`.
@@ -195,7 +200,7 @@ through state.**
 ## Headings
 
 **Every editor spacing value lives in `DEFAULT_RHYTHM`.** New headings are ATX; an empty one
-shows `Heading N` from CSS. `heading-placeholder.spec.ts`.
+shows `Heading N` (CSS). `heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file
 
@@ -207,7 +212,7 @@ keeps its own view, saved** (`useSourceView`).
 - **It repaints only when the blocks aren't the ones it committed** (by identity). The caret
   crosses by block (`utils/sourceView.ts`). `source-view.spec.ts`.
 - **Colour says what each part is; nothing may change a character's width**:
-  no ligatures in either box. `sourceView.test.ts`.
+  no ligatures. `sourceView.test.ts`.
 
 ## Lists
 
@@ -236,8 +241,8 @@ keeps its own view, saved** (`useSourceView`).
 **The field holds what state holds, and the file
 never holds a byte sequence the syntax cannot.**
 
-- Read with the editor's reader, commit every input through `commitTextChange`; a typed closing
-  marker converts there as in a block (`fieldTextAfterTyping`).
+- Read with the editor's reader, every input committed (`commitTextChange`); a typed closing
+  marker converts there too (`fieldTextAfterTyping`).
 - **`data-inline-field`** (cell, callout body) marks a field that owns its inline formatting
   (`formatInlineField`). `special-block-fields.spec.ts`.
 - **A field repaints only when it doesn't hold the ref's latest text** (`useOwnedField`);
@@ -246,8 +251,7 @@ never holds a byte sequence the syntax cannot.**
 - **An empty callout title shows its type word, title-cased, and is never written**
   (`shownTitle`); a type change leaves the title alone. `callout-picker.spec.ts`.
 - **A callout's fold is a view, never an edit**: `-` folded, `+` open, reset when the note
-  changes; folded, the body is `inert` and Find opens it. The grip menu sets the sign:
-  Make foldable, Always open. `callout-fold.spec.ts`.
+  changes; folded, the body is `inert` and Find opens it. `callout-fold.spec.ts`.
 
 ## Properties
 
@@ -260,8 +264,6 @@ never holds a byte sequence the syntax cannot.**
   the property being edited sets the draft aside, with Restore. `properties.spec.ts`.
 - **A list is edited an item at a time** (`replaceItem`, `removeItem`, `insertItem`), each
   splicing only that item's bytes. `property-lists.spec.ts`.
-- **Remove all properties** (the title's menu) is one commit (`removeFrontmatter`).
-  `properties-view.spec.ts`.
 - **Add property and `/properties`** (`PropertyPicker`): a picked type is a draft row
   (`freeName`), written once on Enter, Tab or a press elsewhere; Escape writes nothing. `---` on
   a note's first line opens it at the third dash (`opensProperties`). An empty value's type is
@@ -269,8 +271,7 @@ never holds a byte sequence the syntax cannot.**
 
 ## Code blocks
 
-Every `.code-line` takes at least `1lh` (or the layers drift). **One hover toolbar per code
-block.** `code-language.spec.ts`. **A `mermaid` fence is drawn** (`DiagramView`), its code
+**One hover toolbar per code block.** `code-language.spec.ts`. **A `mermaid` fence is drawn** (`DiagramView`), its code
 open until `</>` closes it. `diagram.spec.ts`. **A `markdown` one is painted as the Markdown
 view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens one.
 
@@ -288,9 +289,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
   (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, and an edited
   one fitting a lined-up header takes its columns. `table-preservation.spec.ts`.
-- **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root (the
-  scroller clips); one write, on drop. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column. `table-handles.spec.ts`.
-- Wraps at words, then scrolls; a short column never wraps. `table-widths.spec.ts`.
+- **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root; one write, on drop. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column. `table-handles.spec.ts`.
 
 ## Whole-block selection
 
@@ -313,8 +312,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 ## Embeds: drawn by the editor, read-only
 
 - **An embed is drawn by `ReadOnlyBlocks`**, found as its
-  link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is
-  said.
+  link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is said.
 - **The copy is fenced by the selection, never the target**:
   `useEmbedFence` cancels an edit in it and its chip says where to edit.
 - **A click opens its `![[…]]` underneath** (keys: Edit link), drawn as typed, saved once; Done, ↵ or Esc shuts it, still picked. `embeds.spec.ts`.

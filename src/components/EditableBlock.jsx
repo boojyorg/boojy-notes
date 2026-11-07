@@ -482,21 +482,27 @@ const EditableBlock = memo(
       );
     }
 
-    // A footnote definition as Obsidian's editing view shows it: its label,
-    // small, raised and muted, then its text. The label is the file's and is never
-    // renumbered; the Markdown view edits it.
+    // A footnote definition: its number, "1.", on the text's baseline in a
+    // column its wrapped lines keep clear of; a footnote no reference names
+    // shows a dash, its label coming back over it (numberFootnotes, CSS). The
+    // label is the file's and is never renumbered; the Markdown view edits it.
     if (block.type === "footnote") {
       return (
         <div
           data-block-id={block.id}
           data-block-type={block.type}
+          // Written on the line under another footnote: drawn tight to it.
+          data-tight-above={block.tightAbove ? "" : undefined}
+          // Shown above the row while an unused footnote's dash stands for it.
+          data-fn-label={block.label}
           suppressContentEditableWarning
           style={{
-            contain: "content",
+            // No paint containment: an unused footnote's label floats above the row.
+            contain: "layout style",
+            position: "relative",
             display: "flex",
             alignItems: "baseline",
-            // The label sits just before the text, as Obsidian draws it.
-            gap: "0.3em",
+            gap: "0.4em",
             margin: `0 0 ${rhythm.paragraphGap}px`,
             fontSize: rhythm.bodySize,
             lineHeight: rhythm.lineHeight,
@@ -508,20 +514,19 @@ const EditableBlock = memo(
             suppressContentEditableWarning
             aria-hidden="true"
             data-footnote-label=""
-            // Raised, small and muted like its reference (`.md-fn-ref`), so the
-            // two read as a pair and never as a numbered list's marker. A flex
-            // item takes no vertical-align: it is lifted instead.
+            // Numbered by the note's references (numberFootnotes).
+            data-fn={block.label}
             style={{
               color: TEXT.muted,
-              fontSize: "0.75em",
               position: "relative",
-              top: "-0.45em",
+              minWidth: "1.4em",
+              fontVariantNumeric: "tabular-nums",
               flexShrink: 0,
               whiteSpace: "nowrap",
               userSelect: "none",
             }}
           >
-            {block.label}
+            <span className="md-fn-src">{block.label}</span>
           </span>
           <span
             ref={elRef}

@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { getCaretOffset, isEditableBlock, placeCaret } from "../../utils/domHelpers";
+import { caretLength, getCaretOffset, isEditableBlock, placeCaret } from "../../utils/domHelpers";
 import { TAG_RE } from "../../utils/tags";
 import {
   sanitizeInlineFragment,
@@ -18,7 +18,7 @@ import {
   isTextBlockType,
   stripIncidentalLineEnding,
 } from "../../utils/pasteBlocks";
-import { richPasteMarkdown } from "../../utils/richPaste";
+import { clipboardHtml, richPasteMarkdown } from "../../utils/richPaste";
 import { editBlocks } from "../../utils/editBlocks";
 
 export function usePasteHandler({
@@ -60,11 +60,14 @@ export function usePasteHandler({
    * and the caret put back at its offset (visible characters).
    */
   const paintPastedTags = (el, pasted) => {
-    if (!el || !new RegExp(TAG_RE.source, "u").test(pasted)) return;
-    const offset = getCaretOffset(el);
+    // A pasted footnote reference too: sealed into its number at once.
+    if (!el || !(new RegExp(TAG_RE.source, "u").test(pasted) || pasted.includes("[^"))) return;
+    // Counted from the end: what follows the caret was already painted and
+    // reads the same, while a pasted reference shrinks to one character.
+    const after = caretLength(el) - getCaretOffset(el);
     const text = htmlToInlineMarkdown(sanitizeInlineHtml(el.innerHTML)).replace(/\n$/, "");
     el.innerHTML = text ? inlineMarkdownToHtml(text, noteTitleSetRef?.current) : "<br>";
-    placeCaret(el, offset);
+    placeCaret(el, Math.max(0, caretLength(el) - after));
   };
 
   const handleEditorPaste = useCallback((e) => {
@@ -192,7 +195,7 @@ export function usePasteHandler({
     // (VS Code, Cursor: `vscode-editor-data`) is its text, whatever its
     // highlighting looks like: that text is the Markdown source.
     const fromCodeEditor = Array.from(e.clipboardData.types ?? []).includes("vscode-editor-data");
-    const htmlData = fromCodeEditor ? "" : e.clipboardData.getData("text/html");
+    const htmlData = fromCodeEditor ? "" : clipboardHtml(e.clipboardData.getData("text/html"));
     const caretInEmptyBlock = () => !crossing && scope.start.el.textContent.trim() === "";
     if (textData.includes("\n") || (isStructuredMarkdownLine(textData) && caretInEmptyBlock())) {
       const rich = textData.includes("\n") && htmlData ? richPasteMarkdown(htmlData) : null;

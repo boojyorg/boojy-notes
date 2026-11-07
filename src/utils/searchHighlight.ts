@@ -75,6 +75,8 @@ export const SEARCH_HIT_HOLD_MS = 1500;
 export const SEARCH_HIT_STEP_MS = 90;
 
 let timers: ReturnType<typeof setTimeout>[] = [];
+/** Takes away an element's tint (tintElement), if one shows. */
+let clearElementTint: (() => void) | null = null;
 
 interface HighlightRegistry {
   set(name: string, h: unknown): void;
@@ -95,31 +97,52 @@ function registry(): {
 }
 
 /**
- * Tint `ranges`, hold, then fade by stepping through the highlight names (a
- * highlight's colour cannot transition). With reduced motion it holds and
- * goes at once. A new tint replaces one still showing. Answers whether the
- * browser could paint it.
+ * Hold step 0, then fade through the rest (a colour cannot transition).
+ * With reduced motion it holds and goes at once. A new tint replaces one
+ * still showing.
  */
-export function tintRanges(ranges: Range[]): boolean {
-  const reg = registry();
-  if (!reg || ranges.length === 0) return false;
+function fade(show: (step: number) => void): void {
   clearTint();
-  const highlight = new reg.Highlight(...ranges);
-  const show = (step: number) => {
-    for (const name of SEARCH_HIT_STEPS) reg.highlights.delete(name);
-    if (step < SEARCH_HIT_STEPS.length) reg.highlights.set(SEARCH_HIT_STEPS[step], highlight);
-  };
   show(0);
   const steps = prefersReducedMotion() ? [SEARCH_HIT_STEPS.length] : [1, 2, 3, 4];
   steps.forEach((step, k) => {
     timers.push(setTimeout(() => show(step), SEARCH_HIT_HOLD_MS + k * SEARCH_HIT_STEP_MS));
   });
+}
+
+/**
+ * Tint `ranges`, stepping through the highlight names. Answers whether the
+ * browser could paint it.
+ */
+export function tintRanges(ranges: Range[]): boolean {
+  const reg = registry();
+  if (!reg || ranges.length === 0) return false;
+  const highlight = new reg.Highlight(...ranges);
+  fade((step) => {
+    for (const name of SEARCH_HIT_STEPS) reg.highlights.delete(name);
+    if (step < SEARCH_HIT_STEPS.length) reg.highlights.set(SEARCH_HIT_STEPS[step], highlight);
+  });
   return true;
+}
+
+/**
+ * Tint an element whose text a highlight cannot reach (a footnote's [1] is
+ * drawn by CSS over hidden source): the same steps, as `data-tint`.
+ */
+export function tintElement(el: Element): void {
+  const set = (step: number) => {
+    if (step < SEARCH_HIT_STEPS.length) el.setAttribute("data-tint", String(step));
+    else el.removeAttribute("data-tint");
+  };
+  fade(set);
+  clearElementTint = () => el.removeAttribute("data-tint");
 }
 
 export function clearTint(): void {
   for (const t of timers) clearTimeout(t);
   timers = [];
+  clearElementTint?.();
+  clearElementTint = null;
   const reg = registry();
   if (reg) for (const name of SEARCH_HIT_STEPS) reg.highlights.delete(name);
 }

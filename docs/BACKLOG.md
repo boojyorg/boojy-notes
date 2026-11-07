@@ -283,6 +283,12 @@ none blocks a stage.
 
 ## Known issues
 
+- [ ] **Inline maths is not drawn on the first open of a note iCloud had offloaded** (found
+  2026-11-07): `drawInlineMath` watches the editor element, which is a new one once the note
+  downloads (or a past version closes) with the note unchanged; switching away and back draws
+  it. Footnote numbering had the same fault and now watches the scroller (#495); the same fix
+  applies.
+
 ### From the September 2026 review
 
 Still reproduce on master, in the review's order. Those named in Public Beta's requirements
@@ -373,21 +379,11 @@ references (Public Beta).
   with #432's existence and inode lines to see whether the file looked present or the inode
   search missed.
 
-- [ ] **Paste from the right-click menu past a line's end lands on a new line on Windows**
-  (`tag-pill.spec.ts`, `test.fail` on win32 there; #489's CI, 2026-11-06). Seen: a tag cut
-  from the right-click menu, a space typed at the line's end, a right-click past the end, then
-  Paste: the Windows runner wrote `see  and more \n\n#area/work`; Mac and Linux put the tag
-  after the space. Plain clipboard text pasted past a line with no trailing space works there
-  (`text-context-menu.spec.ts`). Cause unconfirmed; one guess is Chromium's own right-click
-  selection on Windows (the app leaves it to Chromium for spelling). Reproduce in the Windows
-  VM before fixing.
-
 ### Data safety / reliability
 
 **First-edit mutations.** The first edit of an affected note can rewrite third-party content.
 The preservation suite's `KNOWN_FAILURES` is empty since 2026-10-05; what remains is in Fix
 now and `tests/utils/knownRewrites.js`.
-
 
 **Lost edits and filesystem.**
 
@@ -504,7 +500,11 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ### Editor and organisation
 
-- **Footnotes, later**: Insert footnote in a table cell or a callout's body (offered only in
+- **Move Footnotes to Bottom** (next, PR 4): an explicit action that moves footnotes written
+  mid-note, with their continuation content, under the others and sorts them by number, in one
+  undo, after saving a "Before" version (refused if that fails; undo only on the phone or with
+  history off). Spacing between the bottom footnotes is tidied.
+- **Footnotes, later**: numbering inline `^[…]` footnotes (a source panel, as inline maths); Insert footnote in a table cell or a callout's body (offered only in
   text blocks for now); a shortcut for it (⌥⌘F is AltGr+F on some Windows layouts); the phone's
   key bar.
 - **Someday (Tyr, 2026-09-30), each as Obsidian does it:** unlinked mentions

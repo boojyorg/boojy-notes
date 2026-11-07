@@ -93,11 +93,15 @@ export const isMathAtom = (node) =>
  * none of its panel.
  */
 export const ESCAPE_CLASS = "md-escape";
-/** Whether `node` is a sealed inline element: a formula or an escape, one character each. */
+/** Whether `node` is a sealed inline element: a formula, an escape or a footnote reference, one character each. */
 export const isSealedAtom = (node) =>
   node?.nodeType === Node.ELEMENT_NODE &&
-  (node.classList.contains(INLINE_MATH_CLASS) || node.classList.contains(ESCAPE_CLASS));
-const SEALED_SELECTOR = `.${INLINE_MATH_CLASS}, .${ESCAPE_CLASS}`;
+  (node.classList.contains(INLINE_MATH_CLASS) ||
+    node.classList.contains(ESCAPE_CLASS) ||
+    node.classList.contains(FOOTNOTE_ATOM_CLASS));
+/** A footnote reference (`utils/footnotes` FOOTNOTE_REF_CLASS): sealed, its number drawn over it. */
+const FOOTNOTE_ATOM_CLASS = "md-fn-ref";
+const SEALED_SELECTOR = `.${INLINE_MATH_CLASS}, .${ESCAPE_CLASS}, .${FOOTNOTE_ATOM_CLASS}`;
 /**
  * A TreeWalker filter that leaves out what a sealed element holds: Find and
  * the search tint read the text, a formula's text is its source, not KaTeX's

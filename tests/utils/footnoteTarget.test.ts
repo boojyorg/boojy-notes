@@ -3,7 +3,9 @@ import {
   addFootnote,
   describeFootnote,
   findFootnoteDefinition,
+  footnoteNumbers,
   nextFootnoteNumber,
+  numberFootnotes,
   ownFootnoteRef,
   refLabel,
 } from "../../src/utils/footnoteTarget";
@@ -74,7 +76,7 @@ describe("addFootnote: Insert footnote's one edit", () => {
   it("puts the definition at the note's end, after the footnotes already there", () => {
     expect(insert("One.[^1] Two.\n\n[^1]: First.\n", 0, "One.[^1] Two.[^2]", "2")).toEqual({
       at: 2,
-      md: "One.[^1] Two.[^2]\n\n[^1]: First.\n\n[^2]: \n",
+      md: "One.[^1] Two.[^2]\n\n[^1]: First.\n[^2]: \n",
     });
   });
 
@@ -102,5 +104,67 @@ describe("ownFootnoteRef", () => {
     expect(ownFootnoteRef(document.getElementById("own"))?.id).toBe("own");
     expect(ownFootnoteRef(document.getElementById("theirs"))).toBeNull();
     expect(ownFootnoteRef(document.body)).toBeNull();
+  });
+});
+
+describe("numberFootnotes: Reading view's numbers, drawn over the source", () => {
+  const ref = (l: string) =>
+    `<span class="md-fn-ref" data-fn="${l}"><span class="md-fn-src">[^${l}]</span></span>`;
+  const def = (l: string) => `<span data-footnote-label="" data-fn="${l}">${l}</span>`;
+  const n = (sel: string) =>
+    [...document.querySelectorAll(sel)].map((e) => e.getAttribute("data-n"));
+
+  it("numbers by first reference; a repeat shares its number; a definition takes its reference's", () => {
+    document.body.innerHTML =
+      `<div id="r"><p>${ref("proof")} ${ref("1")} ${ref("proof")} ${ref("x")}</p>` +
+      `<p>${def("1")}</p><p>${def("proof")}</p><p>${def("lonely")}</p></div>`;
+    numberFootnotes(document.getElementById("r") as Element);
+    // [^x] has no definition: no number, its text shows.
+    expect(n(".md-fn-ref")).toEqual(["1", "2", "1", null]);
+    // [^lonely] is named by no reference: its label shows.
+    expect(n("[data-footnote-label]")).toEqual(["2", "1", null]);
+  });
+
+  it("two definitions of one label: the last is numbered, the earlier is unused and kept", () => {
+    document.body.innerHTML = `<div id="r"><p>${ref("dup")}</p><p>${def("dup")}</p><p>${def("dup")}</p></div>`;
+    numberFootnotes(document.getElementById("r") as Element);
+    expect(n(".md-fn-ref")).toEqual(["1"]);
+    expect(n("[data-footnote-label]")).toEqual([null, "1"]);
+  });
+
+  it("renumbers when a reference arrives before an existing one, and leaves embeds alone", () => {
+    document.body.innerHTML =
+      `<div id="r"><p id="p">${ref("b")}</p><p>${def("a")}</p><p>${def("b")}</p>` +
+      `<div data-embed-source="Other">${ref("a")}</div></div>`;
+    const root = document.getElementById("r") as Element;
+    numberFootnotes(root);
+    expect(n("[data-footnote-label]")).toEqual([null, "1"]);
+    (document.getElementById("p") as Element).insertAdjacentHTML("afterbegin", ref("a"));
+    numberFootnotes(root);
+    expect(n("[data-footnote-label]")).toEqual(["1", "2"]);
+    expect(n("[data-embed-source] .md-fn-ref")).toEqual([null]);
+  });
+});
+
+describe("footnoteNumbers: the numbers numberFootnotes draws, read from the blocks", () => {
+  it("numbers by first reference; a repeat shares; no definition, no number", () => {
+    const b = blocks(
+      "See[^proof] and[^1], again[^proof], and[^x].\n\n[^1]: One.\n\n[^proof]: Proof.\n\n[^lonely]: Alone.",
+    );
+    // The same note as numberFootnotes's first case, so the two agree.
+    expect([...footnoteNumbers(b)]).toEqual([
+      ["proof", 1],
+      ["1", 2],
+    ]);
+  });
+
+  it("counts a callout's title before its body, never code or a comment", () => {
+    const b = blocks(
+      "> [!note] Title[^t]\n> Body[^b]\n\n`[^c]` %%[^m]%%\n\n[^b]: B.\n\n[^t]: T.\n\n[^c]: C.\n\n[^m]: M.",
+    );
+    expect([...footnoteNumbers(b)]).toEqual([
+      ["t", 1],
+      ["b", 2],
+    ]);
   });
 });

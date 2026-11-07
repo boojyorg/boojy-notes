@@ -8,6 +8,7 @@ import {
   typedFormatHit,
 } from "../../utils/typedFormatting";
 import { LITERAL_SELECTOR } from "../../utils/footnotes";
+import { markdownBefore } from "../../utils/crossBlockEdit";
 import { liftTypedSpace } from "../../utils/inlineFormatCommands";
 import { genBlockId } from "../../utils/storage";
 import { TAG_TAIL_RE } from "../../utils/tags";
@@ -181,7 +182,14 @@ export function useInputHandler({
       /^[\s\u00a0]$/.test(native.data ?? "")
         ? typedFootnote(text)
         : null;
-    if (footnote && getCaretOffset(el) === footnote.length) {
+    // Measured in Markdown: the typed `]` has already sealed `[^label]` into
+    // one caret character, so the caret's visible offset is shorter.
+    const sel = window.getSelection();
+    const typedUpTo =
+      footnote && sel?.rangeCount && el.contains(sel.anchorNode)
+        ? markdownBefore(el, sel.anchorNode, sel.anchorOffset).length
+        : -1;
+    if (footnote && typedUpTo === footnote.length) {
       commitNoteData(
         editBlocks(noteId, (blks) => {
           blks[blockIndex] = {

@@ -160,11 +160,15 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   escapes) is drawn muted and literal, markers shown and nothing inside formatted, so its bytes
   are the file's. It is visible and searchable, never private, and a `#tag` in it counts as a
   tag (as in Obsidian). A comment across blocks stays plain text, preserved byte for byte.
-- **Footnotes are drawn as Obsidian's editing view shows them, never numbered**: a reference
-  (`[^label]`, no whitespace in the label) small and raised, an inline footnote (`^[…]`,
-  brackets inside balanced) muted, both literal like a comment. A definition (`[^label]:`, up
-  to three spaces in) is its own block, its label shown beside its text; its indent, the gap
-  after the colon and any trailing space are kept. A line under it with no blank between is
+- **Footnotes are numbered as Reading view numbers them, and nothing in the file is**: a
+  reference (`[^label]`, no whitespace in the label) shows `[1]`, numbered by first reference
+  among labels with a definition, over its source, which is what copies and saves; one with no
+  definition shows its source. An inline footnote (`^[…]`, brackets inside balanced) stays
+  muted and literal, like a comment. A definition (`[^label]:`, up to three spaces in) is its
+  own block showing `1.`; of two with one label the last is the footnote, and the earlier, like
+  one no reference names, shows a dash; nothing is dropped. Definitions stay where the file has
+  them, in its order; those ending the note sit under a divider. Its indent, the gap after the
+  colon and any trailing space are kept. A line under it with no blank between is
   its text; an indented block after it (two spaces or a tab: a paragraph, a list, a fence,
   across blank lines, spaces-only ones too) stays its own block but belongs to it: selected,
   moved and deleted with it. A footnote never overlaps a comment. A missing definition leaves the

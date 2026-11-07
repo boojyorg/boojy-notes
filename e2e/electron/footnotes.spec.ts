@@ -1,9 +1,10 @@
 /**
- * Footnotes as Obsidian's editing view shows them: a reference stays the
- * literal `[^label]`, small and raised; an inline footnote stays whole and
- * muted; a definition is its own row with its label in the margin; nothing
- * is numbered, and the file's bytes are the file's. A footnote's later
- * paragraphs belong to it: moved, deleted and copied with it, one undo each.
+ * Footnotes as Reading view numbers them, edited in place: a reference is one
+ * sealed character showing `[1]` (by first reference), a definition shows
+ * `1.` (an unused one a dash, its label above it on hover or with the caret),
+ * the footnotes that end the note sit under a divider, ↩ goes back up. The
+ * file's bytes are the file's: nothing is renumbered or moved. An inline
+ * footnote stays whole and muted. A footnote's later paragraphs belong to it.
  */
 import { expect, type Page, test } from "@playwright/test";
 import {
@@ -46,9 +47,12 @@ const NOTE =
   "    The cold slows the yeast.\n\n" +
   "Edit here.\n";
 
-test("references, inline footnotes and definitions are drawn as written; an edit elsewhere keeps their bytes", async () => {
+test("references show their numbers, definitions theirs; inline footnotes stay as written; an edit elsewhere keeps every byte", async () => {
   await open(NOTE);
+  // Each reference holds its source; its number is drawn over it.
   await expect(refs(h.page)).toHaveText(["[^1]", "[^proof]"]);
+  await expect(refs(h.page).nth(0)).toHaveAttribute("data-n", "1");
+  await expect(refs(h.page).nth(1)).toHaveAttribute("data-n", "2");
   await expect(inlines(h.page)).toHaveText(["^[Version **1.0** [[followed]].]"]);
   // Literal: nothing inside an inline footnote is drawn.
   await expect(inlines(h.page).locator("strong, .wikilink")).toHaveCount(0);
@@ -56,9 +60,19 @@ test("references, inline footnotes and definitions are drawn as written; an edit
     .first()
     .evaluate((el) => getComputedStyle(el).verticalAlign);
   expect(raised).toBe("super");
-  // Each definition its own row, its label in the margin, never a number.
+  // Each definition its own row, its number before it; its label is the file's.
   await expect(defs(h.page)).toHaveCount(2);
   await expect(defs(h.page).locator("[data-footnote-label]")).toHaveText(["1", "proof"]);
+  const shown = await defs(h.page)
+    .locator("[data-footnote-label]")
+    .evaluateAll((els) => els.map((el) => getComputedStyle(el, "::after").content));
+  expect(shown).toEqual(['"1."', '"2."']);
+  // Text follows them, so they do not end the note: no divider.
+  expect(
+    await defs(h.page)
+      .first()
+      .evaluate((el) => el.hasAttribute("data-fn-group")),
+  ).toBe(false);
   await expect(h.page.locator("[data-footnote-continuation]")).toHaveText([
     "    The cold slows the yeast.",
   ]);
@@ -185,23 +199,6 @@ test("a click on a reference puts the caret at its definition's end; Back return
   expect(h.pageErrors).toEqual([]);
 });
 
-test("a click on the reference holding the caret is the text's: no jump", async () => {
-  await open("Claim.[^1]\n\n[^1]: Source.\n");
-  await row(h.page, "Claim.").click();
-  await h.page.keyboard.press(END_OF_LINE);
-  await h.page.keyboard.press("ArrowLeft");
-  await refs(h.page).first().click();
-  await h.page.keyboard.type("x");
-  await waitForFile(
-    h.vault.file("F.md"),
-    (t) => /^Claim\.\[\^1?x1?\]\n\n\[\^1\]: Source\.\n$/.test(t),
-    {
-      label: "typed inside the reference, not at its definition",
-    },
-  );
-  expect(h.pageErrors).toEqual([]);
-});
-
 test("right-click on a reference: Go to footnote; elsewhere Insert footnote puts the next number in, one undo takes both", async () => {
   const md = "Claim one.[^1] Claim two.\n\n[^1]: First.\n";
   await open(md);
@@ -219,7 +216,7 @@ test("right-click on a reference: Go to footnote; elsewhere Insert footnote puts
   // Typed at once: a letter must never reach the line before the reference does.
   await menuClick(h, "footnote");
   await h.page.keyboard.type("Second.");
-  const inserted = "Claim one.[^1] Claim two[^2].\n\n[^1]: First.\n\n[^2]: Second.\n";
+  const inserted = "Claim one.[^1] Claim two[^2].\n\n[^1]: First.\n[^2]: Second.\n";
   await waitForFile(h.vault.file("F.md"), (t) => t === inserted);
   await expect(refs(h.page)).toHaveText(["[^1]", "[^2]"]);
 
@@ -263,5 +260,214 @@ test("pasted footnotes keep their labels, byte for byte", async () => {
     "flour",
     "unused",
   ]);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("numbers follow first reference: repeats share one, a missing definition stays text, an unused or earlier duplicate is a dash", async () => {
+  await open(
+    "A.[^b] B.[^a] C.[^b] D.[^gone]\n\n[^a]: Ay.\n[^b]: First bee.\n[^b]: Bee.\n[^spare]: Nobody.\n",
+  );
+  const n = (loc: ReturnType<typeof refs>) =>
+    loc.evaluateAll((els) => els.map((el) => el.getAttribute("data-n")));
+  expect(await n(refs(h.page))).toEqual(["1", "2", "1", null]);
+  expect(await n(defs(h.page).locator("[data-footnote-label]"))).toEqual(["2", null, "1", null]);
+  // They end the note: a divider above the first of them.
+  expect(
+    await defs(h.page)
+      .first()
+      .evaluate((el) => el.hasAttribute("data-fn-group")),
+  ).toBe(true);
+  // No definition: the reference shows its own text.
+  await expect(refs(h.page).nth(3)).toBeVisible();
+  const missing = await refs(h.page)
+    .nth(3)
+    .evaluate((el) => (el.querySelector(".md-fn-src") as HTMLElement).offsetWidth > 0);
+  expect(missing).toBe(true);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("a reference is one character to the arrows; Backspace opens it back into its text, one character at a time; one undo brings it back", async () => {
+  const md = "Flour.[^proof] Time.[^1]\n\n[^1]: One.\n[^proof]: Two.\n";
+  await open(md);
+  const first = () => file().split("\n")[0];
+  await row(h.page, "Time.").getByText("Time.").click();
+  await h.page.keyboard.press(END_OF_LINE);
+  // Two arrows: over the number at the line's end, then the full stop.
+  await h.page.keyboard.press("ArrowLeft");
+  await h.page.keyboard.press("ArrowLeft");
+  await h.page.keyboard.type("!");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time!.[^1]");
+  await h.page.keyboard.press("Backspace");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^1]");
+  await sleep(SETTLE_MS);
+  await h.page.keyboard.press(END_OF_LINE);
+  // Backspace takes the closing ], as typing it made the number: [^1 again,
+  // the caret at its end, shown as the text it now is.
+  await h.page.keyboard.press("Backspace");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^1");
+  await expect(refs(h.page)).toHaveCount(1);
+  await expect(row(h.page, "Time.")).toContainText("Time.[^1");
+  await h.page.keyboard.press("Backspace");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^");
+  // Typed back, the ] seals it again.
+  await h.page.keyboard.type("1]");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^1]");
+  await expect(refs(h.page)).toHaveCount(2);
+  await h.page.keyboard.press("Backspace");
+  await waitForFile(h.vault.file("F.md"), () => first() === "Flour.[^proof] Time.[^1");
+  await sleep(SETTLE_MS);
+  await h.page.keyboard.press(`${MOD}+z`);
+  await waitForFile(h.vault.file("F.md"), () => file() === md, { label: "one undo" });
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("copying across a reference carries its source; pasted back, it is a number at once", async () => {
+  await open("Flour.[^a] Time.\n\n[^a]: One.\n");
+  await row(h.page, "Flour.").getByText("Time.").click();
+  await h.page.keyboard.press(START_OF_LINE);
+  for (let i = 0; i < 7; i++) await h.page.keyboard.press("Shift+ArrowRight");
+  await h.page.keyboard.press(`${MOD}+c`);
+  await expect
+    .poll(() => h.app.evaluate(({ clipboard }) => clipboard.readText()))
+    .toBe("Flour.[^a]");
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.press(`${MOD}+v`);
+  await waitForFile(h.vault.file("F.md"), (t) => t.startsWith("Flour.[^a] Time.Flour.[^a]\n"));
+  await expect(refs(h.page)).toHaveCount(2);
+  await expect(refs(h.page).nth(1)).toHaveAttribute("data-n", "1");
+  expect(h.pageErrors).toEqual([]);
+});
+
+/** The point just past a footnote's text, where its ↩ is drawn. */
+async function backArrow(page: Page, text: string) {
+  const at = await defs(page)
+    .filter({ hasText: text })
+    .locator('[role="textbox"]')
+    .evaluate((el) => {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      const rects = r.getClientRects();
+      const last = rects[rects.length - 1];
+      return { x: last.right + 9, y: (last.top + last.bottom) / 2 };
+    });
+  await page.mouse.click(at.x, at.y);
+}
+
+test("↩ returns to the reference that was clicked while that jump is the visit open; otherwise to the first", async () => {
+  await open("One.[^a] Two.[^a]\n\nMore text.\n\n[^a]: Ay.\n");
+  // From the second reference: back to it, the next letter after it.
+  await refs(h.page).nth(1).click();
+  await backArrow(h.page, "Ay.");
+  await h.page.keyboard.type("~");
+  await waitForFile(h.vault.file("F.md"), (t) => t.startsWith("One.[^a] Two.[^a]~\n"));
+  await h.page.keyboard.press("Backspace");
+  await sleep(SETTLE_MS);
+  // Reached without a jump (a click in its text): the first reference.
+  await defs(h.page).getByText("Ay.").click();
+  await backArrow(h.page, "Ay.");
+  await h.page.keyboard.type("~");
+  await waitForFile(h.vault.file("F.md"), (t) => t.startsWith("One.[^a]~ Two.[^a]\n"));
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("↩ tints the [1] it lands on, visibly, then lets it go", async () => {
+  await open("One.[^a]\n\nMore text.\n\n[^a]: Ay.\n");
+  const ref = refs(h.page).first();
+  await expect(ref).toHaveAttribute("data-n", "1");
+  // Judged on the pixels: the [1] is drawn by CSS over hidden source text.
+  const plain = await ref.screenshot();
+  await defs(h.page).getByText("Ay.").click();
+  await backArrow(h.page, "Ay.");
+  await expect.poll(async () => (await ref.screenshot()).equals(plain)).toBe(false);
+  await expect
+    .poll(async () => (await ref.screenshot()).equals(plain), { timeout: 5000 })
+    .toBe(true);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("an unused footnote's label shows above its dash with the caret in the line, the row unmoved", async () => {
+  await open(
+    "Flour.[^a]\n\n[^a]: One.\n[^a-much-longer-unused-label]: Nobody points here, and this line wraps on a narrow window.\n",
+  );
+  const unused = defs(h.page).nth(1);
+  const label = (el: Element) => getComputedStyle(el, "::before").content;
+  const text = unused.locator('[role="textbox"]');
+  const before = await text.boundingBox();
+  expect(await unused.evaluate(label)).toBe("none");
+  await row(h.page, "Flour.").getByText("Flour.").click();
+  await h.page.keyboard.press("ArrowDown");
+  await h.page.keyboard.press("ArrowDown");
+  await expect.poll(() => unused.evaluate(label)).toBe('"a-much-longer-unused-label"');
+  expect(await text.boundingBox()).toEqual(before);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("Edit reference changes the label a reference names, and says what it reaches", async () => {
+  await open("Claim.[^a] More.[^b]\n\n[^a]: Ay.\n[^b]: Bee.\n");
+  await refs(h.page).nth(1).click({ button: "right" });
+  await h.page.getByRole("menuitem", { name: "Edit reference…" }).click();
+  const field = h.page.getByRole("textbox", { name: "Footnote label" });
+  await expect(field).toBeFocused();
+  // The heading ties the [2] the note shows to the label the file holds.
+  const heading = h.page.getByTestId("footnote-ref-heading");
+  await expect(heading).toHaveText("Footnote 2 · label");
+  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("→ Bee.");
+  await field.fill("a");
+  await expect(heading).toHaveText("Footnote 1 · label");
+  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("→ Ay.");
+  await field.fill("zz");
+  await expect(heading).toHaveText("Footnote · label");
+  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("No footnote by this label");
+  await field.fill("a");
+  await h.page.keyboard.press("Enter");
+  await waitForFile(h.vault.file("F.md"), (t) => t.startsWith("Claim.[^a] More.[^a]\n"));
+  // [^b] now has no reference: a dash.
+  await expect(refs(h.page).nth(1)).toHaveAttribute("data-n", "1");
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("Edit reference never leaves a half-typed label: Done waits for a valid one; Escape or a press away restore the original", async () => {
+  const md = "Claim.[^b] More.\n\n[^b]: Bee.\n";
+  await open(md);
+  const field = h.page.getByRole("textbox", { name: "Footnote label" });
+  const editRef = async () => {
+    await refs(h.page).first().click({ button: "right" });
+    await h.page.getByRole("menuitem", { name: "Edit reference…" }).click();
+    await expect(field).toBeFocused();
+  };
+  // Typed a letter at a time: "bad" is valid on the way, "bad label" is not.
+  await editRef();
+  await h.page.keyboard.type("bad label");
+  await expect(h.page.getByTestId("footnote-ref-reaches")).toHaveText("A label has no spaces");
+  // Done is greyed (aria-disabled); a press on it, or Enter, closes nothing.
+  const done = h.page.getByRole("button", { name: "Done" });
+  await expect(done).toHaveAttribute("aria-disabled", "true");
+  await done.click({ force: true });
+  await h.page.keyboard.press("Enter");
+  await expect(field).toBeVisible();
+  await h.page.keyboard.press("Escape");
+  await expect(field).toHaveCount(0);
+  await waitForFile(h.vault.file("F.md"), (t) => t === md, { label: "the original label back" });
+  await sleep(SETTLE_MS);
+  // The same by a press elsewhere in the note.
+  await editRef();
+  await h.page.keyboard.type("bad label");
+  await row(h.page, "Bee.").getByText("Bee.").click();
+  await expect(field).toHaveCount(0);
+  await sleep(SETTLE_MS);
+  expect(file()).toBe(md);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("Back to reference: ↩ by name in a footnote's menu, opened from the keyboard with Shift+F10", async () => {
+  await open("One.[^a] Two.\n\n[^a]: Ay.\n");
+  await defs(h.page).getByText("Ay.").click();
+  await h.page.keyboard.press("Shift+F10");
+  const back = h.page.getByRole("menuitem", { name: "Back to reference" });
+  await expect(back).toBeVisible();
+  await h.page.keyboard.press("ArrowDown");
+  await h.page.keyboard.press("Enter");
+  await h.page.keyboard.type("~");
+  await waitForFile(h.vault.file("F.md"), (t) => t.startsWith("One.[^a]~ Two.\n"));
   expect(h.pageErrors).toEqual([]);
 });
