@@ -228,6 +228,9 @@ const EditorArea = memo(
     // Version History: a version on screen instead of the note, read-only.
     pastVersion,
     onTypeIntoPast,
+    // Move footnotes to bottom (useMoveFootnotes); no `canMoveFootnotes` where the note is read-only.
+    canMoveFootnotes,
+    moveFootnotes,
     // Recently Deleted: a deleted note on screen in the note's place, read-only.
     deletedNote,
     onTypeIntoDeleted,
@@ -1514,6 +1517,7 @@ const EditorArea = memo(
           // Where the selection now ends, a reference could go; never in the
           // menu of a link, tag or reference, which is about that.
           canFootnote: !field && !linkEl && canInsertFootnote(),
+          canMoveFootnotes: !linkEl && !!canMoveFootnotes?.(),
           footnote: fnRef,
           backTo,
         };
@@ -2348,6 +2352,14 @@ const EditorArea = memo(
                 }
                 onInsertFootnote={
                   linkCtxMenu.canFootnote ? () => runOnSelection(insertFootnote) : undefined
+                }
+                onMoveFootnotes={
+                  linkCtxMenu.canMoveFootnotes
+                    ? () => {
+                        dismissCtxMenu();
+                        moveFootnotes?.();
+                      }
+                    : undefined
                 }
                 canCutCopy={linkCtxMenu.canCutCopy}
                 canPaste={!!getAPI()?.paste}

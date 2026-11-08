@@ -20,8 +20,7 @@ Note state has two copies: React state and `useHistory`'s keystroke ref, which r
 - **One keystroke is one entry**: Enter's split and Backspace's join set text and blocks in one
   commit. `undo-steps.spec.ts`.
 - The rebuild after an outside delete keeps drafts and dirty notes from the ref. A vault switch
-  flushes, empties, then switches. A
-  version already written is not written again. `note-ownership.spec.ts`,
+  flushes, empties, then switches. A version already written is not written again. `note-ownership.spec.ts`,
   `pending-edits-lifecycle.spec.ts`.
 
 ### Painting from the ref
@@ -31,8 +30,7 @@ Note state has two copies: React state and `useHistory`'s keystroke ref, which r
   a line-end space before it as U+00A0. A bump alone paints nothing; pair it with a commit that
   publishes at once. `repaint-spaces.spec.ts`.
 - **A text-only commit never repaints**, so a programmatic text edit edits the DOM and reads it
-  back (`domNodeToMarkdown`): formatting, the link popover, Replace.
-  `repaint-ownership.spec.ts`.
+  back (`domNodeToMarkdown`): formatting, the link popover, Replace. `repaint-ownership.spec.ts`.
 
 ## One edit, one block root
 
@@ -42,10 +40,10 @@ through state.**
 
 - **The seam is the native `beforeinput` on the editor root** (`useCrossBlockEdit`,
   `getTargetRanges()`). One root: left to Chromium. More: cancelled and, for delete, text,
-  Enter and Shift+Enter, done in state. React's `onBeforeInput` cannot stand in.
+  Enter and Shift+Enter, done in state.
 - **`execCommand` fires no `beforeinput`**, so script mutations ask `scopeOf` first.
 - **Bold, italic and code are structural wraps** (`toggleWrappingTag`), never
-  `execCommand("bold")`, which reads the computed style. What is selected decides on or off;
+  `execCommand("bold")` (computed style). What is selected decides on or off;
   edge spaces stay outside, typed ones too (`liftTypedSpace`). `heading-bold.spec.ts`,
   `format-edge-spaces.spec.ts`.
 - **A block with its own field owns its edits and its keys** (table cell, callout, code
@@ -81,8 +79,7 @@ through state.**
 
 ## Backspace sheds the kind before it merges
 
-- Backspace at the start of a heading, list item, quote, task or footnote makes it a paragraph, nothing
-  else (`DEMOTES_TO_PARAGRAPH`); an indented item outdents first; only a paragraph merges.
+- Backspace at the start of a heading, list item, quote, task or footnote makes it a paragraph (`DEMOTES_TO_PARAGRAPH`); an indented item outdents first; only a paragraph merges.
   Enter at the start of a titled heading opens a paragraph above.
 - **Caret positions count visible characters** (`caretLength`), not Markdown. A split
   on a soft break's edge spends the break. `enter-backspace.spec.ts`.
@@ -112,6 +109,8 @@ through state.**
 - **A definition shows `n.`; an unused one a dash**, its label above on hover or caret.
   Its ↩ (menu: Back to reference) is Back while that jump is the visit open, else the first
   reference, tinted as an element (`tintElement`).
+- **Move footnotes to bottom waits for its safety save** (`useMoveFootnotes`).
+  `footnote-move.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for every way in, writing the shortest clear target
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
@@ -136,10 +135,10 @@ through state.**
   **So are a `%%` comment and an inline footnote, muted** (`literalRuns`), no format acting; the grey
   follows the markers (`repaintComments`). `comments.spec.ts`, `footnotes.spec.ts`.
 - **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the next letters
-  take the caret's own formatting, never a deleted run's; overtyping keeps its style.
+  take the caret's formatting, never a deleted run's; overtyping keeps its style.
   `typing-style.spec.ts`.
 - **Block triggers wait for their space, and Enter does what the space does**
-  (`utils/blockTriggers.ts`): a marker may carry an argument (a fence's language). **A line
+  (`blockTriggers.ts`): a marker may carry an argument (a fence's language). **A line
   kind's marker typed before a one-line paragraph's text converts it too**; Cmd+Z gives the
   literal back. `marker-on-text.spec.ts`.
 
@@ -184,8 +183,7 @@ through state.**
   menu and keys (`filterSlashCommands()`).
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
 - **Every menu's keys are one rule** (`useMenuKeys`); a suggestion under the caret
-  (`suggestion: true`) is a `listbox`. `menuKeys.test.ts`,
-  `callout-picker.spec.ts`.
+  (`suggestion: true`) is a `listbox`. `menuKeys.test.ts`, `callout-picker.spec.ts`.
 - **The editor column never carries a transform** (it would contain the `fixed` menus).
   `editor-menus.spec.ts`.
 - **A chosen block with its own field takes the caret** (`hasOwnField`); the rest hand it to
@@ -213,7 +211,7 @@ keeps its own view, saved** (`useSourceView`).
 - **Switching commits nothing**, so it changes no byte. Each input is parsed
   (`markdownToBlocks`) and committed (`commitTextChange`).
 - **It repaints only when the blocks aren't the ones it committed** (by identity). The caret
-  crosses by block (`utils/sourceView.ts`). `source-view.spec.ts`.
+  crosses by block (`sourceView.ts`). `source-view.spec.ts`.
 - **Colour says what each part is; nothing may change a character's width**:
   no ligatures. `sourceView.test.ts`.
 
@@ -230,8 +228,7 @@ keeps its own view, saved** (`useSourceView`).
 
 - **A paragraph holds every adjacent plain line** (`structureParagraphs`), joined by `\n`.
   Enter makes a paragraph; Shift+Enter a soft break. **Enter in a quote is a soft break**; on an
-  empty last line it
-  leaves the quote (adjacent quote blocks are one quote on disk).
+  empty last line it leaves the quote (adjacent quote blocks are one quote on disk).
 - **One blank line between any two blocks is structure; each further blank is an empty row.**
   Spacing comes from the block's kind, never from blank lines.
 - **On screen a newline is a `<br>`** (plus a trailing one both walkers ignore). Never clamp a
@@ -259,7 +256,7 @@ never holds a byte sequence the syntax cannot.**
 ## Properties
 
 - **Frontmatter is the note's properties** (`PropertiesBlock`), read with `yaml`
-  (`readProperties`), never written by it. YAML the rows can't read opens as YAML, a real field kept literal. Never moved (`reorderFloor`). `properties-view.spec.ts`,
+  (`readProperties`), never written by it. Unreadable YAML opens as YAML, a real field kept literal. Never moved (`reorderFloor`). `properties-view.spec.ts`,
   `frontmatter-order.spec.ts`.
 - **A row edit is one `editFrontmatter` commit** that splices only that property's text, run
   by name on the latest text and read back first (`runChange`), else refused and the YAML
@@ -302,8 +299,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
   a letter deselects and types; a press off `data-selection-surface` deselects.
 - **A drag from the left margin, a gutter strip or between blocks draws a box**
   (`useMarqueeSelect`, `marqueeRun`); Escape restores, its release clicks nothing. From
-  text or right of a line (`besideLine`), it is text.
-  `marquee-select.spec.ts`.
+  text or right of a line (`besideLine`), it is text. `marquee-select.spec.ts`.
 - **The grip's click opens `BlockMenu` on its run** or text's lines (`gripSelection`;
   right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
 - **Arrows stop on a divider, image or embed, enter every block with a field**; deletion
@@ -327,7 +323,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
   `file-drop.spec.ts`.
 - **Copy**: structure travels only for whole blocks (`fullBlock`); a partial selection writes
   visible text and inline HTML. `copy-clipboard.spec.ts`.
-- **A multi-line rich paste is read as Markdown first** (`utils/richPaste.ts`) unless it has no
+- **A multi-line rich paste is read as Markdown first** (`richPaste.ts`) unless it has no
   semantic formatting or comes from a code editor. `rich-paste.spec.ts`.
 - **The DOM read-back is verbatim; only marked scaffolding is dropped** (`walkNode`). A typed
   U+00A0 is a space unless the block held one (`settleTypedSpaces`); Chromium's copied styling

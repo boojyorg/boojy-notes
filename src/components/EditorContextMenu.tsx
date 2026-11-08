@@ -55,6 +55,8 @@ interface EditorContextMenuProps {
   onEditFootnoteRef?: () => void;
   /** Given where a reference can go (one text block): Insert footnote. */
   onInsertFootnote?: () => void;
+  /** Given when the note's footnotes are not all at its bottom, in order. */
+  onMoveFootnotes?: () => void;
   /** Cut and Copy act on a selection; with only a caret there is nothing to take. */
   canCutCopy: boolean;
   /** Desktop only: a page cannot read the clipboard from a menu item. */
@@ -105,6 +107,7 @@ export default function EditorContextMenu({
   onBackToReference,
   onEditFootnoteRef,
   onInsertFootnote,
+  onMoveFootnotes,
   canCutCopy,
   canPaste,
   pasteRow = true,
@@ -202,6 +205,14 @@ export default function EditorContextMenu({
       icon: <FootnoteIcon />,
       action: onInsertFootnote,
       rule: true,
+    });
+  }
+  if (onMoveFootnotes && !suggestions) {
+    items.push({
+      label: "Move footnotes to bottom",
+      icon: <ArrowDownToLineIcon />,
+      action: onMoveFootnotes,
+      rule: !onInsertFootnote,
     });
   }
   if (onTidyTable) {

@@ -22,17 +22,25 @@ export function reorderFloor(blocks: readonly Block[]): number {
  * was and a moved block takes the gap it lands in. An embed's indent (`lead`)
  * puts it under the block above it, so it goes once that block is another:
  * kept, a tab after a blank line would make the embed a code block elsewhere.
- * Anything else is returned as it is.
+ * A reorder that sets a block's own gap (Move footnotes to bottom) spells
+ * its gaps itself and is left alone. Anything else is returned as it is.
  */
 export function keepGapsInPlace(before: readonly Block[], after: Block[]): Block[] {
   if (before.length !== after.length || before.length < 2) return after;
   let reordered = false;
   const above = new Map<string, string | undefined>();
+  const was = new Map<string, Block>();
   for (let i = 0; i < before.length; i++) {
     above.set(before[i].id, before[i - 1]?.id);
+    was.set(before[i].id, before[i]);
     if (before[i].id !== after[i].id) reordered = true;
   }
   if (!reordered || !after.every((b) => above.has(b.id))) return after;
+  const spellsGaps = after.some((b) => {
+    const old = was.get(b.id) as Block;
+    return !!b.tightAbove !== !!old.tightAbove || !!b.looseAbove !== !!old.looseAbove;
+  });
+  if (spellsGaps) return after;
   let changed = false;
   const out = after.map((block, i) => {
     const { tightAbove, looseAbove } = before[i];

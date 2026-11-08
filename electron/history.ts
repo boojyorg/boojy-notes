@@ -373,10 +373,26 @@ export function savePoint(id: string): SavePointResult {
   return { ok: true, id: v.id, at: v.at };
 }
 
-/** A safety save before something the app is about to do (Replace All, a restore). */
-export function mark(id: string, reason: string): void {
+export type MarkResult = { ok: true } | { ok: false; reason: "off" | "unknown" | "failed" };
+
+/**
+ * A safety save before something the app is about to do (Replace All, a
+ * restore, moving footnotes): the text the file holds, kept. Answers whether
+ * that text is now in the history (kept already counts), so a caller that
+ * must not act without it can wait: off, nothing read or written this
+ * session (`unknown`), or the store failing are each a no.
+ */
+export function mark(id: string, reason: string): MarkResult {
   const head = _heads.get(id);
-  if (head) autosave(id, head.text, "safety", reason);
+  if (!head) return { ok: false, reason: "unknown" };
+  if (readLog(id).off) return { ok: false, reason: "off" };
+  try {
+    autosave(id, head.text, "safety", reason);
+    return { ok: true };
+  } catch (err) {
+    console.error("history: safety save failed", id, err);
+    return { ok: false, reason: "failed" };
+  }
 }
 
 export function nameVersion(id: string, versionId: string, name: string): boolean {
@@ -575,7 +591,7 @@ function tidy(): void {
 // ─── IPC ───
 
 /** The reasons the renderer may give for a safety save. */
-const MARK_REASONS = new Set(["Before Replace All", "Before restore"]);
+const MARK_REASONS = new Set(["Before Replace All", "Before restore", "Before moving footnotes"]);
 
 const isId = (x: unknown): x is string => typeof x === "string" && NOTE_ID.test(x);
 
@@ -589,7 +605,8 @@ export function registerHistoryIPC(): void {
       : false,
   );
   ipcMain.handle("history-mark", (_e, id: unknown, reason: unknown) => {
-    if (isId(id) && typeof reason === "string" && MARK_REASONS.has(reason)) mark(id, reason);
+    if (isId(id) && typeof reason === "string" && MARK_REASONS.has(reason)) return mark(id, reason);
+    return { ok: false, reason: "unknown" };
   });
   ipcMain.handle("history-leave", (_e, id: unknown) => {
     if (isId(id)) leaveNote(id);

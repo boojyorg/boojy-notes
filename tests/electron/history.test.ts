@@ -96,8 +96,18 @@ describe("safety saves", () => {
 
   it("marks before Replace All with the text the file holds", () => {
     history.observe("n1", "cat cat cat");
-    history.mark("n1", "Before Replace All");
+    expect(history.mark("n1", "Before Replace All")).toEqual({ ok: true });
     expect(labels("n1")).toEqual(["Before Replace All"]);
+  });
+
+  it("answers a safety save: kept, already kept, off, or no text to keep", () => {
+    expect(history.mark("n1", "Before moving footnotes")).toEqual({ ok: false, reason: "unknown" });
+    history.observe("n1", "kept already");
+    expect(history.mark("n1", "Before moving footnotes")).toEqual({ ok: true });
+    expect(history.mark("n1", "Before moving footnotes")).toEqual({ ok: true });
+    expect(labels("n1")).toEqual(["Before moving footnotes"]);
+    history.setOff("n1", true);
+    expect(history.mark("n1", "Before moving footnotes")).toEqual({ ok: false, reason: "off" });
   });
 });
 
