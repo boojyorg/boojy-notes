@@ -49,6 +49,8 @@ interface EditorContextMenuProps {
   onRemoveLink: () => void;
   /** Given on a footnote reference: the caret to its definition, a visit Back returns from. */
   onGoToFootnote?: () => void;
+  /** The reference's label has no footnote: the same item writes it (Write footnote). */
+  footnoteMissing?: boolean;
   /** Given in a numbered footnote: its ↩, by name, for the keyboard and a screen reader. */
   onBackToReference?: () => void;
   /** Given on a footnote reference: its label in a field under it (FootnoteRefPanel). */
@@ -104,6 +106,7 @@ export default function EditorContextMenu({
   onEditLink,
   onRemoveLink,
   onGoToFootnote,
+  footnoteMissing,
   onBackToReference,
   onEditFootnoteRef,
   onInsertFootnote,
@@ -135,7 +138,11 @@ export default function EditorContextMenu({
     });
   }
   if (onGoToFootnote) {
-    items.push({ label: "Go to footnote", icon: <ArrowDownToLineIcon />, action: onGoToFootnote });
+    items.push(
+      footnoteMissing
+        ? { label: "Write footnote", icon: <FootnoteIcon />, action: onGoToFootnote }
+        : { label: "Go to footnote", icon: <ArrowDownToLineIcon />, action: onGoToFootnote },
+    );
   }
   if (onBackToReference) {
     items.push({

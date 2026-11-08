@@ -143,6 +143,14 @@ describe("EditorContextMenu footnotes", () => {
     expect(insert).toHaveBeenCalled();
   });
 
+  it("offers Write footnote, by the same item, on a reference nothing defines", () => {
+    const go = vi.fn();
+    const { labels, rows } = mount(null, { onGoToFootnote: go, footnoteMissing: true });
+    expect(labels[0]).toBe("Write footnote");
+    fireEvent.click(rows[0]);
+    expect(go).toHaveBeenCalled();
+  });
+
   it("leaves Insert footnote off a misspelled word's menu, which is about the word", () => {
     const { labels } = mount(["receive"], { onInsertFootnote: vi.fn() });
     expect(labels).toEqual(["receive", "Add to dictionary", "Cut", "Copy", "Paste"]);

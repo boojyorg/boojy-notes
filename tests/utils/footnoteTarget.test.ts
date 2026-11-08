@@ -38,7 +38,7 @@ describe("a reference's definition", () => {
   it("says so when the note has none, or it is empty", () => {
     expect(describeFootnote(blocks("Nowhere.[^x]\n"), "x")).toEqual({
       label: "[^x]",
-      sub: "no footnote by this label",
+      sub: "no footnote yet · click to write it",
       missing: true,
     });
     expect(describeFootnote(blocks("Empty.[^e]\n\n[^e]:\n"), "e")).toEqual({

@@ -27,7 +27,8 @@ export function findFootnoteDefinition(blocks: readonly Block[], label: string):
 /** The chip a reference's hover shows: its definition read-only, or that it has none. */
 export function describeFootnote(blocks: readonly Block[], label: string): LinkDescription {
   const at = findFootnoteDefinition(blocks, label);
-  if (at < 0) return { label: `[^${label}]`, sub: "no footnote by this label", missing: true };
+  if (at < 0)
+    return { label: `[^${label}]`, sub: "no footnote yet · click to write it", missing: true };
   const paragraphs: string[] = [];
   for (let k = at; k <= subtreeEnd(blocks, at); k++) {
     const text = (blocks[k].text || "")

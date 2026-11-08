@@ -180,7 +180,7 @@ test("a reference's hover shows its definition, later paragraphs too; a missing 
   };
   await chipFor("[^proof]", "Twelve hours.\nThe cold slows the yeast.");
   await expect(h.page.getByTestId("link-tooltip-mark")).toHaveCount(0);
-  await chipFor("[^x]", "[^x]no footnote by this label");
+  await chipFor("[^x]", "[^x]no footnote yet · click to write it");
   await expect(h.page.getByTestId("link-tooltip-mark")).toHaveCount(1);
   expect(h.pageErrors).toEqual([]);
 });

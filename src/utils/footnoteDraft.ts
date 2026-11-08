@@ -5,7 +5,7 @@
  */
 import type { Block } from "../types/notes";
 import { findComments } from "./comments";
-import { LITERAL_SELECTOR, findFootnotes } from "./footnotes";
+import { FOOTNOTE_REF_CLASS, LITERAL_SELECTOR, findFootnotes } from "./footnotes";
 import { footnoteNumbers, nextFootnoteNumber } from "./footnoteTarget";
 import { settleTypedSpaces } from "./inlineFormatting";
 
@@ -113,4 +113,28 @@ export function draftNumber(blocks: readonly Block[], draft: FootnoteDraft): num
   const after = blocks.map((b, i) => (i === edit.blockIndex ? { ...b, text: edit.text } : b));
   after.push({ id: "draft", type: "footnote", label: edit.label, text: "" } as Block);
   return footnoteNumbers(after).get(edit.label);
+}
+
+/**
+ * The draft a reference nothing defines opens (a click on it, Write
+ * footnote): its footnote to write, the reference already in its line, so
+ * Done writes only the definition. Null where the panel cannot write one: a
+ * reference in a field (a table cell, a callout), or outside the note's text.
+ */
+export function draftForRef(
+  ref: Element,
+  noteId: string,
+  blockRoots: Record<string, HTMLElement | null>,
+): FootnoteDraft | null {
+  const blockId = ref.closest("[data-block-id]")?.getAttribute("data-block-id");
+  const root = blockId ? blockRoots[blockId] : null;
+  if (!blockId || !root?.contains(ref) || ref.closest("[data-inline-field]")) return null;
+  return {
+    kind: "typed",
+    noteId,
+    blockId,
+    label: ref.getAttribute("data-fn") ?? "",
+    refIndex: [...root.querySelectorAll(`.${FOOTNOTE_REF_CLASS}`)].indexOf(ref),
+    rect: rectOf(ref.getBoundingClientRect()),
+  };
 }
