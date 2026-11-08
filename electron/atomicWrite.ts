@@ -47,12 +47,23 @@ export function writeFileAtomic(filePath: string, data: string, modeFrom = fileP
   const mode = existingMode(modeFrom);
   fs.rmSync(tmpPath, { force: true });
   const fd = openCarrying(modeFrom, tmpPath, mode !== null);
+  let written = false;
   try {
     if (mode !== null) fs.fchmodSync(fd, mode);
-    fs.writeSync(fd, data, null, "utf-8");
+    // One write may land less than asked without failing (a disk filling
+    // up): write the rest until all of it is down, or the next one throws.
+    const bytes = Buffer.from(data, "utf-8");
+    for (let done = 0; done < bytes.length; ) {
+      const n = fs.writeSync(fd, bytes, done, bytes.length - done, null);
+      if (n <= 0) throw new Error(`write stalled at ${done} of ${bytes.length} bytes`);
+      done += n;
+    }
     fs.fsyncSync(fd);
+    written = true;
   } finally {
     fs.closeSync(fd);
+    // A write that failed reached nothing: its temp file goes with it.
+    if (!written) fs.rmSync(tmpPath, { force: true });
   }
   try {
     renameWithRetry(tmpPath, filePath);

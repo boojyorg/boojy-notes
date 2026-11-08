@@ -86,6 +86,20 @@ describe("safety saves", () => {
     expect(texts("n1")[0]).toBe(`${long} More.`);
   });
 
+  // The safety save found the last session's Autosave holding the same text
+  // and kept nothing, and the next session's end merged that Autosave away.
+  it("keeps the text before a large delete made within the hour of the last session", () => {
+    const long = `Keep this. ${"A paragraph that goes. ".repeat(12)}End.`;
+    history.observe("n1", long);
+    history.recordWrite("n1", `${long} More.`);
+    history.endSession("n1");
+    now += 10 * MIN;
+    history.recordWrite("n1", "Keep this. End.");
+    history.endSession("n1");
+    expect(texts("n1")).toContain(`${long} More.`);
+    expect(labels("n1")).toContain("Before a large delete");
+  });
+
   it("keeps the text an outside change replaces", () => {
     history.observe("n1", "mine");
     history.recordWrite("n1", "mine, typed");

@@ -290,6 +290,19 @@ describe("startWatcher", () => {
     expect(isOwnUnlinkEvent(path.join(dir, "Gone.md"))).toBe(false);
     expect(isUnderOwnTree(path.join(dir, "Work", "Note.md"))).toBe(false);
   });
+
+  // First run (the default folder waits for setup) and a vault on an
+  // unplugged drive: the watch threw, and the rest of startup never ran.
+  it("watches nothing, and throws nothing, while the vault folder is missing", async () => {
+    const missing = path.join(dir, "Not there");
+    expect(() =>
+      startWatcher(
+        () => missing,
+        () => null,
+      ),
+    ).not.toThrow();
+    await expect(closeWatcher()).resolves.toBeUndefined();
+  });
 });
 
 // The ignore rule is judged on the path inside the vault. The old regex ran

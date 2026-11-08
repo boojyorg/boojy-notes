@@ -455,6 +455,8 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
               ? { ...prev, [external.id]: { ...prev[external.id], offloaded: true } }
               : prev,
           );
+          // Nor the quit/blur net, which every change of record joins.
+          links.unflushedNotes?.current.delete(external.id);
         }
         return Promise.resolve(false);
       }
@@ -762,6 +764,10 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
               },
             };
           });
+          // The disk's news, not an edit: the quit/blur net must not write it
+          // back (a rewrite is a new file to a sync client, and the next
+          // outside edit would meet "pending edits" and make a copy).
+          if (!pending) links.unflushedNotes?.current.delete(id);
           taken();
           ensureFolder(external.folder);
         })

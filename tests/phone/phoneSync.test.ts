@@ -225,6 +225,21 @@ describe("the phone's sync worker", () => {
     expect(sync.status.status().state).toBe("synced");
   });
 
+  // A pass that cannot move the saved cursor (signed out, the phone full,
+  // Dropbox's wait) left the long-poll answering at once, over and over.
+  it("pauses the long-poll while passes cannot move the cursor", async () => {
+    passes.mockRejectedValue(new Error("the phone is full"));
+    let polls = 0;
+    longpoll = async () => {
+      polls++;
+      if (polls >= 50) return hang(); // the old loop's spin, stopped for the test
+      return { changes: true, backoff: null };
+    };
+    await started();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(polls).toBeLessThan(5);
+  });
+
   it("holds saves, returns and reconnects to Dropbox's wait; a tap is the person's", async () => {
     passes.mockRejectedValueOnce(new DropboxHttpError(429, "too_many_requests/", 30));
     passes.mockResolvedValue(done());

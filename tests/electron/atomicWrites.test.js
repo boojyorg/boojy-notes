@@ -100,7 +100,7 @@ describe("write-note — crash-safe writes", () => {
     renameTo("Old Title", "Old text");
     const realWrite = fs.writeSync;
     const write = vi.spyOn(fs, "writeSync").mockImplementation((fd, data, ...rest) => {
-      if (data === "New text") throw new Error("crash");
+      if (String(data) === "New text") throw new Error("crash");
       return realWrite(fd, data, ...rest);
     });
     try {
@@ -148,6 +148,29 @@ describe("write-note — crash-safe writes", () => {
 
     fsyncSpy.mockRestore();
     renameSpy.mockRestore();
+  });
+
+  // write(2) may write less than asked without failing (a disk filling up);
+  // the one writeSync took that as done and swapped a cut-off note in.
+  it("finishes a write the system cut short before the file replaces the note", () => {
+    const realWrite = fs.writeSync;
+    let cut = false;
+    const writeSpy = vi.spyOn(fs, "writeSync").mockImplementation((fd, buffer, ...rest) => {
+      if (cut) return realWrite(fd, buffer, ...rest);
+      cut = true;
+      const bytes = Buffer.isBuffer(buffer) ? buffer : Buffer.from(String(buffer), "utf-8");
+      return realWrite(fd, bytes, 0, 4, null);
+    });
+    try {
+      const { filePath } = writeNote({
+        id: "note-1-aaaa",
+        title: "Whole",
+        content: { blocks: [{ type: "p", text: "every byte of it" }] },
+      });
+      expect(fs.readFileSync(filePath, "utf-8")).toBe("every byte of it");
+    } finally {
+      writeSpy.mockRestore();
+    }
   });
 
   it("answers as written when the file is deleted outside the app the moment it lands", () => {

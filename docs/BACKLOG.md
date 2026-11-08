@@ -417,6 +417,10 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
 
 ### Technical debt
 
+- **A change of record joins the quit/blur net** (`applyCommit` adds every changed note to
+  `unflushedNotes`, `adoptNoteData` included). The two outside-news sites (a rename found
+  outside, an offloaded mark) take it back out; guarding the add on `recordHistory` would close
+  it at the seam, but every `adoptNoteData` caller needs checking first (2026-11-08 review).
 - **Untested seams worth a case each**: `remapNoteFolders` (undo across a folder rename) and a
   pending title at quit. No layer covers them today.
 - **No Content-Security-Policy on the renderer** (review §6). The escaping is sound (every

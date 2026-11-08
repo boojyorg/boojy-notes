@@ -15,6 +15,10 @@
 - **A one-line code block has no empty line under it** — and code blocks are a little tighter.
 - **On Windows, pasting formatted text stays on its line** — copying part of a line (bold, a link, a tag, a footnote) and pasting it into a line, from the keyboard or the right-click menu, used to start a new paragraph on Windows.
 - **A callout's handle sits at its top** — level with the top of its box, also when the title is empty (it used to drop to the first line of text), and an embed showing a callout keeps its handle at the embed's own top.
+- **A note renamed in Finder isn't written again** — after a rename or move outside the app, switching to another app rewrote the file (a sync service then saw a new file), and the next edit to it from another app made a conflicted copy.
+- **The text before a big delete is always kept in Version History** — a delete made within an hour of your last edit session could lose that safety version when the session's Autosave was merged.
+- **A save on a full disk fails instead of cutting the note short** — it now says it failed and leaves the file as it was.
+- **Starting with the notes folder missing works** — on a first run, or with the folder on a drive that isn't connected, closing the window and clicking the Dock icon didn't bring it back, and the app didn't check for updates.
 
 ## v0.21.0 — 2026-11-05
 
