@@ -183,6 +183,26 @@ test("a reference nothing defines: Escape writes nothing; its menu says Write fo
   }).toPass({ timeout: 10_000 });
 });
 
+test("in a callout, where no footnote can be written, a reference nothing defines offers no Write footnote and says so", async () => {
+  const md = "> [!note]\n> Inside.[^x]\n\nAfter.\n";
+  await open(md);
+  const ref = h.page.locator("[data-editor] .md-fn-ref");
+  await ref.click({ button: "right" });
+  await expect(h.page.getByRole("menuitem", { name: "Edit reference…" })).toBeVisible();
+  await expect(h.page.getByRole("menuitem", { name: "Write footnote" })).toHaveCount(0);
+  await h.page.keyboard.press("Escape");
+  await expect(async () => {
+    await h.page.mouse.move(5, 5);
+    await ref.hover();
+    await expect(h.page.getByTestId("link-tooltip")).toHaveText("[^x]no footnote by this label", {
+      timeout: 1_500,
+    });
+  }).toPass({ timeout: 10_000 });
+  await ref.click();
+  await expect(panel()).toHaveCount(0);
+  expect(h.vault.read("F.md")).toBe(md);
+});
+
 test("Escape in the panel writes nothing and leaves the reference as typed, the caret after it", async () => {
   await open("Bread.\n");
   await atEnd("Bread.");

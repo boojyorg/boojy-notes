@@ -117,7 +117,7 @@ import {
   watchFootnoteNumbers,
   footnoteNumbers,
 } from "../utils/footnoteTarget";
-import { FOOTNOTE_DRAFT_EVENT, draftForRef } from "../utils/footnoteDraft";
+import { FOOTNOTE_DRAFT_EVENT, canWriteFootnoteFor, draftForRef } from "../utils/footnoteDraft";
 import { FOOTNOTE_REF_CLASS } from "../utils/footnotes";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
@@ -2329,6 +2329,7 @@ const EditorArea = memo(
                 }}
                 footnoteMissing={
                   !!linkCtxMenu.footnote &&
+                  canWriteFootnoteFor(linkCtxMenu.footnote) &&
                   findFootnoteDefinition(
                     noteDataRef.current?.[activeNote]?.content?.blocks ?? [],
                     refLabel(linkCtxMenu.footnote.textContent || ""),

@@ -115,6 +115,17 @@ export function draftNumber(blocks: readonly Block[], draft: FootnoteDraft): num
   return footnoteNumbers(after).get(edit.label);
 }
 
+/** A field of its own (a table cell, a callout's title or body): no panel writes a footnote there. */
+const FIELD = '[data-inline-field], [contenteditable="true"]:not([data-editor])';
+
+/**
+ * Whether the panel can write a footnote for `ref`: it stands in a note's
+ * block, in the block's own text, not a field. One answer for the click, the
+ * right-click item (Write footnote) and the hover's promise.
+ */
+export const canWriteFootnoteFor = (ref: Element): boolean =>
+  !!ref.closest("[data-block-id]") && !ref.closest(FIELD);
+
 /**
  * The draft a reference nothing defines opens (a click on it, Write
  * footnote): its footnote to write, the reference already in its line, so
@@ -128,7 +139,7 @@ export function draftForRef(
 ): FootnoteDraft | null {
   const blockId = ref.closest("[data-block-id]")?.getAttribute("data-block-id");
   const root = blockId ? blockRoots[blockId] : null;
-  if (!blockId || !root?.contains(ref) || ref.closest("[data-inline-field]")) return null;
+  if (!blockId || !root?.contains(ref) || !canWriteFootnoteFor(ref)) return null;
   return {
     kind: "typed",
     noteId,
