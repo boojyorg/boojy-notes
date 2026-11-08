@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { Block } from "../../src/types/notes";
 import {
   type FootnoteDraft,
+  canWriteFootnoteFor,
   draftEdit,
+  draftForRef,
   draftNumber,
   endsInFootnoteOpen,
   footnoteContext,
@@ -114,5 +116,48 @@ describe("draftNumber: the number the new footnote will show", () => {
     expect(draftNumber(note, { ...before, before: "Claim one.[^1] Claim", after: " two." })).toBe(
       2,
     );
+  });
+});
+
+describe("draftForRef: the panel for a reference nothing defines", () => {
+  /** A block root holding `html`, registered as the app's blockRefs do. */
+  const mount = (html: string) => {
+    document.body.innerHTML = `<div data-editor><div data-block-id="b1"><div id="root">${html}</div></div></div>`;
+    const root = document.getElementById("root") as HTMLElement;
+    return { root, roots: { b1: root } as Record<string, HTMLElement | null> };
+  };
+  const ref = (label: string) =>
+    `<span class="md-fn-ref" contenteditable="false" data-fn="${label}">[^${label}]</span>`;
+
+  it("is the typed kind for the reference's label, counting the references before it", () => {
+    const { roots } = mount(`One${ref("a")} two${ref("6")}`);
+    const six = document.querySelector('[data-fn="6"]') as Element;
+    expect(canWriteFootnoteFor(six)).toBe(true);
+    expect(draftForRef(six, "n1", roots)).toMatchObject({
+      kind: "typed",
+      noteId: "n1",
+      blockId: "b1",
+      label: "6",
+      refIndex: 1,
+    });
+  });
+
+  it("is refused in a field of its own (a cell, a callout), and outside a block", () => {
+    const { roots } = mount(`<div data-inline-field>Cell${ref("x")}</div>`);
+    const inField = document.querySelector('[data-fn="x"]') as Element;
+    expect(canWriteFootnoteFor(inField)).toBe(false);
+    expect(draftForRef(inField, "n1", roots)).toBeNull();
+
+    const loose = document.createElement("span");
+    loose.setAttribute("data-fn", "y");
+    document.body.append(loose);
+    expect(canWriteFootnoteFor(loose)).toBe(false);
+    expect(draftForRef(loose, "n1", roots)).toBeNull();
+  });
+
+  it("is refused when the block's root is not the one holding it", () => {
+    mount(ref("z"));
+    const z = document.querySelector('[data-fn="z"]') as Element;
+    expect(draftForRef(z, "n1", { b1: null })).toBeNull();
   });
 });
