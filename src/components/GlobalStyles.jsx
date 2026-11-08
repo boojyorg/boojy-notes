@@ -1455,6 +1455,15 @@ ${tagPillCss(theme)}
           position: absolute;
           pointer-events: none;
         }
+        /* A typed [^'s completion (useFootnoteDraft): faint as a placeholder,
+           its text CSS so nothing reads it as the note's. */
+        .fn-ghost::after {
+          content: attr(data-ghost);
+          color: ${theme.TEXT.muted};
+          opacity: 0.55;
+          pointer-events: none;
+          user-select: none;
+        }
         /* The name's placeholder follows the same rule as the block's: it
            shows while the field is empty on screen (nothing, or the <br>
            the sync paints for the caret), read from the DOM and never from

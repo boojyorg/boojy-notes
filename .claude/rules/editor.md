@@ -102,14 +102,17 @@ through state.**
   drawn quietly only while it ends its block. `link-resolution.spec.ts`,
   `heading-links.spec.ts`, `block-links.spec.ts`.
 - **A footnote reference is one sealed character showing `[n]`** over its source
-  (`numberFootnotes`: by first reference, defined labels only), which copies and saves.
+  (`numberFootnotes`, first reference first), which copies and saves.
   A caret anchor follows; ←/→ take it whole, Backspace its `]` (`footnoteRefKey`). A click goes to
-  its definition (its label's last), a visit. Insert footnote is one commit, painted
-  at once. `footnotes.spec.ts`.
+  its definition (its label's last), a visit. `footnotes.spec.ts`.
+- **A footnote is made in its panel** (`useFootnoteDraft`): `[^` shows a faint `n]`,
+  Enter/Tab types it; a typed new label (not line-first) or Insert footnote too. A draft
+  till Done or a leave (`flushAll`, not a blur); refused, its text waits in a notice.
+  `footnote-create.spec.ts`.
 - **A definition shows `n.`; an unused one a dash**, its label above on hover or caret.
   Its ↩ (menu: Back to reference) is Back while that jump is the visit open, else the first
-  reference, tinted as an element (`tintElement`): highlights miss CSS text.
-- **One link picker** (`LinkPicker.tsx`) for every way in; it writes the shortest clear target
+  reference, tinted as an element (`tintElement`).
+- **One link picker** (`LinkPicker.tsx`) for every way in, writing the shortest clear target
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
@@ -260,10 +263,9 @@ never holds a byte sequence the syntax cannot.**
   `frontmatter-order.spec.ts`.
 - **A row edit is one `editFrontmatter` commit** that splices only that property's text, run
   by name on the latest text and read back first (`runChange`), else refused and the YAML
-  opens. Its text is React's to paint (`haveEditorBlockRenderChanges`). An outside change to
-  the property being edited sets the draft aside, with Restore. `properties.spec.ts`.
-- **A list is edited an item at a time** (`replaceItem`, `removeItem`, `insertItem`), each
-  splicing only that item's bytes. `property-lists.spec.ts`.
+  opens; React paints it. An outside change to the property being edited sets the draft
+  aside, with Restore. `properties.spec.ts`.
+- **A list is edited an item at a time** (`replaceItem` and kin), each splicing only its bytes. `property-lists.spec.ts`.
 - **Add property and `/properties`** (`PropertyPicker`): a picked type is a draft row
   (`freeName`), written once on Enter, Tab or a press elsewhere; Escape writes nothing. `---` on
   a note's first line opens it at the third dash (`opensProperties`). An empty value's type is
@@ -289,25 +291,24 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
   (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, and an edited
   one fitting a lined-up header takes its columns. `table-preservation.spec.ts`.
-- **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root; one write, on drop. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column. `table-handles.spec.ts`.
+- **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root; one write, on drop. Keys in a cell move them too. `table-handles.spec.ts`.
 
 ## Whole-block selection
 
-- **Any block can be selected whole** (`blockRun.ts`): the grip, the gutter, Escape (every
-  block a text selection touches), a press on a divider, image, table or embed; Shift-click extends. **A list item or footnote brings what nests
+- **Any block can be selected whole** (`blockRun.ts`): grip, gutter, Escape (every block a
+  text selection touches), a press on a divider, image, table or embed; Shift-click extends. **A list item or footnote brings what nests
   under it** (`subtreeEnd`; drops land after, `dropBoundary`).
 - Backspace/Delete remove a selection in one commit, ⌘C/⌘X copy it whole (`wholeBlocksCopy`);
   a letter deselects and types; a press off `data-selection-surface` deselects.
 - **A drag from the left margin, a gutter strip or between blocks draws a box**
-  (`useMarqueeSelect`) selecting the blocks it spans (`marqueeRun`); Escape restores,
-  its release clicks nothing. From text or right of a line (`besideLine`), it is text.
+  (`useMarqueeSelect`, `marqueeRun`); Escape restores, its release clicks nothing. From
+  text or right of a line (`besideLine`), it is text.
   `marquee-select.spec.ts`.
 - **The grip's click opens `BlockMenu` on its run** or text's lines (`gripSelection`;
   right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
-- **Arrows stop on a divider, image or embed and enter every block with a field**;
-  deletion steps over code.
-- **Taking the caret back never scrolls the note** (`preventScroll`).
-  `caret-navigation.spec.ts`.
+- **Arrows stop on a divider, image or embed, enter every block with a field**; deletion
+  steps over code.
+- **A caret taken back never scrolls** (`preventScroll`). `caret-navigation.spec.ts`.
 
 ## Embeds: drawn by the editor, read-only
 
@@ -315,7 +316,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
   link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is said.
 - **The copy is fenced by the selection, never the target**:
   `useEmbedFence` cancels an edit in it and its chip says where to edit.
-- **A click opens its `![[…]]` underneath** (keys: Edit link), drawn as typed, saved once; Done, ↵ or Esc shuts it, still picked. `embeds.spec.ts`.
+- **A click opens its `![[…]]` underneath** (keys: Edit link), saved once; closing leaves it picked. `embeds.spec.ts`.
 
 ## Paste and copy
 

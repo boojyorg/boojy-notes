@@ -181,8 +181,10 @@ export default function FootnoteRefPanel({
           autoCapitalize="off"
           onChange={(e) => onInput(e.currentTarget.value)}
           onKeyDown={(e) => {
+            // The field's editing keys are its own; the app's shortcuts (⌘P,
+            // ⌘[) still reach the shell, and the note's undo stays the note's.
             const k = e.key.toLowerCase();
-            if ((e.metaKey || e.ctrlKey) && (k === "z" || k === "y")) return;
+            if ((e.metaKey || e.ctrlKey) && !["a", "c", "v", "x"].includes(k)) return;
             e.stopPropagation();
             if (e.key === "Enter" || e.key === "Escape") {
               e.preventDefault();

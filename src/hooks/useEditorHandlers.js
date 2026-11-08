@@ -72,7 +72,7 @@ export function useEditorHandlers({
     selectBlock,
   });
   const { executeSlashCommand } = useSlashCommands({ ...shared, onError });
-  const { insertFootnote, canInsertFootnote } = useFootnoteCommands(shared);
+  const { insertFootnote, commitFootnoteDraft, canInsertFootnote } = useFootnoteCommands(shared);
   const { handleEditorInput } = useInputHandler({
     ...shared,
     slashMenuRef,
@@ -163,6 +163,7 @@ export function useEditorHandlers({
     handleEditorDrop,
     executeSlashCommand,
     insertFootnote,
+    commitFootnoteDraft,
     canInsertFootnote,
   };
 }

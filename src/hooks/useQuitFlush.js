@@ -39,8 +39,12 @@ export function useQuitFlush(flushAll) {
       }
     });
 
+    // A blur flushes the note but leaves a draft's panel open: the user may be
+    // fetching a source for it from another app.
     const onBlur = () => {
-      flushAll().catch((err) => console.error("useQuitFlush: flush on blur failed", err));
+      flushAll({ drafts: false }).catch((err) =>
+        console.error("useQuitFlush: flush on blur failed", err),
+      );
     };
     window.addEventListener("blur", onBlur);
 

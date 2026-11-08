@@ -199,7 +199,7 @@ test("a click on a reference puts the caret at its definition's end; Back return
   expect(h.pageErrors).toEqual([]);
 });
 
-test("right-click on a reference: Go to footnote; elsewhere Insert footnote puts the next number in, one undo takes both", async () => {
+test("right-click on a reference: Go to footnote; elsewhere Insert footnote opens the panel at the word, one undo takes both", async () => {
   const md = "Claim one.[^1] Claim two.\n\n[^1]: First.\n";
   await open(md);
   await refs(h.page).first().click({ button: "right" });
@@ -213,21 +213,26 @@ test("right-click on a reference: Go to footnote; elsewhere Insert footnote puts
   await row(h.page, "Claim two.").click();
   await h.page.keyboard.press(END_OF_LINE);
   await h.page.keyboard.press("ArrowLeft");
-  // Typed at once: a letter must never reach the line before the reference does.
+  // Typed at once: a letter must land in the panel, never in the line.
   await menuClick(h, "footnote");
   await h.page.keyboard.type("Second.");
+  await h.page.keyboard.press("Enter");
   const inserted = "Claim one.[^1] Claim two[^2].\n\n[^1]: First.\n[^2]: Second.\n";
   await waitForFile(h.vault.file("F.md"), (t) => t === inserted);
   await expect(refs(h.page)).toHaveText(["[^1]", "[^2]"]);
 
-  await h.page.keyboard.press(`${MOD}+z`); // the typing
   await h.page.keyboard.press(`${MOD}+z`); // the reference and its definition, together
   await waitForFile(h.vault.file("F.md"), (t) => t === md, { label: "one undo took both" });
 
   // The right-click menu's row runs the same command, at the word clicked.
   await row(h.page, "Claim two.").getByText("Claim two.").click({ button: "right" });
   await h.page.getByRole("menuitem", { name: "Insert footnote" }).click();
-  await waitForFile(h.vault.file("F.md"), (t) => t.includes("[^2]") && t.endsWith("[^2]: \n"));
+  await h.page.keyboard.type("Third.");
+  await h.page.keyboard.press("Enter");
+  await waitForFile(
+    h.vault.file("F.md"),
+    (t) => t.includes("[^2]") && t.endsWith("[^2]: Third.\n"),
+  );
   expect(h.pageErrors).toEqual([]);
 });
 
