@@ -69,6 +69,7 @@ import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
 import { describeWikilink } from "./utils/linkDescription";
 import { describeFootnote, ownFootnoteRef, refLabel } from "./utils/footnoteTarget";
+import { canWriteFootnoteFor } from "./utils/footnoteDraft";
 import { FOOTNOTE_REF_CLASS } from "./utils/footnotes";
 import { linkTargetIn } from "./utils/embedTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
@@ -1230,7 +1231,7 @@ export default function BoojyNotes() {
         // One in an embed is the embedded note's: no chip.
         if (!ownFootnoteRef(el)) return null;
         const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks ?? [];
-        return describeFootnote(blocks, refLabel(el.textContent || ""));
+        return describeFootnote(blocks, refLabel(el.textContent || ""), canWriteFootnoteFor(el));
       }
       return describeWikilink(linkTargetIn(el), noteDataRef.current, activeNoteRef.current);
     },

@@ -2,7 +2,7 @@ import fc from "fast-check";
 import MarkdownIt from "markdown-it";
 import footnotePlugin from "markdown-it-footnote";
 import { describe, expect, it } from "vitest";
-import { footnotesAtBottom } from "../../src/utils/footnoteMove";
+import { footnotesAtBottom, footnotesOutOfPlace } from "../../src/utils/footnoteMove";
 import { footnoteNumbers } from "../../src/utils/footnoteTarget";
 import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown";
 import type { Block } from "../../src/types/notes";
@@ -177,5 +177,15 @@ describe("Move footnotes to bottom, over generated notes", () => {
       }),
       { numRuns: runs, seed: 7 },
     );
+  });
+});
+
+describe("footnotesOutOfPlace: the menu's answer", () => {
+  it("says whether Move has something to do, once per version of the blocks", () => {
+    const out = markdownToBlocks("A.[^a]\n\n[^a]: Ay.\n\nB.\n") as Block[];
+    expect(footnotesOutOfPlace(out)).toBe(true);
+    expect(footnotesOutOfPlace(out)).toBe(true);
+    expect(footnotesOutOfPlace(markdownToBlocks("A.[^a]\n\n[^a]: Ay.\n") as Block[])).toBe(false);
+    expect(footnotesOutOfPlace(markdownToBlocks("No footnotes.\n") as Block[])).toBe(false);
   });
 });

@@ -117,6 +117,7 @@ import {
   watchFootnoteNumbers,
   footnoteNumbers,
 } from "../utils/footnoteTarget";
+import { FOOTNOTE_DRAFT_EVENT, canWriteFootnoteFor, draftForRef } from "../utils/footnoteDraft";
 import { FOOTNOTE_REF_CLASS } from "../utils/footnotes";
 
 // `?hold` turns the phone's hold on in the web build: the e2e suite's touch
@@ -462,7 +463,8 @@ const EditorArea = memo(
     // A footnote reference followed (a click, or Go to footnote): the caret
     // at the end of its definition, the last of that label (Obsidian's
     // reading), a visit of its own, so Back returns to the reference. A
-    // label with no definition is said, the caret left where it is.
+    // label with no definition opens the panel to write it (Write footnote:
+    // nothing is written until Done); in a field, where none can be, it is said.
     // The latest jump from a reference: ↩ on its footnote is Back while that
     // jump is still the visit open.
     const lastFootnoteJump = useRef(null);
@@ -472,7 +474,9 @@ const EditorArea = memo(
       const at = findFootnoteDefinition(blocks, label);
       const el = at >= 0 ? blockRefs.current[blocks[at].id] : null;
       if (!el) {
-        showToast?.(`No footnote [^${label}] in this note`, "info");
+        const draft = at < 0 && refEl && draftForRef(refEl, activeNote, blockRefs.current);
+        if (draft) document.dispatchEvent(new CustomEvent(FOOTNOTE_DRAFT_EVENT, { detail: draft }));
+        else showToast?.(`No footnote [^${label}] in this note`, "info");
         return;
       }
       // Back returns to just after the reference, never inside it.
@@ -2323,6 +2327,14 @@ const EditorArea = memo(
                   dismissCtxMenu();
                   onRemoveLink?.(el);
                 }}
+                footnoteMissing={
+                  !!linkCtxMenu.footnote &&
+                  canWriteFootnoteFor(linkCtxMenu.footnote) &&
+                  findFootnoteDefinition(
+                    noteDataRef.current?.[activeNote]?.content?.blocks ?? [],
+                    refLabel(linkCtxMenu.footnote.textContent || ""),
+                  ) < 0
+                }
                 onGoToFootnote={
                   linkCtxMenu.footnote
                     ? () => {

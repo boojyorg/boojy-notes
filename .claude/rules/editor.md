@@ -101,7 +101,7 @@ through state.**
 - **A footnote reference is one sealed character showing `[n]`** over its source
   (`numberFootnotes`, first reference first), which copies and saves.
   A caret anchor follows; ←/→ take it whole, Backspace its `]` (`footnoteRefKey`). A click goes to
-  its definition (its label's last), a visit. `footnotes.spec.ts`.
+  its definition (its label's last), a visit; with none, the panel writes one. `footnotes.spec.ts`.
 - **A footnote is made in its panel** (`useFootnoteDraft`): `[^` shows a faint `n]`,
   Enter/Tab types it; a typed new label (not line-first) or Insert footnote too. A draft
   till Done or a leave (`flushAll`, not a blur); refused, its text waits in a notice.
@@ -182,8 +182,8 @@ through state.**
 - **The slash menu is tiered**: `advanced: true` rows stay off the opening screen, one rule for
   menu and keys (`filterSlashCommands()`).
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
-- **Every menu's keys are one rule** (`useMenuKeys`); a suggestion under the caret
-  (`suggestion: true`) is a `listbox`. `menuKeys.test.ts`, `callout-picker.spec.ts`.
+- **Every menu's keys are one rule** (`useMenuKeys`); a caret suggestion (`suggestion: true`)
+  is a `listbox`. `menuKeys.test.ts`, `callout-picker.spec.ts`.
 - **The editor column never carries a transform** (it would contain the `fixed` menus).
   `editor-menus.spec.ts`.
 - **A chosen block with its own field takes the caret** (`hasOwnField`); the rest hand it to
@@ -205,7 +205,7 @@ shows `Heading N` (CSS). `heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file
 
-`SourceView`: the note as `blocksToMarkdown` writes it, plain monospace. **Each note
+`SourceView`: the note as `blocksToMarkdown` writes it. **Each note
 keeps its own view, saved** (`useSourceView`).
 
 - **Switching commits nothing**, so it changes no byte. Each input is parsed

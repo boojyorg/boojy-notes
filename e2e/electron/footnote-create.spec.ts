@@ -138,6 +138,71 @@ test("a typed [^name] nothing defines opens the panel, its name beside the numbe
   await fileIs("One.[^1]\n\nTwo.[^1] more[^Hi]\n\n[^1]: Ay.\n");
 });
 
+test("a click on a reference nothing defines opens the panel for it; Done writes only its footnote", async () => {
+  const md = "One.[^1] Three.[^3]\n\nWow [^6]\n\nHi\n\n[^1]: Ay.\n[^3]: Cee.\n";
+  await open(md);
+  const six = h.page.locator("[data-editor] .md-fn-ref").filter({ hasText: "[^6]" });
+  await six.click();
+  // Its number once written beside its label, as for a typed [^name].
+  await expect(title()).toHaveText("New footnote [3]6");
+  await h.page.keyboard.type("Six.");
+  await h.page.keyboard.press("Enter");
+  await fileIs(`${md}[^6]: Six.\n`);
+  await expect(six).toHaveAttribute("data-n", "3");
+  // One ⌘Z takes the footnote; the reference was the file's.
+  await h.page.keyboard.press(`${MOD}+z`);
+  await fileIs(md);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("a reference nothing defines: Escape writes nothing; its menu says Write footnote; its hover says so", async () => {
+  const md = "Wow.[^6]\n\nHi.\n";
+  await open(md);
+  const six = h.page.locator("[data-editor] .md-fn-ref");
+  await six.click();
+  await expect(panel()).toBeVisible();
+  await h.page.keyboard.type("Never written");
+  await h.page.keyboard.press("Escape");
+  await expect(panel()).toHaveCount(0);
+  await sleep(600);
+  expect(h.vault.read("F.md")).toBe(md);
+
+  await six.click({ button: "right" });
+  await expect(h.page.getByRole("menuitem", { name: "Go to footnote" })).toHaveCount(0);
+  await h.page.getByRole("menuitem", { name: "Write footnote" }).click();
+  await expect(title()).toHaveText("New footnote [1]6");
+  await h.page.keyboard.press("Escape");
+
+  await expect(async () => {
+    await h.page.mouse.move(5, 5);
+    await six.hover();
+    await expect(h.page.getByTestId("link-tooltip")).toHaveText(
+      "[^6]no footnote yet · click to write it",
+      { timeout: 1_500 },
+    );
+  }).toPass({ timeout: 10_000 });
+});
+
+test("in a callout, where no footnote can be written, a reference nothing defines offers no Write footnote and says so", async () => {
+  const md = "> [!note]\n> Inside.[^x]\n\nAfter.\n";
+  await open(md);
+  const ref = h.page.locator("[data-editor] .md-fn-ref");
+  await ref.click({ button: "right" });
+  await expect(h.page.getByRole("menuitem", { name: "Edit reference…" })).toBeVisible();
+  await expect(h.page.getByRole("menuitem", { name: "Write footnote" })).toHaveCount(0);
+  await h.page.keyboard.press("Escape");
+  await expect(async () => {
+    await h.page.mouse.move(5, 5);
+    await ref.hover();
+    await expect(h.page.getByTestId("link-tooltip")).toHaveText("[^x]no footnote by this label", {
+      timeout: 1_500,
+    });
+  }).toPass({ timeout: 10_000 });
+  await ref.click();
+  await expect(panel()).toHaveCount(0);
+  expect(h.vault.read("F.md")).toBe(md);
+});
+
 test("Escape in the panel writes nothing and leaves the reference as typed, the caret after it", async () => {
   await open("Bread.\n");
   await atEnd("Bread.");
