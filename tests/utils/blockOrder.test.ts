@@ -51,12 +51,6 @@ describe("keepGapsInPlace", () => {
     expect(under.find((x) => x.id === "pic")?.lead).toBe("\t");
   });
 
-  it("keeps the gaps a reorder spells itself (Move footnotes to bottom)", () => {
-    const before = [b("a"), b("fa"), b("mid"), b("fb")];
-    const after = [before[0], before[2], before[3], b("fa", { tightAbove: true })];
-    expect(keepGapsInPlace(before, after)).toBe(after);
-  });
-
   it("returns anything that is not a pure reorder as it is", () => {
     const before = [b("a"), b("c", { tightAbove: true })];
     const inserted = [b("a"), b("x"), before[1]];

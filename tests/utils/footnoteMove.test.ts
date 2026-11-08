@@ -75,6 +75,10 @@ describe("Move footnotes to bottom", () => {
 
   const lists = (md: string) => reader.render(md).match(/<ol>/g)?.length ?? 0;
 
+  it("keeps the blank line between a bullet list and a numbered one it moves out from", () => {
+    expect(move("- a[^1]\n\n[^1]: Ay.\n\n1. b\n")).toBe("- a[^1]\n\n1. b\n\n[^1]: Ay.\n");
+  });
+
   it("leaves a footnote in place where it is all that parts two lists", () => {
     const md = "1. First[^a]\n\n[^a]: Ay.\n\n1. Second[^b]\n\n[^b]: Bee.\n\nEnd.\n";
     const moved = move(md) as string;
@@ -157,6 +161,16 @@ describe("Move footnotes to bottom, over generated notes", () => {
           .filter((n): n is number => n !== undefined);
         expect(shown).toEqual([...shown].sort((x, y) => x - y));
         const out = blocksToMarkdown(next);
+        // Every block was written a blank line apart: only the moved
+        // footnotes may now stand on consecutive lines.
+        const lines = out.split("\n");
+        for (let i = 0; i + 1 < lines.length; i++) {
+          if (lines[i] && lines[i + 1])
+            expect([lines[i], lines[i + 1]]).toEqual([
+              expect.stringMatching(/^\[\^/),
+              expect.stringMatching(/^\[\^/),
+            ]);
+        }
         expect(reader.render(out).match(/<[ou]l>/g)?.length ?? 0).toBe(
           reader.render(md).match(/<[ou]l>/g)?.length ?? 0,
         );
