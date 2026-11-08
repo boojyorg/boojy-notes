@@ -2,7 +2,7 @@
  * Move footnotes to bottom: every footnote, with its later paragraphs, under
  * the note's last line, in the order its number reads. A pure edit of the
  * blocks; the command around it (a safety save first, one commit) is
- * `useFootnoteCommands`.
+ * `useMoveFootnotes`.
  */
 import type { Block } from "../types/notes";
 import { LIST_TYPES } from "./blockKinds";
@@ -14,11 +14,24 @@ const blank = (b: Block | undefined) => b?.type === "p" && (b.text || "").trim()
 
 const labelOf = (b: Block) => (b as { label?: string }).label ?? "";
 
-/** `b` without `tightAbove`: written with a blank line above it. */
-function spaced(b: Block): Block {
-  if (!b.tightAbove) return b;
-  const { tightAbove: _t, ...rest } = b;
-  return rest as Block;
+const isList = (b: Block | undefined) => !!b && LIST_TYPES.has(b.type);
+
+/**
+ * `b` written with a blank line above it: no `tightAbove`, and `looseAbove`
+ * under a list item when `b` is one too, where the writer would otherwise
+ * put none (a bullet list and a numbered one keep the blank line between).
+ */
+function spaced(b: Block, above?: Block): Block {
+  const loose = isList(above) && isList(b);
+  if (!b.tightAbove && !!b.looseAbove === loose) return b;
+  const { tightAbove: _t, looseAbove: _l, ...rest } = b;
+  return (loose ? { ...rest, looseAbove: true } : rest) as Block;
+}
+
+/** `b` on the line under the block above: `tightAbove`, never also `looseAbove`. */
+function tight(b: Block): Block {
+  const { looseAbove: _l, ...rest } = b;
+  return { ...rest, tightAbove: true } as Block;
 }
 
 interface Group {
@@ -119,6 +132,22 @@ function readingOrder(blocks: readonly Block[], kept: Block[], groups: Group[]):
   return out;
 }
 
+const outOfPlace = new WeakMap<readonly Block[], boolean>();
+
+/**
+ * Whether Move footnotes to bottom has something to do: asked by the menu
+ * bar on every selection change, so answered once per version of the blocks
+ * (every edit makes a new array).
+ */
+export function footnotesOutOfPlace(blocks: readonly Block[]): boolean {
+  let answer = outOfPlace.get(blocks);
+  if (answer === undefined) {
+    answer = footnotesAtBottom(blocks) !== null;
+    outOfPlace.set(blocks, answer);
+  }
+  return answer;
+}
+
 /**
  * The note with its footnotes at the bottom, or null when they are there
  * already, in order (however they are spaced). The groups go in reading
@@ -145,7 +174,7 @@ export function footnotesAtBottom(blocks: readonly Block[]): Block[] | null {
       afterGroup = true;
       continue;
     }
-    kept.push(afterGroup ? spaced(blocks[i]) : blocks[i]);
+    kept.push(afterGroup ? spaced(blocks[i], kept[kept.length - 1]) : blocks[i]);
     afterGroup = false;
   }
 
@@ -153,7 +182,7 @@ export function footnotesAtBottom(blocks: readonly Block[]): Block[] | null {
   while (kept.length && blank(kept[kept.length - 1])) kept.pop();
   const run = readingOrder(blocks, kept, groups).flatMap((g, k) => {
     const [head, ...rest] = blocks.slice(g.start, g.end + 1);
-    return [k === 0 ? spaced(head) : ({ ...head, tightAbove: true } as Block), ...rest];
+    return [k === 0 ? spaced(head) : tight(head), ...rest];
   });
   const next = [...kept, ...run, ...blocks.slice(trailing)];
 

@@ -2,7 +2,7 @@ import { type MutableRefObject, useCallback, useRef } from "react";
 import { getAPI } from "../services/apiProvider";
 import type { NoteData } from "../types/notes";
 import { editBlocks } from "../utils/editBlocks";
-import { footnotesAtBottom } from "../utils/footnoteMove";
+import { footnotesAtBottom, footnotesOutOfPlace } from "../utils/footnoteMove";
 import type { ToastKind, ToastOptions } from "./useToast";
 
 /** The safety save kept before the move: its name in the note's history. */
@@ -22,7 +22,7 @@ interface Options {
   activeNoteRef: MutableRefObject<string | null>;
   /** Writes every pending edit; resolves false when one could not be written (useFileSystem). */
   flushAll: () => Promise<boolean | undefined>;
-  commitNoteData: (updater: (prev: NoteData) => NoteData) => void;
+  commitNoteData: (updater: (prev: NoteData) => NoteData, opts?: { ownGaps?: boolean }) => void;
   syncGeneration: MutableRefObject<number>;
   showToast: (message: string, kind?: ToastKind, options?: ToastOptions) => number;
 }
@@ -37,8 +37,10 @@ const TRIES = 2;
  * written, the safety save is asked for and answered, and only then, if the
  * note is the one written (nothing typed or taken from disk meanwhile, else
  * written and kept again), are the blocks moved. A failed write or save
- * refuses with a notice; no history (the phone, history off for the note)
- * leaves undo as the way back; a switch to another note drops it silently.
+ * refuses with a notice; no history (the phone, history off for the note, a
+ * note opened from outside every location) leaves undo as the way back; a
+ * switch to another note drops it silently, as does finding nothing left to
+ * move. The commit spells its own gaps (`ownGaps`).
  */
 export function useMoveFootnotes({
   noteDataRef,
@@ -58,7 +60,7 @@ export function useMoveFootnotes({
   const canMoveFootnotes = useCallback((): boolean => {
     const noteId = activeNoteRef.current;
     const blocks = noteId ? noteDataRef.current[noteId]?.content?.blocks : undefined;
-    return !!blocks && footnotesAtBottom(blocks) !== null;
+    return !!blocks && footnotesOutOfPlace(blocks);
   }, [activeNoteRef, noteDataRef]);
 
   const moveFootnotes = useCallback(async (): Promise<void> => {
@@ -67,17 +69,24 @@ export function useMoveFootnotes({
     busy.current = true;
     try {
       const blocksNow = () => noteDataRef.current[noteId]?.content?.blocks;
-      const api = historyAPI();
+      // A note opened from outside every location keeps no history.
+      const api = noteDataRef.current[noteId]?.outside ? undefined : historyAPI();
       let kept = false;
       for (let tries = 0; tries < TRIES && !kept; tries++) {
+        // Taken before the write: an edit landing while it is written is a change.
+        const before = blocksNow();
         const written = await flushAll();
         if (activeNoteRef.current !== noteId) return;
+        // Changed while it was written: what is pending now is written next time round.
+        if (blocksNow() !== before) continue;
         if (written === false) {
           refuse("the note couldn't be saved first.");
           return;
         }
-        if (!api) break;
-        const before = blocksNow();
+        if (!api) {
+          kept = true;
+          break;
+        }
         const result = await api
           .mark(noteId, MOVE_FOOTNOTES_REASON)
           .catch((): MarkResult => ({ ok: false, reason: "failed" }));
@@ -89,17 +98,19 @@ export function useMoveFootnotes({
         // Kept, or history is off: either way the file holds what is moved.
         kept = blocksNow() === before;
       }
-      if (api && !kept) {
+      if (!kept) {
         refuse("the note kept changing while it was being saved. Try again.");
         return;
       }
+      const now = blocksNow();
+      const next = now && footnotesAtBottom(now);
+      if (!next) return;
       syncGeneration.current++;
       commitNoteData(
         editBlocks(noteId, (b) => {
-          const next = footnotesAtBottom(b);
-          if (!next) return false;
           b.splice(0, b.length, ...next);
         }),
+        { ownGaps: true },
       );
       showToast("Footnotes moved to the bottom", "done", { key: NOT_MOVED });
     } finally {

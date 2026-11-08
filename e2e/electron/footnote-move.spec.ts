@@ -6,10 +6,13 @@
  * moves nothing when that or the write before it fails, or when the note
  * changed or was left while it waited.
  */
+import fs from "node:fs";
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 import {
   type AppHandle,
   END_OF_LINE,
+  holdSaves,
   launchApp,
   MOD,
   menuClick,
@@ -158,4 +161,45 @@ test("another note opened while the safety save is answered: nothing moves", asy
   await sleep(1500);
   expect(file()).toBe(NOTE);
   await expect(toast("Footnotes")).toHaveCount(0);
+});
+
+test("an edit made while the write before the safety save is held: written and kept again, so the version holds it", async () => {
+  await open();
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.type(" A");
+  const release = await holdSaves(h);
+  await menuClick(h, "moveFootnotes");
+  await sleep(300);
+  await h.page.keyboard.type(" Typed");
+  await release();
+  await waitForFile(
+    h.vault.file("F.md"),
+    (t) => t === MOVED.replace("Middle.", "Middle. A Typed"),
+    { label: "the moved note with both edits" },
+  );
+  // The version kept just before the move holds the edit typed during the write.
+  await h.page.locator("button[aria-label='Note actions']").click();
+  await h.page.getByRole("menuitem", { name: /Version History/ }).click();
+  const list = h.page.getByRole("listbox", { name: "Versions" });
+  await list.getByRole("option").nth(1).click();
+  await expect(list.getByRole("option").nth(1)).toContainText("Before moving footnotes");
+  await expect(h.page.locator("[data-past-version]")).toContainText("Middle. A Typed");
+});
+
+test("a note opened from outside every location moves, with undo as the way back", async () => {
+  h = await launchApp({ "Other.md": "Other.\n" });
+  const dir = path.join(h.root, "Downloads");
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, "Loose.md");
+  fs.writeFileSync(file, NOTE);
+  await h.app.evaluate(({ app }, p) => {
+    app.emit("open-file", { preventDefault() {} }, p);
+  }, file);
+  await expect(h.page.getByTestId("note-path-outside")).toBeVisible();
+  await h.page.getByText("Middle.").click();
+  await menuClick(h, "moveFootnotes");
+  await waitForFile(file, (t) => t === MOVED, { label: "the moved outside note" });
+  await expect(toast("Footnotes not moved")).toHaveCount(0);
+  await h.page.keyboard.press(`${MOD}+z`);
+  await waitForFile(file, (t) => t === NOTE, { label: "the undone outside note" });
 });

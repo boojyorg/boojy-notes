@@ -8,7 +8,7 @@ import { isMac } from "../utils/platform";
 import { todoFlip } from "../utils/todoToggle";
 import { selectedLinesOf } from "../utils/selectedLines";
 import { historyKey } from "../utils/noteHistory";
-import { footnotesAtBottom } from "../utils/footnoteMove";
+import { footnotesOutOfPlace } from "../utils/footnoteMove";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -339,7 +339,7 @@ export function useAppKeyboard({
         canBack: !!canBack,
         canForward: !!canForward,
         linkPageTo: linkPageTo ?? null,
-        footnotesToMove: !!L.moveFootnotes && footnotesAtBottom(blocks) !== null,
+        footnotesToMove: !!L.moveFootnotes && footnotesOutOfPlace(blocks),
       });
     };
     let timer = null;
