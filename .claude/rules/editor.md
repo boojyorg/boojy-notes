@@ -105,14 +105,14 @@ through state.**
   (`numberFootnotes`, first reference first), which copies and saves.
   A caret anchor follows; ←/→ take it whole, Backspace its `]` (`footnoteRefKey`). A click goes to
   its definition (its label's last), a visit. `footnotes.spec.ts`.
-- **A footnote is made in its panel** (`useFootnoteDraft`): `[^` shows a faint `n]` (CSS),
-  Enter/Tab types it; a typed new label or Insert footnote too. A
-  draft till Done or a leave (`flushAll` too, a blur never); refused, its text waits in a
-  notice. `footnote-create.spec.ts`.
+- **A footnote is made in its panel** (`useFootnoteDraft`): `[^` shows a faint `n]`,
+  Enter/Tab types it; a typed new label (not line-first) or Insert footnote too. A draft
+  till Done or a leave (`flushAll`, not a blur); refused, its text waits in a notice.
+  `footnote-create.spec.ts`.
 - **A definition shows `n.`; an unused one a dash**, its label above on hover or caret.
   Its ↩ (menu: Back to reference) is Back while that jump is the visit open, else the first
   reference, tinted as an element (`tintElement`).
-- **One link picker** (`LinkPicker.tsx`) for every way in; it writes the shortest clear target
+- **One link picker** (`LinkPicker.tsx`) for every way in, writing the shortest clear target
   (`linkTargetFor`). `link-picker.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
@@ -308,7 +308,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
   right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
 - **Arrows stop on a divider, image or embed, enter every block with a field**; deletion
   steps over code.
-- **Taking the caret back never scrolls** (`preventScroll`). `caret-navigation.spec.ts`.
+- **A caret taken back never scrolls** (`preventScroll`). `caret-navigation.spec.ts`.
 
 ## Embeds: drawn by the editor, read-only
 

@@ -14,6 +14,7 @@ import {
   launchApp,
   MOD,
   menuClick,
+  START_OF_LINE,
   sleep,
   waitForFile,
 } from "./harness";
@@ -208,7 +209,7 @@ test("a draft is written by a quit, a save point and another note; a window blur
   // A quit.
   await h.openNote("F");
   await draft("Quit.");
-  await h.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+  await h.quit();
   await fileIs("Bread.[^1][^2][^3]\n\n[^1]: Saved.\n[^2]: Switch.\n[^3]: Quit.\n");
 });
 
@@ -259,4 +260,16 @@ test("a draft whose line changed outside is never lost: a notice keeps its text 
     .toBe("Kept text.");
   await sleep(600);
   expect(h.vault.read("F.md")).toBe("Bread, rewritten.\n");
+});
+
+test("a [^label] typed at a line's start is a footnote line on its way: no panel opens", async () => {
+  await open("Claim.[^9]\n\nNext\n");
+  await row(h.page, "Next").click();
+  await h.page.keyboard.press(START_OF_LINE);
+  await h.page.keyboard.type("[^9]");
+  // However slow the next key, the caret stays in the line.
+  await sleep(400);
+  await expect(panel()).toHaveCount(0);
+  await h.page.keyboard.type(": ");
+  await fileIs("Claim.[^9]\n\n[^9]: Next\n");
 });

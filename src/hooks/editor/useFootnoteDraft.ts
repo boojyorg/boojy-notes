@@ -249,10 +249,15 @@ export function useFootnoteDraft({
         if (seq !== inputSeq) return;
         if (typed === "^") return setOffer(readOffer());
         setOffer(null);
-        // `]` closing a label nothing defines: the panel, for that label.
+        // `]` closing a label nothing defines: the panel, for that label. Not
+        // at a line's start, where `[^9]: ` is a footnote line being typed.
         if (typed !== "]") return;
         const at = refAtCaret();
         if (!at?.label || findFootnoteDefinition(blocks(), at.label) >= 0) return;
+        const root = blockRefs.current[at.blockId];
+        const index = [...(at.ref.parentNode?.childNodes ?? [])].indexOf(at.ref as ChildNode);
+        if (root && at.ref.parentNode && markdownBefore(root, at.ref.parentNode, index) === "")
+          return;
         open({
           kind: "typed",
           noteId: activeNote,
