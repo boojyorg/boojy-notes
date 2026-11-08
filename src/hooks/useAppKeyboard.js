@@ -8,6 +8,7 @@ import { isMac } from "../utils/platform";
 import { todoFlip } from "../utils/todoToggle";
 import { selectedLinesOf } from "../utils/selectedLines";
 import { historyKey } from "../utils/noteHistory";
+import { footnotesOutOfPlace } from "../utils/footnoteMove";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -71,6 +72,8 @@ export function useAppKeyboard({
   // Format → Check Off: ⌘Enter's to-dos (`todoFlip`).
   checkTodos,
   insertFootnote,
+  // Format → Move Footnotes to Bottom (useMoveFootnotes).
+  moveFootnotes,
   duplicateBlocks,
   blockSelectionIds,
   // The phone's ⇤ ⇥: what Tab and Shift+Tab run (`indentSpan`).
@@ -124,6 +127,7 @@ export function useAppKeyboard({
     setBlockKind,
     checkTodos,
     insertFootnote,
+    moveFootnotes,
     duplicateBlocks,
     blockSelectionIds,
     updateBlockIndent,
@@ -335,6 +339,7 @@ export function useAppKeyboard({
         canBack: !!canBack,
         canForward: !!canForward,
         linkPageTo: linkPageTo ?? null,
+        footnotesToMove: !!L.moveFootnotes && footnotesOutOfPlace(blocks),
       });
     };
     let timer = null;
@@ -588,6 +593,8 @@ function runMenuCommand(id, L, titleRef) {
       return L.openFind?.("replace");
     case "footnote":
       return L.insertFootnote?.();
+    case "moveFootnotes":
+      return L.moveFootnotes?.();
   }
   if (id in ALIGN_COMMANDS) {
     alignColumn(L, ALIGN_COMMANDS[id]);

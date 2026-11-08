@@ -130,7 +130,9 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     syncAvailability();
   }, [closeTypingGroup]);
 
-  const commitNoteData = (updater) => applyCommit(updater, true);
+  // `ownGaps`: the commit spells every gap it means (Move footnotes to
+  // bottom), so a reorder's gaps are not handed back by position.
+  const commitNoteData = (updater, { ownGaps = false } = {}) => applyCommit(updater, true, ownGaps);
 
   // Take a change of record that came from persistence rather than from the
   // user: the filename the write actually produced. Same publication path as
@@ -214,7 +216,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     setNoteData((prev) => ({ ...prev, [id]: note }));
   };
 
-  const applyCommit = (updater, recordHistory) => {
+  const applyCommit = (updater, recordHistory, ownGaps = false) => {
     if (recordHistory) pushHistory();
     cancelPendingText();
     // A structural edit ends the typing group, as an undo does: the
@@ -228,7 +230,10 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       for (const [id, note] of Object.entries(noteDataRef.current)) {
         const previous = before[id]?.content?.blocks;
         if (!previous || !note?.content?.blocks) continue;
-        const blocks = reconcileListEdit(previous, keepGapsInPlace(previous, note.content.blocks));
+        const placed = ownGaps
+          ? note.content.blocks
+          : keepGapsInPlace(previous, note.content.blocks);
+        const blocks = reconcileListEdit(previous, placed);
         if (blocks !== note.content.blocks) {
           noteDataRef.current = {
             ...noteDataRef.current,

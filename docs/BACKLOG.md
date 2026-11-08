@@ -500,13 +500,9 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ### Editor and organisation
 
-- **Move Footnotes to Bottom** (next, PR 4): an explicit action that moves footnotes written
-  mid-note, with their continuation content, under the others and sorts them by number, in one
-  undo, after saving a "Before" version (refused if that fails; undo only on the phone or with
-  history off). Spacing between the bottom footnotes is tidied.
 - **Footnotes, later**: numbering inline `^[…]` footnotes (a source panel, as inline maths); Insert footnote in a table cell or a callout's body (offered only in
   text blocks for now); a shortcut for it (⌥⌘F is AltGr+F on some Windows layouts); the phone's
-  key bar.
+  key bar; Move footnotes to bottom on the phone, where no menu offers it yet.
 - **Someday (Tyr, 2026-09-30), each as Obsidian does it:** unlinked mentions
   under the backlinks; a linked note previewed on hover; moving a selection into a new note,
   leaving a link; emoji by `:name:`; smart quotes and arrows (never in code); the Mac Share

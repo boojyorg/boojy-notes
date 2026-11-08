@@ -167,7 +167,11 @@ declare global {
           | { ok: false; reason: "off" | "nothing" | "unknown"; at?: number }
         >;
         name: (noteId: string, versionId: string, name: string) => Promise<boolean>;
-        mark: (noteId: string, reason: "Before Replace All" | "Before restore") => Promise<void>;
+        /** A safety save; resolves whether the file's text is now kept (electron/history.ts `mark`). */
+        mark: (
+          noteId: string,
+          reason: "Before Replace All" | "Before restore" | "Before moving footnotes",
+        ) => Promise<{ ok: true } | { ok: false; reason: "off" | "unknown" | "failed" }>;
         leave: (noteId: string) => Promise<void>;
         list: (noteId: string) => Promise<{
           versions: HistoryVersion[];

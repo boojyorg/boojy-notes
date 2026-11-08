@@ -51,6 +51,8 @@ export type MenuState = {
   canForward: boolean;
   /** A PDF is open and this is the note it was opened from: Link Page in Note names it. */
   linkPageTo: string | null;
+  /** The open note's footnotes are not all at its bottom, in order (`footnotesAtBottom`). */
+  footnotesToMove: boolean;
 };
 
 const INITIAL: MenuState = {
@@ -68,6 +70,7 @@ const INITIAL: MenuState = {
   canBack: false,
   canForward: false,
   linkPageTo: null,
+  footnotesToMove: false,
 };
 
 const isMac = process.platform === "darwin";
@@ -244,6 +247,10 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         }),
         // `[^n]` at the caret, its empty definition at the note's end.
         note("footnote", "Insert Footnote"),
+        // Every footnote under the note's last line, in number order.
+        note("moveFootnotes", "Move Footnotes to Bottom", undefined, {
+          enabled: !noteless && state.footnotesToMove,
+        }),
         { type: "separator" },
         // Cmd + a number applies a kind (never toggles it): 0 Text, 1–6 the
         // headings, 7–9 the lists. H4–H6 wait in a submenu, as in the `/` menu.

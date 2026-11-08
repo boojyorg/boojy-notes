@@ -813,6 +813,35 @@ describe("useHistory", () => {
 // an outside change applied through the raw setter while a text commit was
 // pending for another note; the ref had skipped syncing, the pending commit
 // then republished the stale copy, and the outside edit was written over.
+describe("a commit that spells its own gaps", () => {
+  it("keeps the gaps it set when it reorders, as Move footnotes to bottom does", () => {
+    const p1 = paragraph("One.");
+    const fn1 = { id: "fn1", type: "footnote", label: "1", text: "Ay.", tightAbove: true };
+    const p2 = paragraph("Two.");
+    const fn2 = { id: "fn2", type: "footnote", label: "2", text: "Bee." };
+    const { result, getNoteData } = setup([p1, fn1, p2, fn2]);
+    const moved = [p1, p2, fn2, fn1];
+    const commit = (opts) =>
+      act(() =>
+        result.current.commitNoteData(
+          (prev) => ({
+            ...prev,
+            [NOTE_ID]: { ...prev[NOTE_ID], content: { ...prev[NOTE_ID].content, blocks: moved } },
+          }),
+          opts,
+        ),
+      );
+    commit({ ownGaps: true });
+    const blocks = getNoteData()[NOTE_ID].content.blocks;
+    expect(blocks.map((b) => [b.id, !!b.tightAbove])).toEqual([
+      [p1.id, false],
+      [p2.id, false],
+      ["fn2", false],
+      ["fn1", true],
+    ]);
+  });
+});
+
 describe("applyExternalNote", () => {
   const OTHER = "note-2";
   const outside = (text) => ({

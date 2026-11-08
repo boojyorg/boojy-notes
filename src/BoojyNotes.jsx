@@ -45,6 +45,7 @@ import { toastPersists, useToast } from "./hooks/useToast";
 import { useSavePoint } from "./hooks/useSavePoint";
 import { useUpdateReadyToast } from "./hooks/useUpdateReadyToast";
 import { useVersionHistory } from "./hooks/useVersionHistory";
+import { useMoveFootnotes } from "./hooks/useMoveFootnotes";
 import VersionHistoryList from "./components/VersionHistoryList";
 import { versionMoment, versionTime } from "./utils/versionTime";
 import UiScaleChip from "./components/UiScaleChip";
@@ -356,6 +357,14 @@ export default function BoojyNotes() {
     pauseSourceView,
     showToast,
     requestConfirm,
+  });
+  const { moveFootnotes, canMoveFootnotes } = useMoveFootnotes({
+    noteDataRef,
+    activeNoteRef,
+    flushAll,
+    commitNoteData,
+    syncGeneration,
+    showToast,
   });
   // The phone's sync, shown on Home's folder row; null elsewhere.
   const sync = useSyncStatus({ showToast });
@@ -1483,6 +1492,10 @@ export default function BoojyNotes() {
 
   const blockSelectionIds = () =>
     selectedIds(noteDataRef.current[activeNote]?.content?.blocks ?? [], blockSelectionRef.current);
+  // Move Footnotes to Bottom acts on the note itself, never on a past version,
+  // a deleted note's preview or a note whose text is not here.
+  const footnotesMovable =
+    !versionHistory.state.past && !deletedPreview && !offloaded && !unreadable;
   useAppKeyboard({
     activeNote,
     noteData,
@@ -1517,6 +1530,7 @@ export default function BoojyNotes() {
     moveBlock: blockOps.moveBlock,
     checkTodos: blockOps.checkTodos,
     insertFootnote: editorHandlers.insertFootnote,
+    moveFootnotes: footnotesMovable ? moveFootnotes : undefined,
     updateTableRows: blockOps.updateTableRows,
     openFind: (mode) => openFindRef.current?.(mode),
     detectActiveFormats,
@@ -1857,6 +1871,8 @@ export default function BoojyNotes() {
                   onRevealFile={viewedFileMenu?.reveal}
                   fileActions={viewedFileMenu}
                   onTypeIntoPast={() => versionHistory.setAsk(true)}
+                  canMoveFootnotes={footnotesMovable ? canMoveFootnotes : undefined}
+                  moveFootnotes={moveFootnotes}
                   showToast={showToast}
                 />
               </OutsideFolder.Provider>

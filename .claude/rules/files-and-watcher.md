@@ -35,7 +35,7 @@ iCloud eviction). `watcher-scale.spec.ts`.
 
 ## An outside rename or move is the same note
 
-Identity is the inode, read exact (`fileIdentity`: bigint, a Windows id rounds as a Number) (`_identity`, memory only), asked by `relocateNote` for an unclaimed
+Identity is the inode, read exact (`fileIdentity`: bigint, a Windows id rounds as a Number; `_identity`, memory only), asked by `relocateNote` for an unclaimed
 unlink or a save finding its file gone. Found elsewhere, the note follows (`file-moved` →
 `adoptNoteData`), pending edits flushed there; a save carrying an old name before the window's
 `outside-move-taken` is no rename back. No match is a delete. Never compare bytes to decide
@@ -108,11 +108,11 @@ never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 
 ## Version history keeps what the file held
 
-- **A version is the file's text, taken where it is written or read** (`electron/history.ts`,
+- **A version is the file's text, taken where it is written or read** (`history.ts`,
   fed by `write-note` and `parseNoteFile`), never the editor's state: a restore can only bring
   back what the file was. Kept outside the vault (`userData/history/`).
 - **What makes one**: a session's end, a note's text before its first edit, and before a large
-  delete, an outside change, Replace All or a restore; `⌘S` makes a save point. Nothing
+  delete, an outside change, Replace All, a restore or moving footnotes; `⌘S` a save point. Nothing
   unchanged is kept twice.
 - **Save points are kept for good; Autosaves over a month thin to a day's last.**
 - **The list is the ··· menu in place** (`VersionHistoryList`); a chosen version shows

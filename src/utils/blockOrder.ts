@@ -22,7 +22,8 @@ export function reorderFloor(blocks: readonly Block[]): number {
  * was and a moved block takes the gap it lands in. An embed's indent (`lead`)
  * puts it under the block above it, so it goes once that block is another:
  * kept, a tab after a blank line would make the embed a code block elsewhere.
- * Anything else is returned as it is.
+ * Anything else is returned as it is. A commit that spells its own gaps
+ * says so (`commitNoteData`'s `ownGaps`) and is never brought here.
  */
 export function keepGapsInPlace(before: readonly Block[], after: Block[]): Block[] {
   if (before.length !== after.length || before.length < 2) return after;
