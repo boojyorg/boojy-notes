@@ -5,8 +5,9 @@
  * `useFootnoteCommands`.
  */
 import type { Block } from "../types/notes";
+import { LIST_TYPES } from "./blockKinds";
 import { subtreeEnd } from "./blockRun";
-import { footnoteNumbers } from "./footnoteTarget";
+import { refLabels } from "./footnoteTarget";
 
 /** A blank row: an empty paragraph, or one holding only spaces. */
 const blank = (b: Block | undefined) => b?.type === "p" && (b.text || "").trim() === "";
@@ -20,47 +21,138 @@ function spaced(b: Block): Block {
   return rest as Block;
 }
 
+interface Group {
+  start: number;
+  end: number;
+  label: string;
+}
+
+/**
+ * The note's footnote groups before `limit` (`subtreeEnd`: a footnote, its
+ * later paragraphs and the blank rows between them), less those that must
+ * stay: a footnote that is all that parts two lists of one family keeps them
+ * two (with it gone, the blank line left would make them one list, numbered
+ * on), so the last of a run of footnotes between them stays where it is.
+ */
+function movableGroups(blocks: readonly Block[], limit: number): Group[] {
+  const all: Group[] = [];
+  for (let i = 0; i < limit; i++) {
+    if (blocks[i].type !== "footnote") continue;
+    const end = Math.min(subtreeEnd(blocks, i), limit - 1);
+    all.push({ start: i, end, label: labelOf(blocks[i]) });
+    i = end;
+  }
+  // Lists join only within a family: numbered with numbered, bullets with to-dos.
+  const family = (b: Block | undefined) =>
+    !b || !LIST_TYPES.has(b.type) ? null : b.type === "numbered" ? "ol" : "ul";
+  const stays = new Set<Group>();
+  for (let g = 0; g < all.length; g++) {
+    // The run of footnotes (blank rows between) that this one ends.
+    let next = all[g].end + 1;
+    while (next < limit && blank(blocks[next])) next++;
+    if (all[g + 1]?.start === next) continue;
+    let first = g;
+    for (let prev = all[first].start - 1; ; ) {
+      while (prev >= 0 && blank(blocks[prev])) prev--;
+      if (first > 0 && all[first - 1].end === prev) {
+        first--;
+        prev = all[first].start - 1;
+        continue;
+      }
+      const above = family(blocks[prev]);
+      if (above && next < limit && family(blocks[next]) === above) stays.add(all[g]);
+      break;
+    }
+  }
+  return all.filter((g) => !stays.has(g));
+}
+
+/**
+ * The order the groups go in, so that each shows its number in turn once
+ * moved: a number is a label's first reference in reading order, and the
+ * moved footnotes are read after the note, so their own references count
+ * where they land. The note's references come first; then each footnote in
+ * that order, whose references add the labels they first name; a footnote
+ * nothing references goes after the numbered ones, as written, its own
+ * references then counting after it. Duplicates of a label go together, as
+ * written. Reading the result again gives the same order, references
+ * inside definitions and cycles between them included.
+ */
+function readingOrder(blocks: readonly Block[], kept: Block[], groups: Group[]): Group[] {
+  const defined = new Set(blocks.filter((b) => b.type === "footnote").map(labelOf));
+  const byLabel = new Map<string, Group[]>();
+  for (const g of groups) byLabel.set(g.label, [...(byLabel.get(g.label) ?? []), g]);
+  const order: string[] = [];
+  const named = new Set<string>();
+  const read = (bs: readonly Block[]) => {
+    for (const label of refLabels(bs)) {
+      if (defined.has(label) && !named.has(label)) {
+        named.add(label);
+        order.push(label);
+      }
+    }
+  };
+  const out: Group[] = [];
+  const placed = new Set<Group>();
+  const place = (g: Group) => {
+    if (placed.has(g)) return;
+    out.push(g);
+    placed.add(g);
+    read(blocks.slice(g.start, g.end + 1));
+  };
+  let k = 0;
+  const drain = () => {
+    for (; k < order.length; k++) for (const g of byLabel.get(order[k]) ?? []) place(g);
+  };
+  read(kept);
+  drain();
+  // What is left is referenced from nowhere the note reads, or only from
+  // another footnote left: those referenced wait for their reference.
+  const referenced = new Set(refLabels(blocks));
+  for (const pass of [(g: Group) => !referenced.has(g.label), () => true]) {
+    for (const g of groups) {
+      if (placed.has(g) || !pass(g)) continue;
+      place(g);
+      drain();
+    }
+  }
+  return out;
+}
+
 /**
  * The note with its footnotes at the bottom, or null when they are there
- * already, in order (however they are spaced). A footnote goes with its group (`subtreeEnd`: its later
- * paragraphs and the blank rows between them). The groups are sorted by the
- * number their label shows (`footnoteNumbers`); one a duplicate label leaves
- * unused goes beside the one used, and a footnote nothing references last,
- * each in the order written. They stand on consecutive lines, one blank line
- * under the note; blank rows the note ends with stay its last lines. A block
- * that stood right under a moved footnote takes a blank line above it, as it
+ * already, in order (however they are spaced). The groups go in reading
+ * order (`readingOrder`), on consecutive lines, one blank line under the
+ * note; blank rows the note ends with stay its last lines. A block that
+ * stood right under a moved footnote takes a blank line above it, as it
  * would otherwise run into the block before.
  */
 export function footnotesAtBottom(blocks: readonly Block[]): Block[] | null {
   // Asked on every selection change (the menu bar's state): most notes have none.
   if (!blocks.some((b) => b.type === "footnote")) return null;
-  const numbers = footnoteNumbers(blocks);
   let trailing = blocks.length;
   while (trailing > 0 && blank(blocks[trailing - 1])) trailing--;
 
-  const groups: { key: number; at: number; blocks: Block[] }[] = [];
+  const groups = movableGroups(blocks, trailing);
+  if (!groups.length) return null;
+  const moving = new Map(groups.map((g) => [g.start, g]));
   const kept: Block[] = [];
   let afterGroup = false;
   for (let i = 0; i < trailing; i++) {
-    const b = blocks[i];
-    if (b.type !== "footnote") {
-      kept.push(afterGroup ? spaced(b) : b);
-      afterGroup = false;
+    const g = moving.get(i);
+    if (g) {
+      i = g.end;
+      afterGroup = true;
       continue;
     }
-    const end = Math.min(subtreeEnd(blocks, i), trailing - 1);
-    const key = numbers.get(labelOf(b)) ?? Number.POSITIVE_INFINITY;
-    groups.push({ key, at: i, blocks: blocks.slice(i, end + 1) });
-    i = end;
-    afterGroup = true;
+    kept.push(afterGroup ? spaced(blocks[i]) : blocks[i]);
+    afterGroup = false;
   }
-  if (!groups.length) return null;
 
   // Blank rows between the note and its footnotes go: one blank line is the gap.
   while (kept.length && blank(kept[kept.length - 1])) kept.pop();
-  groups.sort((a, b) => a.key - b.key || a.at - b.at);
-  const run = groups.flatMap((g, k) => {
-    const [head, ...rest] = g.blocks;
+  const run = readingOrder(blocks, kept, groups).flatMap((g, k) => {
+    const [head, ...rest] = blocks.slice(g.start, g.end + 1);
     return [k === 0 ? spaced(head) : ({ ...head, tightAbove: true } as Block), ...rest];
   });
   const next = [...kept, ...run, ...blocks.slice(trailing)];

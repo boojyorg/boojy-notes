@@ -48,8 +48,8 @@ function inlineTexts(b: Block): string[] {
   return [k.title || "", b.text || "", ...(k.rows?.flat() ?? [])];
 }
 
-/** Every reference label in the note, in reading order. */
-function refLabels(blocks: readonly Block[]): string[] {
+/** Every reference label in `blocks`, in reading order. */
+export function refLabels(blocks: readonly Block[]): string[] {
   const labels: string[] = [];
   for (const b of blocks) {
     for (const text of inlineTexts(b)) {
