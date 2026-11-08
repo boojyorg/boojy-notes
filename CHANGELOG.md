@@ -15,6 +15,9 @@
 - **A one-line code block has no empty line under it** — and code blocks are a little tighter.
 - **On Windows, pasting formatted text stays on its line** — copying part of a line (bold, a link, a tag, a footnote) and pasting it into a line, from the keyboard or the right-click menu, used to start a new paragraph on Windows.
 - **A callout's handle sits at its top** — level with the top of its box, also when the title is empty (it used to drop to the first line of text), and an embed showing a callout keeps its handle at the embed's own top.
+- **Clicking a tag suggestion completes the tag** — it used to just close the list, so only Enter or Tab worked.
+- **Dragging lines you selected brings what's nested under them** — selecting text down into a list item and dragging by its handle used to leave the items nested under it behind.
+- **The Back arrow lights up after a jump within a note** — after following a link to a heading in the same note, the ← beside the note's name stayed grey, though ⌘[ worked.
 
 ## v0.21.0 — 2026-11-05
 

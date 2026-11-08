@@ -14,6 +14,7 @@ import {
   launchApp,
   MOD,
   menuClick,
+  menuEnabled,
   START_OF_LINE,
   sleep,
   waitForFile,
@@ -201,6 +202,46 @@ test("in a callout, where no footnote can be written, a reference nothing define
   await ref.click();
   await expect(panel()).toHaveCount(0);
   expect(h.vault.read("F.md")).toBe(md);
+});
+
+// A reference edited in a table cell was read back as the whole table, which
+// writes nothing: the cell showed the edit, the file had it only after the
+// cell's next keystroke. The cell commits its own text now, as for typing.
+const CELL = "| a | b |\n| - | - |\n| c[^1] x | d |\n\n[^1]: Def.\n[^2]: Two.\n";
+
+test("Edit reference in a table cell is written at once", async () => {
+  await open(CELL);
+  await h.page.locator("[data-editor] td .md-fn-ref").click({ button: "right" });
+  await h.page.getByRole("menuitem", { name: "Edit reference…" }).click();
+  await h.page.getByRole("textbox", { name: "Footnote label" }).fill("2");
+  await h.page.keyboard.press("Enter");
+  await fileIs(CELL.replace("c[^1]", "c[^2]"));
+});
+
+test("Backspace after a reference in a table cell is written at once", async () => {
+  await open(CELL);
+  await h.page.locator("[data-editor] td").filter({ hasText: "x" }).first().click();
+  await h.page.evaluate(() => {
+    const ref = document.querySelector("[data-editor] td .md-fn-ref");
+    const after = ref?.nextSibling;
+    if (!ref || !after) throw new Error("no reference");
+    const r = document.createRange();
+    if (after.nodeType === Node.TEXT_NODE) r.setStart(after, 0);
+    else r.setStartAfter(after);
+    r.collapse(true);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(r);
+  });
+  await h.page.keyboard.press("Backspace");
+  await fileIs(CELL.replace("c[^1] x", "c[^1 x"));
+});
+
+test("Format › Insert Footnote greys in a table cell, where it cannot write one", async () => {
+  await open("| a | b |\n| - | - |\n| c | d |\n\nAfter.\n");
+  await h.page.getByText("After.").click();
+  await expect.poll(() => menuEnabled(h, "footnote")).toBe(true);
+  await h.page.locator("[data-editor] td").filter({ hasText: "c" }).click();
+  await expect.poll(() => menuEnabled(h, "footnote")).toBe(false);
 });
 
 test("Escape in the panel writes nothing and leaves the reference as typed, the caret after it", async () => {

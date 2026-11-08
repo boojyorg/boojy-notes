@@ -117,8 +117,10 @@ export function useBlockDrag({
       const multiIds = selectedLinesOf(blocks, sel).filter(
         (id) => blocks.findIndex((b) => b.id === id) >= floor,
       );
+      // The lines widened by the selection's own rule (gripSelection, the
+      // menu's): the last line's nested items or footnote paragraphs come too.
       if (multiIds.length > 1 && multiIds.includes(blockId)) {
-        draggedIds = multiIds;
+        draggedIds = selectedIds(blocks, { anchor: multiIds[0], head: multiIds.at(-1) });
       }
     }
 

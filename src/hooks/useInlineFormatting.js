@@ -4,6 +4,7 @@ import {
   caretRangeAt,
   getBlockFromNode,
   isEditableBlock,
+  ownFieldOf,
 } from "../utils/domHelpers";
 import { domNodeToMarkdown } from "../utils/inlineFormatting";
 import { rangeScope } from "../utils/crossBlockEdit";
@@ -42,10 +43,16 @@ export function useInlineFormatting({
     (sel) => {
       if (!sel) sel = window.getSelection();
       if (!sel.rangeCount) return;
+      // A field (a table cell, a callout's title or body) commits its own
+      // text, as it does for a keystroke: a reference or formula edited in
+      // one is that field's edit, never the whole block read back.
+      const field = ownFieldOf(sel.anchorNode);
+      if (field) {
+        field.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        return;
+      }
       const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
       const info = getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current);
-      // A block with no registered element owns its own text (a table cell,
-      // a callout field); the editor never reads it back.
       if (!info?.el) return;
       const text = domNodeToMarkdown(info.el)
         .replace(/[\n\r]+$/, "")

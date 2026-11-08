@@ -2,11 +2,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
-vi.mock("../../src/utils/domHelpers", () => ({
+vi.mock("../../src/utils/domHelpers", async (importOriginal) => ({
   getBlockFromNode: vi.fn(),
   isEditableBlock: (b) => b?.type === "p",
   caretOffsetAt: vi.fn(() => 0),
   caretRangeAt: vi.fn(() => null),
+  ownFieldOf: (await importOriginal()).ownFieldOf,
 }));
 
 // The scope of the selection is decided by rangeScope; these tests place the
@@ -66,6 +67,28 @@ describe("useInlineFormatting", () => {
     expect(typeof result.current.detectActiveFormats).toBe("function");
     expect(typeof result.current.reReadBlockFromDom).toBe("function");
     expect(typeof result.current.getLinkContext).toBe("function");
+  });
+
+  // A footnote reference or formula edited in a table cell was read back as
+  // the whole table, which writes nothing: the cell has its own commit.
+  it("reReadBlockFromDom in a field hands the edit to the field's input, never the block", () => {
+    const updateBlockText = vi.fn();
+    const { deps, editorEl, blockEl } = setup({ updateBlockText });
+    editorEl.setAttribute("contenteditable", "true");
+    editorEl.setAttribute("data-editor", "");
+    const cell = document.createElement("div");
+    cell.setAttribute("contenteditable", "true");
+    cell.textContent = "c x";
+    blockEl.appendChild(cell);
+    editorEl.appendChild(blockEl);
+    const inputs = vi.fn();
+    cell.addEventListener("input", inputs);
+    const { result } = renderHook(() => useInlineFormatting(deps));
+
+    result.current.reReadBlockFromDom({ rangeCount: 1, anchorNode: cell.firstChild });
+
+    expect(inputs).toHaveBeenCalledTimes(1);
+    expect(updateBlockText).not.toHaveBeenCalled();
   });
 
   // Bold and italic on a selection are structural wraps, never execCommand:

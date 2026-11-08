@@ -217,6 +217,22 @@ test("after typing a tag with no suggestions, the next click lands", async () =>
   }
 });
 
+// The menu stood under its own backdrop, so a press on a row only closed it.
+test("a click on a tag suggestion completes the tag", async () => {
+  const h = await launchApp({ "Note.md": "see #area/work here\n\nnext\n" });
+  try {
+    const page = h.page;
+    await h.openNote("Note");
+    await page.locator("[data-editor] [data-block-id]").nth(1).click();
+    await page.keyboard.press(END_OF_LINE);
+    await page.keyboard.type(" #ar");
+    await page.getByRole("option", { name: "#area/work" }).click();
+    await waitForFile(h.vault.file("Note.md"), (t) => t.includes("next #area/work"));
+  } finally {
+    await h.close();
+  }
+});
+
 // Enter's modified forms keep their meaning inside a tag being edited, and
 // fields that own their keys (a table cell, a callout body) finish a tag on
 // plain Enter as a paragraph does.
