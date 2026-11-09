@@ -56,7 +56,7 @@ const MORE = [
   "Quote",
   "Code block",
   "Maths",
-  "Diagram",
+  "Footnote",
   "Divider",
   "Close",
 ];
@@ -224,15 +224,19 @@ describe("the bar above the keyboard", () => {
     press("Divider");
     press("More blocks");
     press("Maths");
+    expect(props.onInsert.mock.calls.map(([c]) => c)).toEqual(["code", "table", "divider", "math"]);
+  });
+
+  // `[^` is two keyboard layers away on a phone; a diagram is code nobody
+  // writes on one (`/diagram` still makes it).
+  it("Footnote writes one at the caret, as Format › Insert Footnote does, closing the row", () => {
+    mount();
+    size(412, 532);
+    caret(5);
     press("More blocks");
-    press("Diagram");
-    expect(props.onInsert.mock.calls.map(([c]) => c)).toEqual([
-      "code",
-      "table",
-      "divider",
-      "math",
-      "diagram",
-    ]);
+    press("Footnote");
+    expect(sent).toEqual(["footnote"]);
+    expect(row()).toEqual(MAIN);
   });
 
   it("turns the line into a quote, a quote's own button making it text again", () => {
@@ -557,6 +561,19 @@ describe("tap acts, hold explains", () => {
     caret(2);
     expect(hold("Headings")).toBe("HeadingsNot in a code block");
     expect(row()).toEqual(MAIN);
+  });
+
+  it("greys Footnote in a block with its own field, where no footnote can be written", () => {
+    editor.innerHTML = '<p data-block-type="code">let x</p>';
+    caret(2);
+    press("More blocks");
+    expect(button("Footnote")).toHaveAttribute("aria-disabled", "true");
+    expect(hold("Footnote")).toBe("FootnoteNot in a code block");
+  });
+
+  it("names the more row's blocks on a hold", () => {
+    caret(2);
+    expect(hold("More blocks")).toBe("More blocksTable, quote, code, maths, footnote, divider");
   });
 
   it("greys a style that needs a selection, and says so; a selection lets it act", () => {

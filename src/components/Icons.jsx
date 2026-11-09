@@ -50,6 +50,7 @@ import {
   CloudOff as LuCloudOff,
   CloudSync as LuCloudSync,
   Code as LuCode,
+  SquareCode as LuSquareCode,
   CodeXml as LuCodeXml,
   Columns3 as LuColumns3,
   Copy as LuCopy,
@@ -341,7 +342,8 @@ const SLASH_GLYPHS = {
   workflow: LuWorkflow,
   table: LuTable,
   image: LuImage,
-  code: LuCode,
+  // A block of code, boxed: `</>` alone is inline code (the format's glyph).
+  code: LuSquareCode,
   "text-quote": LuTextQuote,
   minus: LuMinus,
   info: LuInfo,

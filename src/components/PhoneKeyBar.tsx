@@ -69,7 +69,7 @@ import {
  * hold does nothing (`useHoldToExplain`). A greyed button says why.
  *
  * Every button sends the desktop menu bar's command (`sendCommand`), so it
- * does what its key does; table, code and divider are the slash menu's
+ * does what its key does (Footnote is Insert Footnote's); table, code, maths and divider are the slash menu's
  * (`onInsert`). A press never
  * takes the focus, so the caret and the keyboard stay. Shown only while the
  * keyboard is up with the caret in the note's text; the window shrinks above
@@ -357,7 +357,15 @@ export default function PhoneKeyBar({
         ),
         insert("code", "Code block", "code", { fontFamily: mono }),
         insert("math", "Maths", "sigma"),
-        insert("diagram", "Diagram", "workflow"),
+        // At the caret, as Format › Insert Footnote: `[^` is two keyboard
+        // layers away here. A diagram is `/diagram` (nobody writes one on a phone).
+        button(
+          "footnote",
+          "Footnote",
+          <SlashCommandIcon name="footnote" size={20} />,
+          once(run("footnote")),
+          { disabled: kinds },
+        ),
         insert("divider", "Divider", "minus"),
       ],
       [close],
@@ -450,7 +458,7 @@ export default function PhoneKeyBar({
 const SLOTS = 9;
 
 /** A slash command's id that the more row inserts. */
-type InsertCommand = "table" | "code" | "math" | "diagram" | "divider";
+type InsertCommand = "table" | "code" | "math" | "divider";
 
 const FORMAT_LABELS = {
   bold: "Bold",

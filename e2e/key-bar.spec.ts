@@ -74,6 +74,29 @@ test("undo and redo stand in the same place in every row", async ({ page }) => {
   expect(await at()).toEqual(list);
 });
 
+// `[^` is two keyboard layers away on a phone: Footnote is Insert Footnote,
+// the number at the caret and the panel for its text.
+test("More blocks › Footnote puts the next number at the caret and writes the footnote", async ({
+  page,
+}) => {
+  await page.goto("/?keybar");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Notes");
+  await page.locator('[data-editor] [data-block-type="p"]').first().click();
+  await page.keyboard.type("A claim");
+  await button(page, "More blocks").click();
+  await button(page, "Footnote").click();
+  await expect(page.getByTestId("footnote-draft")).toBeVisible();
+  await page.keyboard.type("The source");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("footnote-draft")).toHaveCount(0);
+  await expect(page.locator("[data-editor] .md-fn-ref")).toHaveCount(1);
+  await expect(page.locator('[data-editor] [data-block-type="footnote"]')).toContainText(
+    "The source",
+  );
+  await expect(button(page, "More blocks")).toBeVisible();
+});
+
 test("More blocks puts a code block under a line of text, the caret in it", async ({ page }) => {
   await page.goto("/?keybar");
   await page.locator("[data-title]").first().click();

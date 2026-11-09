@@ -68,7 +68,7 @@ const ROW_CONTENTS: Record<string, string> = {
   heading: "H1–H6",
   lists: "Bullet, numbered, to-do",
   format: "Bold, italic and more",
-  more: "Table, quote, code, divider",
+  more: "Table, quote, code, maths, footnote, divider",
 };
 export const rowContents = (key: string) => ROW_CONTENTS[key];
 
