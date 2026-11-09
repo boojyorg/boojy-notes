@@ -1,6 +1,7 @@
 import { type DragEvent, type RefObject, useCallback, useRef } from "react";
 import type { NoteData } from "../../types/notes";
 import { reorderFloor } from "../../utils/blockOrder";
+import { dropBoundary } from "../../utils/blockRun";
 import { cssZoom } from "../../utils/domHelpers";
 import { gapY, placeMarker } from "../../utils/dropMarker";
 
@@ -21,8 +22,9 @@ const carriesFiles = (e: DragEvent) => !!e.dataTransfer?.types?.includes("Files"
  * band refused the drop, and a release there did nothing. The gap they land
  * in is the block drag's rule and its marker (`.block-drop-marker`, on
  * `<body>`): before the first block whose middle is below the pointer, never
- * above frontmatter, and after the last block when the pointer is below them
- * all. Only a drag carrying files is touched; a text drag keeps Chromium's.
+ * above frontmatter or inside a footnote's group (`dropBoundary`), and after
+ * the last block when the pointer is below them all. Only a drag carrying
+ * files is touched; a text drag keeps Chromium's.
  */
 export function useDragDropHandlers({
   noteDataRef,
@@ -44,21 +46,25 @@ export function useDragDropHandlers({
       const noteId = activeNoteRef.current;
       const blocks = (noteId && noteDataRef.current?.[noteId]?.content?.blocks) || [];
       const floor = reorderFloor(blocks);
+      const elOf = (i: number) => blockRefs.current?.[blocks[i]?.id] ?? null;
       let index = blocks.length;
-      let before: HTMLElement | null = null;
-      let after: HTMLElement | null = null;
       for (let i = floor; i < blocks.length; i++) {
-        const el = blockRefs.current?.[blocks[i].id];
+        const el = elOf(i);
         if (!el) continue;
         const rect = el.getBoundingClientRect();
         if (pointerY < rect.top + rect.height / 2) {
           index = i;
-          before = el;
           break;
         }
-        after = el;
       }
-      return { noteId, index: Math.max(index, floor), before, after };
+      // Never inside a footnote's group: after it, as a dropped block lands.
+      index = dropBoundary(blocks, Math.max(index, floor));
+      // The gap's two sides, for the marker: the drawn blocks either side of it.
+      let before: HTMLElement | null = null;
+      for (let i = index; i < blocks.length && !before; i++) before = elOf(i);
+      let after: HTMLElement | null = null;
+      for (let i = index - 1; i >= floor && !after; i--) after = elOf(i);
+      return { noteId, index, before, after };
     },
     [activeNoteRef, noteDataRef, blockRefs],
   );

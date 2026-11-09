@@ -26,6 +26,20 @@ export function getBlockFromNode(node, editorEl, blocks, blockRefs) {
 }
 
 /**
+ * The field that owns `node`'s text when it is not the editor's own block
+ * text: a table cell, a callout's title or body (each its own
+ * `contenteditable`). Such a field commits itself on `input`; read back as
+ * the whole block, its text would be written wrong or not at all.
+ * @param {Node} node
+ * @returns {HTMLElement | null}
+ */
+export function ownFieldOf(node) {
+  const at = node?.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+  const field = at?.closest?.('[contenteditable="true"]');
+  return field && !field.hasAttribute("data-editor") ? field : null;
+}
+
+/**
  * Remove child nodes from editor that don't have a data-block-id attribute.
  */
 export function cleanOrphanNodes(editorEl) {

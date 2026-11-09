@@ -99,7 +99,8 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
           borderRadius: MENU_RADIUS,
           padding: MENU_PAD,
           boxShadow: theme.modalShadow,
-          zIndex: Z.WIKILINK_MENU,
+          // Above its own backdrop (MENU_BACKDROP), as the slash menu stands.
+          zIndex: Z.DROPDOWN,
           maxHeight: 200,
           overflowY: "auto",
           minWidth: 180,

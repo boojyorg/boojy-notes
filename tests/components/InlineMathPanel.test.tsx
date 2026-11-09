@@ -142,20 +142,22 @@ describe("InlineMathPanel", () => {
 });
 
 describe("InlineMathPanel in a field of its own", () => {
-  it("commits through the field's input, never by reading the block back", () => {
+  // The field's own commit is reRead's to choose (useInlineFormatting): the
+  // panel hands every edit to it, at the formula.
+  it("hands the edit to reRead at the formula, the field's text updated", () => {
     block.innerHTML = "";
     const cell = document.createElement("div");
     cell.setAttribute("contenteditable", "true");
     cell.setAttribute("data-inline-field", "cell");
     cell.innerHTML = inlineMarkdownToHtml("$x$");
     block.appendChild(cell);
-    const inputs = vi.fn();
-    cell.addEventListener("input", inputs);
     const { field, reRead } = open();
     field.value = "x^2";
     fireEvent.input(field);
-    expect(inputs).toHaveBeenCalledTimes(1);
-    expect(reRead).not.toHaveBeenCalled();
+    expect(reRead).toHaveBeenCalledWith({
+      rangeCount: 1,
+      anchorNode: cell.querySelector(".inline-math"),
+    });
     expect(domNodeToMarkdown(cell)).toBe("$x^2$");
   });
 });

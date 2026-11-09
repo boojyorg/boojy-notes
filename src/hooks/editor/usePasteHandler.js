@@ -346,9 +346,13 @@ export function usePasteHandler({
         fullBlock = true;
       }
 
-      const entry = { type: block.type, text, fullBlock };
-      if (block.checked !== undefined) entry.checked = block.checked;
-      if (block.indent) entry.indent = block.indent;
+      // The block's own fields (a footnote's label, a task's tick, an indent)
+      // travel with the selected text, as a whole-block copy carries them.
+      const entry = { ...block, text, fullBlock };
+      delete entry.id;
+      delete entry.tightAbove;
+      delete entry.looseAbove;
+      delete entry.lead;
       numbers[copiedBlocks.length] = positions[i]?.number;
       copiedBlocks.push(entry);
     }
