@@ -9,7 +9,7 @@
 - **Callouts fold** — A callout written `[!type]-` opens folded, and `[!type]+` opens unfolded, as in Obsidian. The arrow after its title folds and unfolds it (Tab reaches it, and Enter or Space works it); folding never changes the file. A folded callout's text is out of the cursor's way, the arrow keys step over it, and Find opens it to show a match. To make any callout foldable, choose **Make foldable** in its handle's menu (it starts folded); **Always open** takes the fold away. Both undo with ⌘Z.
 - **Markdown in a code block is coloured like the Markdown view** — A `markdown` or `md` code block now colours headings, list markers, links and tags as the Markdown view does, and a callout's `[!type]` stands out wherever it really starts a callout.
 - **An embed's link is easier to edit** — Click an embed and its link opens underneath with a visible cursor and a Done button; Enter, Done or Escape closes it and leaves the embed picked, so Backspace still removes it. Edit link in the handle's menu opens it from the keyboard, and arrowing onto an embed just picks it.
-- **A code block has its own icon** — a boxed `</>` in the `/` menu and Turn into, so the plain `</>` means inline code only.
+- **A code block has its own icon** — a boxed `<>` in the `/` menu, Turn into and the code block's menu, so the plain `<>` means inline code only.
 
 ### Fixes
 

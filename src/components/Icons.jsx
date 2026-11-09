@@ -50,7 +50,6 @@ import {
   CloudOff as LuCloudOff,
   CloudSync as LuCloudSync,
   Code as LuCode,
-  SquareCode as LuSquareCode,
   CodeXml as LuCodeXml,
   Columns3 as LuColumns3,
   Copy as LuCopy,
@@ -110,6 +109,7 @@ import {
   Settings as LuSettings,
   Sigma as LuSigma,
   SquareCheck as LuSquareCheck,
+  SquareCode as LuSquareCode,
   SquarePen as LuSquarePen,
   SquarePlus as LuSquarePlus,
   Strikethrough as LuStrikethrough,
@@ -342,7 +342,7 @@ const SLASH_GLYPHS = {
   workflow: LuWorkflow,
   table: LuTable,
   image: LuImage,
-  // A block of code, boxed: `</>` alone is inline code (the format's glyph).
+  // A block of code, boxed `<>`: the plain `<>` is inline code (FORMAT_GLYPHS).
   code: LuSquareCode,
   "text-quote": LuTextQuote,
   minus: LuMinus,

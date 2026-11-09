@@ -1891,6 +1891,7 @@ export default function BoojyNotes() {
                   delta,
                 )
               }
+              canFootnote={editorHandlers.canInsertFootnote}
               always={keyBarInWeb}
             />
           )}

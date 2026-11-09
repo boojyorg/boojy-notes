@@ -42,7 +42,11 @@ const caret = (from: number, to = from, line = 0) => {
     document.dispatchEvent(new Event("selectionchange"));
   });
 };
-const props = { onInsert: vi.fn(), canIndent: vi.fn((_: 1 | -1) => true) };
+const props = {
+  onInsert: vi.fn(),
+  canIndent: vi.fn((_: 1 | -1) => true),
+  canFootnote: vi.fn(() => true),
+};
 const mount = () => render(<PhoneKeyBar editorRef={{ current: editor }} {...props} />);
 const press = (name: string) => fireEvent.click(screen.getByRole("button", { name }));
 const lit = (name: string) => screen.getByRole("button", { name }).getAttribute("aria-pressed");
@@ -76,6 +80,8 @@ beforeEach(() => {
   props.onInsert.mockClear();
   props.canIndent.mockReset();
   props.canIndent.mockReturnValue(true);
+  props.canFootnote.mockReset();
+  props.canFootnote.mockReturnValue(true);
   editor = document.createElement("div");
   editor.innerHTML =
     '<p data-block-type="p">Hello world</p><h2 data-block-type="h2">Title</h2><p data-block-type="bullet"><b>Bold</b></p><p data-block-type="bullet">Item</p>';
@@ -563,12 +569,22 @@ describe("tap acts, hold explains", () => {
     expect(row()).toEqual(MAIN);
   });
 
-  it("greys Footnote in a block with its own field, where no footnote can be written", () => {
+  // Greyed by Insert Footnote's own answer (`canInsertFootnote`), as the
+  // menu bar's item is: a formula's source or a selection across blocks is
+  // no field, yet no footnote can go there.
+  it("greys Footnote wherever Insert Footnote cannot act, saying why", () => {
+    props.canFootnote.mockReturnValue(false);
     editor.innerHTML = '<p data-block-type="code">let x</p>';
     caret(2);
     press("More blocks");
     expect(button("Footnote")).toHaveAttribute("aria-disabled", "true");
     expect(hold("Footnote")).toBe("FootnoteNot in a code block");
+    press("Close");
+    editor.innerHTML = '<p data-block-type="math">x^2</p>';
+    caret(1);
+    press("More blocks");
+    expect(button("Footnote")).toHaveAttribute("aria-disabled", "true");
+    expect(hold("Footnote")).toBe("FootnoteNot in a formula");
   });
 
   it("names the more row's blocks on a hold", () => {

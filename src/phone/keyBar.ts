@@ -76,6 +76,7 @@ const FIELD_NAMES: Record<string, string> = {
   code: "Not in a code block",
   table: "Not in a table",
   callout: "Not in a callout",
+  math: "Not in a formula",
 };
 
 /** Why a greyed button does nothing, said under its name: the field the caret is in, if any. */
