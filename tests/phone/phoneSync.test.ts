@@ -65,7 +65,7 @@ import { App } from "@capacitor/app";
 import { DropboxHttpError } from "../../src/sync/dropboxClient";
 import { CursorResetError } from "../../src/sync/types";
 import { FAILING_AFTER } from "../../src/sync/syncStatus";
-import { createPhoneSync, readSecrets } from "../../src/phone/phoneSync";
+import { createPhoneSync, readBinding, readSecrets } from "../../src/phone/phoneSync";
 
 const done = (again = false): PassResult => ({ again, attention: [], log: [] });
 const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
@@ -106,14 +106,47 @@ const SYNCED_ONE = JSON.stringify({
   plan: null,
 });
 
-async function started(
-  secrets: object = { refreshToken: "old", accountId: "dbid:A" },
-  record: string | null = SYNCED_ONE,
+const RECORD = "state/sync-record.json";
+const SECRETS = "state/dropbox.json";
+const BINDING = "state/binding.json";
+const BOUND_TO_A = { folder: "Personal", accountId: "dbid:A" };
+
+/** The vault's store, as far as sync uses it: the record, kept in the phone's files. */
+const storeOn = (files: ReturnType<typeof memoryFiles>) =>
+  ({
+    loadRecord: async () => {
+      const bytes = await files.read(RECORD);
+      return bytes ? new TextDecoder().decode(bytes) : null;
+    },
+    forgetSync: async () => {
+      if (await files.exists(RECORD)) await files.remove(RECORD);
+    },
+  }) as never;
+
+/** What the phone holds: each left out when null; a string is written as it is (damaged). */
+async function holding(
+  files: ReturnType<typeof memoryFiles>,
+  {
+    secrets = { refreshToken: "old", accountId: "dbid:A" },
+    record = SYNCED_ONE,
+    binding = BOUND_TO_A,
+  }: { secrets?: object | string | null; record?: string | null; binding?: object | null } = {},
 ) {
-  const files = memoryFiles();
-  await files.write("state/dropbox.json", encode(secrets));
-  const local = { loadRecord: async () => record } as never;
-  const sync = createPhoneSync(files, local);
+  const raw = (v: object | string) =>
+    typeof v === "string" ? new TextEncoder().encode(v) : encode(v);
+  if (secrets) await files.write(SECRETS, raw(secrets));
+  if (record) await files.write(RECORD, new TextEncoder().encode(record));
+  if (binding) await files.write(BINDING, encode(binding));
+}
+
+async function started(
+  secrets: object | string | null = { refreshToken: "old", accountId: "dbid:A" },
+  record: string | null = SYNCED_ONE,
+  binding: object | null = BOUND_TO_A,
+  files = memoryFiles(),
+) {
+  await holding(files, { secrets, record, binding });
+  const sync = createPhoneSync(files, storeOn(files));
   await sync.start();
   return { files, sync };
 }
@@ -175,7 +208,8 @@ describe("the phone's sync worker", () => {
       throw new CursorResetError("reset/");
     };
     await started();
-    await vi.advanceTimersByTimeAsync(100);
+    // The long-poll waits for the first pass to find the sign-in's account the binding's.
+    await vi.advanceTimersByTimeAsync(5_100);
     expect(passes).toHaveBeenCalledTimes(2);
   });
 
@@ -263,19 +297,18 @@ describe("the phone's sync worker", () => {
     expect(passes).toHaveBeenCalledTimes(4);
   });
 
-  it("learns the account of a sign-in kept before accounts were checked, once online", async () => {
+  it("learns a binding's account before its first pass, once Dropbox can be reached", async () => {
     dropboxReachable = false;
-    passes.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     passes.mockResolvedValue(done());
-    const { files } = await started({ refreshToken: "old" });
+    const { files, sync } = await started(undefined, undefined, { folder: "Personal" });
     await vi.advanceTimersByTimeAsync(0);
-    expect(decode(await files.read("state/dropbox.json")).accountId).toBeUndefined();
+    expect(sync.status.status().state).toBe("offline");
+    expect(passes).not.toHaveBeenCalled();
+    expect(await readBinding(files)).toEqual({ folder: "Personal" });
     dropboxReachable = true;
     await vi.advanceTimersByTimeAsync(15_000);
-    expect(decode(await files.read("state/dropbox.json"))).toEqual({
-      refreshToken: "old",
-      accountId: "dbid:A",
-    });
+    expect(await readBinding(files)).toEqual(BOUND_TO_A);
+    expect(passes).toHaveBeenCalledOnce();
   });
 });
 
@@ -347,39 +380,37 @@ describe("signing in again", () => {
     expect(sync.status.status().problems).toEqual([]);
   });
 
-  it("takes only the notes' own account when a damaged sign-in is replaced", async () => {
-    const files = memoryFiles();
-    await files.write("state/dropbox.json", new TextEncoder().encode('{"refreshTo'));
-    const sync = createPhoneSync(files, { loadRecord: async () => SYNCED_ONE } as never);
+  it("reads a damaged sign-in as signed out, reaching nothing, and takes only the binding's account", async () => {
+    const { files, sync } = await started('{"refreshTo');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sync.status.status()).toMatchObject({
+      state: "problem",
+      problems: [{ kind: "signed-out" }],
+    });
+    expect(passes).not.toHaveBeenCalled();
+    expect(await readSecrets(files)).toBeNull();
+
     dropboxAnswers(files);
     exchangeCode.mockResolvedValue({ refreshToken: "theirs", accountId: "dbid:B" });
-    const other = sync.signIn();
-    const refusal = expect(other).rejects.toThrow(/isn't the one these notes sync with/);
+    const other = sync.signInAgain();
     await vi.advanceTimersByTimeAsync(0);
-    await refusal;
-    expect(await sync.signedIn()).toBe(false);
+    await other;
+    expect(await readSecrets(files)).toBeNull();
+    expect(passes).not.toHaveBeenCalled();
 
+    passes.mockResolvedValue(done());
     exchangeCode.mockResolvedValue({ refreshToken: "new", accountId: "dbid:A" });
-    const own = sync.signIn();
+    const own = sync.signInAgain();
     await vi.advanceTimersByTimeAsync(0);
     await own;
-    expect(decode(await files.read("state/dropbox.json"))).toEqual({
-      refreshToken: "new",
-      accountId: "dbid:A",
-    });
+    expect(await readSecrets(files)).toEqual({ refreshToken: "new", accountId: "dbid:A" });
+    expect(sync.status.status()).toMatchObject({ state: "synced", problems: [] });
   });
 
-  it("reads a damaged sign-in file as signed out, never failing the start", async () => {
-    const files = memoryFiles();
-    await files.write("state/dropbox.json", new TextEncoder().encode('{"refreshTo'));
-    expect(await readSecrets(files)).toBeNull();
-    const sync = createPhoneSync(files, { loadRecord: async () => null } as never);
-    expect(await sync.signedIn()).toBe(false);
-  });
-
-  describe("a sign-in kept before accounts were checked", () => {
+  describe("a binding made before accounts were bound", () => {
     async function signInAs(refreshToken: string, accountId: string, record = SYNCED_ONE) {
-      const env = await signedOut({ refreshToken: "old" }, record);
+      // Signed out before its account was learnt: the binding still has none.
+      const env = await started(null, record, { folder: "Personal" });
       passes.mockResolvedValue(done());
       exchangeCode.mockResolvedValue({ refreshToken, accountId });
       dropboxAnswers(env.files);
@@ -395,27 +426,28 @@ describe("signing in again", () => {
         { kind: "other-account" },
         { kind: "signed-out" },
       ]);
-      expect(decode(await files.read("state/dropbox.json"))).toEqual({ refreshToken: "old" });
+      expect(await readSecrets(files)).toBeNull();
+      expect(passes).not.toHaveBeenCalled();
     });
 
-    it("takes the account that holds them, and keeps its id", async () => {
+    it("takes the account that holds them, and binds it", async () => {
       const { files } = await signInAs("new", "dbid:A");
-      expect(decode(await files.read("state/dropbox.json"))).toEqual({
-        refreshToken: "new",
-        accountId: "dbid:A",
-      });
+      expect(await readSecrets(files)).toEqual({ refreshToken: "new", accountId: "dbid:A" });
+      expect(await readBinding(files)).toEqual(BOUND_TO_A);
+      expect(passes).toHaveBeenCalledOnce();
     });
 
-    it("takes any account while nothing has synced", async () => {
+    it("takes any account while nothing has synced, and binds it", async () => {
       const { files } = await signInAs("theirs", "dbid:B", null as never);
-      expect(decode(await files.read("state/dropbox.json")).refreshToken).toBe("theirs");
+      expect(await readSecrets(files)).toEqual({ refreshToken: "theirs", accountId: "dbid:B" });
+      expect(await readBinding(files)).toEqual({ folder: "Personal", accountId: "dbid:B" });
     });
   });
 
   it("treats coming back without an answer as cancelled, changing nothing", async () => {
     const { files, sync } = await signedOut();
     const attempt = sync.signInAgain();
-    const failed = expect(attempt).rejects.toThrow("the page was closed");
+    const failed = expect(attempt).rejects.toMatchObject({ name: "SignInCancelled" });
     await vi.advanceTimersByTimeAsync(0);
     fire("resume");
     await vi.advanceTimersByTimeAsync(2000);
@@ -442,5 +474,193 @@ describe("signing in again", () => {
     await vi.advanceTimersByTimeAsync(3000);
     await attempt;
     expect(decode(await files.read("state/dropbox.json")).refreshToken).toBe("new");
+  });
+});
+
+describe("with no Dropbox connected", () => {
+  it("is off and reaches nothing, whatever happens on the phone", async () => {
+    let polls = 0;
+    longpoll = async () => {
+      polls++;
+      return hang();
+    };
+    // A sign-in and record left behind count for nothing without a binding.
+    const { sync } = await started(undefined, undefined, null);
+    sync.localChanged();
+    fire("appStateChange", { isActive: true });
+    window.dispatchEvent(new Event("online"));
+    sync.syncNow();
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(sync.status.status()).toEqual({
+      state: "off",
+      folder: null,
+      lastSynced: null,
+      problems: [],
+    });
+    expect(remotes).toHaveLength(0);
+    expect(passes).not.toHaveBeenCalled();
+    expect(polls).toBe(0);
+  });
+});
+
+describe("connecting", () => {
+  async function connect(
+    files = memoryFiles(),
+    fresh = { refreshToken: "new", accountId: "dbid:A" },
+  ) {
+    const sync = createPhoneSync(files, storeOn(files));
+    await sync.start();
+    passes.mockResolvedValue(done());
+    exchangeCode.mockResolvedValue(fresh);
+    dropboxAnswers(files);
+    const attempt = sync.connect();
+    attempt.catch(() => {}); // asserted by the test, after it settles
+    await vi.advanceTimersByTimeAsync(0);
+    return { files, sync, attempt };
+  }
+
+  it("binds the folder to the account signed in, and syncs from no record so both sides merge", async () => {
+    const files = memoryFiles();
+    // A record left by a binding that didn't last.
+    await holding(files, { secrets: null, binding: null });
+    const { sync, attempt } = await connect(files);
+    await attempt;
+    expect(await readBinding(files)).toEqual(BOUND_TO_A);
+    expect(await readSecrets(files)).toEqual({ refreshToken: "new", accountId: "dbid:A" });
+    expect(await files.read(RECORD)).toBeNull();
+    expect(passes).toHaveBeenCalledOnce();
+    expect(sync.status.status()).toMatchObject({ state: "synced", folder: "Personal" });
+  });
+
+  it("leaves the notes unconnected when cut short before the binding is written", async () => {
+    const files = memoryFiles({ failOn: (op, path) => op === "write" && path === BINDING });
+    const { attempt } = await connect(files);
+    await expect(attempt).rejects.toThrow(/killed/);
+    expect(passes).not.toHaveBeenCalled();
+    // The next start: the sign-in left behind reaches nothing.
+    remotes.length = 0;
+    const again = createPhoneSync(files, storeOn(files));
+    await again.start();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(again.status.status().state).toBe("off");
+    expect(remotes).toHaveLength(0);
+    expect(passes).not.toHaveBeenCalled();
+  });
+
+  it("changes nothing when the page is closed", async () => {
+    const files = memoryFiles();
+    const sync = createPhoneSync(files, storeOn(files));
+    await sync.start();
+    const attempt = sync.connect();
+    const failed = expect(attempt).rejects.toMatchObject({ name: "SignInCancelled" });
+    await vi.advanceTimersByTimeAsync(0);
+    fire("resume");
+    await vi.advanceTimersByTimeAsync(2000);
+    await failed;
+    expect(await readBinding(files)).toBeNull();
+    expect(sync.status.status().state).toBe("off");
+  });
+});
+
+describe("disconnecting", () => {
+  it("keeps every note and forgets the record, then the binding, then the sign-in", async () => {
+    passes.mockResolvedValue(done());
+    const files = memoryFiles();
+    await files.write("vault/A.md", new TextEncoder().encode("alpha"));
+    const removed: string[] = [];
+    const remove = files.remove;
+    files.remove = async (path) => {
+      removed.push(path);
+      return remove(path);
+    };
+    const { sync } = await started(undefined, undefined, undefined, files);
+    await vi.advanceTimersByTimeAsync(0);
+    await sync.disconnect();
+    expect(removed).toEqual([RECORD, BINDING, SECRETS]);
+    expect(new TextDecoder().decode((await files.read("vault/A.md")) as Uint8Array)).toBe("alpha");
+    expect(sync.status.status()).toEqual({
+      state: "off",
+      folder: null,
+      lastSynced: null,
+      problems: [],
+    });
+    // Nothing goes up after it.
+    sync.localChanged();
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(passes).toHaveBeenCalledOnce();
+  });
+
+  it("waits out a pass under way before forgetting what it knew", async () => {
+    const passGate = gate();
+    const { files, sync } = await started();
+    let finished = false;
+    const leaving = sync.disconnect().then(() => {
+      finished = true;
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(finished).toBe(false);
+    expect(await files.read(RECORD)).not.toBeNull();
+    await passGate.end();
+    await leaving;
+    expect(await files.read(RECORD)).toBeNull();
+  });
+
+  it("cut short after the record, stays connected from no record: the next pass merges", async () => {
+    passes.mockResolvedValue(done());
+    const files = memoryFiles({ failOn: (op, path) => op === "remove" && path === BINDING });
+    const { sync } = await started(undefined, undefined, undefined, files);
+    await vi.advanceTimersByTimeAsync(0);
+    await expect(sync.disconnect()).rejects.toThrow(/killed/);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await files.read(RECORD)).toBeNull();
+    expect(sync.status.status()).toMatchObject({ state: "synced", folder: "Personal" });
+    expect(passes).toHaveBeenCalledTimes(2);
+    // Asked again, it finishes.
+    await sync.disconnect();
+    expect(await readBinding(files)).toBeNull();
+    expect(sync.status.status().state).toBe("off");
+  });
+
+  it("cut short after the binding, starts unconnected, the sign-in left reaching nothing", async () => {
+    passes.mockResolvedValue(done());
+    const files = memoryFiles({ failOn: (op, path) => op === "remove" && path === SECRETS });
+    const { sync } = await started(undefined, undefined, undefined, files);
+    await vi.advanceTimersByTimeAsync(0);
+    await sync.disconnect();
+    expect(sync.status.status().state).toBe("off");
+    remotes.length = 0;
+    const again = createPhoneSync(files, storeOn(files));
+    await again.start();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(again.status.status().state).toBe("off");
+    expect(remotes).toHaveLength(0);
+    expect(passes).toHaveBeenCalledOnce();
+  });
+});
+
+describe("the binding's account, before any file call", () => {
+  it("stops a sign-in from another account, reaching no file and never retrying", async () => {
+    let polls = 0;
+    longpoll = async () => {
+      polls++;
+      return hang();
+    };
+    // Credentials left behind that claim A but are B's.
+    const { sync } = await started({ refreshToken: "theirs", accountId: "dbid:A" });
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(sync.status.status().problems).toEqual([{ kind: "other-account" }]);
+    expect(passes).not.toHaveBeenCalled();
+    expect(polls).toBe(0);
+  });
+
+  it("checks once per sign-in, not once per pass", async () => {
+    passes.mockResolvedValue(done());
+    const { sync } = await started();
+    await vi.advanceTimersByTimeAsync(0);
+    const lookups = remotes.length;
+    sync.syncNow();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(passes).toHaveBeenCalledTimes(2);
+    expect(remotes).toHaveLength(lookups);
   });
 });

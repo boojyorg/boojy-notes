@@ -7,16 +7,14 @@ vi.mock("../../src/phone/files", () => ({
   capacitorFiles: () => ({ recover: async () => {}, read: async () => null }),
   fileAddress: async () => "https://localhost/_capacitor_file_/vault",
 }));
-vi.mock("../../src/phone/folderSwitch", () => ({ settleFolder: async () => {} }));
 vi.mock("../../src/phone/phoneVault", () => ({
   VAULT: "vault",
   createPhoneVault: () => ({ api: {}, store: {} }),
 }));
+const start = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/phone/phoneSync", () => ({
-  readSecrets: async () => null,
   createPhoneSync: () => ({
-    signedIn: async () => true,
-    start: async () => {},
+    start: () => start(),
     localChanged() {},
     status: { status: () => null, subscribe: () => () => {} },
   }),
@@ -45,5 +43,16 @@ describe("the phone draws under Android's bars", () => {
     document.head.innerHTML = `<meta name="viewport" content="${COVER}">`;
     await installPhone();
     expect(document.querySelector('meta[name="viewport"]')?.getAttribute("content")).toBe(COVER);
+  });
+});
+
+describe("the phone's start", () => {
+  // It once stopped on "Sign in to Dropbox", and the app couldn't be used without it.
+  it("opens the app with no Dropbox connected, and starts sync's worker", async () => {
+    document.body.innerHTML = "";
+    start.mockClear();
+    await installPhone();
+    expect(start).toHaveBeenCalledOnce();
+    expect(document.body.textContent).not.toMatch(/Dropbox/);
   });
 });

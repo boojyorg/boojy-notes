@@ -193,7 +193,8 @@ export const MissingAttachmentIcon = ({ image = false, size = ICON_INLINE }) => 
 export const OffloadedIcon = navIcon(LuCloudDownload);
 /** A note whose file the app cannot open as text (not UTF-8, too large, or unreadable). */
 export const UnreadableIcon = navIcon(LuFileExclamationPoint);
-/** The phone's sync, after its folder's name on Home: its four states. */
+/** The phone's sync, after its folder's name on Home: no Dropbox, then its four states. */
+export const SyncOffIcon = navIcon(LuCloud);
 export const SyncedIcon = navIcon(LuCloudCheck);
 export const SyncingIcon = navIcon(LuCloudSync);
 export const SyncOfflineIcon = navIcon(LuCloudOff);

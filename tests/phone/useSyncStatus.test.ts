@@ -10,6 +10,7 @@ import { SYNCING_SHOWS_AFTER_MS, useSyncStatus } from "../../src/phone/useSyncSt
 
 const status = (state: SyncStatus["state"], problems: SyncStatus["problems"] = []): SyncStatus => ({
   state,
+  folder: state === "off" ? null : "Personal",
   lastSynced: 1000,
   problems,
 });
@@ -26,6 +27,8 @@ function fakeSync(first: SyncStatus) {
     },
     syncNow: vi.fn(),
     signInAgain: vi.fn(async () => {}),
+    connect: vi.fn(async () => {}),
+    disconnect: vi.fn(async () => {}),
   };
   const set = (next: SyncStatus) =>
     act(() => {
@@ -110,5 +113,53 @@ describe("sync's state on Home", () => {
     const [text, , options] = showToast.mock.calls[0];
     expect(text).toContain("“Trip.mov” is over 150 MB");
     expect(options.action).toBeUndefined();
+  });
+
+  it("tells nothing of disconnecting from a problem, and a connect starts the telling afresh", () => {
+    const { sync, set } = fakeSync(status("problem", [{ kind: "signed-out" }]));
+    api = { sync };
+    const showToast = vi.fn();
+    renderHook(() => useSyncStatus({ showToast }));
+    expect(showToast).toHaveBeenCalledTimes(1);
+    set(status("off"));
+    expect(showToast).toHaveBeenCalledTimes(1);
+    set(status("syncing"));
+    set(status("synced"));
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("connecting and disconnecting from Home", () => {
+  it("says nothing when the sign-in page is closed, and why when the connect fails", async () => {
+    const { sync } = fakeSync(status("off"));
+    api = { sync };
+    const showToast = vi.fn();
+    const { result } = renderHook(() => useSyncStatus({ showToast }));
+    sync.connect.mockRejectedValueOnce(
+      Object.assign(new Error("the page was closed"), { name: "SignInCancelled" }),
+    );
+    await act(() => result.current?.connect());
+    expect(showToast).not.toHaveBeenCalled();
+    sync.connect.mockRejectedValueOnce(new Error("Dropbox is down"));
+    await act(() => result.current?.connect());
+    expect(showToast).toHaveBeenCalledWith(
+      "Couldn't connect to Dropbox: Dropbox is down",
+      "warning",
+      { key: "sync" },
+    );
+  });
+
+  it("says the notes stay on the phone after a disconnect", async () => {
+    const { sync } = fakeSync(status("synced"));
+    api = { sync };
+    const showToast = vi.fn();
+    const { result } = renderHook(() => useSyncStatus({ showToast }));
+    await act(() => result.current?.disconnect());
+    expect(sync.disconnect).toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith(
+      "Dropbox disconnected. Your notes stay on this phone.",
+      "done",
+      { key: "sync" },
+    );
   });
 });

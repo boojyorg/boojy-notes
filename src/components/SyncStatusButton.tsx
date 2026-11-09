@@ -4,10 +4,11 @@ import { useTheme } from "../hooks/useTheme";
 import type { PhoneSync } from "../phone/useSyncStatus";
 import { describeProblem, type SyncState } from "../sync/syncStatus";
 import { clock } from "../utils/versionTime";
-import { SyncedIcon, SyncingIcon, SyncOfflineIcon, SyncProblemIcon } from "./Icons";
+import { SyncedIcon, SyncingIcon, SyncOffIcon, SyncOfflineIcon, SyncProblemIcon } from "./Icons";
 import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
 
 const GLYPH: Record<SyncState, ComponentType<{ size?: number }>> = {
+  off: SyncOffIcon,
   synced: SyncedIcon,
   syncing: SyncingIcon,
   offline: SyncOfflineIcon,
@@ -15,6 +16,7 @@ const GLYPH: Record<SyncState, ComponentType<{ size?: number }>> = {
 };
 
 const NAME: Record<SyncState, string> = {
+  off: "Dropbox not connected",
   synced: "Synced",
   syncing: "Syncing",
   offline: "Offline",
@@ -32,7 +34,9 @@ export function syncedAt(ms: number, now = new Date()) {
 /**
  * Sync's state after the phone's folder name on Home: muted, but in the
  * warning colour while something needs the person. A tap says it in words,
- * with the one thing to do about it: sign in again, try again, or sync now.
+ * with the one thing to do about it: sign in again, try again, or sync now,
+ * then Disconnect Dropbox. With none connected, it says so and offers
+ * Connect Dropbox.
  */
 export default function SyncStatusButton({ sync }: { sync: PhoneSync }) {
   const { theme } = useTheme();
@@ -42,28 +46,52 @@ export default function SyncStatusButton({ sync }: { sync: PhoneSync }) {
   const last = lastSynced === null ? null : syncedAt(lastSynced);
 
   const lines =
-    state === "problem"
-      ? problems.map((p) => describeProblem(p).text)
-      : state === "offline"
-        ? [
-            "Can't reach Dropbox. Sync will resume when it's reachable.",
-            ...(last ? [`Last synced ${last}.`] : []),
-          ]
-        : state === "syncing"
-          ? ["Syncing with Dropbox…"]
-          : [`Synced with Dropbox${last ? ` · ${last}` : ""}`];
+    state === "off"
+      ? ["Dropbox not connected. Your notes are on this phone only."]
+      : state === "problem"
+        ? problems.map((p) => describeProblem(p).text)
+        : state === "offline"
+          ? [
+              "Can't reach Dropbox. Sync will resume when it's reachable.",
+              ...(last ? [`Last synced ${last}.`] : []),
+            ]
+          : state === "syncing"
+            ? ["Syncing with Dropbox…"]
+            : [`Synced with Dropbox${last ? ` · ${last}` : ""}`];
 
   const signIn = problems.some((p) => describeProblem(p).action === "sign-in");
   const close = () => setAnchor(null);
-  const item: MenuItem = {
-    label: signIn ? "Sign in again" : state === "problem" ? "Try again" : "Sync now",
-    testId: signIn ? "sync-sign-in" : "sync-now",
-    action: () => {
-      close();
-      if (signIn) sync.signInAgain();
-      else sync.syncNow();
-    },
-  };
+  const items: MenuItem[] =
+    state === "off"
+      ? [
+          {
+            label: "Connect Dropbox",
+            testId: "sync-connect",
+            action: () => {
+              close();
+              sync.connect();
+            },
+          },
+        ]
+      : [
+          {
+            label: signIn ? "Sign in again" : state === "problem" ? "Try again" : "Sync now",
+            testId: signIn ? "sync-sign-in" : "sync-now",
+            action: () => {
+              close();
+              if (signIn) sync.signInAgain();
+              else sync.syncNow();
+            },
+          },
+          {
+            label: "Disconnect Dropbox",
+            testId: "sync-disconnect",
+            action: () => {
+              close();
+              sync.disconnect();
+            },
+          },
+        ];
 
   return (
     <>
@@ -100,7 +128,7 @@ export default function SyncStatusButton({ sync }: { sync: PhoneSync }) {
           anchor={anchor}
           onClose={close}
           maxWidth={300}
-          items={[item]}
+          items={items}
           header={
             <div
               style={{

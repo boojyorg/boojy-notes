@@ -53,7 +53,6 @@ import SyncStatusButton from "./SyncStatusButton";
 import RenameField from "./RenameField";
 import Collapsible, { IndentGuide } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
-import { SYNC_FOLDER } from "../phone/syncFolder";
 import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
@@ -441,7 +440,7 @@ function VaultLabel({ name, open, onOpen }) {
 }
 
 /**
- * The phone's folder row: the Dropbox folder's name, then sync's state
+ * The phone's folder row: the Dropbox folder's name (or "Phone"), then sync's state
  * (`SyncStatusButton`), close beside it rather than across the row, since it
  * speaks of that folder.
  */
@@ -550,8 +549,10 @@ const Sidebar = memo(function Sidebar({
   };
   const closeVaultMenu = () => setVaultMenu(null);
   const [vaultView, setVaultView] = useVaultView(notesDir || "web");
-  // The phone has one storage location, its Dropbox folder: named, never a switcher.
-  const vaultName = vaults.find((v) => v.current)?.name ?? (isPhone ? SYNC_FOLDER : "Notes");
+  // The phone has one storage location, named by its Dropbox folder or, with
+  // none connected, "Phone": never a switcher.
+  const vaultName =
+    vaults.find((v) => v.current)?.name ?? (isPhone ? (sync?.status.folder ?? "Phone") : "Notes");
   // ⌘O, File → Open Vault…: the same menu from the keyboard, its open vault
   // active. The app shows a hidden sidebar first and asks once it has arrived.
   useEffect(() => {

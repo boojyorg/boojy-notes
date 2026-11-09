@@ -381,6 +381,25 @@ describe("interruptions: the app killed at each point", () => {
     expect(env.phone.paths()).toEqual(env.dropbox.paths());
   });
 
+  // A reconnect starts from no record (phoneSync.ts): everything is kept,
+  // and a note deleted while disconnected comes back, by design.
+  it("merges from no record, losing nothing: a note deleted meanwhile comes back", async () => {
+    const env = await started({ "A.md": "alpha", "B.md": "beta" });
+    env.phone.record = null;
+    env.phone.files.delete("A.md");
+    env.phone.type("B.md", "beta, edited on the phone");
+    env.phone.type("C.md", "new on the phone");
+    await env.dropbox.macWrite("D.md", "new on the Mac");
+    await env.settle();
+    expectBoth(env, {
+      "A.md": "alpha",
+      "B.md": "beta",
+      [`B ${COPY}.md`]: "beta, edited on the phone",
+      "C.md": "new on the phone",
+      "D.md": "new on the Mac",
+    });
+  });
+
   it("makes the vault's folder in Dropbox on the first sync when it isn't there", async () => {
     const env = setup();
     env.dropbox.rootExists = false;
