@@ -623,6 +623,27 @@ describe("useEditorHandlers", () => {
       ]);
     });
 
+    // Select All across a footnote wrote `[^undefined]:`: the run kept only
+    // type and text, so the label never reached the clipboard.
+    it("a footnote in a text selection keeps its label in every format", () => {
+      const s = setup([
+        paragraph("Body.[^1]"),
+        { ...paragraph("Source."), type: "footnote", label: "1" },
+      ]);
+      selectAcross(s, 0, 0, 1, "Source.".length);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      expect(plain(e)).toBe("Body.[^1]\n\n[^1]: Source.");
+      expect(boojy(e)[1]).toEqual({
+        type: "footnote",
+        label: "1",
+        text: "Source.",
+        fullBlock: true,
+      });
+    });
+
     it("a nested list copies nested", () => {
       const s = setup([bullet("a"), { ...bullet("b"), indent: 1 }, bullet("c")]);
       selectAcross(s, 0, 0, 2, 1);

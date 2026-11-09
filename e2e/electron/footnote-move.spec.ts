@@ -97,6 +97,22 @@ test("right-click moves the footnotes under the note in number order; a version 
   expect(h.pageErrors).toEqual([]);
 });
 
+// A past version is not the note: nothing there to move (the review asked
+// whether the menu kept the note's own answer; it does not).
+test("Format › Move Footnotes to Bottom greys while a past version is showing", async () => {
+  await open();
+  // An edit, so the text before it is a version to show.
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.type(" Typed");
+  await waitForFile(h.vault.file("F.md"), (t) => t.includes("Middle. Typed"));
+  await expect.poll(() => menuEnabled(h, "moveFootnotes")).toBe(true);
+  await h.page.locator("button[aria-label='Note actions']").click();
+  await h.page.getByRole("menuitem", { name: /Version History/ }).click();
+  await h.page.getByRole("listbox", { name: "Versions" }).getByRole("option").nth(1).click();
+  await expect(h.page.locator("[data-past-version]")).toBeVisible();
+  await expect.poll(() => menuEnabled(h, "moveFootnotes")).toBe(false);
+});
+
 test("Format › Move Footnotes to Bottom writes a pending edit first and moves it with the note", async () => {
   await open();
   await h.page.keyboard.press(END_OF_LINE);

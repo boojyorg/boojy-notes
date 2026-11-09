@@ -377,3 +377,22 @@ test("a caret put back in a clipped paragraph leaves the view where it was", asy
     await h.close();
   }
 });
+
+// A footnote's jump is a visit, but the editor's memo ignored the history,
+// so the arrows beside the name kept the state from before it.
+test("a footnote reference's jump lights the Back arrow, and the arrow goes back", async () => {
+  const h = await launchApp({ "F.md": "Body.[^1]\n\nMiddle.\n\n[^1]: Def.\n" });
+  try {
+    const back = h.page.getByRole("button", { name: "Back", exact: true });
+    await h.openNote("F");
+    await h.page.getByText("Middle.").click();
+    await expect(back).toHaveAttribute("aria-disabled", "true");
+    await h.page.locator("[data-editor] .md-fn-ref").click();
+    await expect(back).not.toHaveAttribute("aria-disabled", "true");
+    await back.click();
+    await expect(back).toHaveAttribute("aria-disabled", "true");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

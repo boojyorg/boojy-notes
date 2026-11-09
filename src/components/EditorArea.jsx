@@ -2454,6 +2454,19 @@ const EditorArea = memo(
     // left for the render that commit brings.
     if (prev.toolbarState !== next.toolbarState) return false;
 
+    // The arrows beside the name (NotePath) show the history: a footnote's or
+    // a heading link's jump is a visit that changes nothing else here. Its
+    // fields, not the object, which is new every render.
+    const ph = prev.noteHistory;
+    const nh = next.noteHistory;
+    if (
+      ph?.canBack !== nh?.canBack ||
+      ph?.canForward !== nh?.canForward ||
+      ph?.back !== nh?.back ||
+      ph?.forward !== nh?.forward
+    )
+      return false;
+
     // Fast path: text-only edits don't change block structure, and the
     // contentEditable DOM is already correct — skip the block loop entirely.
     if (next.textOnlyEditForEditor?.current) {

@@ -70,6 +70,33 @@ test("an image dropped over the top half of a paragraph lands above it", async (
   }
 });
 
+// The file drop kept its own copy of the drop rule, without the footnote
+// guard the block drag has (dropBoundary), so a picture parted a footnote
+// from its later paragraph.
+test("an image dropped among a footnote's paragraphs lands after the footnote", async () => {
+  const h = await launchApp({ "Pics.md": "Body.[^1]\n\n[^1]: First.\n\n    Second.\n" });
+  try {
+    await h.openNote("Pics");
+    const second = await paragraph(h.page, "Second.").boundingBox();
+    if (!second) throw new Error("no paragraph");
+
+    await dropFiles(h.page, [png("In.png")], second.x + 20, second.y + 2);
+
+    await waitForFile(h.vault.file("Pics.md"), (t) => t.includes("![[In.png]]"), {
+      label: "the dropped image to be written",
+    });
+    expect(lines(h.vault.read("Pics.md"))).toEqual([
+      "Body.[^1]",
+      "[^1]: First.",
+      "    Second.",
+      "![[In.png]]",
+    ]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("several images dropped at once land in the order they were given", async () => {
   const h = await launchApp({ "Pics.md": "One\n" });
   try {

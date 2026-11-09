@@ -72,6 +72,8 @@ export function useAppKeyboard({
   // Format → Check Off: ⌘Enter's to-dos (`todoFlip`).
   checkTodos,
   insertFootnote,
+  // Whether Insert Footnote can act at the caret (greys the Format item).
+  canInsertFootnote,
   // Format → Move Footnotes to Bottom (useMoveFootnotes).
   moveFootnotes,
   duplicateBlocks,
@@ -127,6 +129,7 @@ export function useAppKeyboard({
     setBlockKind,
     checkTodos,
     insertFootnote,
+    canInsertFootnote,
     moveFootnotes,
     duplicateBlocks,
     blockSelectionIds,
@@ -340,6 +343,7 @@ export function useAppKeyboard({
         canForward: !!canForward,
         linkPageTo: linkPageTo ?? null,
         footnotesToMove: !!L.moveFootnotes && footnotesOutOfPlace(blocks),
+        canFootnote: !!L.canInsertFootnote?.(),
       });
     };
     let timer = null;

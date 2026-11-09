@@ -249,3 +249,17 @@ test("a run dragged from its last grip and dropped below End. lands there, in or
   await h.page.mouse.up();
   await expect.poll(() => types(h.page)).toEqual(["p:End.", ...BULLETS.slice(0, 4)]);
 });
+
+// The drag took the text's lines alone, so Two left Kid behind, while the
+// same selection's menu (gripSelection) takes it.
+test("text lines dragged by a grip bring the items nested under them", async () => {
+  await selectTextOneToTwo(h.page);
+  const at = await startDrag(h.page, 1);
+  const end = (await roots(h.page).nth(4).boundingBox())!;
+  await h.page.mouse.move(at.x, end.y + end.height - 2, { steps: 6 });
+  await h.page.mouse.up();
+  await expect
+    .poll(() => types(h.page))
+    .toEqual(["bullet:Three", "p:End.", "bullet:One", "bullet:Two", "bullet:Kid"]);
+  await expect.poll(() => h.vault.read("List.md")).toContain("- One\n- Two\n  - Kid\n");
+});

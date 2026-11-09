@@ -53,6 +53,8 @@ export type MenuState = {
   linkPageTo: string | null;
   /** The open note's footnotes are not all at its bottom, in order (`footnotesAtBottom`). */
   footnotesToMove: boolean;
+  /** Insert Footnote can act at the caret: a note's own text, not a field or a link. */
+  canFootnote: boolean;
 };
 
 const INITIAL: MenuState = {
@@ -71,6 +73,7 @@ const INITIAL: MenuState = {
   canForward: false,
   linkPageTo: null,
   footnotesToMove: false,
+  canFootnote: false,
 };
 
 const isMac = process.platform === "darwin";
@@ -246,7 +249,7 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
           icon: icon("link"),
         }),
         // `[^n]` at the caret, its empty definition at the note's end.
-        note("footnote", "Insert Footnote"),
+        note("footnote", "Insert Footnote", undefined, { enabled: !noteless && state.canFootnote }),
         // Every footnote under the note's last line, in number order.
         note("moveFootnotes", "Move Footnotes to Bottom", undefined, {
           enabled: !noteless && state.footnotesToMove,

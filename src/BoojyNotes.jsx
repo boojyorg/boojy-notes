@@ -1531,6 +1531,7 @@ export default function BoojyNotes() {
     moveBlock: blockOps.moveBlock,
     checkTodos: blockOps.checkTodos,
     insertFootnote: editorHandlers.insertFootnote,
+    canInsertFootnote: editorHandlers.canInsertFootnote,
     moveFootnotes: footnotesMovable ? moveFootnotes : undefined,
     updateTableRows: blockOps.updateTableRows,
     openFind: (mode) => openFindRef.current?.(mode),
