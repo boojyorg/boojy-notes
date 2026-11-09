@@ -87,6 +87,23 @@ describe("LinkPicker, creating", () => {
     );
   });
 
+  // Notes come in the vault's order: one that only contains the name could
+  // stand first and take Enter.
+  it("a note of exactly the typed name leads, before notes that only contain it", () => {
+    const { onApply } = mount({
+      notes: [
+        { id: "intro", title: "Intro to Node.js", folder: null },
+        { id: "node", title: "Node.js", folder: null },
+      ],
+    });
+    type("Node.js");
+    expect(rows()).toEqual(["Node.jsNotes", "Link to Node.js", "Intro to Node.jsNotes"]);
+    fireEvent.keyDown(dest(), { key: "Enter" });
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ dest: expect.objectContaining({ kind: "note", id: "node" }) }),
+    );
+  });
+
   it("Enter applies the highlighted row, the arrows move it, a click applies its row", () => {
     const { onApply } = mount();
     type("goals");

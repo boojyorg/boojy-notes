@@ -170,6 +170,29 @@ describe("useBlockOperations", () => {
     });
   });
 
+  // An ID alone names the block before it: a copy put between them took it.
+  it("puts a copy after the ID alone that names the original, and the copy names nothing", () => {
+    const blocks = [paragraph("Table stand-in"), paragraph("^tbl"), paragraph("After")];
+    const { result, noteId, getNoteData } = setup(blocks);
+
+    act(() => {
+      result.current.duplicateBlockRange(noteId, 0, 0);
+    });
+    act(() => {
+      result.current.duplicateBlockRange(noteId, 0, 1);
+    });
+
+    const out = getNoteData()[noteId].content.blocks;
+    expect(out.map((b) => b.text)).toEqual([
+      "Table stand-in",
+      "^tbl",
+      "Table stand-in",
+      "",
+      "Table stand-in",
+      "After",
+    ]);
+  });
+
   describe("deleteBlock", () => {
     it("removes the correct block", () => {
       const blocks = [paragraph("a"), paragraph("b"), paragraph("c")];

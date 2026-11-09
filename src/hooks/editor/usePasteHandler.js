@@ -102,7 +102,7 @@ export function usePasteHandler({
 
     // One terminal line ending is incidental (copying a whole line brings its
     // break along); strip it so a one-line copy pastes inline.
-    const textData = stripIncidentalLineEnding(e.clipboardData.getData("text/plain"));
+    const textData = stripIncidentalLineEnding(text);
 
     // Smart paste: URL over selected text → create markdown link. Across
     // blocks a link cannot span the selection, so the URL replaces it.

@@ -296,6 +296,8 @@ describe("pasteIsText", () => {
     expect(pasteIsText([{ name: "Photo.png", type: "image/png" }], "Photo.png")).toBe(false);
     expect(pasteIsText(generated, "")).toBe(false);
     expect(pasteIsText(generated, "https://example.com/cat.png")).toBe(false);
+    // Apple Notes, TextEdit and Pages: the picture's text is U+FFFC.
+    expect(pasteIsText(generated, "\uFFFC")).toBe(false);
     expect(pasteIsText([{ name: "image.png", type: "application/pdf" }], "text")).toBe(false);
   });
 });

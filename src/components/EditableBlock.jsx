@@ -409,6 +409,7 @@ const EditableBlock = memo(
           onSelect={() => onBlockSelect(block.id)}
           onBlockNav={onBlockNav}
           registerRef={registerRef}
+          readOnly={readOnly}
         />
       );
     }

@@ -173,7 +173,7 @@ through state.**
   cancel. A selection drags as one run. `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (`moveStep`).
   `list-move.spec.ts`.
-- **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (UI scale).
+- **Measured geometry is divided by `cssZoom(el)` before it becomes a style**.
 - **Every root the grip shows beside is in `blockRefs`**; media, code and callout register via
   `wholeRef`, not `elRef` (its repaint covers the wrapper).
 
@@ -288,7 +288,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
   (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, and an edited
   one fitting a lined-up header takes its columns. `table-preservation.spec.ts`.
-- **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root; one write, on drop. Keys in a cell move them too. `table-handles.spec.ts`.
+- **Rows and columns move by grips on the edges** (`TableHandles`) or a cell's keys; one write, on drop. `table-handles.spec.ts`.
 
 ## Whole-block selection
 
@@ -296,12 +296,13 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
   text selection touches), a press on a divider, image, table or embed; Shift-click extends. **A list item or footnote brings what nests
   under it** (`subtreeEnd`; drops land after, `dropBoundary`).
 - Backspace/Delete remove a selection in one commit, ⌘C/⌘X copy it whole (`wholeBlocksCopy`);
-  a letter deselects and types; a press off `data-selection-surface` deselects.
+  a letter deselects and types; a press off `data-selection-surface` deselects. **A
+  duplicate shares no label or `^id`** (`withoutOwnIds`).
 - **A drag from the left margin, a gutter strip or between blocks draws a box**
   (`useMarqueeSelect`, `marqueeRun`); Escape restores, its release clicks nothing. From
   text or right of a line (`besideLine`), it is text. `marquee-select.spec.ts`.
 - **The grip's click opens `BlockMenu` on its run** or text's lines (`gripSelection`;
-  right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
+  right-click, Shift+F10); the gutter picks one. `block-menu-run.spec.ts`.
 - **Arrows stop on a divider, image or embed, enter every block with a field**; deletion
   steps over code.
 - **A caret taken back never scrolls** (`preventScroll`). `caret-navigation.spec.ts`.

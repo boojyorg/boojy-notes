@@ -68,12 +68,17 @@ const withoutParagraphIds = (text: string | undefined) =>
     .map((part, i) => (i % 2 ? part : part.replace(TRAILING_ID_RE, "")))
     .join("");
 
+/** A paragraph that is an ID alone, naming the block before it. */
+export const isIdAlone = (b: TargetBlock | undefined): boolean =>
+  b?.type === "p" && ALONE_RE.test((b.text ?? "").trim());
+
 /**
- * `b` without the IDs it carries itself (`ownIds`, in the same places): a copy
- * (Duplicate) must not name what its original names.
+ * `b` without the IDs it carries (`ownIds`, in the same places, and an ID
+ * alone): a copy (Duplicate) must not name what its original names.
  */
 export function withoutOwnIds<T extends TargetBlock>(b: T): T {
   if (["code", "math", "embed", "frontmatter"].includes(b.type ?? "")) return b;
+  if (isIdAlone(b)) return { ...b, text: "" };
   if (b.type === "table") {
     return {
       ...b,

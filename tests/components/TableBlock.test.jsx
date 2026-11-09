@@ -171,6 +171,18 @@ describe("TableBlock", () => {
       ]);
     });
 
+    it("an empty first cell in the copy stays empty, the row unshifted", () => {
+      const props = baseProps();
+      const { container } = render(<TableBlock {...props} />);
+      paste(container.querySelector("tbody td"), "\ty\nz\tw\n");
+      const reshape = props.onUpdateTableRows.mock.calls[0][2];
+      expect(reshape(defaultBlock.rows).rows).toEqual([
+        ["Header A", "Header B"],
+        ["", "y"],
+        ["z", "w"],
+      ]);
+    });
+
     // A two-line address or a sentence with a comma was split on every comma.
     it("prose with a comma and a line break is the cell's own paste, never a grid", () => {
       const props = baseProps();

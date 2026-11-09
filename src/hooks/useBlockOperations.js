@@ -14,7 +14,7 @@ import { settleTypedSpaces } from "../utils/inlineFormatting";
 import { openMathSource } from "../utils/mathOpen";
 import { LINE_KIND_TYPES, LIST_TYPES, MAX_INDENT } from "../utils/blockKinds";
 import { nextFootnoteNumber } from "../utils/footnoteTarget";
-import { withoutOwnIds } from "../utils/blockTarget";
+import { isIdAlone, withoutOwnIds } from "../utils/blockTarget";
 
 /** The text blocks the Format menu can turn into one another. */
 const KIND_TYPES = new Set(["p", ...LINE_KIND_TYPES]);
@@ -209,7 +209,10 @@ export function useBlockOperations({
           if (copy.type === "footnote") copy.label = String(label++);
           return copy;
         });
-        blocks.splice(to + 1, 0, ...copies);
+        // After an ID alone that names the run's last block: it keeps naming
+        // the original, never the copy put between them.
+        const at = isIdAlone(blocks[to + 1]) ? to + 2 : to + 1;
+        blocks.splice(at, 0, ...copies);
       }),
     );
     return ids;
