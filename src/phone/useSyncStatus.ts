@@ -10,11 +10,17 @@ export interface PhoneSyncAPI {
   syncNow(): void;
   /** Throws when the sign-in is cancelled or fails; nothing changes then. */
   signInAgain(): Promise<void>;
+  /** Signs in and binds a Dropbox folder; throws when cancelled or failed, connecting nothing. */
+  connect(): Promise<void>;
+  /** Forgets Dropbox; the notes stay on the phone. */
+  disconnect(): Promise<void>;
 }
 
 /** Syncing shows only once a pass has taken this long: most end sooner, and the glyph would blink. */
 export const SYNCING_SHOWS_AFTER_MS = 600;
 const TOAST_KEY = "sync";
+/** Dropbox's page closed without an answer (phoneSync.ts): nothing to say. */
+const cancelled = (error: unknown) => (error as Error)?.name === "SignInCancelled";
 
 type ShowToast = (message: string, kind?: ToastKind, options?: ToastOptions) => unknown;
 
@@ -58,8 +64,35 @@ export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
 
   const syncNow = useCallback(() => api?.syncNow(), [api]);
 
+  const connect = useCallback(async () => {
+    try {
+      await api?.connect();
+    } catch (error) {
+      if (cancelled(error)) return;
+      showToast(`Couldn't connect to Dropbox: ${(error as Error)?.message ?? error}`, "warning", {
+        key: TOAST_KEY,
+      });
+    }
+  }, [api, showToast]);
+
+  const disconnect = useCallback(async () => {
+    try {
+      await api?.disconnect();
+      showToast("Dropbox disconnected. Your notes stay on this phone.", "done", { key: TOAST_KEY });
+    } catch (error) {
+      showToast(`Couldn't disconnect Dropbox: ${(error as Error)?.message ?? error}`, "warning", {
+        key: TOAST_KEY,
+      });
+    }
+  }, [api, showToast]);
+
   useEffect(() => {
     if (!status) return;
+    // Nothing connected is nothing to tell of; a later connect starts afresh.
+    if (status.state === "off") {
+      told.current = "";
+      return;
+    }
     const key = problemsKey(status.problems);
     if (key === told.current) return;
     if (!key) {
@@ -81,8 +114,8 @@ export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
 
   // One object per shown state: the sidebar is memoised on its props.
   return useMemo(
-    () => (api && shown ? { status: shown, syncNow, signInAgain } : null),
-    [api, shown, syncNow, signInAgain],
+    () => (api && shown ? { status: shown, syncNow, signInAgain, connect, disconnect } : null),
+    [api, shown, syncNow, signInAgain, connect, disconnect],
   );
 }
 

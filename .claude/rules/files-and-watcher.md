@@ -10,8 +10,8 @@
   file; pending edits go back. `outside-delete.spec.ts`.
 - **The phone's bin**: `deleted/<when>/<path>`; a crash between steps leaves the note in one
   place; a restore is handed to sync (`restored`). `recentlyDeleted.test.ts`.
-- **The phone's copy is one account's folder**: a change sets it aside (`old-folders/`)
-  before sync, resumably. `folderSwitch.test.ts`.
+- **Phone sync is optional, the binding its connection**: no pass till the sign-in's account
+  is its own. `phoneSync.test.ts`.
 - Desktop confirms only several files; one note goes at once, its toast with Undo.
 
 ## The watcher drops only an event it can trace to the app's own operation

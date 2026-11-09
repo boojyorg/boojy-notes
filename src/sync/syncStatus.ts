@@ -2,8 +2,8 @@ import { DropboxHttpError } from "./dropboxClient";
 import type { Attention, PassResult } from "./engine";
 
 /**
- * What the phone shows about sync: one of four states, and the problems that
- * need a person. The runner's passes report here (`started`, `finished`,
+ * What the phone shows about sync: off (no Dropbox connected), or one of four
+ * states, and the problems that need a person. The runner's passes report here (`started`, `finished`,
  * `failed`) and saves report `changed`; the state is worked out from those,
  * never kept on its own, so it cannot drift from what happened.
  *
@@ -19,7 +19,7 @@ import type { Attention, PassResult } from "./engine";
  *   stands in the way.
  */
 
-export type SyncState = "syncing" | "synced" | "offline" | "problem";
+export type SyncState = "off" | "syncing" | "synced" | "offline" | "problem";
 
 export type SyncProblem =
   | Attention
@@ -32,6 +32,8 @@ export type SyncProblem =
 
 export interface SyncStatus {
   state: SyncState;
+  /** The Dropbox folder the notes sync with; null while none is connected. */
+  folder: string | null;
   /** When a pass last settled (ms), or null since the app opened. */
   lastSynced: number | null;
   problems: SyncProblem[];
@@ -43,12 +45,20 @@ export type FailureMeaning =
   | { problem: SyncProblem }
   | { other: string };
 
+/** A pass stopped before it reached Dropbox's files, for a reason a person must act on. */
+export class SyncProblemError extends Error {
+  constructor(readonly problem: SyncProblem) {
+    super(problem.kind);
+  }
+}
+
 /** Passes that fail for no reason we know, in a row, before it is a problem. */
 export const FAILING_AFTER = 3;
 
 const message = (error: unknown) => (error as Error)?.message ?? String(error);
 
 export function failureMeaning(error: unknown): FailureMeaning {
+  if (error instanceof SyncProblemError) return { problem: error.problem };
   if (error instanceof DropboxHttpError) {
     if (error.status === 401 || error.summary.includes("invalid_grant")) {
       return { problem: { kind: "signed-out" } };
@@ -73,6 +83,7 @@ export function failureMeaning(error: unknown): FailureMeaning {
 }
 
 export function createSyncStatus({ now = Date.now } = {}) {
+  let folder: string | null = null;
   let pending = false;
   let running = false;
   let settled = false;
@@ -86,7 +97,10 @@ export function createSyncStatus({ now = Date.now } = {}) {
   const listeners = new Set<(status: SyncStatus) => void>();
 
   const status = (): SyncStatus => {
-    const problems = [...(refusal ? [refusal] : []), ...(stopped ? [stopped] : []), ...held];
+    if (folder === null) return { state: "off", folder, lastSynced: null, problems: [] };
+    // A refusal and a stop for the same cause are said once.
+    const refused = refusal && refusal.kind !== stopped?.kind ? [refusal] : [];
+    const problems = [...refused, ...(stopped ? [stopped] : []), ...held];
     const state: SyncState = problems.length
       ? "problem"
       : offline
@@ -94,7 +108,14 @@ export function createSyncStatus({ now = Date.now } = {}) {
         : running || pending || !settled
           ? "syncing"
           : "synced";
-    return { state, lastSynced, problems };
+    return { state, folder, lastSynced, problems };
+  };
+  /** Back to the start: nothing synced, sent, held or refused. */
+  const reset = () => {
+    pending = running = settled = offline = false;
+    lastSynced = stopped = refusal = null;
+    held = [];
+    failures = 0;
   };
   const emit = () => {
     const current = status();
@@ -108,6 +129,18 @@ export function createSyncStatus({ now = Date.now } = {}) {
       return () => {
         listeners.delete(listener);
       };
+    },
+    /** Syncing with `name` from now, from the start (the app opening, or a connect). */
+    connected(name: string) {
+      reset();
+      folder = name;
+      emit();
+    },
+    /** No Dropbox any more: the notes are the phone's only. */
+    disconnected() {
+      reset();
+      folder = null;
+      emit();
     },
     /** A save on the phone: unsent until a pass starts after it. */
     changed() {

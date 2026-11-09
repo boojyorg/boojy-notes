@@ -925,7 +925,7 @@ describe("Sidebar on the phone", () => {
   });
 
   // The row read `Notes` on the phone, not the Dropbox folder it syncs.
-  it("names the vault row after the Dropbox folder it syncs", async () => {
+  it("names the vault row after the Dropbox folder it syncs, or the phone with none", async () => {
     vi.resetModules();
     vi.doMock("../../src/utils/platform", async (actual) => ({
       ...(await actual()),
@@ -933,10 +933,18 @@ describe("Sidebar on the phone", () => {
     }));
     try {
       const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
-      const { SYNC_FOLDER } = await import("../../src/phone/syncFolder");
-      const { getByText, queryByText } = renderSidebar({ Component: PhoneSidebar });
-      expect(getByText(SYNC_FOLDER)).toBeInTheDocument();
+      const bound = (folder) => ({
+        status: { state: folder ? "synced" : "off", folder, lastSynced: null, problems: [] },
+      });
+      const { getByTestId, queryByText, unmount } = renderSidebar({
+        Component: PhoneSidebar,
+        sync: bound("Work"),
+      });
+      expect(getByTestId("sync-status").parentElement.textContent).toBe("Work");
       expect(queryByText("Notes")).not.toBeInTheDocument();
+      unmount();
+      const off = renderSidebar({ Component: PhoneSidebar, sync: bound(null) });
+      expect(off.getByTestId("sync-status").parentElement.textContent).toBe("Phone");
     } finally {
       vi.doUnmock("../../src/utils/platform");
       vi.resetModules();
@@ -958,6 +966,33 @@ describe("Sidebar on the phone", () => {
     expect(getByText(/Dropbox sign-in has expired/)).toBeInTheDocument();
     fireEvent.click(getByTestId("sync-sign-in"));
     expect(sync.signInAgain).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Connect Dropbox with none connected, and Disconnect once one is", () => {
+    const sync = {
+      status: { state: "off", folder: null, lastSynced: null, problems: [] },
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      syncNow: vi.fn(),
+    };
+    const off = renderSidebar({ sync });
+    const glyph = off.getByTestId("sync-status");
+    expect(glyph.getAttribute("aria-label")).toBe("Sync: Dropbox not connected");
+    fireEvent.click(glyph);
+    expect(
+      off.getByText(/Dropbox not connected. Your notes are on this phone only./),
+    ).toBeInTheDocument();
+    expect(off.queryByTestId("sync-disconnect")).not.toBeInTheDocument();
+    fireEvent.click(off.getByTestId("sync-connect"));
+    expect(sync.connect).toHaveBeenCalledTimes(1);
+    off.unmount();
+
+    sync.status = { state: "synced", folder: "Personal", lastSynced: null, problems: [] };
+    const on = renderSidebar({ sync });
+    fireEvent.click(on.getByTestId("sync-status"));
+    expect(on.queryByTestId("sync-connect")).not.toBeInTheDocument();
+    fireEvent.click(on.getByTestId("sync-disconnect"));
+    expect(sync.disconnect).toHaveBeenCalledTimes(1);
   });
 
   it("shows no sync state where nothing syncs", () => {

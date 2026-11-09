@@ -8,12 +8,18 @@
  * `pnpm android --live`: the installed app loads the Vite dev server instead
  * (`pnpm dev:phone`, port 5175, reached through `adb reverse`), so an edit
  * shows on the phone at once. Run a plain `pnpm android` to go back.
+ *
+ * `pnpm android --test-app`: installs "Boojy Notes (test)" (`org.boojy.notes.test`)
+ * beside the everyday app, with its own storage, for trying sign-ins and
+ * storage with notes that don't matter. Combines with `--live`.
  */
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 const LIVE_PORT = 5175;
 const live = process.argv.includes("--live");
+const testApp = process.argv.includes("--test-app");
+const appId = testApp ? "org.boojy.notes.test" : "org.boojy.notes";
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: "inherit", ...opts });
 const javaHome = execFileSync("/usr/libexec/java_home", ["-v", "21"]).toString().trim();
 const sdk = process.env.ANDROID_HOME ?? path.join(process.env.HOME, "Library/Android/sdk");
@@ -22,6 +28,7 @@ const env = {
   JAVA_HOME: javaHome,
   ANDROID_HOME: sdk,
   ...(live && { BOOJY_LIVE_URL: `http://localhost:${LIVE_PORT}` }),
+  ...(testApp && { BOOJY_TEST_APP: "1" }),
 };
 const bin = (name) => path.join("node_modules", ".bin", name);
 const adb = path.join(sdk, "platform-tools", "adb");
@@ -30,4 +37,4 @@ run(bin("vite"), ["build", "--mode", "phone"]);
 run(bin("cap"), ["sync", "android"], { env });
 run("./gradlew", ["installDebug", "-q"], { cwd: "android", env });
 if (live) run(adb, ["reverse", `tcp:${LIVE_PORT}`, `tcp:${LIVE_PORT}`]);
-run(adb, ["shell", "am", "start", "-n", "org.boojy.notes/.MainActivity"]);
+run(adb, ["shell", "am", "start", "-n", `${appId}/org.boojy.notes.MainActivity`]);

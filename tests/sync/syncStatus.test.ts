@@ -7,6 +7,7 @@ import {
   FAILING_AFTER,
   failureMeaning,
   problemsKey,
+  SyncProblemError,
 } from "../../src/sync/syncStatus";
 
 const done = (over: Partial<PassResult> = {}): PassResult => ({
@@ -17,20 +18,65 @@ const done = (over: Partial<PassResult> = {}): PassResult => ({
 });
 const offline = () => new TypeError("Failed to fetch");
 
-function settled() {
+/** Syncing with a connected folder, from the start. */
+function connected() {
   const sync = createSyncStatus({ now: () => 1000 });
+  sync.connected("Personal");
+  return sync;
+}
+
+function settled() {
+  const sync = connected();
   sync.started();
   sync.finished(done());
   return sync;
 }
 
 describe("sync's state", () => {
+  it("is off until a folder is connected", () => {
+    const sync = createSyncStatus();
+    sync.changed();
+    expect(sync.status()).toEqual({ state: "off", folder: null, lastSynced: null, problems: [] });
+  });
+
   it("is syncing until a first pass settles, never assumed synced", () => {
-    const sync = createSyncStatus({ now: () => 1000 });
-    expect(sync.status()).toEqual({ state: "syncing", lastSynced: null, problems: [] });
+    const sync = connected();
+    expect(sync.status()).toEqual({
+      state: "syncing",
+      folder: "Personal",
+      lastSynced: null,
+      problems: [],
+    });
     sync.started();
     sync.finished(done());
-    expect(sync.status()).toEqual({ state: "synced", lastSynced: 1000, problems: [] });
+    expect(sync.status()).toEqual({
+      state: "synced",
+      folder: "Personal",
+      lastSynced: 1000,
+      problems: [],
+    });
+  });
+
+  it("forgets everything on disconnect, and starts afresh on the next connect", () => {
+    const sync = settled();
+    sync.failed(new DropboxHttpError(400, '{"error": "invalid_grant"}', null));
+    sync.refused({ kind: "other-account" });
+    sync.disconnected();
+    expect(sync.status()).toEqual({ state: "off", folder: null, lastSynced: null, problems: [] });
+    sync.connected("Work");
+    expect(sync.status()).toEqual({
+      state: "syncing",
+      folder: "Work",
+      lastSynced: null,
+      problems: [],
+    });
+  });
+
+  it("says a refusal once when the stop is for the same cause", () => {
+    const sync = connected();
+    sync.failed(new SyncProblemError({ kind: "other-account" }));
+    sync.refused({ kind: "other-account" });
+    expect(sync.status().problems).toEqual([{ kind: "other-account" }]);
   });
 
   it("is not synced while a save waits for its pass", () => {
@@ -139,7 +185,7 @@ describe("sync's state", () => {
   });
 
   it("tells each listener of every change", () => {
-    const sync = createSyncStatus();
+    const sync = connected();
     const seen: string[] = [];
     const stop = sync.subscribe((s) => seen.push(s.state));
     sync.started();
@@ -151,6 +197,12 @@ describe("sync's state", () => {
 });
 
 describe("what a failure means", () => {
+  it("reads a stop before Dropbox's files as its own problem", () => {
+    expect(failureMeaning(new SyncProblemError({ kind: "other-account" }))).toEqual({
+      problem: { kind: "other-account" },
+    });
+  });
+
   it("reads a dead sign-in as signed out", () => {
     expect(failureMeaning(new DropboxHttpError(400, '{"error": "invalid_grant"}', null))).toEqual({
       problem: { kind: "signed-out" },

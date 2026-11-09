@@ -17,6 +17,11 @@ def signingFile = file(System.getenv('BOOJY_ANDROID_SIGNING') ?:
 def signing = new Properties()
 if (signingFile.exists()) signingFile.withInputStream { signing.load(it) }
 
+// `pnpm android --test-app` (BOOJY_TEST_APP=1): a second app beside the
+// everyday one, with its own storage, so trying sign-ins and storage never
+// touches the everyday install's notes. Debug builds only.
+def testApp = System.getenv('BOOJY_TEST_APP') == '1'
+
 android {
     namespace = "org.boojy.notes"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -26,6 +31,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode
         versionName appVersion
+        manifestPlaceholders = [appLabel: 'Boojy Notes']
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -44,6 +50,12 @@ android {
         }
     }
     buildTypes {
+        debug {
+            if (testApp) {
+                applicationIdSuffix '.test'
+                manifestPlaceholders = [appLabel: 'Boojy Notes (test)']
+            }
+        }
         release {
             if (signing.storeFile) signingConfig signingConfigs.release
             minifyEnabled false

@@ -243,7 +243,7 @@ declare global {
       selectWordAt: (x: number, y: number) => Promise<void>;
       /** Where the page loads the vault's files from (src/utils/attachmentUrl.js). */
       vaultAddress: string;
-      /** Sync's state, for Home's folder row (src/phone/useSyncStatus.ts). */
+      /** Sync's state and Dropbox's connection, for Home's folder row (src/phone/useSyncStatus.ts). */
       sync: import("../phone/useSyncStatus").PhoneSyncAPI;
     };
     /** Capacitor's bridge, present in the Android app before any script runs. */

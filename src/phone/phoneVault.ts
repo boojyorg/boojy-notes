@@ -803,7 +803,7 @@ export function createPhoneVault(
     return id !== null && (waiting.get(id) ?? 0) > 0;
   };
 
-  const store: LocalStore = {
+  const store: LocalStore & { forgetSync(): Promise<void> } = {
     list: () => lock(walk),
     read: (rel) => lock(() => files.read(abs(rel))),
 
@@ -897,6 +897,14 @@ export function createPhoneVault(
       return bytes ? new TextDecoder().decode(bytes) : null;
     },
     saveRecord: (text) => files.write(join(STATE, "sync-record.json"), encoder.encode(text)),
+
+    /** A disconnect: what sync knew goes (the record, restores waiting for it); the notes stay. */
+    forgetSync: () =>
+      lock(async () => {
+        for (const name of ["sync-record.json", "restored.json"]) {
+          if (await files.exists(join(STATE, name))) await files.remove(join(STATE, name));
+        }
+      }),
   };
 
   return { api, store };
