@@ -66,6 +66,7 @@ function startWatcher(getNotesDir, getMainWindow) {
   const notesDir = getNotesDir();
 
   if (watcher) watcher.close();
+  watcher = null;
   // Every claim belongs to the previous watch session; carried across a
   // restart, one could swallow a real outside event at the same path.
   for (const filePath of [...ownUnlinks.keys()]) releaseUnlinkClaim(filePath);
@@ -90,11 +91,19 @@ function startWatcher(getNotesDir, getMainWindow) {
   // One watch for the whole vault (treeWatcher: one FSEvents stream), never
   // one open file per note. A file is reported once it has held still for
   // 300 ms, so a save in flight is never read half-written.
-  watcher = watchTree(notesDir, {
-    stabilityMs: 300,
-    pollMs: 50,
-    ignored: (filePath) => isIgnoredPath(notesDir, filePath),
-  });
+  // A vault folder that is not there (first run before setup, an unplugged
+  // drive) is not watched: the window opens on it empty, as the files rule
+  // says, and choosing or setting up a folder restarts the watch.
+  try {
+    watcher = watchTree(notesDir, {
+      stabilityMs: 300,
+      pollMs: 50,
+      ignored: (filePath) => isIgnoredPath(notesDir, filePath),
+    });
+  } catch (error) {
+    trace("M", "watcher not started", notesDir, String(error));
+    return;
+  }
   watcher.on("error", (error) => trace("M", "watcher error", String(error)));
 
   if (traceEnabled) {

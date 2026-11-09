@@ -249,10 +249,19 @@ function addVersion(
   return v;
 }
 
-/** `text` as a new Autosave unless the latest version already holds it. */
+/**
+ * `text` as a new Autosave unless the latest version already holds it. A
+ * safety save never counts a session's unnamed Autosave as kept: the next
+ * session's end merges that one away (`endSession`), so the safety save takes
+ * its place, under its own reason.
+ */
 function autosave(id: string, text: string, src: Version["src"], reason?: string): void {
   if (readLog(id).off) return;
-  if (latest(id)?.hash === hashText(text)) return;
+  const last = latest(id);
+  if (last?.hash === hashText(text)) {
+    if (src !== "safety" || last.src !== "session" || last.name) return;
+    append(id, { op: "drop", id: last.id });
+  }
   addVersion(id, text, reason ? { kind: "auto", src, reason } : { kind: "auto", src });
 }
 

@@ -74,8 +74,11 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
   const status = createSyncStatus();
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
-  /** Asks for a pass; one the person asked for (`byHand`) needn't wait out Dropbox. */
-  let request: (byHand?: boolean) => void = () => {};
+  /**
+   * Asks for a pass; one the person asked for (`byHand`) needn't wait out
+   * Dropbox. Settles when that pass has, or at once when it waits.
+   */
+  let request: (byHand?: boolean) => Promise<void> = async () => {};
   /** Dropbox asked for no request before this (Retry-After), ms. */
   let notBefore = 0;
   let token: () => Promise<string> = () => Promise.reject(new Error("not signed in"));
@@ -195,10 +198,10 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
       // set for its end runs the pass.
       if (!byHand && Date.now() < notBefore) {
         retryIn(notBefore - Date.now());
-        return;
+        return Promise.resolve();
       }
       clearTimeout(retry);
-      runner
+      return runner
         .request()
         .then((result) => {
           // The runner stopped repeating with work still to do: come back to it.
@@ -215,23 +218,34 @@ export function createPhoneSync(files: FileOps, local: LocalStore) {
     window.addEventListener("online", () => request());
     request();
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const cursorNow = async () => {
+      const record = await local.loadRecord();
+      return record ? JSON.parse(record).cursor : null;
+    };
 
     // Dropbox answers a long-poll when the vault changes; each answer asks for a pass.
     (async () => {
       let unreachable = false;
       for (;;) {
         try {
-          const record = await local.loadRecord();
-          const cursor = record ? JSON.parse(record).cursor : null;
+          const cursor = await cursorNow();
           if (!active || !cursor) {
             await wait(5000);
             continue;
           }
           const { changes, backoff } = await remote.longpoll(cursor);
           // Reachable again: what was saved meanwhile goes up now.
-          if (changes || unreachable) request();
+          const ask = changes || unreachable;
           unreachable = false;
+          if (ask) await request();
           if (backoff) await wait(backoff * 1000);
+          else if (changes && (await cursorNow()) === cursor) {
+            // The pass could not move the cursor (signed out, the phone full,
+            // Dropbox's wait), so the next long-poll would answer at once:
+            // wait as a retry would.
+            const pause = status.status().state === "problem" ? PROBLEM_RETRY_MS : RETRY_MS;
+            await wait(Math.max(notBefore - Date.now(), pause));
+          }
         } catch (error) {
           if (error instanceof CursorResetError) {
             // Dropbox expired the cursor: a pass lists afresh and saves a new one.

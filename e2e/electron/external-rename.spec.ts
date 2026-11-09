@@ -219,3 +219,30 @@ test("a note renamed and edited outside just before a save keeps the outside tex
     await h.close();
   }
 });
+
+// Taking in the rename counted as an edit, so the next blur rewrote the file
+// (a new inode, the sync client's "new file") and the next outside edit to it
+// met "pending edits" and made a conflicted copy nobody caused.
+test("a note renamed outside is not written back on blur, and its next outside edit is taken as is", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha body.\n", "Beta.md": "Beta body.\n" });
+  try {
+    await h.openNote("Beta");
+    fs.renameSync(h.vault.file("Alpha.md"), h.vault.file("Renamed.md"));
+    await expect.poll(() => sidebarNoteTitles(h.page)).toContain("Renamed");
+    await sleep(SETTLE_MS);
+    const before = fs.statSync(h.vault.file("Renamed.md"), { bigint: true });
+
+    await h.page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await sleep(SETTLE_MS);
+    const after = fs.statSync(h.vault.file("Renamed.md"), { bigint: true });
+    expect(after.ino, "the file was rewritten").toBe(before.ino);
+    expect(after.mtimeNs).toBe(before.mtimeNs);
+
+    fs.writeFileSync(h.vault.file("Renamed.md"), "Alpha body.\nTheirs.\n");
+    await sleep(SETTLE_MS * 2);
+    expect(mdFiles(h.vault).sort()).toEqual(["Beta.md", "Renamed.md"]);
+    expect(h.vault.read("Renamed.md")).toBe("Alpha body.\nTheirs.\n");
+  } finally {
+    await h.close();
+  }
+});
