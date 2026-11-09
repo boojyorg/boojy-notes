@@ -159,6 +159,8 @@ const EditableBlock = memo(
     onFileShowInFolder,
     noteDataRef,
     onNavigateToNote,
+    // Drawn as a copy (an embed, a past version): no control offers an edit.
+    readOnly = false,
   }) {
     const { theme } = useTheme();
     const { TEXT } = theme;
@@ -268,6 +270,7 @@ const EditableBlock = memo(
           accentColor={accentColor}
           onSelect={() => onBlockSelect(block.id)}
           onDelete={() => onDeleteBlock(noteId, blockIndex)}
+          readOnly={readOnly}
           onCopyImage={onImageCopyImage}
           onShowInFolder={
             isElectron && !/^(https?:|data:)/i.test(block.src || "")
@@ -295,6 +298,7 @@ const EditableBlock = memo(
           size={block.size}
           accentColor={accentColor}
           onDelete={() => onDeleteBlock(noteId, blockIndex)}
+          readOnly={readOnly}
           onOpen={onFileOpen}
           onOpenDefault={onFileOpenDefault}
           onShowInFolder={onFileShowInFolder}
@@ -316,6 +320,7 @@ const EditableBlock = memo(
           onUpdateBlock={onUpdateBlockProperty}
           onBlockNav={onBlockNav}
           onDelete={(idx) => onDeleteBlock(noteId, idx)}
+          readOnly={readOnly}
         />,
         null,
         wholeRef,
@@ -379,6 +384,7 @@ const EditableBlock = memo(
           onUpdateTitle={onUpdateCalloutTitle}
           onBlockNav={onBlockNav}
           onDelete={(idx) => onDeleteBlock(noteId, idx)}
+          readOnly={readOnly}
         />,
         null,
         wholeRef,
@@ -403,6 +409,7 @@ const EditableBlock = memo(
           onSelect={() => onBlockSelect(block.id)}
           onBlockNav={onBlockNav}
           registerRef={registerRef}
+          readOnly={readOnly}
         />
       );
     }

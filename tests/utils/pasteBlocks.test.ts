@@ -5,6 +5,7 @@ import {
   stripIncidentalLineEnding,
   typedPaste,
   type PastedBlock,
+  pasteIsText,
 } from "../../src/utils/pasteBlocks";
 import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown";
 import type { Block } from "../../src/types/notes";
@@ -283,5 +284,20 @@ describe("buildPastedBlocks: footnotes", () => {
       "flour",
     ]);
     expect(blocksToMarkdown(r.blocks)).toBe(source);
+  });
+});
+
+describe("pasteIsText", () => {
+  const generated = [{ name: "image.png", type: "image/png" }];
+  it("takes the text beside a picture an app made of it (a spreadsheet's cells)", () => {
+    expect(pasteIsText(generated, "a\tb\nc\td")).toBe(true);
+  });
+  it("takes the files when they have names, come alone, or come with only their address", () => {
+    expect(pasteIsText([{ name: "Photo.png", type: "image/png" }], "Photo.png")).toBe(false);
+    expect(pasteIsText(generated, "")).toBe(false);
+    expect(pasteIsText(generated, "https://example.com/cat.png")).toBe(false);
+    // Apple Notes, TextEdit and Pages: the picture's text is U+FFFC.
+    expect(pasteIsText(generated, "\uFFFC")).toBe(false);
+    expect(pasteIsText([{ name: "image.png", type: "application/pdf" }], "text")).toBe(false);
   });
 });

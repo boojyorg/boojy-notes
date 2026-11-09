@@ -13,6 +13,8 @@ import { runChange } from "../utils/properties";
 import { settleTypedSpaces } from "../utils/inlineFormatting";
 import { openMathSource } from "../utils/mathOpen";
 import { LINE_KIND_TYPES, LIST_TYPES, MAX_INDENT } from "../utils/blockKinds";
+import { nextFootnoteNumber } from "../utils/footnoteTarget";
+import { isIdAlone, withoutOwnIds } from "../utils/blockTarget";
 
 /** The text blocks the Format menu can turn into one another. */
 const KIND_TYPES = new Set(["p", ...LINE_KIND_TYPES]);
@@ -195,15 +197,22 @@ export function useBlockOperations({
     const ids = Array.from({ length: to - from + 1 }, () => genBlockId());
     commitNoteData(
       editBlocks(noteId, (blocks) => {
+        // A label and an ID name one thing: a copied footnote takes the next
+        // free number (unused until referenced), and a copy drops its `^id`.
+        let label = nextFootnoteNumber(blocks);
         const copies = blocks.slice(from, to + 1).map((b, k) => {
-          const copy = { ...b, id: ids[k] };
+          const copy = { ...withoutOwnIds(b), id: ids[k] };
           delete copy.tightAbove;
           delete copy.looseAbove;
           // An embed's indent put it under the block above the original.
           delete copy.lead;
+          if (copy.type === "footnote") copy.label = String(label++);
           return copy;
         });
-        blocks.splice(to + 1, 0, ...copies);
+        // After an ID alone that names the run's last block: it keeps naming
+        // the original, never the copy put between them.
+        const at = isIdAlone(blocks[to + 1]) ? to + 2 : to + 1;
+        blocks.splice(at, 0, ...copies);
       }),
     );
     return ids;

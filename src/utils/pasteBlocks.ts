@@ -205,3 +205,24 @@ export function typedPaste(e: InputEvent) {
     },
   };
 }
+
+/**
+ * Whether a paste carrying files is the files' or the text's. A spreadsheet
+ * or word processor puts a picture of what was copied beside its text, which
+ * Chromium hands over as an unnamed `image.png`; the text is what was meant.
+ * Files with names of their own (Finder), a picture alone (a screenshot), or
+ * with only its address or a placeholder as text (a browser's Copy Image, a
+ * picture copied in Notes) are the files.
+ */
+export function pasteIsText(
+  files: readonly { name: string; type: string }[],
+  text: string,
+): boolean {
+  // A rich-text app (Notes, TextEdit, Pages) writes a copied picture's text as
+  // U+FFFC, the object placeholder: no text at all.
+  const words = text.replace(/\uFFFC/g, "").trim();
+  if (!words || /^\S+:\/\/\S+$/.test(words)) return false;
+  return (
+    files.length > 0 && files.every((f) => f.name === "image.png" && f.type.startsWith("image/"))
+  );
+}

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { blockSubpath, findBlockTarget, trailingBlockId } from "../../src/utils/blockTarget";
+import {
+  blockSubpath,
+  findBlockTarget,
+  trailingBlockId,
+  withoutOwnIds,
+} from "../../src/utils/blockTarget";
 
 const p = (text: string) => ({ type: "p", text });
 
@@ -83,5 +88,18 @@ describe("findBlockTarget", () => {
   it("is null for a missing ID or an ID alone with nothing before it", () => {
     expect(findBlockTarget([p("No ID here.")], "nope")).toBeNull();
     expect(findBlockTarget([p("^lonely")], "lonely")).toBeNull();
+  });
+});
+
+describe("withoutOwnIds", () => {
+  it("drops the IDs a block carries where ownIds reads them, and nothing else", () => {
+    expect(withoutOwnIds({ type: "p", text: "Claim ^a" }).text).toBe("Claim");
+    expect(withoutOwnIds({ type: "bullet", text: "Item ^b-2 " }).text).toBe("Item");
+    expect(withoutOwnIds({ type: "p", text: "Costs ^ten pounds" }).text).toBe("Costs ^ten pounds");
+    expect(withoutOwnIds({ type: "code", text: "x ^a" }).text).toBe("x ^a");
+    expect(withoutOwnIds({ type: "blockquote", text: "One ^a\n\nTwo ^b" }).text).toBe("One\n\nTwo");
+    const callout = withoutOwnIds({ type: "callout", title: "Title ^t", text: "Body ^c" });
+    expect([callout.title, callout.text]).toEqual(["Title", "Body"]);
+    expect(withoutOwnIds({ type: "table", rows: [["a ^x", "b"]] }).rows).toEqual([["a", "b"]]);
   });
 });

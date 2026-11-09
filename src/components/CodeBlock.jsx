@@ -64,6 +64,7 @@ export default memo(function CodeBlock({
   onUpdateBlock,
   onBlockNav,
   onDelete,
+  readOnly = false,
 }) {
   const [copied, setCopied] = useState(false);
   // A ```mermaid block is a diagram: drawn, its code joined above while open.
@@ -403,27 +404,32 @@ export default memo(function CodeBlock({
   // image's view; a press on the drawing still opens its code).
   const tools = (
     <div className={`code-tools${langMenu ? " code-tools-held" : ""}`}>
-      <button
-        type="button"
-        ref={langLabelRef}
-        className={`code-tool code-lang${langMenu ? " code-lang-open" : ""}`}
-        aria-haspopup="menu"
-        aria-expanded={!!langMenu}
-        aria-label="Code language"
-        {...langTip.handlers}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (langMenu) closeLangMenu();
-          else openLangMenu();
-        }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          langTip.handlers.onMouseDown();
-        }}
-      >
-        {displayLabel}
-        <ChevronDownIcon size={12} />
-      </button>
+      {/* A copy's language is a label, not a picker (ReadOnlyBlocks). */}
+      {readOnly ? (
+        <span className="code-tool code-lang">{displayLabel}</span>
+      ) : (
+        <button
+          type="button"
+          ref={langLabelRef}
+          className={`code-tool code-lang${langMenu ? " code-lang-open" : ""}`}
+          aria-haspopup="menu"
+          aria-expanded={!!langMenu}
+          aria-label="Code language"
+          {...langTip.handlers}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (langMenu) closeLangMenu();
+            else openLangMenu();
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            langTip.handlers.onMouseDown();
+          }}
+        >
+          {displayLabel}
+          <ChevronDownIcon size={12} />
+        </button>
+      )}
       {langTip.shown && !langMenu && (
         <Tooltip label="Change language" anchor={langLabelRef.current} />
       )}
@@ -550,18 +556,22 @@ export default memo(function CodeBlock({
                 handleCopy();
               },
             },
-            {
-              label: "Change language",
-              icon: <SlashCommandIcon name="code" />,
-              action: handleChangeLangFromMenu,
-            },
-            {
-              label: "Delete block",
-              icon: <TrashIcon />,
-              action: handleDeleteBlock,
-              danger: true,
-              rule: true,
-            },
+            ...(readOnly
+              ? []
+              : [
+                  {
+                    label: "Change language",
+                    icon: <SlashCommandIcon name="code" />,
+                    action: handleChangeLangFromMenu,
+                  },
+                  {
+                    label: "Delete block",
+                    icon: <TrashIcon />,
+                    action: handleDeleteBlock,
+                    danger: true,
+                    rule: true,
+                  },
+                ]),
           ]}
         />
       )}

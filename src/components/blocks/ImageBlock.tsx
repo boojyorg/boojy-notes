@@ -26,6 +26,8 @@ interface ImageBlockProps {
   selectedAlone?: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  /** Drawn as a copy (an embed, a past version): no menu row edits the note. */
+  readOnly?: boolean;
   /** Each is given the vault path of the file drawn, or `src` for a web address. */
   onCopyImage: (rel: string) => void;
   /** Desktop only. */
@@ -151,6 +153,7 @@ function ImageBlock({
   selectedAlone = false,
   onSelect,
   onDelete,
+  readOnly = false,
   markdown = false,
   onCopyImage,
   onShowInFolder,
@@ -260,7 +263,7 @@ function ImageBlock({
         image
         selected={isSelected}
         onFind={findable(src) && !outside ? findMissing : undefined}
-        onRemove={onDelete}
+        onRemove={readOnly ? undefined : onDelete}
       />
     );
   }
@@ -466,8 +469,8 @@ function ImageBlock({
           onView={view}
           onCopy={() => onCopyImage(fileOf())}
           onShowInFolder={onShowInFolder && (() => onShowInFolder(fileOf()))}
-          onOriginalSize={displayWidth != null ? () => onUpdateWidth(null) : undefined}
-          onDelete={onDelete}
+          onOriginalSize={!readOnly && displayWidth != null ? () => onUpdateWidth(null) : undefined}
+          onDelete={readOnly ? undefined : onDelete}
           onClose={() => setMenu(null)}
         />
       )}

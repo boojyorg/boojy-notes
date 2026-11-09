@@ -288,6 +288,13 @@ none blocks a stage.
   downloads (or a past version closes) with the note unchanged; switching away and back draws
   it. Footnote numbering had the same fault and now watches the scroller (#495); the same fix
   applies.
+- [ ] **Pasting whole blocks back into their note duplicates a footnote label or `^id`**
+  (2026-11-08 review): ⌘C/⌘V of a footnote or a paragraph ending `^id` leaves two of each, and
+  links reach the later one. Duplicate no longer does (`withoutOwnIds`); the paste of whole
+  blocks (`materialise`) needs the same rule, and a choice for a label the note already uses.
+- [ ] **Read actions inside an embed do nothing** (2026-11-08 review): Copy image, Show in
+  Finder and a file card's Open are wired to no-ops in `ReadOnlyBlocks`. Pass the real handlers
+  through `EmbedBlock` (nested embeds too), or hide them.
 
 ### From the September 2026 review
 

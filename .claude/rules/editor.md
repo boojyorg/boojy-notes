@@ -107,7 +107,7 @@ through state.**
   till Done or a leave (`flushAll`, not a blur); refused, its text waits in a notice.
   `footnote-create.spec.ts`.
 - **A definition shows `n.`; an unused one a dash**, its label above on hover or caret.
-  Its ↩ (menu: Back to reference) is Back while that jump is the visit open, else the first
+  Its ↩ is Back while that jump is the visit open, else the first
   reference, tinted as an element (`tintElement`).
 - **Move footnotes to bottom waits for its safety save** (`useMoveFootnotes`).
   `footnote-move.spec.ts`.
@@ -155,7 +155,7 @@ through state.**
 - `EditorContextMenu`: a misspelled word's, link's or tag's actions, then Cut, Copy, Paste; a field
   outside the note gets the same (`TextFieldMenu`); Shift+F10 at the caret. **Items
   run the keys' own path.** `text-context-menu.spec.ts`.
-- **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is late),
+- **Spelling is the system's, underlined by the app** (`useSpellingMarks`),
   never in code, tags or links; guesses only on a marked word.
   `spelling.spec.ts`, `spelling-line.spec.ts`.
 
@@ -173,7 +173,7 @@ through state.**
   cancel. A selection drags as one run. `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (`moveStep`).
   `list-move.spec.ts`.
-- **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (UI scale).
+- **Measured geometry is divided by `cssZoom(el)` before it becomes a style**.
 - **Every root the grip shows beside is in `blockRefs`**; media, code and callout register via
   `wholeRef`, not `elRef` (its repaint covers the wrapper).
 
@@ -288,7 +288,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
   (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, and an edited
   one fitting a lined-up header takes its columns. `table-preservation.spec.ts`.
-- **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root; one write, on drop. Keys in a cell move them too. `table-handles.spec.ts`.
+- **Rows and columns move by grips on the edges** (`TableHandles`) or a cell's keys; one write, on drop. `table-handles.spec.ts`.
 
 ## Whole-block selection
 
@@ -296,17 +296,18 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
   text selection touches), a press on a divider, image, table or embed; Shift-click extends. **A list item or footnote brings what nests
   under it** (`subtreeEnd`; drops land after, `dropBoundary`).
 - Backspace/Delete remove a selection in one commit, ⌘C/⌘X copy it whole (`wholeBlocksCopy`);
-  a letter deselects and types; a press off `data-selection-surface` deselects.
+  a letter deselects and types; a press off `data-selection-surface` deselects. **A
+  duplicate shares no label or `^id`** (`withoutOwnIds`).
 - **A drag from the left margin, a gutter strip or between blocks draws a box**
   (`useMarqueeSelect`, `marqueeRun`); Escape restores, its release clicks nothing. From
   text or right of a line (`besideLine`), it is text. `marquee-select.spec.ts`.
 - **The grip's click opens `BlockMenu` on its run** or text's lines (`gripSelection`;
-  right-click, Shift+F10 too), keys working; the gutter picks one. `block-menu-run.spec.ts`.
+  right-click, Shift+F10); the gutter picks one. `block-menu-run.spec.ts`.
 - **Arrows stop on a divider, image or embed, enter every block with a field**; deletion
   steps over code.
 - **A caret taken back never scrolls** (`preventScroll`). `caret-navigation.spec.ts`.
 
-## Embeds: drawn by the editor, read-only
+## Embeds: read-only copies
 
 - **An embed is drawn by `ReadOnlyBlocks`**, found as its
   link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is said.
@@ -319,8 +320,8 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **A block holding text never changes type on paste.** Plain lines stay soft breaks; a blank
   line starts a block; only an empty block is taken over by structure. Gboard's clipboard is a
   paste (`typedPaste`).
-- **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`).
-  `file-drop.spec.ts`.
+- **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`); an app's
+  picture of copied text yields to it (`pasteIsText`). `file-drop.spec.ts`.
 - **Copy**: structure travels only for whole blocks (`fullBlock`); a partial selection writes
   visible text and inline HTML. `copy-clipboard.spec.ts`.
 - **A multi-line rich paste is read as Markdown first** (`richPaste.ts`) unless it has no

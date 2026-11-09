@@ -22,6 +22,12 @@
 - **The text before a big delete is always kept in Version History** — a delete made within an hour of your last edit session could lose that safety version when the session's Autosave was merged.
 - **A save on a full disk fails instead of cutting the note short** — it now says it failed and leaves the file as it was.
 - **Starting with the notes folder missing works** — on a first run, or with the folder on a drive that isn't connected, closing the window and clicking the Dock icon didn't bring it back, and the app didn't check for updates.
+- **Cells copied from a spreadsheet paste as text** — Numbers and Excel put a picture of the cells on the clipboard too, and that picture was pasted (and saved as an attachment) instead of the text.
+- **Pasting into a table cell spreads over cells only for tab-separated text** — what spreadsheets copy; a two-line address or a sentence with a comma used to be split on every comma.
+- **⌘K puts a note named like a web address first** — typing `Node.js` used to offer "Link to Node.js" above your note of that name, and Enter picked the web link.
+- **An embedded note offers no edits it can't make** — inside an embed, a callout's type picker, a code block's language menu and Delete no longer appear.
+- **Backspace in a callout of only spaces deletes a space** — it used to jump to the title and leave the spaces.
+- **Duplicate doesn't copy a paragraph's `^id`** — two blocks with one ID made a link to it reach the copy.
 
 ## v0.21.0 — 2026-11-05
 

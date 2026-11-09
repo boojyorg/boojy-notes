@@ -11,7 +11,8 @@ interface Props {
   image?: boolean;
   /** Desktop only, and never for a web address: pick the file and copy it in. */
   onFind?: () => void;
-  onRemove: () => void;
+  /** None in a copy (an embed): nothing there to remove. */
+  onRemove?: () => void;
   /** Selected (the arrows, ⌥↓, the gutter): the outline a selected picture wears. */
   selected?: boolean;
 }
@@ -43,7 +44,9 @@ export default function MissingAttachment({
 
   const entries = [
     ...(onFind ? [{ label: "Find it…", icon: <RevealIcon />, action: onFind }] : []),
-    { label: "Remove", icon: <TrashIcon />, action: onRemove, rule: !!onFind, danger: true },
+    ...(onRemove
+      ? [{ label: "Remove", icon: <TrashIcon />, action: onRemove, rule: !!onFind, danger: true }]
+      : []),
   ];
 
   return (
@@ -55,11 +58,13 @@ export default function MissingAttachment({
         aria-label={`${name}, not found${onFind ? ". Find it" : ""}`}
         contentEditable={false}
         onClick={onFind}
+        // A copy's card (an embed) has nothing to offer: no menu, and
+        // right-click left to the page.
         onContextMenu={(e) => {
+          if (!entries.length) return;
           e.preventDefault();
           e.stopPropagation();
-          const p = pointAnchor(e);
-          setMenu({ anchor: p, fromBar: false });
+          setMenu({ anchor: pointAnchor(e), fromBar: false });
         }}
         onMouseEnter={(e) => {
           if (fromTouch(e)) return;
@@ -98,28 +103,30 @@ export default function MissingAttachment({
           {name}
         </span>
         <span style={{ fontSize: 12, flexShrink: 0 }}>Not found</span>
-        <span
-          ref={moreRef}
-          role="button"
-          tabIndex={-1}
-          aria-label="Attachment options"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (moreRef.current) setMenu({ anchor: rectAnchor(moreRef.current), fromBar: true });
-          }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 24,
-            height: 24,
-            borderRadius: 6,
-            flexShrink: 0,
-            color: TEXT.secondary,
-          }}
-        >
-          <MoreHorizontalIcon size={16} />
-        </span>
+        {entries.length > 0 && (
+          <span
+            ref={moreRef}
+            role="button"
+            tabIndex={-1}
+            aria-label="Attachment options"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (moreRef.current) setMenu({ anchor: rectAnchor(moreRef.current), fromBar: true });
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              flexShrink: 0,
+              color: TEXT.secondary,
+            }}
+          >
+            <MoreHorizontalIcon size={16} />
+          </span>
+        )}
       </div>
       {menu && (
         <ImageMenu

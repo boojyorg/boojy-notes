@@ -142,6 +142,57 @@ describe("useBlockOperations", () => {
     });
   });
 
+  // Copies kept a footnote's label and a block's `^id`, so the note held two
+  // definitions of one footnote (references then reached the copy) and two
+  // blocks with one ID.
+  describe("duplicateBlockRange", () => {
+    it("gives a copied footnote the next free number and drops a copied block ID", () => {
+      const blocks = [
+        paragraph("Claim.[^1] Linked ^claim"),
+        { ...paragraph("Source."), type: "footnote", label: "1" },
+        { ...paragraph("More of it."), indent: 1 },
+      ];
+      const { result, noteId, getNoteData } = setup(blocks);
+
+      act(() => {
+        result.current.duplicateBlockRange(noteId, 0, 2);
+      });
+
+      const out = getNoteData()[noteId].content.blocks;
+      expect(out.map((b) => [b.type, b.label ?? null, b.text])).toEqual([
+        ["p", null, "Claim.[^1] Linked ^claim"],
+        ["footnote", "1", "Source."],
+        ["p", null, "More of it."],
+        ["p", null, "Claim.[^1] Linked"],
+        ["footnote", "2", "Source."],
+        ["p", null, "More of it."],
+      ]);
+    });
+  });
+
+  // An ID alone names the block before it: a copy put between them took it.
+  it("puts a copy after the ID alone that names the original, and the copy names nothing", () => {
+    const blocks = [paragraph("Table stand-in"), paragraph("^tbl"), paragraph("After")];
+    const { result, noteId, getNoteData } = setup(blocks);
+
+    act(() => {
+      result.current.duplicateBlockRange(noteId, 0, 0);
+    });
+    act(() => {
+      result.current.duplicateBlockRange(noteId, 0, 1);
+    });
+
+    const out = getNoteData()[noteId].content.blocks;
+    expect(out.map((b) => b.text)).toEqual([
+      "Table stand-in",
+      "^tbl",
+      "Table stand-in",
+      "",
+      "Table stand-in",
+      "After",
+    ]);
+  });
+
   describe("deleteBlock", () => {
     it("removes the correct block", () => {
       const blocks = [paragraph("a"), paragraph("b"), paragraph("c")];

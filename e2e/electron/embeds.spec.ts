@@ -483,3 +483,32 @@ test("a link with a | suffix is refused and said, never saved without it", async
     await h.close();
   }
 });
+
+// The copy's blocks kept their edit controls with every handler a no-op: a
+// type or language picked, or Delete, closed the menu and changed nothing.
+test("an embed's callout, code and table offer no edits: no picker, add bar or Delete", async () => {
+  const parts =
+    "> [!note] Title\n> Body.\n\n```js\nlet x = 1;\n```\n\n| a | b |\n| - | - |\n| c | d |\n\nEnd.\n";
+  const h = await launchApp({ "Parts.md": parts, "Host.md": "Before.\n\n![[Parts]]\n" });
+  try {
+    await h.openNote("Host");
+    const embed = embeds(h.page).first();
+    await expect(embed.getByText("let x = 1;")).toBeVisible();
+    await expect(embed.locator('[aria-label="Change callout type"]')).toHaveCount(0);
+    await expect(embed.getByRole("button", { name: "Code language" })).toHaveCount(0);
+    await expect(embed.getByRole("button", { name: "Add row" })).toHaveCount(0);
+    await expect(embed.getByRole("button", { name: "Add column" })).toHaveCount(0);
+    await embed.locator(".code-textarea").click({ button: "right" });
+    const menu = h.page.getByRole("menu", { name: "Code block options" });
+    await expect(menu.getByRole("menuitem")).toHaveText(["Copy code"]);
+    await expect(menu).toBeFocused();
+    await h.page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    // The original keeps them.
+    await h.openNote("Parts");
+    await expect(h.page.locator('[data-editor] [aria-label="Change callout type"]')).toHaveCount(1);
+    expect(h.vault.read("Parts.md")).toBe(parts);
+  } finally {
+    await h.close();
+  }
+});

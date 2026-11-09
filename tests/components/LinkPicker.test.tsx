@@ -63,13 +63,45 @@ describe("LinkPicker, creating", () => {
       "google.comReading",
       "Todd's NoteNotes",
     ]);
+    // A note of exactly that name comes before the address it also reads as.
     type("google.com");
-    expect(rows()).toEqual(["Link to google.com", "google.comReading"]);
+    expect(rows()).toEqual(["google.comReading", "Link to google.com"]);
+    type("google.co");
+    expect(rows()).toEqual(["Link to google.co", "google.comReading", "Create note “google.co”"]);
     type("github.com/boojy");
     expect(rows()).toEqual(["Link to github.com/boojy", "Create note “github.com/boojy”"]);
     type("goals");
     // A note of that name exists: no Create row.
     expect(rows()).toEqual(["GoalsPersonal", "GoalsUniversity/Semester 1"]);
+  });
+
+  // `Node.js` reads as an address; Enter took the web link over the note.
+  it("Enter on a dotted name that is a note's opens the note, not a web address", () => {
+    const { onApply } = mount({
+      notes: [...notes, { id: "node", title: "Node.js", folder: null }],
+    });
+    type("Node.js");
+    fireEvent.keyDown(dest(), { key: "Enter" });
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ dest: expect.objectContaining({ kind: "note", id: "node" }) }),
+    );
+  });
+
+  // Notes come in the vault's order: one that only contains the name could
+  // stand first and take Enter.
+  it("a note of exactly the typed name leads, before notes that only contain it", () => {
+    const { onApply } = mount({
+      notes: [
+        { id: "intro", title: "Intro to Node.js", folder: null },
+        { id: "node", title: "Node.js", folder: null },
+      ],
+    });
+    type("Node.js");
+    expect(rows()).toEqual(["Node.jsNotes", "Link to Node.js", "Intro to Node.jsNotes"]);
+    fireEvent.keyDown(dest(), { key: "Enter" });
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ dest: expect.objectContaining({ kind: "note", id: "node" }) }),
+    );
   });
 
   it("Enter applies the highlighted row, the arrows move it, a click applies its row", () => {

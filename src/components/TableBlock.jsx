@@ -148,6 +148,8 @@ export default memo(function TableBlock({
   onSelect,
   onBlockNav,
   registerRef,
+  // Drawn as a copy (an embed, a past version): no grip, add bar or menu offers an edit.
+  readOnly = false,
 }) {
   const rhythm = useRhythm();
   const { theme } = useTheme();
@@ -387,14 +389,17 @@ export default memo(function TableBlock({
 
   const handleCellPaste = useCallback(
     (e, rowIdx, colIdx) => {
+      // Only what a spreadsheet copies (tab-separated) spreads over cells; a
+      // comma is prose's (an address, a sentence), pasted into the one cell.
       const text = e.clipboardData.getData("text/plain");
-      if (text.includes("\t") || (text.includes(",") && text.includes("\n"))) {
+      if (text.includes("\t")) {
         e.preventDefault();
-        const delimiter = text.includes("\t") ? "\t" : ",";
+        // Only the copy's last line ending goes: a leading tab is an empty
+        // first cell, and trimming it would shift the row left.
         const pastedRows = text
-          .trim()
-          .split("\n")
-          .map((r) => r.split(delimiter).map((c) => c.trim()));
+          .replace(/\r?\n$/, "")
+          .split(/\r?\n/)
+          .map((r) => r.split("\t").map((c) => c.trim()));
         onUpdateTableRows(noteId, blockIndex, (cur) => {
           const width = tableColumnCount(cur) || 2;
           let newRows = cur;
@@ -524,64 +529,72 @@ export default memo(function TableBlock({
           </table>
         </div>
 
-        {/* Add-column box — the grid's height, past its right edge, sharing
+        {!readOnly && (
+          <>
+            {/* Add-column box — the grid's height, past its right edge, sharing
             the grid's border line (no left border of its own) */}
-        <div
-          className="table-add-bar table-right-zone"
-          role="button"
-          aria-label="Add column"
-          style={{
-            position: "absolute",
-            left: "100%",
-            top: 0,
-            bottom: 0,
-            width: ADD_BAR,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            border: `1px solid ${theme.BG.divider}`,
-            borderLeft: "none",
-          }}
-          onPointerDown={handleRightZonePointerDown}
-          onClick={handleRightZoneClick}
-          onContextMenu={noTextMenu}
-        >
-          <PlusIcon size={ADD_PLUS} nav />
-        </div>
+            <div
+              className="table-add-bar table-right-zone"
+              role="button"
+              aria-label="Add column"
+              style={{
+                position: "absolute",
+                left: "100%",
+                top: 0,
+                bottom: 0,
+                width: ADD_BAR,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                border: `1px solid ${theme.BG.divider}`,
+                borderLeft: "none",
+              }}
+              onPointerDown={handleRightZonePointerDown}
+              onClick={handleRightZoneClick}
+              onContextMenu={noTextMenu}
+            >
+              <PlusIcon size={ADD_PLUS} nav />
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Add-row box — the grid's width, under its bottom edge, sharing the
+      {!readOnly && (
+        <>
+          {/* Add-row box — the grid's width, under its bottom edge, sharing the
           grid's border line (no top border of its own) */}
-      <div
-        className="table-add-bar table-bottom-zone"
-        role="button"
-        aria-label="Add row"
-        style={{
-          position: "relative",
-          height: ADD_BAR,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          border: `1px solid ${theme.BG.divider}`,
-          borderTop: "none",
-        }}
-        onPointerDown={handleBottomZonePointerDown}
-        onClick={handleBottomZoneClick}
-        onContextMenu={noTextMenu}
-      >
-        <PlusIcon size={ADD_PLUS} nav />
-      </div>
+          <div
+            className="table-add-bar table-bottom-zone"
+            role="button"
+            aria-label="Add row"
+            style={{
+              position: "relative",
+              height: ADD_BAR,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              border: `1px solid ${theme.BG.divider}`,
+              borderTop: "none",
+            }}
+            onPointerDown={handleBottomZonePointerDown}
+            onClick={handleBottomZoneClick}
+            onContextMenu={noTextMenu}
+          >
+            <PlusIcon size={ADD_PLUS} nav />
+          </div>
 
-      <TableHandles
-        rootRef={rootRef}
-        tableRef={tableRef}
-        selection={gripSelection}
-        shapeKey={block}
-        onOpenMenu={openGripMenu}
-        onMove={handleMove}
-      />
+          <TableHandles
+            rootRef={rootRef}
+            tableRef={tableRef}
+            selection={gripSelection}
+            shapeKey={block}
+            onOpenMenu={openGripMenu}
+            onMove={handleMove}
+          />
+        </>
+      )}
 
       {/* Counter badge during drag-to-create */}
       {createBadge && (
@@ -606,7 +619,7 @@ export default memo(function TableBlock({
       )}
 
       {/* Context menu */}
-      {contextMenu && (
+      {contextMenu && !readOnly && (
         <TableContextMenu
           anchor={contextMenu.anchor}
           context={contextMenu.context}
