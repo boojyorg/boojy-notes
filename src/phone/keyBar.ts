@@ -68,7 +68,7 @@ const ROW_CONTENTS: Record<string, string> = {
   heading: "H1–H6",
   lists: "Bullet, numbered, to-do",
   format: "Bold, italic and more",
-  more: "Table, quote, code, divider",
+  more: "Table, quote, code, maths, footnote, divider",
 };
 export const rowContents = (key: string) => ROW_CONTENTS[key];
 
@@ -76,6 +76,7 @@ const FIELD_NAMES: Record<string, string> = {
   code: "Not in a code block",
   table: "Not in a table",
   callout: "Not in a callout",
+  math: "Not in a formula",
 };
 
 /** Why a greyed button does nothing, said under its name: the field the caret is in, if any. */

@@ -42,7 +42,11 @@ const caret = (from: number, to = from, line = 0) => {
     document.dispatchEvent(new Event("selectionchange"));
   });
 };
-const props = { onInsert: vi.fn(), canIndent: vi.fn((_: 1 | -1) => true) };
+const props = {
+  onInsert: vi.fn(),
+  canIndent: vi.fn((_: 1 | -1) => true),
+  canFootnote: vi.fn(() => true),
+};
 const mount = () => render(<PhoneKeyBar editorRef={{ current: editor }} {...props} />);
 const press = (name: string) => fireEvent.click(screen.getByRole("button", { name }));
 const lit = (name: string) => screen.getByRole("button", { name }).getAttribute("aria-pressed");
@@ -56,7 +60,7 @@ const MORE = [
   "Quote",
   "Code block",
   "Maths",
-  "Diagram",
+  "Footnote",
   "Divider",
   "Close",
 ];
@@ -76,6 +80,8 @@ beforeEach(() => {
   props.onInsert.mockClear();
   props.canIndent.mockReset();
   props.canIndent.mockReturnValue(true);
+  props.canFootnote.mockReset();
+  props.canFootnote.mockReturnValue(true);
   editor = document.createElement("div");
   editor.innerHTML =
     '<p data-block-type="p">Hello world</p><h2 data-block-type="h2">Title</h2><p data-block-type="bullet"><b>Bold</b></p><p data-block-type="bullet">Item</p>';
@@ -224,15 +230,19 @@ describe("the bar above the keyboard", () => {
     press("Divider");
     press("More blocks");
     press("Maths");
+    expect(props.onInsert.mock.calls.map(([c]) => c)).toEqual(["code", "table", "divider", "math"]);
+  });
+
+  // `[^` is two keyboard layers away on a phone; a diagram is code nobody
+  // writes on one (`/diagram` still makes it).
+  it("Footnote writes one at the caret, as Format › Insert Footnote does, closing the row", () => {
+    mount();
+    size(412, 532);
+    caret(5);
     press("More blocks");
-    press("Diagram");
-    expect(props.onInsert.mock.calls.map(([c]) => c)).toEqual([
-      "code",
-      "table",
-      "divider",
-      "math",
-      "diagram",
-    ]);
+    press("Footnote");
+    expect(sent).toEqual(["footnote"]);
+    expect(row()).toEqual(MAIN);
   });
 
   it("turns the line into a quote, a quote's own button making it text again", () => {
@@ -557,6 +567,29 @@ describe("tap acts, hold explains", () => {
     caret(2);
     expect(hold("Headings")).toBe("HeadingsNot in a code block");
     expect(row()).toEqual(MAIN);
+  });
+
+  // Greyed by Insert Footnote's own answer (`canInsertFootnote`), as the
+  // menu bar's item is: a formula's source or a selection across blocks is
+  // no field, yet no footnote can go there.
+  it("greys Footnote wherever Insert Footnote cannot act, saying why", () => {
+    props.canFootnote.mockReturnValue(false);
+    editor.innerHTML = '<p data-block-type="code">let x</p>';
+    caret(2);
+    press("More blocks");
+    expect(button("Footnote")).toHaveAttribute("aria-disabled", "true");
+    expect(hold("Footnote")).toBe("FootnoteNot in a code block");
+    press("Close");
+    editor.innerHTML = '<p data-block-type="math">x^2</p>';
+    caret(1);
+    press("More blocks");
+    expect(button("Footnote")).toHaveAttribute("aria-disabled", "true");
+    expect(hold("Footnote")).toBe("FootnoteNot in a formula");
+  });
+
+  it("names the more row's blocks on a hold", () => {
+    caret(2);
+    expect(hold("More blocks")).toBe("More blocksTable, quote, code, maths, footnote, divider");
   });
 
   it("greys a style that needs a selection, and says so; a selection lets it act", () => {
