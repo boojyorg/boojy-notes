@@ -1,8 +1,8 @@
 Boojy Notes is a Markdown editor for notes you own. Every note is a plain .md file, so you can open it in Obsidian, a text editor or anything else, and nothing is locked in.
 
-On Android, Boojy Notes syncs through your Dropbox. It keeps your notes in their own folder there (Apps/Boojy Notes), and the desktop app on a Mac, Windows or Linux computer can edit the same notes. You can write offline, and your changes go up when you're back online.
-
 It writes notes the way Obsidian does, so a vault moves between the two without changes: headings, lists and to-dos, quotes, tables, code blocks, maths, callouts and footnotes, links between notes with [[wikilinks]], and #tags. A bar above the keyboard holds headings, lists, text styles and the other blocks, so you rarely need to type the Markdown yourself.
+
+The same notes open in the desktop app on a Mac, Windows or Linux computer. For now, the phone and computer sync through your own Dropbox, where your notes sit in their own folder (Apps/Boojy Notes). You can write offline, and your changes go up when you're back online.
 
 There's no Boojy account, no ads and no tracking. Your notes go between your phone and your Dropbox and never pass through me.
 
