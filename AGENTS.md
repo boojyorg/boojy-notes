@@ -47,6 +47,7 @@ pnpm typecheck        # tsc --noEmit
 pnpm build:electron   # desktop installers into release/
 pnpm dev:phone        # the Android app's dev server (port 5175)
 pnpm android          # build + install on a connected phone; --live loads dev:phone
+pnpm android:bundle   # the signed AAB for Google Play (upload key: ~/Documents/Keys)
 ```
 
 ## Structure
