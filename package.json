@@ -16,6 +16,7 @@
     "build": "vite build",
     "build:electron": "node -e \"fs.rmSync('dist-electron',{recursive:true,force:true})\" && vite build && electron-builder",
     "android": "node dev/android/run.mjs",
+    "android:bundle": "node dev/android/bundle.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

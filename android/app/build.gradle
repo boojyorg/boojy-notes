@@ -1,4 +1,21 @@
+import groovy.json.JsonSlurper
+
 apply plugin: 'com.android.application'
+
+// One version for every platform: package.json's. The code orders releases
+// for Play (0.22.0 → 2200, 1.0.0 → 10000), so each part stays under 100.
+def appVersion = new JsonSlurper().parse(file('../../package.json')).version
+def versionParts = appVersion.tokenize('-')[0].tokenize('.').collect { it as int }
+assert versionParts.size() == 3 && versionParts[1] < 100 && versionParts[2] < 100
+def appVersionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
+
+// The Play upload key's settings live outside the repo: the file
+// BOOJY_ANDROID_SIGNING names (CI), else ~/Documents/Keys. Without one, a
+// release build is left unsigned and debug builds are untouched.
+def signingFile = file(System.getenv('BOOJY_ANDROID_SIGNING') ?:
+    "${System.getProperty('user.home')}/Documents/Keys/boojy-notes-upload.properties")
+def signing = new Properties()
+if (signingFile.exists()) signingFile.withInputStream { signing.load(it) }
 
 android {
     namespace = "org.boojy.notes"
@@ -7,8 +24,8 @@ android {
         applicationId "org.boojy.notes"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +33,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (signing.storeFile) {
+                storeFile file(signing.storeFile)
+                storePassword signing.storePassword
+                keyAlias signing.keyAlias
+                keyPassword signing.keyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (signing.storeFile) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
