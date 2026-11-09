@@ -11,7 +11,10 @@ describe("resolveAttachmentUrl on the phone", () => {
   beforeEach(() => {
     platform.isElectron = false;
     platform.isPhone = true;
-    window.boojyPhoneAPI = { vaultAddress: base };
+    // As the phone's start builds it for the app's own storage (src/phone/files.ts).
+    window.boojyPhoneAPI = {
+      attachmentAddress: (rel) => `${base}/${rel.split("/").map(encodeURIComponent).join("/")}`,
+    };
   });
   afterEach(() => {
     platform.isElectron = true;
@@ -64,6 +67,14 @@ describe("attachmentName: the name the full-size view shows", () => {
     expect(attachmentName("Shot%20(2).png")).toBe("Shot (2).png");
     expect(attachmentName("https://example.com/img/chart.png?v=2#x")).toBe("chart.png");
     expect(attachmentName("100%.png")).toBe("100%.png");
+  });
+
+  it("is the file's name alone from a picked folder's address, which encodes the whole path", () => {
+    expect(
+      attachmentName(
+        "https://localhost/_capacitor_content_/com.android.externalstorage.documents/tree/primary%3ADocuments%2FBoojy%20Notes/document/primary%3ADocuments%2FBoojy%20Notes%2Fphotos%2FBeach%20day.jpg",
+      ),
+    ).toBe("Beach day.jpg");
   });
 
   it("is empty for inline data and nothing", () => {

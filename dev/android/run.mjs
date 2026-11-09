@@ -12,6 +12,11 @@
  * `pnpm android --test-app`: installs "Boojy Notes (test)" (`org.boojy.notes.test`)
  * beside the everyday app, with its own storage, for trying sign-ins and
  * storage with notes that don't matter. Combines with `--live`.
+ *
+ * `pnpm android --test-app --folder`: the test app keeps its notes in a
+ * folder picked at its first start (`Documents/Boojy Notes (test)`), not in
+ * its private storage. Until the app has a screen for choosing one, this is
+ * the only way in, and never in the everyday app.
  */
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -19,6 +24,11 @@ import path from "node:path";
 const LIVE_PORT = 5175;
 const live = process.argv.includes("--live");
 const testApp = process.argv.includes("--test-app");
+const folder = process.argv.includes("--folder");
+if (folder && !testApp) {
+  console.error("--folder is for the test app only: pnpm android --test-app --folder");
+  process.exit(1);
+}
 const appId = testApp ? "org.boojy.notes.test" : "org.boojy.notes";
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: "inherit", ...opts });
 const javaHome = execFileSync("/usr/libexec/java_home", ["-v", "21"]).toString().trim();
@@ -29,11 +39,12 @@ const env = {
   ANDROID_HOME: sdk,
   ...(live && { BOOJY_LIVE_URL: `http://localhost:${LIVE_PORT}` }),
   ...(testApp && { BOOJY_TEST_APP: "1" }),
+  ...(folder && { VITE_BOOJY_FOLDER: "1" }),
 };
 const bin = (name) => path.join("node_modules", ".bin", name);
 const adb = path.join(sdk, "platform-tools", "adb");
 
-run(bin("vite"), ["build", "--mode", "phone"]);
+run(bin("vite"), ["build", "--mode", "phone"], { env });
 run(bin("cap"), ["sync", "android"], { env });
 run("./gradlew", ["installDebug", "-q"], { cwd: "android", env });
 if (live) run(adb, ["reverse", `tcp:${LIVE_PORT}`, `tcp:${LIVE_PORT}`]);

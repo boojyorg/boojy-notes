@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/phone/files", () => ({
   capacitorFiles: () => ({ recover: async () => {}, read: async () => null }),
-  fileAddress: async () => "https://localhost/_capacitor_file_/vault",
+  fileAddress: async () => (rel: string) => `https://localhost/_capacitor_file_/vault/${rel}`,
 }));
 vi.mock("../../src/phone/phoneVault", () => ({
   VAULT: "vault",

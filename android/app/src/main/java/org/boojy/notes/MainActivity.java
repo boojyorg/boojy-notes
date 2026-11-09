@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
         // The app's own plugins are registered before the bridge starts.
         registerPlugin(HoldFeelPlugin.class);
         registerPlugin(SelectWordPlugin.class);
+        registerPlugin(FolderAccessPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

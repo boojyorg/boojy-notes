@@ -1,9 +1,30 @@
+import { Capacitor } from "@capacitor/core";
 import { onCommand } from "./commands";
-import { capacitorFiles, fileAddress } from "./files";
+import { capacitorFiles, type FileOps, fileAddress } from "./files";
+import { FolderAccess, folderAddress, folderFiles, grantedFolder } from "./folderFiles";
 import { createPhoneSync } from "./phoneSync";
 import { createPhoneVault, VAULT } from "./phoneVault";
 import { holdFelt } from "./haptics";
+import { routedFiles } from "./routedFiles";
 import { selectWordAt } from "./selectWord";
+
+/**
+ * `pnpm android --test-app --folder` only: the notes live in a folder picked
+ * with Android's folder picker. Until the app has a screen for choosing one,
+ * no other build reaches the folder code.
+ */
+const FOLDER_SWITCH =
+  (import.meta as { env?: Record<string, string> }).env?.VITE_BOOJY_FOLDER === "1";
+const TEST_FOLDER = "Boojy Notes (test)";
+
+/** The folder this install was given; asked for once, at the first start. */
+async function testFolder() {
+  const kept = await grantedFolder();
+  if (kept) return kept;
+  const { initial } = await FolderAccess.ensureDefault({ name: TEST_FOLDER });
+  const got = await FolderAccess.pick({ initial });
+  return got.picked && got.tree && got.root ? { tree: got.tree, root: got.root } : null;
+}
 
 /**
  * Runs before the app renders, on the phone only (main.jsx). The vault
@@ -12,9 +33,12 @@ import { selectWordAt } from "./selectWord";
  * alone until one is connected from Home.
  */
 export async function installPhone() {
-  const files = capacitorFiles();
+  const priv = capacitorFiles();
   // A save the app died in the middle of is finished or undone before anything reads.
-  await files.recover("state");
+  await priv.recover("state");
+  const folder = FOLDER_SWITCH ? await testFolder() : null;
+  // With a folder, the vault is the folder's and the rest stays private.
+  const files: FileOps = folder ? routedFiles(priv, folderFiles(folder, priv), VAULT) : priv;
   await files.recover("vault");
   let sync: ReturnType<typeof createPhoneSync> | null = null;
   const vault = createPhoneVault(files, { onLocalChange: () => sync?.localChanged() });
@@ -23,7 +47,9 @@ export async function installPhone() {
   // keyboard sends on it), the feel of a hold, and sync for Home's folder row.
   (window as unknown as { boojyPhoneAPI: unknown }).boojyPhoneAPI = {
     ...vault.api,
-    vaultAddress: await fileAddress(VAULT),
+    attachmentAddress: folder
+      ? folderAddress(folder, Capacitor.convertFileSrc)
+      : await fileAddress(VAULT),
     onMenuCommand: onCommand,
     holdFelt,
     selectWordAt,
