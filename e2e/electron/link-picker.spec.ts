@@ -94,7 +94,7 @@ test("selected words become a note link with those words as its text; a namesake
   }
 });
 
-test("an address without its scheme is the first row and gets https; a note of that name is its own row; Create only where no note exists", async () => {
+test("an address without its scheme gets https, after a note of exactly that name; Create only where no note exists", async () => {
   const h = await launchApp(FILES);
   try {
     await expandAllFolders(h.page);
@@ -104,7 +104,8 @@ test("an address without its scheme is the first row and gets https; a note of t
     await h.page.keyboard.type(" ");
     await h.page.keyboard.press(`${MOD}+k`);
     await h.page.keyboard.type("google.com");
-    expect(await rowsOf(h.page)).toEqual(["Link to google.com", "google.com Reading"]);
+    // A note of exactly that name comes before the address it also reads as.
+    expect(await rowsOf(h.page)).toEqual(["google.com Reading", "Link to google.com"]);
     await h.page.keyboard.press("Escape");
     await expect(picker(h.page)).toHaveCount(0);
 

@@ -280,3 +280,32 @@ test("Always open takes away `-` or `+` and opens the callout; ⌘Z folds it aga
   await expect(chevron(h.page, 0)).toHaveAttribute("aria-expanded", "false");
   await expect(callout(h.page, 0).locator(".callout-title")).toBeFocused();
 });
+
+// Enter in a title moves to the body; folded, the body is inert, so the key
+// was taken and nothing happened.
+test("Enter in a folded callout's title opens it and puts the caret in the body, writing nothing", async () => {
+  await callout(h.page, 0).locator(".callout-title").click();
+  await h.page.keyboard.press("End");
+  await h.page.keyboard.press("Enter");
+  await expect(chevron(h.page, 0)).toHaveAttribute("aria-expanded", "true");
+  await expect(callout(h.page, 0).locator(".callout-body")).toBeFocused();
+  await unchanged();
+});
+
+// "Is the body empty" trimmed it, so a body of spaces counted as empty and
+// Backspace jumped to the title, leaving the spaces.
+test("Backspace in a body of spaces deletes a space, staying in the body", async () => {
+  const body = callout(h.page, 2).locator(".callout-body");
+  await body.getByText("Plain body.").click();
+  await h.page.keyboard.press("End");
+  for (let i = 0; i < "Plain body.".length; i++) await h.page.keyboard.press("Backspace");
+  await h.page.keyboard.type("  ");
+  await h.page.keyboard.press("Backspace");
+  await expect(body).toBeFocused();
+  await expect.poll(() => body.evaluate((el) => el.textContent?.replace(/\u00a0/g, " "))).toBe(" ");
+  // The last space goes too; only then does Backspace leave for the title.
+  await h.page.keyboard.press("Backspace");
+  await expect(body).toBeFocused();
+  await h.page.keyboard.press("Backspace");
+  await expect(callout(h.page, 2).locator(".callout-title")).toBeFocused();
+});

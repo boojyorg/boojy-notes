@@ -60,6 +60,33 @@ function ownIds(b: TargetBlock): string[] {
   return id ? [id] : [];
 }
 
+/** An ID ending a paragraph, with the whitespace before and after it. */
+const TRAILING_ID_RE = new RegExp(`\\s+\\^${ID}\\s*$`);
+const withoutParagraphIds = (text: string | undefined) =>
+  text
+    ?.split(/(\n[ \t]*\n)/)
+    .map((part, i) => (i % 2 ? part : part.replace(TRAILING_ID_RE, "")))
+    .join("");
+
+/**
+ * `b` without the IDs it carries itself (`ownIds`, in the same places): a copy
+ * (Duplicate) must not name what its original names.
+ */
+export function withoutOwnIds<T extends TargetBlock>(b: T): T {
+  if (["code", "math", "embed", "frontmatter"].includes(b.type ?? "")) return b;
+  if (b.type === "table") {
+    return {
+      ...b,
+      rows: b.rows?.map((row) => row.map((cell) => withoutParagraphIds(cell) ?? cell)),
+    };
+  }
+  if (b.type === "callout") {
+    return { ...b, title: withoutParagraphIds(b.title), text: withoutParagraphIds(b.text) };
+  }
+  if (b.type === "blockquote") return { ...b, text: withoutParagraphIds(b.text) };
+  return b.text === undefined ? b : { ...b, text: b.text.replace(TRAILING_ID_RE, "") };
+}
+
 const isEmptyRow = (b: TargetBlock) => b.type === "p" && !(b.text ?? "").trim();
 
 /** The Markdown block ending at `j`: a list's or a quote's run of rows, else the block. */

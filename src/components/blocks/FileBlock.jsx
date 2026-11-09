@@ -35,6 +35,8 @@ function FileBlock({
   filename,
   size,
   onDelete,
+  // Drawn as a copy (an embed, a past version): no Delete.
+  readOnly = false,
   onOpen,
   onOpenDefault,
   onShowInFolder,
@@ -92,7 +94,7 @@ function FileBlock({
               }
             : undefined
         }
-        onRemove={onDelete}
+        onRemove={readOnly ? undefined : onDelete}
       />
     );
 
@@ -181,13 +183,17 @@ function FileBlock({
               icon: <CopyIcon />,
               action: act(() => navigator.clipboard.writeText(src || "")),
             },
-            {
-              label: "Delete",
-              icon: <TrashIcon />,
-              action: act(onDelete),
-              danger: true,
-              rule: true,
-            },
+            ...(readOnly
+              ? []
+              : [
+                  {
+                    label: "Delete",
+                    icon: <TrashIcon />,
+                    action: act(onDelete),
+                    danger: true,
+                    rule: true,
+                  },
+                ]),
           ]}
         />
       )}

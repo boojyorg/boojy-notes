@@ -16,6 +16,7 @@ import {
   buildPastedBlocks,
   isStructuredMarkdownLine,
   isTextBlockType,
+  pasteIsText,
   stripIncidentalLineEnding,
 } from "../../utils/pasteBlocks";
 import { clipboardHtml, richPasteMarkdown } from "../../utils/richPaste";
@@ -82,7 +83,8 @@ export function usePasteHandler({
     if (scope?.kind === "block" && ownsItself(scope.start)) return;
 
     const files = e.clipboardData?.files;
-    if (files?.length > 0) {
+    const text = e.clipboardData?.getData("text/plain") ?? "";
+    if (files?.length > 0 && !pasteIsText(Array.from(files), text)) {
       const afterIndex = scope?.start ? scope.start.blockIndex : blocks.length - 1;
       e.preventDefault();
       saveAndInsertFiles(currentNote, afterIndex, Array.from(files));

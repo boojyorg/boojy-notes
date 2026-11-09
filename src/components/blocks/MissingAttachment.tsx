@@ -11,7 +11,8 @@ interface Props {
   image?: boolean;
   /** Desktop only, and never for a web address: pick the file and copy it in. */
   onFind?: () => void;
-  onRemove: () => void;
+  /** None in a copy (an embed): nothing there to remove. */
+  onRemove?: () => void;
   /** Selected (the arrows, ⌥↓, the gutter): the outline a selected picture wears. */
   selected?: boolean;
 }
@@ -43,7 +44,9 @@ export default function MissingAttachment({
 
   const entries = [
     ...(onFind ? [{ label: "Find it…", icon: <RevealIcon />, action: onFind }] : []),
-    { label: "Remove", icon: <TrashIcon />, action: onRemove, rule: !!onFind, danger: true },
+    ...(onRemove
+      ? [{ label: "Remove", icon: <TrashIcon />, action: onRemove, rule: !!onFind, danger: true }]
+      : []),
   ];
 
   return (
@@ -59,7 +62,7 @@ export default function MissingAttachment({
           e.preventDefault();
           e.stopPropagation();
           const p = pointAnchor(e);
-          setMenu({ anchor: p, fromBar: false });
+          if (entries.length) setMenu({ anchor: p, fromBar: false });
         }}
         onMouseEnter={(e) => {
           if (fromTouch(e)) return;
@@ -105,7 +108,8 @@ export default function MissingAttachment({
           aria-label="Attachment options"
           onClick={(e) => {
             e.stopPropagation();
-            if (moreRef.current) setMenu({ anchor: rectAnchor(moreRef.current), fromBar: true });
+            if (moreRef.current && entries.length)
+              setMenu({ anchor: rectAnchor(moreRef.current), fromBar: true });
           }}
           style={{
             display: "flex",

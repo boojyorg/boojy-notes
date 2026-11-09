@@ -107,7 +107,7 @@ through state.**
   till Done or a leave (`flushAll`, not a blur); refused, its text waits in a notice.
   `footnote-create.spec.ts`.
 - **A definition shows `n.`; an unused one a dash**, its label above on hover or caret.
-  Its ↩ (menu: Back to reference) is Back while that jump is the visit open, else the first
+  Its ↩ is Back while that jump is the visit open, else the first
   reference, tinted as an element (`tintElement`).
 - **Move footnotes to bottom waits for its safety save** (`useMoveFootnotes`).
   `footnote-move.spec.ts`.
@@ -155,7 +155,7 @@ through state.**
 - `EditorContextMenu`: a misspelled word's, link's or tag's actions, then Cut, Copy, Paste; a field
   outside the note gets the same (`TextFieldMenu`); Shift+F10 at the caret. **Items
   run the keys' own path.** `text-context-menu.spec.ts`.
-- **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is late),
+- **Spelling is the system's, underlined by the app** (`useSpellingMarks`),
   never in code, tags or links; guesses only on a marked word.
   `spelling.spec.ts`, `spelling-line.spec.ts`.
 
@@ -306,7 +306,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
   steps over code.
 - **A caret taken back never scrolls** (`preventScroll`). `caret-navigation.spec.ts`.
 
-## Embeds: drawn by the editor, read-only
+## Embeds: read-only copies
 
 - **An embed is drawn by `ReadOnlyBlocks`**, found as its
   link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is said.
@@ -319,8 +319,8 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **A block holding text never changes type on paste.** Plain lines stay soft breaks; a blank
   line starts a block; only an empty block is taken over by structure. Gboard's clipboard is a
   paste (`typedPaste`).
-- **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`).
-  `file-drop.spec.ts`.
+- **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`); an app's
+  picture of copied text yields to it (`pasteIsText`). `file-drop.spec.ts`.
 - **Copy**: structure travels only for whole blocks (`fullBlock`); a partial selection writes
   visible text and inline HTML. `copy-clipboard.spec.ts`.
 - **A multi-line rich paste is read as Markdown first** (`richPaste.ts`) unless it has no

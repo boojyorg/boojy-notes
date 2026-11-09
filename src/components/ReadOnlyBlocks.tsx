@@ -24,7 +24,9 @@ const noop = () => {};
  * note does. The blocks paint their text from the ref they are handed, never
  * from the render, so they are handed one that holds these blocks and
  * nothing else: no note's state, history or file is touched. Every handler
- * that would edit is a no-op; the caller stops the keys and input that would.
+ * that would edit is a no-op, and `readOnly` takes away the controls that
+ * would offer one (a type or language picker, Delete); the caller stops the
+ * keys and input that would.
  */
 export default function ReadOnlyBlocks({
   noteId,
@@ -75,6 +77,7 @@ export default function ReadOnlyBlocks({
           onFileShowInFolder={noop}
           noteDataRef={noteDataRef}
           onNavigateToNote={noop}
+          readOnly
         />
       ))}
     </>

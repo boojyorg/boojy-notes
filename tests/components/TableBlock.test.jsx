@@ -150,6 +150,36 @@ describe("TableBlock", () => {
   // only when it does not already hold state's text (review 2026-09-07,
   // §3.1 and §3.4).
   describe("cells are the block's own fields", () => {
+    const paste = (cell, text) => {
+      const event = new Event("paste", { bubbles: true, cancelable: true });
+      event.clipboardData = { getData: (t) => (t === "text/plain" ? text : "") };
+      cell.dispatchEvent(event);
+      return event;
+    };
+
+    // What a spreadsheet copies is tab-separated: that spreads over cells.
+    it("a tab-separated paste fills the cells from the one it lands in", () => {
+      const props = baseProps();
+      const { container } = render(<TableBlock {...props} />);
+      const event = paste(container.querySelector("tbody td"), "x\ty\nz\tw");
+      expect(event.defaultPrevented).toBe(true);
+      const reshape = props.onUpdateTableRows.mock.calls[0][2];
+      expect(reshape(defaultBlock.rows).rows).toEqual([
+        ["Header A", "Header B"],
+        ["x", "y"],
+        ["z", "w"],
+      ]);
+    });
+
+    // A two-line address or a sentence with a comma was split on every comma.
+    it("prose with a comma and a line break is the cell's own paste, never a grid", () => {
+      const props = baseProps();
+      const { container } = render(<TableBlock {...props} />);
+      const event = paste(container.querySelector("tbody td"), "12 High St,\nLondon");
+      expect(event.defaultPrevented).toBe(false);
+      expect(props.onUpdateTableRows).not.toHaveBeenCalled();
+    });
+
     it("commits a cell's Markdown on input, not on blur", () => {
       const props = baseProps();
       const { container } = render(<TableBlock {...props} />);

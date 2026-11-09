@@ -18,6 +18,12 @@
 - **Clicking a tag suggestion completes the tag** — it used to just close the list, so only Enter or Tab worked.
 - **Dragging lines you selected brings what's nested under them** — selecting text down into a list item and dragging by its handle used to leave the items nested under it behind.
 - **The Back arrow lights up after a jump within a note** — after following a link to a heading in the same note, the ← beside the note's name stayed grey, though ⌘[ worked.
+- **Cells copied from a spreadsheet paste as text** — Numbers and Excel put a picture of the cells on the clipboard too, and that picture was pasted (and saved as an attachment) instead of the text.
+- **Pasting into a table cell spreads over cells only for tab-separated text** — what spreadsheets copy; a two-line address or a sentence with a comma used to be split on every comma.
+- **⌘K puts a note named like a web address first** — typing `Node.js` used to offer "Link to Node.js" above your note of that name, and Enter picked the web link.
+- **An embedded note offers no edits it can't make** — inside an embed, a callout's type picker, a code block's language menu and Delete no longer appear.
+- **Backspace in a callout of only spaces deletes a space** — it used to jump to the title and leave the spaces.
+- **Duplicate doesn't copy a paragraph's `^id`** — two blocks with one ID made a link to it reach the copy.
 
 ## v0.21.0 — 2026-11-05
 

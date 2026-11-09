@@ -155,3 +155,43 @@ test("several image files pasted at once are all added, in order", async () => {
     await h.close();
   }
 });
+
+// A spreadsheet's copy carries a picture of the cells beside their text
+// (Chromium hands it over as an unnamed `image.png`): the cells' text is the
+// paste. A picture alone, a screenshot's, is still a picture.
+test("cells copied from a spreadsheet paste as text; a picture alone pastes as a picture", async () => {
+  const h = await launchApp({ "Pics.md": "One\n" });
+  try {
+    await h.openNote("Pics");
+    await paragraph(h.page, "One").click();
+    await h.page.keyboard.press("End");
+    const pasteOf = (b64: string, text: string) =>
+      h.page.evaluate(
+        ([b64, text]) => {
+          const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+          const data = new DataTransfer();
+          data.items.add(new File([bytes], "image.png", { type: "image/png" }));
+          if (text) data.setData("text/plain", text);
+          const target = document.getSelection()?.anchorNode?.parentElement ?? document.body;
+          target.dispatchEvent(
+            new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
+          );
+        },
+        [b64, text],
+      );
+
+    await pasteOf(PNG_B64, " Cells");
+    await waitForFile(h.vault.file("Pics.md"), (t) => t.includes("One Cells"), {
+      label: "the cells' text to be written",
+    });
+    expect(h.vault.read("Pics.md")).not.toContain("![[");
+
+    await pasteOf(PNG_B64, "");
+    await waitForFile(h.vault.file("Pics.md"), (t) => t.includes("![["), {
+      label: "the picture to be written",
+    });
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

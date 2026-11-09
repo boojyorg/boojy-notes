@@ -387,14 +387,15 @@ export default memo(function TableBlock({
 
   const handleCellPaste = useCallback(
     (e, rowIdx, colIdx) => {
+      // Only what a spreadsheet copies (tab-separated) spreads over cells; a
+      // comma is prose's (an address, a sentence), pasted into the one cell.
       const text = e.clipboardData.getData("text/plain");
-      if (text.includes("\t") || (text.includes(",") && text.includes("\n"))) {
+      if (text.includes("\t")) {
         e.preventDefault();
-        const delimiter = text.includes("\t") ? "\t" : ",";
         const pastedRows = text
           .trim()
-          .split("\n")
-          .map((r) => r.split(delimiter).map((c) => c.trim()));
+          .split(/\r?\n/)
+          .map((r) => r.split("\t").map((c) => c.trim()));
         onUpdateTableRows(noteId, blockIndex, (cur) => {
           const width = tableColumnCount(cur) || 2;
           let newRows = cur;

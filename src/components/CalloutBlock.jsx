@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect, memo } from "react";
+import { flushSync } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { useRhythm } from "../tokens/rhythm";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
@@ -108,6 +109,7 @@ export default memo(function CalloutBlock({
   onUpdateTitle,
   onBlockNav,
   onDelete,
+  readOnly = false,
 }) {
   const rootRef = useRef(null);
   const titleRef = useRef(null);
@@ -280,12 +282,15 @@ export default memo(function CalloutBlock({
     (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
+        // Folded, the body is inert: open it first, then go in.
+        if (foldable && foldedRef.current) flushSync(() => setFold(false));
         bodyRef.current?.focus();
         return;
       }
       if (e.key === "Backspace") {
         const titleEmpty = !titleRef.current?.textContent;
-        const bodyEmpty = !domNodeToMarkdown(bodyRef.current).trim();
+        // Empty means no text at all: a body of spaces is text to delete.
+        const bodyEmpty = domNodeToMarkdown(bodyRef.current) === "";
         if (titleEmpty && bodyEmpty && onDelete) {
           e.preventDefault();
           onDelete(blockIndex);
@@ -320,7 +325,7 @@ export default memo(function CalloutBlock({
         return;
       }
     },
-    [blockIndex, onBlockNav, onDelete, foldable],
+    [blockIndex, onBlockNav, onDelete, foldable, setFold],
   );
 
   /* ─── Keyboard: body ─── */
@@ -330,7 +335,7 @@ export default memo(function CalloutBlock({
       // A tag being edited here finishes on Enter as in a paragraph.
       if (enterInTag(e, bodyRef.current)) return;
       if (e.key === "Backspace") {
-        const bodyEmpty = !domNodeToMarkdown(bodyRef.current).trim();
+        const bodyEmpty = domNodeToMarkdown(bodyRef.current) === "";
         if (bodyEmpty) {
           e.preventDefault();
           titleRef.current?.focus();
@@ -397,16 +402,21 @@ export default memo(function CalloutBlock({
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div
           ref={iconBtnRef}
-          role="button"
-          aria-label="Change callout type"
-          aria-haspopup="menu"
-          aria-expanded={pickerOpen}
-          onClick={openPicker}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            saveScroll();
-          }}
+          // A copy's icon is its type, not a picker (ReadOnlyBlocks).
+          {...(readOnly
+            ? { "aria-hidden": true }
+            : {
+                role: "button",
+                "aria-label": "Change callout type",
+                "aria-haspopup": "menu",
+                "aria-expanded": pickerOpen,
+                onClick: openPicker,
+                onMouseDown: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  saveScroll();
+                },
+              })}
           style={{
             display: "flex",
             alignItems: "center",
@@ -416,12 +426,12 @@ export default memo(function CalloutBlock({
             borderRadius: 4,
             border: "none",
             background: "transparent",
-            cursor: "pointer",
+            cursor: readOnly ? "default" : "pointer",
             padding: 0,
             flexShrink: 0,
             transition: "background var(--motion-fast)",
           }}
-          className="callout-icon-btn"
+          className={readOnly ? undefined : "callout-icon-btn"}
         >
           <Icon size={17} color={theme.callouts[calloutType].colour} strokeWidth={1.8} />
         </div>

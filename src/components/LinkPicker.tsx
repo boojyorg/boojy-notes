@@ -123,7 +123,10 @@ export default function LinkPicker({
     const ql = q.toLowerCase();
     const out: Row[] = [];
     const address = notesOnly ? null : readAddress(q);
-    if (address) out.push({ kind: "url", url: address });
+    // A note of exactly the typed name (`Node.js`) comes before the address
+    // the same text reads as: Enter means the note.
+    const exactNote = notes.some((n) => n.title.toLowerCase() === ql);
+    if (address && !exactNote) out.push({ kind: "url", url: address });
     // A link that could mean several notes lists those first, whatever the
     // field says, until the field is typed in.
     const fromCandidates =
@@ -141,6 +144,12 @@ export default function LinkPicker({
           : notes.slice(0, MAX_ROWS)
         : notes.filter((n) => n.title.toLowerCase().includes(ql)));
     for (const note of matches) out.push({ kind: "note", note });
+    if (address && exactNote) {
+      const lastExact = out.findLastIndex(
+        (r) => r.kind === "note" && r.note.title.toLowerCase() === ql,
+      );
+      out.splice(lastExact + 1, 0, { kind: "url", url: address });
+    }
     if (q !== "" && !matches.some((n) => n.title.toLowerCase() === ql)) {
       out.push({ kind: "create", title: q });
     }
