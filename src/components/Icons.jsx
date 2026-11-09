@@ -109,6 +109,7 @@ import {
   Settings as LuSettings,
   Sigma as LuSigma,
   SquareCheck as LuSquareCheck,
+  SquareCode as LuSquareCode,
   SquarePen as LuSquarePen,
   SquarePlus as LuSquarePlus,
   Strikethrough as LuStrikethrough,
@@ -341,7 +342,8 @@ const SLASH_GLYPHS = {
   workflow: LuWorkflow,
   table: LuTable,
   image: LuImage,
-  code: LuCode,
+  // A block of code, boxed `<>`: the plain `<>` is inline code (FORMAT_GLYPHS).
+  code: LuSquareCode,
   "text-quote": LuTextQuote,
   minus: LuMinus,
   info: LuInfo,

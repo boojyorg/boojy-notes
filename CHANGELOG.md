@@ -13,6 +13,7 @@
 - **An embed's link is easier to edit** — Click an embed and its link opens underneath with a visible cursor and a Done button; Enter, Done or Escape closes it and leaves the embed picked, so Backspace still removes it. Edit link in the handle's menu opens it from the keyboard, and arrowing onto an embed just picks it.
 - **Comments with `%%`** — Text between `%%` and `%%` in a paragraph, list item, heading, quote, table cell or callout shows muted and exactly as typed, as in Obsidian: bold, links and tags inside it do nothing. The closing `%%` greys it as you type, and removing either marker makes it ordinary text again. Search still finds what a comment says.
 - **A tag has its own menu** — Right-click a tag (or hold it on the phone) for Search #tag and Edit tag, then Cut and Copy; right-click takes the whole tag. Edit tag selects its name, so typing renames that one tag; while you're editing it, a click places the cursor instead of searching, and Enter jumps past it. A click on a tag still searches.
+- **A code block has its own icon** — a boxed `<>` in the `/` menu, Turn into and the code block's menu, so the plain `<>` means inline code only.
 
 ### Fixes
 
@@ -34,6 +35,10 @@
 - **An embedded note offers no edits it can't make** — inside an embed, a callout's type picker, a code block's language menu and Delete no longer appear.
 - **Backspace in a callout of only spaces deletes a space** — it used to jump to the title and leave the spaces.
 - **Duplicate doesn't copy a paragraph's `^id`** — two blocks with one ID made a link to it reach the copy.
+
+### Android (in testing)
+
+- **A Footnote key** — More blocks, on the bar above the keyboard, has Footnote where Diagram was: it puts the next number at the cursor and opens the panel to write the footnote (typing `[^` is two keyboard layers away). `/diagram` still makes a diagram.
 
 ## v0.21.0 — 2026-11-05
 

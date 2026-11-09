@@ -55,7 +55,7 @@ import {
  *   list     ↶ ↷ • 1. ☐ ⇤ ⇥   ✕      ≡, or the caret in a list item (by itself)
  *   format   ↶ ↷ B I S ▮ <> ⛓ ✕      Aa, or a selection (by itself)
  *   heading  ↶ ↷ H1 … H6      ✕      H
- *   more     ↶ ↷ ⊞ ❝ <> —     ✕      ⊞: the blocks the other rows lack
+ *   more     ↶ ↷ ⊞ ❝ <> ∑ * —  ✕      ⊞: the blocks the other rows lack
  *
  * Every button takes one of `SLOTS` equal slots, so nothing moves from row to
  * row; the right end is more or close (⊞, or ✕). The kind a line already has
@@ -69,7 +69,7 @@ import {
  * hold does nothing (`useHoldToExplain`). A greyed button says why.
  *
  * Every button sends the desktop menu bar's command (`sendCommand`), so it
- * does what its key does; table, code and divider are the slash menu's
+ * does what its key does (Footnote is Insert Footnote's); table, code, maths and divider are the slash menu's
  * (`onInsert`). A press never
  * takes the focus, so the caret and the keyboard stay. Shown only while the
  * keyboard is up with the caret in the note's text; the window shrinks above
@@ -80,11 +80,14 @@ export default function PhoneKeyBar({
   editorRef,
   onInsert,
   canIndent,
+  canFootnote,
   always = false,
 }: {
   editorRef: RefObject<HTMLElement | null>;
   onInsert: (command: InsertCommand) => void;
   canIndent: (delta: 1 | -1) => boolean;
+  /** Insert Footnote can act at the caret (`canInsertFootnote`, the menu bar's answer too). */
+  canFootnote: () => boolean;
   always?: boolean;
 }) {
   const { theme } = useTheme();
@@ -108,9 +111,12 @@ export default function PhoneKeyBar({
     inField: false,
     indent: false,
     outdent: false,
+    footnote: false,
   });
   const indentable = useRef(canIndent);
   indentable.current = canIndent;
+  const footnotable = useRef(canFootnote);
+  footnotable.current = canFootnote;
   // What the caret is in now: run on every selection change and after each press.
   const read = useRef(() => {});
 
@@ -132,6 +138,7 @@ export default function PhoneKeyBar({
         ...now,
         indent: inList && indentable.current(1),
         outdent: inList && indentable.current(-1),
+        footnote: footnotable.current(),
       });
     };
     const onSelection = () => read.current();
@@ -357,7 +364,15 @@ export default function PhoneKeyBar({
         ),
         insert("code", "Code block", "code", { fontFamily: mono }),
         insert("math", "Maths", "sigma"),
-        insert("diagram", "Diagram", "workflow"),
+        // At the caret, as Format › Insert Footnote: `[^` is two keyboard
+        // layers away here. A diagram is `/diagram` (nobody writes one on a phone).
+        button(
+          "footnote",
+          "Footnote",
+          <SlashCommandIcon name="footnote" size={20} />,
+          once(run("footnote")),
+          { disabled: !active.footnote, note: notHere(active.kind) ?? "Not here" },
+        ),
         insert("divider", "Divider", "minus"),
       ],
       [close],
@@ -450,7 +465,7 @@ export default function PhoneKeyBar({
 const SLOTS = 9;
 
 /** A slash command's id that the more row inserts. */
-type InsertCommand = "table" | "code" | "math" | "diagram" | "divider";
+type InsertCommand = "table" | "code" | "math" | "divider";
 
 const FORMAT_LABELS = {
   bold: "Bold",
@@ -477,13 +492,15 @@ interface Active {
   inField: boolean;
   indent: boolean;
   outdent: boolean;
+  /** Insert Footnote can act here. */
+  footnote: boolean;
 }
 
 /** What is on at the caret: the text styles around it (and any it was promised), and its block's kind. */
 function readActive(
   sel: Selection,
   pending: { current: Pending | null },
-): Omit<Active, "indent" | "outdent"> {
+): Omit<Active, "indent" | "outdent" | "footnote"> {
   const node = sel.anchorNode;
   const el = node?.nodeType === Node.ELEMENT_NODE ? (node as Element) : node?.parentElement;
   const around = new Set<string>();
