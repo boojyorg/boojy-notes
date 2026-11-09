@@ -18,7 +18,7 @@ else sit in Fix now.
 
 The tiers, kept apart. **Requirements** are what a stage waits for. **Candidates** are
 optional; each is judged on its own and may be declined. **Future** is everything after 1.0,
-recorded so a preference and its open question are not lost. Last reviewed: 2026-11-06, the
+recorded so a preference and its open question are not lost. Last reviewed: 2026-11-09, the
 v0.22.0 release pass; the 1.0 scope pass was 2026-10-24 (a read-only audit of v0.18.0, an
 independent review and a Codex review). Items
 marked *review §n* come from the whole-app review of 2026-09-07.
@@ -129,7 +129,8 @@ the test its rule names when it is built.
 - **The Obsidian extensions, explicitly.** Drawn and edited: wikilinks and aliases,
   `[[Note#Heading]]` and `#^block-id` (drawn quietly), note embeds (drawn read-only, a heading's section or a block), embeds with a size (`#page=`: a file card that opens that page), callouts,
   `==highlight==`, `#tags`, frontmatter (as properties), maths, Mermaid, `%%comments%%` within a
-  block (muted, literal), footnotes (as Obsidian's editing view: literal, never numbered).
+  block (muted, literal), footnotes (numbered as Obsidian's Reading view numbers them, the file
+  never renumbered).
   **Preserved only**, byte for byte and shown as text: comments across blocks, task states
   beyond `[ ]`/`[x]`,
   HTML, reference-style links, plugin syntax. The spec takes this list when the work lands.
@@ -512,8 +513,8 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 ### Editor and organisation
 
 - **Footnotes, later**: numbering inline `^[…]` footnotes (a source panel, as inline maths); Insert footnote in a table cell or a callout's body (offered only in
-  text blocks for now); a shortcut for it (⌥⌘F is AltGr+F on some Windows layouts); the phone's
-  key bar; Move footnotes to bottom on the phone, where no menu offers it yet.
+  text blocks for now); a shortcut for it (⌥⌘F is AltGr+F on some Windows layouts); Move
+  footnotes to bottom on the phone, where no menu offers it yet.
 - **Someday (Tyr, 2026-09-30), each as Obsidian does it:** unlinked mentions
   under the backlinks; a linked note previewed on hover; moving a selection into a new note,
   leaving a link; emoji by `:name:`; smart quotes and arrows (never in code); the Mac Share
