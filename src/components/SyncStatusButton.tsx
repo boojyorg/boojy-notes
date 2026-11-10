@@ -31,80 +31,78 @@ export function syncedAt(ms: number, now = new Date()) {
     : at.toLocaleDateString([], { day: "numeric", month: "short" });
 }
 
+/** Sync's state in words, a line each: what the menu on Home and Settings both say. */
+export function syncLines({ state, problems, lastSynced }: PhoneSync["status"]): string[] {
+  const last = lastSynced === null ? null : syncedAt(lastSynced);
+  return state === "off"
+    ? ["Dropbox not connected. Your notes are on this phone only."]
+    : state === "problem"
+      ? problems.map((p) => describeProblem(p).text)
+      : state === "offline"
+        ? [
+            "Can't reach Dropbox. Sync will resume when it's reachable.",
+            ...(last ? [`Last synced ${last}.`] : []),
+          ]
+        : state === "syncing"
+          ? ["Syncing with Dropbox…"]
+          : [`Synced with Dropbox${last ? ` · ${last}` : ""}`];
+}
+
+/** The one thing to do about sync's state while Dropbox is connected; none while it is not. */
+export function syncAction(sync: PhoneSync): MenuItem | null {
+  const { state, problems } = sync.status;
+  if (state === "off") return null;
+  const signIn = problems.some((p) => describeProblem(p).action === "sign-in");
+  return {
+    label: signIn ? "Sign in again" : state === "problem" ? "Try again" : "Sync now",
+    testId: signIn ? "sync-sign-in" : "sync-now",
+    action: () => (signIn ? sync.signInAgain() : sync.syncNow()),
+  };
+}
+
+export const SYNC_GLYPH = GLYPH;
+
 /**
  * Sync's state after the phone's folder name on Home: muted, but in the
  * warning colour while something needs the person. A tap says it in words,
- * with the one thing to do about it: sign in again, try again, or sync now,
- * then Disconnect Dropbox. With none connected, it says so and offers
- * Connect Dropbox.
+ * with the one thing to do about it (sign in again, try again, or sync now)
+ * and the way to Settings, where Dropbox is connected and the notes' folder
+ * is chosen.
  */
-export default function SyncStatusButton({ sync }: { sync: PhoneSync }) {
+export default function SyncStatusButton({
+  sync,
+  onOpenSettings,
+}: {
+  sync: PhoneSync;
+  onOpenSettings: () => void;
+}) {
   const { theme } = useTheme();
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
-  const { state, problems, lastSynced } = sync.status;
+  const { state } = sync.status;
   const Glyph = GLYPH[state];
-  const last = lastSynced === null ? null : syncedAt(lastSynced);
-
-  const lines =
-    state === "off"
-      ? ["Dropbox not connected. Your notes are on this phone only."]
-      : state === "problem"
-        ? problems.map((p) => describeProblem(p).text)
-        : state === "offline"
-          ? [
-              "Can't reach Dropbox. Sync will resume when it's reachable.",
-              ...(last ? [`Last synced ${last}.`] : []),
-            ]
-          : state === "syncing"
-            ? ["Syncing with Dropbox…"]
-            : [`Synced with Dropbox${last ? ` · ${last}` : ""}`];
-
-  const signIn = problems.some((p) => describeProblem(p).action === "sign-in");
+  const lines = syncLines(sync.status);
   const close = () => setAnchor(null);
+  const act = syncAction(sync);
   const items: MenuItem[] = [
-    ...(state === "off"
+    ...(act
       ? [
           {
-            label: "Connect Dropbox",
-            testId: "sync-connect",
+            ...act,
             action: () => {
               close();
-              sync.connect();
-            },
-          },
-        ]
-      : [
-          {
-            label: signIn ? "Sign in again" : state === "problem" ? "Try again" : "Sync now",
-            testId: signIn ? "sync-sign-in" : "sync-now",
-            action: () => {
-              close();
-              if (signIn) sync.signInAgain();
-              else sync.syncNow();
-            },
-          },
-          {
-            label: "Disconnect Dropbox",
-            testId: "sync-disconnect",
-            action: () => {
-              close();
-              sync.disconnect();
-            },
-          },
-        ]),
-    // While the notes are inside the app; here until the phone has Settings.
-    ...(sync.moveToFolder
-      ? [
-          {
-            label: "Move notes to a folder…",
-            testId: "move-to-folder",
-            action: () => {
-              close();
-              sync.moveToFolder?.();
+              act.action?.();
             },
           },
         ]
       : []),
+    {
+      label: "Storage and sync…",
+      testId: "sync-settings",
+      action: () => {
+        close();
+        onOpenSettings();
+      },
+    },
   ];
 
   return (

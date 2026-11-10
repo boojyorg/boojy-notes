@@ -968,7 +968,8 @@ describe("Sidebar on the phone", () => {
     expect(sync.signInAgain).toHaveBeenCalledTimes(1);
   });
 
-  it("offers Connect Dropbox with none connected, and Disconnect once one is", () => {
+  // Connecting and disconnecting are Settings' (PhoneSettings): Home's menu says the state and leads there.
+  it("says Dropbox is not connected and leads to Settings, never connecting from Home", () => {
     const sync = {
       status: { state: "off", folder: null, lastSynced: null, problems: [] },
       connect: vi.fn(),
@@ -982,17 +983,16 @@ describe("Sidebar on the phone", () => {
     expect(
       off.getByText(/Dropbox not connected. Your notes are on this phone only./),
     ).toBeInTheDocument();
-    expect(off.queryByTestId("sync-disconnect")).not.toBeInTheDocument();
-    fireEvent.click(off.getByTestId("sync-connect"));
-    expect(sync.connect).toHaveBeenCalledTimes(1);
+    expect(off.queryByTestId("sync-connect")).not.toBeInTheDocument();
+    expect(off.getByTestId("sync-settings")).toBeInTheDocument();
     off.unmount();
 
     sync.status = { state: "synced", folder: "Personal", lastSynced: null, problems: [] };
     const on = renderSidebar({ sync });
     fireEvent.click(on.getByTestId("sync-status"));
-    expect(on.queryByTestId("sync-connect")).not.toBeInTheDocument();
-    fireEvent.click(on.getByTestId("sync-disconnect"));
-    expect(sync.disconnect).toHaveBeenCalledTimes(1);
+    expect(on.queryByTestId("sync-disconnect")).not.toBeInTheDocument();
+    expect(on.getByTestId("sync-now")).toBeInTheDocument();
+    expect(on.getByTestId("sync-settings")).toBeInTheDocument();
   });
 
   it("shows no sync state where nothing syncs", () => {

@@ -4,40 +4,46 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import SyncStatusButton from "../../src/components/SyncStatusButton";
 import { ThemeProvider } from "../../src/context/ThemeContext";
 import type { PhoneSync } from "../../src/phone/useSyncStatus";
+import type { SyncStatus } from "../../src/sync/syncStatus";
 
 afterEach(cleanup);
 
-const sync = (moveToFolder?: () => Promise<void>): PhoneSync => ({
-  status: { state: "off", folder: null, lastSynced: null, problems: [] },
+const OFF: SyncStatus = { state: "off", folder: null, lastSynced: null, problems: [] };
+const sync = (status: SyncStatus = OFF): PhoneSync => ({
+  status,
   syncNow: vi.fn(),
   signInAgain: vi.fn(async () => {}),
   connect: vi.fn(async () => {}),
   disconnect: vi.fn(async () => {}),
-  moveToFolder,
+  moveToFolder: vi.fn(async () => {}),
+  notesFolder: null,
 });
-const openMenu = (s: PhoneSync) => {
+const openMenu = (s: PhoneSync, onOpenSettings = vi.fn()) => {
   render(
     <ThemeProvider>
-      <SyncStatusButton sync={s} />
+      <SyncStatusButton sync={s} onOpenSettings={onOpenSettings} />
     </ThemeProvider>,
   );
   fireEvent.click(screen.getByTestId("sync-status"));
+  return onOpenSettings;
 };
+const items = () => screen.getAllByRole("menuitem").map((el) => el.textContent);
 
-describe("Home's menu, while the notes are inside the app", () => {
-  it("offers Move notes to a folder… under Dropbox's item, and runs it", () => {
-    const move = vi.fn(async () => {});
-    openMenu(sync(move));
-    const items = screen.getAllByRole("menuitem").map((el) => el.textContent);
-    expect(items).toEqual(["Connect Dropbox", "Move notes to a folder…"]);
-    fireEvent.click(screen.getByText("Move notes to a folder…"));
-    expect(move).toHaveBeenCalledOnce();
+// Connecting, disconnecting and moving the notes are Settings': one way to each.
+describe("sync's menu on Home", () => {
+  it("with no Dropbox, says so and leads to Settings alone", () => {
+    const onOpenSettings = openMenu(sync());
+    expect(screen.getByText(/Dropbox not connected/)).toBeTruthy();
+    expect(items()).toEqual(["Storage and sync…"]);
+    fireEvent.click(screen.getByText("Storage and sync…"));
+    expect(onOpenSettings).toHaveBeenCalledOnce();
   });
 
-  it("offers no move once the notes are in a folder", () => {
-    openMenu(sync());
-    expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
-      "Connect Dropbox",
-    ]);
+  it("connected, offers Sync now and Settings", () => {
+    const s = sync({ state: "synced", folder: "Personal", lastSynced: null, problems: [] });
+    openMenu(s);
+    expect(items()).toEqual(["Sync now", "Storage and sync…"]);
+    fireEvent.click(screen.getByText("Sync now"));
+    expect(s.syncNow).toHaveBeenCalledOnce();
   });
 });

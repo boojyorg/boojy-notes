@@ -27,6 +27,7 @@ import { Z } from "./constants/zIndex";
 import { SIDEBAR_GRAB_OVERLAP, SIDEBAR_GRAB_W, SIDEBAR_HANDLE_W } from "./constants/layout";
 import { paintHandles } from "./hooks/usePanelResize";
 const SettingsModal = React.lazy(() => import("./components/settings/SettingsModal"));
+const PhoneSettings = React.lazy(() => import("./phone/PhoneSettings"));
 const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
 import ContextMenu from "./components/ContextMenu";
 import PathTreeMenu from "./components/PathTreeMenu";
@@ -2021,15 +2022,19 @@ export default function BoojyNotes() {
       )}
 
       <React.Suspense fallback={null}>
-        <SettingsModal
-          isDesktop={isElectron}
-          vaults={vaults}
-          switchVault={switchVault}
-          addVault={addVault}
-          forgetVault={removeVault}
-          renameVault={renameVault}
-          revealVault={revealVaultAt}
-        />
+        {isPhone ? (
+          <PhoneSettings open={settingsOpen} sync={sync} onClose={() => setSettingsOpen(false)} />
+        ) : (
+          <SettingsModal
+            isDesktop={isElectron}
+            vaults={vaults}
+            switchVault={switchVault}
+            addVault={addVault}
+            forgetVault={removeVault}
+            renameVault={renameVault}
+            revealVault={revealVaultAt}
+          />
+        )}
         {firstRun && (
           <SetupDialog
             notesDir={notesDir}
