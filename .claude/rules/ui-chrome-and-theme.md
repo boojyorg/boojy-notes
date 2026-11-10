@@ -223,7 +223,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   leaves); in a field what can't act greys; **tap acts, hold explains** (no Markdown),
   a held slide following (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.
 - **Home there** (`HomeChrome`): the N (Settings), a Search field, ···; the list's name with
-  sync's glyph is one button; **New note is the one teal surface**, glyph `onAccent`.
+  sync's glyph is one button; **New note is the one teal surface**, glyph `onAccent`. **Recent is edited** (`recentCards.ts`), never opened.
   **Settings: a page** (`PhoneSettings`), a row per state, its menu.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`). **A line is at
   most `rhythm.measure` ems**, centred under the name; margins go first, then gutters.

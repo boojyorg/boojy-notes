@@ -50,6 +50,7 @@ import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import SyncStatusButton from "./SyncStatusButton";
 import { HomeFoot, HomeTop } from "../phone/HomeChrome";
+import RecentCards from "../phone/RecentCards";
 import RenameField from "./RenameField";
 import Collapsible, { IndentGuide } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
@@ -516,6 +517,7 @@ const Sidebar = memo(function Sidebar({
     newNotes,
     sortMode,
     setSortMode,
+    editedAt,
   } = useSidebar();
 
   // Anchor rect of the Sort button, or null when the Sort menu is closed.
@@ -1069,6 +1071,66 @@ const Sidebar = memo(function Sidebar({
     row?.scrollIntoView({ block: "nearest" });
   }, [newNotes, sidebarScrollRef]);
 
+  // The list's head: New note (desktop) and the list's name with its controls.
+  // Above the scroller on the desktop, so only the tree scrolls; on the phone
+  // it scrolls with the list, under the Recent cards.
+  const listHead = (
+    <>
+      {/* New note and the list's controls, above the list's scroller:
+          they never scroll, so the scrollbar spans the list alone, from
+          under the vault row down to Recently Deleted. */}
+      <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
+        <div style={{ height: COLUMN_HEAD_GAP }} />
+        {/* On the phone New note is the teal button at the foot: one way in. */}
+        {!isPhone && <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />}
+        <SectionHeader
+          label={
+            vaults.length > 0 ? (
+              <VaultLabel
+                name={vaultName}
+                open={vaultMenu !== null}
+                onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
+              />
+            ) : sync ? (
+              <SyncedVaultLabel
+                name={vaultName}
+                sync={sync}
+                onOpenSettings={() => setSettingsOpen(true)}
+              />
+            ) : (
+              vaultName
+            )
+          }
+          TEXT={TEXT}
+          dropRoot
+          menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
+        >
+          {/* New folder and Sort are in the phone's ··· (HomeTop). */}
+          {!isPhone && (
+            <>
+              <SectionAction
+                onClick={() => createFolder(null)}
+                label="New folder"
+                shortcut={SHORTCUTS.newFolder}
+              >
+                <NewFolderIcon size={16} />
+              </SectionAction>
+              <SectionAction
+                onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
+                label="Sort"
+                aria-haspopup="menu"
+                aria-expanded={sortMenuAnchor !== null}
+                active={sortMenuAnchor !== null}
+              >
+                <SortIcon size={16} />
+              </SectionAction>
+            </>
+          )}
+        </SectionHeader>
+      </div>
+    </>
+  );
+
   return (
     <div
       className="panel-motion"
@@ -1217,60 +1279,7 @@ const Sidebar = memo(function Sidebar({
         data-drop-zone=""
         style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
       >
-        <>
-          {/* New note and the list's controls, above the list's scroller:
-          they never scroll, so the scrollbar spans the list alone, from
-          under the vault row down to Recently Deleted. */}
-          <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
-            <div style={{ height: COLUMN_HEAD_GAP }} />
-            {/* On the phone New note is the teal button at the foot: one way in. */}
-            {!isPhone && <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />}
-            <SectionHeader
-              label={
-                vaults.length > 0 ? (
-                  <VaultLabel
-                    name={vaultName}
-                    open={vaultMenu !== null}
-                    onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
-                  />
-                ) : sync ? (
-                  <SyncedVaultLabel
-                    name={vaultName}
-                    sync={sync}
-                    onOpenSettings={() => setSettingsOpen(true)}
-                  />
-                ) : (
-                  vaultName
-                )
-              }
-              TEXT={TEXT}
-              dropRoot
-              menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
-            >
-              {/* New folder and Sort are in the phone's ··· (HomeTop). */}
-              {!isPhone && (
-                <>
-                  <SectionAction
-                    onClick={() => createFolder(null)}
-                    label="New folder"
-                    shortcut={SHORTCUTS.newFolder}
-                  >
-                    <NewFolderIcon size={16} />
-                  </SectionAction>
-                  <SectionAction
-                    onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
-                    label="Sort"
-                    aria-haspopup="menu"
-                    aria-expanded={sortMenuAnchor !== null}
-                    active={sortMenuAnchor !== null}
-                  >
-                    <SortIcon size={16} />
-                  </SectionAction>
-                </>
-              )}
-            </SectionHeader>
-          </div>
-        </>
+        {!isPhone && listHead}
 
         {/* The list's scroller: the tree alone on the desktop, results and the
           tree on a phone. */}
@@ -1287,6 +1296,17 @@ const Sidebar = memo(function Sidebar({
             padding: "0 0 2px",
           }}
         >
+          {isPhone && (
+            <>
+              <RecentCards
+                noteData={noteData}
+                editedAt={editedAt}
+                onOpen={handleNoteClick}
+                inset={TREE_SPINE}
+              />
+              {listHead}
+            </>
+          )}
           {/* The vault header: where you are, and everything that makes
               something. It is also the root drop target, so it stays
               put however empty the vault is. Folders come first,

@@ -98,6 +98,7 @@ vi.mock("../../src/context/SidebarContext", () => ({
     setCustomFolders: vi.fn(),
     folderList: [],
     sortMode: _sidebarOverrides.sortMode ?? "recent",
+    editedAt: _sidebarOverrides.editedAt ?? {},
     setSortMode: _sidebarOverrides.setSortMode ?? vi.fn(),
   }),
   SidebarProvider: ({ children }) => children,
@@ -939,6 +940,45 @@ describe("Sidebar on the phone", () => {
       fireEvent.click(view.getByTestId("home-more"));
       fireEvent.click(view.getByText("Sort by…"));
       expect(view.getByRole("menu", { name: "Sort notes" })).toBeInTheDocument();
+    }));
+
+  it("shows the notes edited last as cards, newest first, each a way to its note", () =>
+    onPhone(async (PhoneSidebar) => {
+      const handleNoteClick = vi.fn();
+      const noteData = {
+        a: { id: "a", title: "Old", folder: null, lastModified: 100, content: { blocks: [] } },
+        b: {
+          id: "b",
+          title: "Shopping",
+          folder: "Lists/Home",
+          lastModified: 300,
+          content: { blocks: [{ id: "1", type: "bullet", text: "**eggs**" }] },
+        },
+        c: { id: "c", title: "Draft", _draft: true, lastModified: 900, content: { blocks: [] } },
+      };
+      const view = renderSidebar({
+        Component: PhoneSidebar,
+        noteData,
+        editedAt: { a: 200 },
+        handleNoteClick,
+      });
+      const cards = view.getAllByTestId("recent-card");
+      expect(cards.map((c) => c.firstChild.textContent)).toEqual(["Shopping", "Old"]);
+      expect(cards[0].textContent).toContain("eggs");
+      // The folder it is in, without the path to it.
+      expect(cards[0].lastChild.textContent).toMatch(/^Home · /);
+      fireEvent.click(cards[1]);
+      expect(handleNoteClick).toHaveBeenCalledWith("a", expect.anything());
+      // The cards and the list's name scroll with the list.
+      const scroller = view.container.querySelector(".sidebar-scroll");
+      expect(scroller.contains(view.getByTestId("recent-cards"))).toBe(true);
+      expect(scroller.querySelector(".sidebar-section-header")).not.toBeNull();
+    }));
+
+  it("shows no Recent section with no notes", () =>
+    onPhone(async (PhoneSidebar) => {
+      const view = renderSidebar({ Component: PhoneSidebar });
+      expect(view.queryByTestId("recent-cards")).not.toBeInTheDocument();
     }));
 
   it("makes a note from the teal button at the foot, the only New note on Home", () =>
