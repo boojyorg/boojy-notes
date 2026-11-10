@@ -1,8 +1,10 @@
 /** @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { SettingsProvider } from "../../src/context/SettingsContext";
 import { ThemeProvider } from "../../src/context/ThemeContext";
 import PhoneSettings from "../../src/phone/PhoneSettings";
+import type { PhoneStorage } from "../../src/phone/usePhoneStorage";
 import type { PhoneSync } from "../../src/phone/useSyncStatus";
 import type { SyncStatus } from "../../src/sync/syncStatus";
 
@@ -16,14 +18,15 @@ const sync = (over: Partial<PhoneSync> = {}): PhoneSync => ({
   signInAgain: vi.fn(async () => {}),
   connect: vi.fn(async () => {}),
   disconnect: vi.fn(async () => {}),
-  moveToFolder: undefined,
-  notesFolder: null,
   ...over,
 });
-const show = (s: PhoneSync | null, onClose = vi.fn()) => {
+const IN_APP: PhoneStorage = { notesFolder: null, moveToFolder: undefined };
+const show = (s: PhoneSync | null, storage: PhoneStorage = IN_APP, onClose = vi.fn()) => {
   render(
     <ThemeProvider>
-      <PhoneSettings open sync={s} onClose={onClose} />
+      <SettingsProvider>
+        <PhoneSettings open sync={s} storage={storage} onClose={onClose} />
+      </SettingsProvider>
     </ThemeProvider>,
   );
   return onClose;
@@ -36,7 +39,7 @@ const menuOf = (testId: string) => {
 describe("Settings on the phone", () => {
   it("says the notes are inside the app, and offers to move them to a folder", () => {
     const move = vi.fn(async () => {});
-    show(sync({ moveToFolder: move }));
+    show(sync(), { notesFolder: null, moveToFolder: move });
     expect(screen.getByTestId("settings-folder").textContent).toContain("Inside the app");
     expect(screen.getByText(/removed if you uninstall/)).toBeTruthy();
     expect(menuOf("settings-folder")).toEqual(["Move to a folder…"]);
@@ -46,7 +49,7 @@ describe("Settings on the phone", () => {
 
   // Nothing can be done about a folder yet: a row that opened an empty menu would be a dead control.
   it("names the folder the notes are in, as a row that is only read", () => {
-    show(sync({ notesFolder: "Documents/Boojy Notes" }));
+    show(sync(), { notesFolder: "Documents/Boojy Notes", moveToFolder: undefined });
     const row = screen.getByTestId("settings-folder");
     expect(row.textContent).toContain("Documents/Boojy Notes");
     expect(row.tagName).toBe("DIV");
@@ -92,10 +95,42 @@ describe("Settings on the phone", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  // Where the notes are is true with or without sync: it once read "Inside the app" with none.
+  it("names the folder with no sync at all", () => {
+    show(null, { notesFolder: "Documents/Boojy Notes", moveToFolder: undefined });
+    expect(screen.getByTestId("settings-folder").textContent).toContain("Documents/Boojy Notes");
+    expect(screen.queryByTestId("settings-dropbox")).toBeNull();
+  });
+
+  // The phone has no keys for the interface size: Settings is the only way to it.
+  it("keeps the interface size beside the theme", () => {
+    show(sync());
+    expect(screen.getByRole("radiogroup", { name: "Appearance" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Larger" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Smaller" })).toBeTruthy();
+  });
+
+  // A closed menu leaves a copy of itself for a moment, still a `menu` by role:
+  // Back then was no one's, and Android's Back put the app in the background.
+  it("goes back on Escape while a closed menu's leaving copy is still there", () => {
+    const onClose = show(sync());
+    const ghost = document.createElement("div");
+    ghost.setAttribute("role", "menu");
+    ghost.className = "motion-ghost";
+    document.body.append(ghost);
+    const esc = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    document.body.dispatchEvent(esc);
+    ghost.remove();
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(esc.defaultPrevented).toBe(true);
+  });
+
   it("is nothing while closed", () => {
     render(
       <ThemeProvider>
-        <PhoneSettings open={false} sync={sync()} onClose={() => {}} />
+        <SettingsProvider>
+          <PhoneSettings open={false} sync={sync()} storage={IN_APP} onClose={() => {}} />
+        </SettingsProvider>
       </ThemeProvider>,
     );
     expect(screen.queryByTestId("phone-settings")).toBeNull();

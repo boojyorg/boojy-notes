@@ -1,22 +1,17 @@
-import {
-  type ComponentType,
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ComponentType, type ReactNode, type RefObject, useRef, useState } from "react";
 import { BackIcon, ChevronRightIcon, FolderIcon } from "../components/Icons";
 import Menu, { type MenuAnchor, type MenuItem } from "../components/Menu";
-import { ThemePills } from "../components/settings/AppearanceTab";
+import AppearanceTab from "../components/settings/AppearanceTab";
 import SettingsFooter from "../components/settings/SettingsFooter";
 import { SectionTitle } from "../components/settings/SettingsPrimitives";
 import { SYNC_GLYPH, syncAction, syncLines } from "../components/SyncStatusButton";
 import { NOTES_FOLDER_TITLE } from "../constants/setupCopy";
 import { Z } from "../constants/zIndex";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
+import type { PhoneStorage } from "./usePhoneStorage";
 import type { PhoneSync } from "./useSyncStatus";
 
 const BACK = 44;
@@ -125,40 +120,28 @@ function Setting({
  * pane. Where the notes are kept and Dropbox each stand as one row saying how
  * things are, with what can be done about it in the row's menu; then the
  * appearance and the version line. Back (Android's is Escape) returns to Home.
- *
- * Escape is heard on the document, before the shell's window listener, and
- * only one nothing above has taken; an open menu owns its own.
  */
 export default function PhoneSettings({
   open,
   sync,
+  storage,
   onClose,
 }: {
   open: boolean;
   sync: PhoneSync | null;
+  /** Where the notes are kept: its own, not sync's (`usePhoneStorage`). */
+  storage: PhoneStorage;
   onClose: () => void;
 }) {
   const { theme } = useTheme();
   const pageRef = useRef<HTMLDivElement>(null);
   useFocusTrap(pageRef as RefObject<HTMLElement>, open, "container");
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.defaultPrevented) return;
-      if (document.querySelector('[role="menu"]')) return;
-      e.preventDefault();
-      closeRef.current();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
+  useModalEscape(open, onClose);
 
   if (!open) return null;
 
-  const folder = sync?.notesFolder ?? null;
-  const move = sync?.moveToFolder;
+  const folder = storage.notesFolder;
+  const move = storage.moveToFolder;
   const act = sync ? syncAction(sync) : null;
   const dropbox: MenuItem[] = !sync
     ? []
@@ -260,14 +243,8 @@ export default function PhoneSettings({
         />
       )}
 
-      <section>
-        <div style={{ marginBottom: 10 }}>
-          <SectionTitle title="Appearance" />
-        </div>
-        <div style={{ paddingLeft: 12 }}>
-          <ThemePills />
-        </div>
-      </section>
+      {/* The desktop's own section: the theme, and the interface size (the phone has no keys for it). */}
+      <AppearanceTab SectionHeader={SectionTitle} />
 
       <div style={{ flexGrow: 1 }} />
       <SettingsFooter />

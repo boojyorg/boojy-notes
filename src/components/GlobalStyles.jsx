@@ -302,10 +302,11 @@ export default function GlobalStyles() {
           opacity: 0.55;
         }
         /* The phone has no hover. The Notes row's New folder and Sort show at
-           rest; a row's own ··· and New note never do (a long-press opens the
+           rest, in the cog's ink (a fainter glyph that never lifts reads as
+           disabled); a row's own ··· and New note never do (a long-press opens the
            row's menu); and a tapped row keeps no pill, since a touch leaves
            :hover on whatever it last touched. */
-        html.is-phone .sidebar-section-action { opacity: 0.55; }
+        html.is-phone .sidebar-section-action { opacity: 1; }
         html.is-phone .sidebar-note-more, html.is-phone .sidebar-folder-actions { display: none !important; }
         html.is-phone .sidebar-row:hover:not(.is-held) { background-color: transparent; }
         /* The phone's header has room for some 22 letters: once the folders

@@ -59,6 +59,7 @@ import { useResolvedTitle } from "./hooks/useResolvedTitle";
 import { caretLength, caretOffsetAt, getCaretOffset, placeCaret } from "./utils/domHelpers";
 import { binnedToast, deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useRecentlyDeleted } from "./hooks/useRecentlyDeleted";
+import { usePhoneStorage } from "./phone/usePhoneStorage";
 import { useSyncStatus } from "./phone/useSyncStatus";
 import RecentlyDeletedMenu from "./components/RecentlyDeletedMenu";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
@@ -369,7 +370,9 @@ export default function BoojyNotes() {
     showToast,
   });
   // The phone's sync, shown on Home's folder row; null elsewhere.
-  const sync = useSyncStatus({ showToast, flushAll });
+  const sync = useSyncStatus({ showToast });
+  // Where the phone keeps its notes, for its Settings page.
+  const phoneStorage = usePhoneStorage({ showToast, flushAll });
   const [binOpen, setBinOpen] = useState(false);
   const recentlyDeleted = useRecentlyDeleted({
     notesDir,
@@ -2023,7 +2026,12 @@ export default function BoojyNotes() {
 
       <React.Suspense fallback={null}>
         {isPhone ? (
-          <PhoneSettings open={settingsOpen} sync={sync} onClose={() => setSettingsOpen(false)} />
+          <PhoneSettings
+            open={settingsOpen}
+            sync={sync}
+            storage={phoneStorage}
+            onClose={() => setSettingsOpen(false)}
+          />
         ) : (
           <SettingsModal
             isDesktop={isElectron}

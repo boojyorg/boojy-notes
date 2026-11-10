@@ -3,12 +3,12 @@ import {
   type CSSProperties,
   type ReactNode,
   type RefObject,
-  useEffect,
   useRef,
 } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { useExitGhost } from "../../hooks/useExitGhost";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useModalEscape } from "../../hooks/useModalEscape";
 import { Z } from "../../constants/zIndex";
 import { atScale } from "../../utils/uiScale";
 import { fontWeight } from "../../tokens/typography";
@@ -50,10 +50,7 @@ interface DialogShellProps {
  * pointer events, so a click beside the pane still reaches the scrim. Scrim
  * and wrapper are siblings, so each leaves its own copy (`useExitGhost`).
  *
- * Escape is heard on the document, so it runs before the shell's window
- * listener, and only for an Escape nothing above it has taken. A menu opened
- * from inside owns Escape even in the frame before focus reaches it, when its
- * own document listener, added after this one, would hear the key second.
+ * Escape is `useModalEscape`'s.
  */
 export function DialogShell({
   open = true,
@@ -77,21 +74,7 @@ export function DialogShell({
   useExitGhost(scrimRef, open);
   useExitGhost(centreRef, open);
 
-  // Read through a ref, so the listener is added once per open and keeps its
-  // place before any menu's.
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.defaultPrevented) return;
-      if (document.querySelector('[role="menu"]')) return;
-      e.preventDefault();
-      closeRef.current();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
+  useModalEscape(open, onClose);
 
   if (!open) return null;
 

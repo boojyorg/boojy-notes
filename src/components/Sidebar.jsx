@@ -49,7 +49,8 @@ import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import SyncStatusButton from "./SyncStatusButton";
-import { HomeFoot, HomeTop } from "../phone/HomeChrome";
+import { HOME_LIST_END, HomeFoot, HomeTop } from "../phone/HomeChrome";
+import RecentCards from "../phone/RecentCards";
 import RenameField from "./RenameField";
 import Collapsible, { IndentGuide } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
@@ -121,7 +122,6 @@ const ROW_GAP = isPhone ? 0 : TREE_ROW_GAP;
 const NOTE_MENU_GAP = 4;
 /** How far left of the ··· button's left edge the menu's left edge sits. */
 const NOTE_MENU_SHIFT = 8;
-/** A chrome control on the phone: a touch target, the same glyph. */
 /** Keys the tree claims even where they move nothing (an arrow at the end
  *  would otherwise scroll the sidebar). */
 const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"]);
@@ -216,6 +216,8 @@ const SECTION_HEADER_RIGHT = 5;
 /** Header controls share the chrome row's 32px hit box and 18px nav glyph
  *  (a touch target on the phone, where they show at rest). */
 const SECTION_BTN = isPhone ? TOUCH : 32;
+/** The row's glyphs: on the phone the cog's size, as they are its equals there. */
+const SECTION_GLYPH = isPhone ? 18 : 16;
 const SECTION_CONTENT_GAP = 2;
 // Header controls (New folder, Sort) are hidden at rest and revealed, muted,
 // while the pointer is on the Notes row or a keyboard focus is in it, lifting
@@ -437,15 +439,6 @@ function VaultLabel({ name, open, onOpen }) {
   );
 }
 
-/**
- * The phone's folder row: the Dropbox folder's name (or "Phone"), then sync's state
- * (`SyncStatusButton`), close beside it rather than across the row, since it
- * speaks of that folder.
- */
-function SyncedVaultLabel({ name, sync, onOpenSettings }) {
-  return <SyncStatusButton name={name} sync={sync} onOpenSettings={onOpenSettings} />;
-}
-
 const Sidebar = memo(function Sidebar({
   activeNote,
   toggle,
@@ -516,6 +509,7 @@ const Sidebar = memo(function Sidebar({
     newNotes,
     sortMode,
     setSortMode,
+    editedAt,
   } = useSidebar();
 
   // Anchor rect of the Sort button, or null when the Sort menu is closed.
@@ -1069,6 +1063,78 @@ const Sidebar = memo(function Sidebar({
     row?.scrollIntoView({ block: "nearest" });
   }, [newNotes, sidebarScrollRef]);
 
+  // The list's head: New note (desktop) and the list's name with its controls,
+  // above the scroller. On the phone the name heads Home: the Recent cards
+  // and the list both stand under it.
+  // The list's head stands above the list's scroller: it never scrolls, so the
+  // scrollbar spans the list alone, from under it down to Recently Deleted.
+  const listHead = (
+    <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
+      {/* On the phone the list's name belongs to the row above it: close under it. */}
+      <div style={{ height: isPhone ? 2 : COLUMN_HEAD_GAP }} />
+      {/* On the phone New note is the teal button at the foot: one way in. */}
+      {!isPhone && <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />}
+      <SectionHeader
+        label={
+          vaults.length > 0 ? (
+            <VaultLabel
+              name={vaultName}
+              open={vaultMenu !== null}
+              onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
+            />
+          ) : sync ? (
+            <SyncStatusButton
+              name={vaultName}
+              sync={sync}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          ) : (
+            vaultName
+          )
+        }
+        TEXT={TEXT}
+        dropRoot
+        menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
+      >
+        <SectionAction
+          onClick={() => createFolder(null)}
+          label="New folder"
+          shortcut={SHORTCUTS.newFolder}
+        >
+          <NewFolderIcon size={SECTION_GLYPH} />
+        </SectionAction>
+        <SectionAction
+          onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
+          label="Sort"
+          aria-haspopup="menu"
+          aria-expanded={sortMenuAnchor !== null}
+          active={sortMenuAnchor !== null}
+        >
+          <SortIcon size={SECTION_GLYPH} />
+        </SectionAction>
+      </SectionHeader>
+    </div>
+  );
+
+  // Pinned under the tree however long it is: where a deleted note waits,
+  // always in the same place (Apple Notes hides it when empty; a row that
+  // comes and goes is harder to trust). No count: no other row carries one,
+  // and a number reads as something to clear, which a safety net is not.
+  const recentlyDeletedRow = recentlyDeleted && (
+    <button
+      type="button"
+      data-testid="recently-deleted-row"
+      className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
+      aria-haspopup="dialog"
+      aria-expanded={recentlyDeleted.open}
+      onClick={recentlyDeleted.onToggle}
+      style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
+    >
+      <TrashIcon />
+      <span style={{ flex: 1 }}>Recently Deleted</span>
+    </button>
+  );
+
   return (
     <div
       className="panel-motion"
@@ -1134,13 +1200,8 @@ const Sidebar = memo(function Sidebar({
         }}
       >
         {isPhone ? (
-          // The phone's one row: the N, the Search field and ··· (HomeChrome).
-          <HomeTop
-            onSettings={() => setSettingsOpen(true)}
-            onSearch={onOpenSearch}
-            onNewFolder={() => createFolder(null)}
-            onSort={setSortMenuAnchor}
-          />
+          // The phone's one row: the N, the Search field and the cog (HomeChrome).
+          <HomeTop onSettings={() => setSettingsOpen(true)} onSearch={onOpenSearch} />
         ) : (
           <>
             <button
@@ -1217,60 +1278,7 @@ const Sidebar = memo(function Sidebar({
         data-drop-zone=""
         style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
       >
-        <>
-          {/* New note and the list's controls, above the list's scroller:
-          they never scroll, so the scrollbar spans the list alone, from
-          under the vault row down to Recently Deleted. */}
-          <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
-            <div style={{ height: COLUMN_HEAD_GAP }} />
-            {/* On the phone New note is the teal button at the foot: one way in. */}
-            {!isPhone && <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />}
-            <SectionHeader
-              label={
-                vaults.length > 0 ? (
-                  <VaultLabel
-                    name={vaultName}
-                    open={vaultMenu !== null}
-                    onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
-                  />
-                ) : sync ? (
-                  <SyncedVaultLabel
-                    name={vaultName}
-                    sync={sync}
-                    onOpenSettings={() => setSettingsOpen(true)}
-                  />
-                ) : (
-                  vaultName
-                )
-              }
-              TEXT={TEXT}
-              dropRoot
-              menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
-            >
-              {/* New folder and Sort are in the phone's ··· (HomeTop). */}
-              {!isPhone && (
-                <>
-                  <SectionAction
-                    onClick={() => createFolder(null)}
-                    label="New folder"
-                    shortcut={SHORTCUTS.newFolder}
-                  >
-                    <NewFolderIcon size={16} />
-                  </SectionAction>
-                  <SectionAction
-                    onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
-                    label="Sort"
-                    aria-haspopup="menu"
-                    aria-expanded={sortMenuAnchor !== null}
-                    active={sortMenuAnchor !== null}
-                  >
-                    <SortIcon size={16} />
-                  </SectionAction>
-                </>
-              )}
-            </SectionHeader>
-          </div>
-        </>
+        {listHead}
 
         {/* The list's scroller: the tree alone on the desktop, results and the
           tree on a phone. */}
@@ -1283,10 +1291,20 @@ const Sidebar = memo(function Sidebar({
             overflow: "auto",
             display: "flex",
             flexDirection: "column",
-            // The phone's foot (HomeFoot) keeps the list clear of Android's gesture bar.
-            padding: "0 0 2px",
+            // The phone's foot (HomeFoot) keeps the list clear of Android's gesture
+            // bar; the list's last row scrolls clear of the New note button.
+            padding: isPhone ? `0 0 ${HOME_LIST_END}px` : "0 0 2px",
           }}
         >
+          {/* The phone: the notes edited last, under the list's name and over the list. */}
+          {isPhone && (
+            <RecentCards
+              noteData={noteData}
+              editedAt={editedAt}
+              onOpen={handleNoteClick}
+              inset={TREE_SPINE}
+            />
+          )}
           {/* The vault header: where you are, and everything that makes
               something. It is also the root drop target, so it stays
               put however empty the vault is. Folders come first,
@@ -1335,42 +1353,11 @@ const Sidebar = memo(function Sidebar({
         </div>
       </div>
       {isPhone ? (
-        <HomeFoot onNewNote={() => createNote(null)}>
-          {recentlyDeleted && (
-            <button
-              type="button"
-              data-testid="recently-deleted-row"
-              className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
-              aria-haspopup="dialog"
-              aria-expanded={recentlyDeleted.open}
-              onClick={recentlyDeleted.onToggle}
-              style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
-            >
-              <TrashIcon />
-              <span style={{ flex: 1 }}>Recently Deleted</span>
-            </button>
-          )}
-        </HomeFoot>
+        <HomeFoot onNewNote={() => createNote(null)}>{recentlyDeletedRow}</HomeFoot>
       ) : (
-        recentlyDeleted && (
-          // Pinned under the tree however long it is: where a deleted note
-          // waits, always in the same place (Apple Notes hides it when empty;
-          // a row that comes and goes is harder to trust).
+        recentlyDeletedRow && (
           <div style={{ borderTop: `1px solid ${BG.divider}`, padding: "6px 0", flexShrink: 0 }}>
-            <button
-              type="button"
-              data-testid="recently-deleted-row"
-              className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
-              aria-haspopup="dialog"
-              aria-expanded={recentlyDeleted.open}
-              onClick={recentlyDeleted.onToggle}
-              style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
-            >
-              <TrashIcon />
-              {/* No count: no other row in the sidebar carries one, and a number
-                  reads as something to clear, which a safety net is not. */}
-              <span style={{ flex: 1 }}>Recently Deleted</span>
-            </button>
+            {recentlyDeletedRow}
           </div>
         )
       )}

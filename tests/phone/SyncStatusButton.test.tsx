@@ -15,8 +15,6 @@ const sync = (status: SyncStatus = OFF): PhoneSync => ({
   signInAgain: vi.fn(async () => {}),
   connect: vi.fn(async () => {}),
   disconnect: vi.fn(async () => {}),
-  moveToFolder: vi.fn(async () => {}),
-  notesFolder: null,
 });
 const openMenu = (s: PhoneSync, onOpenSettings = vi.fn()) => {
   render(
