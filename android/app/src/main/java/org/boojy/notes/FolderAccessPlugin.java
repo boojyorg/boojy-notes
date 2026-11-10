@@ -164,6 +164,18 @@ public class FolderAccessPlugin extends Plugin {
         call.resolve(out);
     }
 
+    /** Gives a folder's grant back: one that is gone, once another was chosen in its place. */
+    @PluginMethod
+    public void release(PluginCall call) {
+        try {
+            resolver()
+                .releasePersistableUriPermission(tree(call), Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        } catch (SecurityException e) {
+            // Not held any more: the answer asked for.
+        }
+        call.resolve();
+    }
+
     private List<JSONObject> children(Uri tree, String parent) throws Exception {
         List<JSONObject> entries = new ArrayList<>();
         Uri uri = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parent);

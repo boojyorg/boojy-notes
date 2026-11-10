@@ -112,6 +112,12 @@ export function SettingRow({ label, children }) {
  * bold label, for the one action a pane or dialog is asking for). Never
  * filled: one button shape across the app.
  * Hover and focus are CSS (`settingsStyles`).
+ *
+ * @param {{
+ *   kind?: "normal" | "disabled" | "strong",
+ *   icon?: import("react").ReactNode,
+ *   style?: import("react").CSSProperties,
+ * } & import("react").ComponentPropsWithRef<"button">} props
  */
 export function SmallButton({
   kind = "normal",

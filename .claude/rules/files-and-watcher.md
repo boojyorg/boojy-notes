@@ -8,12 +8,11 @@
   once just OS cruft is left; non-note files are never touched.
 - **So does a note deleted outside**; the open one stays, read-only, Restore never over a newer
   file; pending edits go back. `outside-delete.spec.ts`.
-- **The phone's bin**: `deleted/<when>/<path>`; a crash between steps leaves the note in one
-  place; a restore is handed to sync (`restored`). `recentlyDeleted.test.ts`.
-- **Phone notes in a picked folder** (`folderFiles.ts`): saves are journalled privately; a
-  taken name fails. `folderFiles.test.ts`.
-- **Phone sync is optional, the binding its connection**: no pass till the sign-in's account
-  is its own. `phoneSync.test.ts`.
+- **The phone's bin**: `deleted/<when>/<path>`; a crash leaves the note in one place; sync is
+  told of a restore (`restored`). `recentlyDeleted.test.ts`.
+- **Phone notes in a picked folder** (`folderFiles.ts`): saves journalled; a taken name
+  fails; lost, chosen again, never app storage (`storageChoice.test.ts`).
+- **Phone sync is optional, the binding its connection**: no pass till its account matches. `phoneSync.test.ts`.
 - Desktop confirms only several files; one note goes at once, its toast with Undo.
 
 ## The watcher drops only an event it can trace to the app's own operation

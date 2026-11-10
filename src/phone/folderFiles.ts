@@ -24,6 +24,7 @@ export interface FolderAccessPlugin {
     initial?: string;
   }): Promise<{ picked: boolean; tree?: string; root?: string; refused?: string }>;
   persisted(): Promise<{ trees: PickedFolder[] }>;
+  release(o: { tree: string }): Promise<void>;
   list(o: { tree: string; id: string }): Promise<{ entries: FolderEntry[] }>;
   walk(o: { tree: string; id: string }): Promise<{ entries: (FolderEntry & { path: string })[] }>;
   readMany(o: { tree: string; ids: string[] }): Promise<{ data: (string | null)[] }>;
@@ -363,14 +364,37 @@ export function folderFiles(
 }
 
 /**
- * The folder this install was given, if it still holds the grant: Android
- * keeps it across restarts and updates, and drops it on uninstall.
+ * The folder this install was given and can still reach. Android keeps a
+ * grant across restarts and updates and drops it on uninstall; a folder
+ * moved, renamed or removed since keeps its grant and answers as missing.
+ * `keep` is the folder just chosen: every other grant is given back, so a
+ * second choice never leaves two to pick between.
  */
-export async function grantedFolder(
+export async function reachableFolder(
   access: FolderAccessPlugin = FolderAccess,
+  keep?: PickedFolder,
 ): Promise<PickedFolder | null> {
-  return (await access.persisted()).trees[0] ?? null;
+  let found: PickedFolder | null = null;
+  for (const folder of (await access.persisted()).trees) {
+    if (keep ? folder.tree === keep.tree : !found && (await reaches(access, folder)))
+      found = folder;
+    else if (keep) await access.release({ tree: folder.tree });
+  }
+  return found;
 }
+
+async function reaches(access: FolderAccessPlugin, { tree, root }: PickedFolder) {
+  try {
+    await access.list({ tree, id: root });
+    return true;
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+
+/** The folder as a person reads it: `Documents/Boojy Notes`, without the volume Android puts first. */
+export const folderLabel = ({ root }: PickedFolder) => root.slice(root.indexOf(":") + 1) || root;
 
 /**
  * The address the page loads a file in the folder from: Capacitor serves a
