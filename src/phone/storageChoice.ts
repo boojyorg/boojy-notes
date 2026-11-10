@@ -41,7 +41,7 @@ export async function hasBeenUsed(priv: FileOps): Promise<boolean> {
  *   would be written somewhere else. Nor is the folder made again.
  * - App storage was chosen, or the install was in use before there was a
  *   choice: the private vault, never asked.
- * - A fresh install is asked, where the build offers a folder (`canAsk`).
+ * - A fresh install is asked, where there are folders to pick (`canAsk`: on Android).
  */
 export function startFor({
   choice,

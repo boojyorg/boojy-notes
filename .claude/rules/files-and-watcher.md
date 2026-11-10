@@ -2,18 +2,19 @@
 
 ## Delete follows the platform
 
-- Electron sends `.md` files to the OS Trash; **Recently Deleted is the recovery surface**: the
+- Electron sends notes to the OS Trash; **Recently Deleted is the recovery surface**: the
   note's last text and history kept 30 days, shown read-only; restored where it was (folder
   remade, `-2` on a clash, same id). `recently-deleted.spec.ts`. A folder's directory goes only
   once just OS cruft is left; non-note files are never touched.
 - **So does a note deleted outside**; the open one stays, read-only, Restore never over a newer
   file; pending edits go back. `outside-delete.spec.ts`.
-- **The phone's bin**: `deleted/<when>/<path>`; a crash leaves the note in one place; sync is
-  told of a restore (`restored`). `recentlyDeleted.test.ts`.
-- **Phone notes in a picked folder** (`folderFiles.ts`): saves journalled; a taken name
-  fails; lost, chosen again, never app storage (`storageChoice.test.ts`).
-- **Phone sync is optional, the binding its connection**: no pass till its account matches. `phoneSync.test.ts`.
-- Desktop confirms only several files; one note goes at once, its toast with Undo.
+- **The phone's bin**: one place through a crash; sync is told of a restore.
+  `recentlyDeleted.test.ts`.
+- **Phone notes in a picked folder**: saves journalled; a taken name fails; lost is an error
+  (`FolderLost`), never empty or app storage. **Outside changes are looked for**
+  (`checkOutside`; a rename by text). `phoneVaultFolder.test.ts`.
+- **Phone sync is optional, the binding its connection**: no pass till accounts match. `phoneSync.test.ts`.
+- Desktop confirms only several files; one note goes at once, Undo in its toast.
 
 ## The watcher drops only an event it can trace to the app's own operation
 
@@ -121,5 +122,4 @@ never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 
 ## Tracing
 
-`BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (built, app quit) logs both processes
-on one clock.
+`BOOJY_TRACE=<log> node_modules/.bin/electron .` (built, app quit): both processes, one clock.

@@ -72,6 +72,18 @@ class Taken extends Error {
   }
 }
 
+/**
+ * The picked folder itself is not there (renamed, moved or removed by another
+ * app). Never answered as an empty folder: every note would look deleted,
+ * to the editor and to sync.
+ */
+export class FolderLost extends Error {
+  name = "FolderLost";
+  constructor() {
+    super("The notes folder can't be reached");
+  }
+}
+
 /** Where the journal is kept, in the app's private storage. */
 export const JOURNAL = "journal";
 const encoder = new TextEncoder();
@@ -99,6 +111,8 @@ const readRecord = (raw: Uint8Array): { intent: Intent; bytes: Uint8Array } => {
  * is kept (name → id) and every call made here keeps it in step. The folder
  * tells names apart by spelling but holds only one per spelling-without-case,
  * so a name is found exactly, else ignoring case, as the disk itself would.
+ * A folder inside it that is missing lists as empty; the picked folder itself
+ * missing is `FolderLost`.
  *
  * **A save is journalled.** The folder has no rename-over-a-file, and a
  * write in place can be cut short. So the new bytes go to `private` first
@@ -143,6 +157,7 @@ export function folderFiles(
         for (const e of (await access.list({ tree, id })).entries) map.set(e.name, e);
       } catch (error) {
         if (!isMissing(error)) throw error;
+        if (!dir) throw new FolderLost();
       }
     }
     dirs.set(dir, map);
@@ -241,8 +256,9 @@ export function folderFiles(
       try {
         ({ entries } = await access.walk({ tree, id }));
       } catch (error) {
-        if (isMissing(error)) return [];
-        throw error;
+        if (!isMissing(error)) throw error;
+        if (!dir) throw new FolderLost();
+        return [];
       }
       // The walk is every listing under `dir` at once: kept, so the reads
       // and saves that follow ask Android for no folder again.

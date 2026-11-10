@@ -24,9 +24,26 @@ vi.mock("../../src/phone/files", () => ({
   }),
   fileAddress: async () => (rel: string) => `https://localhost/_capacitor_file_/vault/${rel}`,
 }));
+const checkOutside = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/phone/phoneVault", () => ({
   VAULT: "vault",
-  createPhoneVault: () => ({ api: {}, store: {} }),
+  createPhoneVault: () => ({ api: {}, store: {}, checkOutside }),
+}));
+/** Android, or the page in a browser; and the app's coming to the front, as Android says it. */
+const device = vi.hoisted(() => ({
+  native: true,
+  stateChange: null as ((state: { isActive: boolean }) => void) | null,
+}));
+vi.mock("@capacitor/core", async (original) => ({
+  ...(await original<typeof import("@capacitor/core")>()),
+  Capacitor: { isNativePlatform: () => device.native, convertFileSrc: (uri: string) => uri },
+}));
+vi.mock("@capacitor/app", () => ({
+  App: {
+    addListener: (_: string, cb: (state: { isActive: boolean }) => void) => {
+      device.stateChange = cb;
+    },
+  },
 }));
 const start = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/phone/phoneSync", () => ({
@@ -89,16 +106,18 @@ describe("the phone's start", () => {
 });
 
 describe("where a start keeps the notes", () => {
-  /** The start of a build that offers a folder (the test app), or one that does not. */
-  const startOf = async (offered: boolean) => {
+  /** A start on Android, or of the page in a browser, where there is no folder to pick. */
+  const startOf = async (native: boolean) => {
     vi.resetModules();
-    vi.stubEnv("VITE_BOOJY_TEST_APP", offered ? "1" : "");
+    device.native = native;
+    device.stateChange = null;
     screens.askStorage.mockClear();
     screens.askFolderAgain.mockClear();
     reachable.mockClear();
+    checkOutside.mockClear();
     disk.written.length = 0;
     await (await import("../../src/phone/install")).installPhone();
-    vi.unstubAllEnvs();
+    device.native = true;
   };
   const fresh = () => Object.assign(disk, { state: [], choice: null });
 
@@ -124,7 +143,7 @@ describe("where a start keeps the notes", () => {
     expect(disk.written).toEqual([]);
   });
 
-  it("asks nothing, and Android nothing, in a build that does not offer a folder", async () => {
+  it("asks nothing, and Android nothing, in a browser", async () => {
     fresh();
     await startOf(false);
     expect(screens.askStorage).not.toHaveBeenCalled();
@@ -138,5 +157,21 @@ describe("where a start keeps the notes", () => {
     expect(screens.askFolderAgain).toHaveBeenCalledOnce();
     expect(screens.askStorage).not.toHaveBeenCalled();
     expect(disk.written).toEqual([]);
+  });
+
+  it("looks for other apps' changes when the app comes back to the front, with a folder", async () => {
+    Object.assign(disk, { state: ["ids.json"], choice: "folder" });
+    reachable.mockResolvedValueOnce({ tree: "t", root: "primary:Documents/Boojy Notes" });
+    await startOf(true);
+    expect(checkOutside).not.toHaveBeenCalled();
+    device.stateChange?.({ isActive: true });
+    expect(checkOutside).toHaveBeenCalledWith({ thorough: true });
+  });
+
+  // Nothing else writes the app's own storage.
+  it("never looks when the notes are in the app's own storage", async () => {
+    Object.assign(disk, { state: ["ids.json"], choice: "app" });
+    await startOf(true);
+    expect(device.stateChange).toBeNull();
   });
 });

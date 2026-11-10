@@ -1,3 +1,4 @@
+import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { onCommand } from "./commands";
 import { capacitorFiles, type FileOps, fileAddress } from "./files";
@@ -11,18 +12,15 @@ import {
 import { createPhoneSync } from "./phoneSync";
 import { createPhoneVault, VAULT } from "./phoneVault";
 import { holdFelt } from "./haptics";
+import { watchOutside } from "./outsideWatch";
 import { routedFiles } from "./routedFiles";
 import { selectWordAt } from "./selectWord";
 import { hasBeenUsed, readChoice, startFor, writeChoice } from "./storageChoice";
 import { askFolderAgain, askStorage } from "./storageScreens";
 
-/**
- * Whether this build offers a notes folder at first launch. The test app
- * alone, until the app notices what other apps change in the folder while it
- * is open; every other build keeps its notes in its own storage, unasked.
- */
-const FOLDER_OFFERED = import.meta.env.VITE_BOOJY_TEST_APP === "1";
-const FOLDER_NAME = FOLDER_OFFERED ? "Boojy Notes (test)" : "Boojy Notes";
+/** The folder a first launch suggests; the test app's is its own, beside the everyday app's. */
+const FOLDER_NAME =
+  import.meta.env.VITE_BOOJY_TEST_APP === "1" ? "Boojy Notes (test)" : "Boojy Notes";
 
 /**
  * The folder this install keeps its notes in, or null for the app's own
@@ -32,9 +30,11 @@ const FOLDER_NAME = FOLDER_OFFERED ? "Boojy Notes (test)" : "Boojy Notes";
 async function notesFolder(priv: FileOps): Promise<PickedFolder | null> {
   const choice = await readChoice(priv);
   const used = choice === null && (await hasBeenUsed(priv));
+  // Only Android has folders to pick: the page in a browser (`pnpm dev:phone`) never asks.
+  const canAsk = Capacitor.isNativePlatform();
   // An install that was never offered a folder never asks Android about one.
-  const granted = choice === "folder" || (!used && FOLDER_OFFERED) ? await reachableFolder() : null;
-  const start = startFor({ choice, folder: granted, used, canAsk: FOLDER_OFFERED });
+  const granted = choice === "folder" || (!used && canAsk) ? await reachableFolder() : null;
+  const start = startFor({ choice, folder: granted, used, canAsk });
   if (start === "app") return null;
   if (start === "folder") return granted;
   if (start === "lost") {
@@ -85,4 +85,14 @@ export async function installPhone() {
     },
   };
   await sync.start();
+  if (!folder) return;
+  // Other apps write the folder too, and Android sends no word of it. A
+  // folder gone while the app runs is asked for again by a fresh start.
+  const watch = watchOutside({
+    check: vault.checkOutside,
+    stillThere: async () => (await reachableFolder()) !== null,
+    lost: () => location.reload(),
+  });
+  watch.active(true, false);
+  App.addListener("appStateChange", ({ isActive }) => watch.active(isActive));
 }
