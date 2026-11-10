@@ -88,63 +88,83 @@ async function pickFolder(
 /** A glyph for each of `SETUP_POINTS`, in their order: a file, no connection, a cloud. */
 const POINT_ICONS = [OpenNoteIcon, SyncOfflineIcon, SyncOffIcon];
 
-/**
- * A small note, drawn in the theme: what the Appearance row is choosing
- * between. A picture only, so nothing in it is read out or reached.
- */
-function PreviewNote() {
+/** A to-do in the example note: it ticks, as one in a note does. */
+function ExampleTodo({ label, done = false }: { label: string; done?: boolean }) {
   const { theme } = useTheme();
   const { TEXT } = theme;
-  const box = { width: 16, height: 16, boxSizing: "border-box", borderRadius: 4, flexShrink: 0 };
-  const row = { display: "flex", alignItems: "center", gap: 10 };
-  const open = { ...box, border: `1.5px solid ${TEXT.muted}` } as React.CSSProperties;
-  const ticked = {
-    ...box,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: TEXT.secondary,
-    color: theme.BG.editor,
-  } as React.CSSProperties;
+  const [checked, setChecked] = useState(done);
   return (
-    <div
-      aria-hidden="true"
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      onClick={() => setChecked(!checked)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        minHeight: 32,
+        padding: 0,
+        border: "none",
+        background: "transparent",
+        font: "inherit",
+        textAlign: "left",
+        color: checked ? TEXT.muted : TEXT.primary,
+        textDecoration: checked ? "line-through" : "none",
+      }}
+    >
+      <span
+        style={{
+          width: 18,
+          height: 18,
+          boxSizing: "border-box",
+          borderRadius: 4,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: checked ? "none" : `1.5px solid ${TEXT.muted}`,
+          background: checked ? TEXT.secondary : "transparent",
+          color: theme.BG.editor,
+        }}
+      >
+        {checked && <CheckIcon size={13} />}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+/**
+ * An example note, drawn in the theme: what the Appearance row is choosing
+ * between, and what a note can hold. Each line says what it is, and the
+ * to-dos tick, so nothing in it only looks as if it worked.
+ */
+function ExampleNote() {
+  const { theme } = useTheme();
+  const { TEXT } = theme;
+  return (
+    <section
+      aria-label="Example note"
       data-testid="setup-preview"
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 6,
-        padding: "16px 18px 18px",
+        gap: 4,
+        padding: "16px 18px",
         border: `1px solid ${theme.BG.divider}`,
         borderRadius: 14,
         background: theme.BG.editor,
         color: TEXT.primary,
-        fontSize: 15,
-        lineHeight: "22px",
+        fontSize: 16,
+        lineHeight: "24px",
       }}
     >
-      <div style={{ fontSize: 19, lineHeight: "26px", fontWeight: 600 }}>Lisbon trip</div>
+      <div style={{ fontSize: 20, lineHeight: "28px", fontWeight: 600, marginBottom: 2 }}>
+        This is a heading
+      </div>
       <div>
-        Flights on the <strong style={{ fontWeight: 600 }}>14th</strong>, back on the 21st. Hotel
-        near the river.
-      </div>
-      <div style={{ marginTop: 8, fontSize: 16, fontWeight: 600 }}>To pack</div>
-      <div style={row}>
-        <span style={open} />
-        Passport
-      </div>
-      <div style={{ ...row, color: TEXT.muted, textDecoration: "line-through" }}>
-        <span style={ticked}>
-          <CheckIcon size={12} />
-        </span>
-        Phone charger
-      </div>
-      <div style={row}>
-        <span style={open} />
-        Sun cream
-      </div>
-      <div style={{ marginTop: 8 }}>
-        More in{" "}
+        This is text, with <strong style={{ fontWeight: 600 }}>bold</strong> and a{" "}
         <span
           style={{
             color: theme.link.color,
@@ -152,10 +172,17 @@ function PreviewNote() {
             textDecorationColor: theme.link.underline,
           }}
         >
-          Packing list
+          link
         </span>
+        .
       </div>
-    </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 2 }}>
+        <span style={{ width: 18, textAlign: "center", color: TEXT.secondary }}>•</span>
+        This is a bullet point
+      </div>
+      <ExampleTodo label="This is a to-do: tap it" />
+      <ExampleTodo label="And one that is done" done />
+    </section>
   );
 }
 
@@ -163,7 +190,7 @@ function PreviewNote() {
  * First launch on the phone, in two pages. The first says what the app is
  * and asks nothing. The second is the desktop's setup: the notes folder
  * (`Documents/<folderName>` unless another is chosen) and the appearance,
- * with a small note that shows it. Continue passes through Android's own
+ * with an example note that shows it. Continue passes through Android's own
  * folder screen once (an app cannot take a shared folder unasked); a folder
  * already granted goes straight on.
  *
@@ -294,26 +321,44 @@ export function PhoneSetup({
 
   return (
     <Page>
-      <button
-        type="button"
-        aria-label="Back"
-        onClick={() => setPage(1)}
+      {/* Back and the page's name on one line, the name centred on the page. */}
+      <div
         style={{
-          width: 44,
-          height: 44,
-          margin: "-20px 0 8px -12px",
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "44px 1fr 44px",
           alignItems: "center",
-          justifyContent: "center",
-          border: "none",
-          background: "transparent",
-          color: TEXT.primary,
+          margin: "-20px -12px 24px",
         }}
       >
-        <BackIcon />
-      </button>
-      <Title>Set up</Title>
-      <div style={{ height: 8 }} />
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => setPage(1)}
+          style={{
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "none",
+            background: "transparent",
+            color: TEXT.primary,
+          }}
+        >
+          <BackIcon />
+        </button>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 20,
+            lineHeight: "28px",
+            fontWeight: 600,
+            textAlign: "center",
+          }}
+        >
+          Set up
+        </h1>
+      </div>
 
       {/* The folder is one row: where the notes go, and a tap to change it. */}
       <button
@@ -363,7 +408,7 @@ export function PhoneSetup({
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <SectionTitle title={APPEARANCE_TITLE} />
         <ThemePills />
-        <PreviewNote />
+        <ExampleNote />
       </div>
 
       <div style={{ flexGrow: 1, minHeight: 32 }} />
