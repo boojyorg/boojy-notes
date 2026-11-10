@@ -1071,9 +1071,9 @@ const Sidebar = memo(function Sidebar({
     row?.scrollIntoView({ block: "nearest" });
   }, [newNotes, sidebarScrollRef]);
 
-  // The list's head: New note (desktop) and the list's name with its controls.
-  // Above the scroller on the desktop, so only the tree scrolls; on the phone
-  // it scrolls with the list, under the Recent cards.
+  // The list's head: New note (desktop) and the list's name with its controls,
+  // above the scroller. On the phone the name heads Home: the Recent cards
+  // and the list both stand under it.
   const listHead = (
     <>
       {/* New note and the list's controls, above the list's scroller:
@@ -1105,27 +1105,22 @@ const Sidebar = memo(function Sidebar({
           dropRoot
           menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
         >
-          {/* New folder and Sort are in the phone's ··· (HomeTop). */}
-          {!isPhone && (
-            <>
-              <SectionAction
-                onClick={() => createFolder(null)}
-                label="New folder"
-                shortcut={SHORTCUTS.newFolder}
-              >
-                <NewFolderIcon size={16} />
-              </SectionAction>
-              <SectionAction
-                onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
-                label="Sort"
-                aria-haspopup="menu"
-                aria-expanded={sortMenuAnchor !== null}
-                active={sortMenuAnchor !== null}
-              >
-                <SortIcon size={16} />
-              </SectionAction>
-            </>
-          )}
+          <SectionAction
+            onClick={() => createFolder(null)}
+            label="New folder"
+            shortcut={SHORTCUTS.newFolder}
+          >
+            <NewFolderIcon size={16} />
+          </SectionAction>
+          <SectionAction
+            onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
+            label="Sort"
+            aria-haspopup="menu"
+            aria-expanded={sortMenuAnchor !== null}
+            active={sortMenuAnchor !== null}
+          >
+            <SortIcon size={16} />
+          </SectionAction>
         </SectionHeader>
       </div>
     </>
@@ -1196,13 +1191,8 @@ const Sidebar = memo(function Sidebar({
         }}
       >
         {isPhone ? (
-          // The phone's one row: the N, the Search field and ··· (HomeChrome).
-          <HomeTop
-            onSettings={() => setSettingsOpen(true)}
-            onSearch={onOpenSearch}
-            onNewFolder={() => createFolder(null)}
-            onSort={setSortMenuAnchor}
-          />
+          // The phone's one row: the N, the Search field and the cog (HomeChrome).
+          <HomeTop onSettings={() => setSettingsOpen(true)} onSearch={onOpenSearch} />
         ) : (
           <>
             <button
@@ -1279,7 +1269,7 @@ const Sidebar = memo(function Sidebar({
         data-drop-zone=""
         style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
       >
-        {!isPhone && listHead}
+        {listHead}
 
         {/* The list's scroller: the tree alone on the desktop, results and the
           tree on a phone. */}
@@ -1296,16 +1286,14 @@ const Sidebar = memo(function Sidebar({
             padding: "0 0 2px",
           }}
         >
+          {/* The phone: the notes edited last, under the list's name and over the list. */}
           {isPhone && (
-            <>
-              <RecentCards
-                noteData={noteData}
-                editedAt={editedAt}
-                onOpen={handleNoteClick}
-                inset={TREE_SPINE}
-              />
-              {listHead}
-            </>
+            <RecentCards
+              noteData={noteData}
+              editedAt={editedAt}
+              onOpen={handleNoteClick}
+              inset={TREE_SPINE}
+            />
           )}
           {/* The vault header: where you are, and everything that makes
               something. It is also the root drop target, so it stays

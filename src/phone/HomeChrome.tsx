@@ -1,6 +1,5 @@
-import { type ReactNode, useState } from "react";
-import { MoreHorizontalIcon, NewNoteIcon, SearchIcon } from "../components/Icons";
-import Menu, { type MenuAnchor } from "../components/Menu";
+import type { ReactNode } from "react";
+import { NewNoteIcon, SearchIcon, SettingsIcon } from "../components/Icons";
 import Wordmark from "../components/Wordmark";
 import { TOUCH } from "../constants/layout";
 import { useTheme } from "../hooks/useTheme";
@@ -15,27 +14,19 @@ const MARK_H = 28;
 const PLAIN = { border: "none", background: "transparent", padding: 0, font: "inherit" } as const;
 
 /**
- * Home's one top row on the phone: the N (the brand, and Settings as the
- * desktop's wordmark is), a field that opens Search, and ··· for what is
- * rarely wanted (New folder, Sort by, Settings). New note is not in the menu:
- * it has one way in, the teal button at the foot.
+ * Home's one top row on the phone: the N (the brand; it opens Settings as
+ * the desktop's wordmark does), a field that opens Search, and the cog for
+ * Settings. No menu: everything on Home is in sight and does one thing.
  */
 export function HomeTop({
   onSettings,
   onSearch,
-  onNewFolder,
-  onSort,
 }: {
   onSettings: () => void;
   onSearch: () => void;
-  onNewFolder: () => void;
-  /** Opens the Sort menu at the ··· button. */
-  onSort: (anchor: MenuAnchor) => void;
 }) {
   const { theme } = useTheme();
   const { TEXT, BG } = theme;
-  const [menu, setMenu] = useState<MenuAnchor | null>(null);
-  const close = () => setMenu(null);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, flexGrow: 1, minWidth: 0 }}>
       <button
@@ -80,11 +71,9 @@ export function HomeTop({
       </button>
       <button
         type="button"
-        data-testid="home-more"
-        aria-label="More"
-        aria-haspopup="menu"
-        aria-expanded={menu !== null}
-        onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}
+        data-testid="home-settings"
+        aria-label="Settings"
+        onClick={onSettings}
         style={{
           ...PLAIN,
           width: TOUCH,
@@ -97,43 +86,8 @@ export function HomeTop({
           color: TEXT.secondary,
         }}
       >
-        <MoreHorizontalIcon />
+        <SettingsIcon />
       </button>
-      {menu && (
-        <Menu
-          label="More"
-          idPrefix="home-more"
-          testId="home-more-menu"
-          anchor={menu}
-          align="end"
-          onClose={close}
-          items={[
-            {
-              label: "New folder",
-              action: () => {
-                close();
-                onNewFolder();
-              },
-            },
-            {
-              label: "Sort by…",
-              action: () => {
-                const at = menu;
-                close();
-                onSort(at);
-              },
-            },
-            {
-              label: "Settings",
-              rule: true,
-              action: () => {
-                close();
-                onSettings();
-              },
-            },
-          ]}
-        />
-      )}
     </div>
   );
 }

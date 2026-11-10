@@ -30,7 +30,7 @@
 
 A quiet surface with **one coloured glyph that carries the
 meaning**. `done` fades (a click dismisses); `notice`, `warning`, `error`
-wait for their × (a timed save failure is one nobody saw). **Notices about one condition share
+wait for their ×. **Notices about one condition share
 a key, the newer replacing the older, and end when it stops being true** (`writeRecovered`).
 `toasts.spec.ts`.
 
@@ -82,7 +82,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   portalled above every surface, placed via `cssZoom`. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
 - **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes and files opened
   (`useNoteHistory`, memory only), as do the desktop's ← → before the path. `⌘K` is link,
-  not Search. `⇧⌘L`/`E`/`R` align a table column, claimed only in a cell. Sort has none.
+  not Search. `⇧⌘L`/`E`/`R` align a table column, claimed only in a cell.
 - **`⌘0`–`9` apply a block kind, never toggle** (`KIND_KEYS`); Actual Size is `⇧⌘0`.
   `block-kind-keys.spec.ts`.
 - **The collapsed header carries the sidebar's three controls**, never both sets at once. Only the hidden sidebar's chrome row and action
@@ -222,8 +222,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   keyboard bar sends menu-bar commands; **a list item brings the list row** (✕ till it
   leaves); in a field what can't act greys; **tap acts, hold explains** (no Markdown),
   a held slide following (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.
-- **Home there** (`HomeChrome`): the N (Settings), a Search field, ···; the list's name with
-  sync's glyph is one button; **New note is the one teal surface**, glyph `onAccent`. **Recent is edited** (`recentCards.ts`), never opened.
-  **Settings: a page** (`PhoneSettings`), a row per state, its menu.
+- **Home there has no menu** (`HomeChrome`): the N, a Search field, the cog. **New note
+  is the one teal surface.** **Cards are the notes edited last** (`recentCards.ts`),
+  whatever the sort. **Settings: a page** (`PhoneSettings`).
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`). **A line is at
   most `rhythm.measure` ems**, centred under the name; margins go first, then gutters.

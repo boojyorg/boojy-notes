@@ -8,10 +8,11 @@ import { recencyOf } from "../utils/noteSort";
 const CARD_H = 124;
 
 /**
- * Home's Recent section on the phone: the notes edited last, up to four, as
- * a 2 × 2 grid of cards (name, first lines, folder and time), each a way to
- * its note. Fewer notes, fewer cards; none, no section. The heading is a
- * quiet word, not a control: the fifth recent note is Search's.
+ * Home's recent notes on the phone: the notes edited last, up to four, as a
+ * 2 × 2 grid of cards (name, first lines, folder and time), each a way to
+ * its note. Fewer notes, fewer cards; none, nothing. No heading: the list's
+ * name stands over the cards and the list alike, and a card's time says why
+ * it is here. The same whichever way the list is sorted.
  */
 export default function RecentCards({
   noteData,
@@ -35,12 +36,9 @@ export default function RecentCards({
     <section
       aria-label="Recent"
       data-testid="recent-cards"
-      style={{ padding: `16px ${inset}px 0` }}
+      style={{ padding: `4px ${inset}px 16px` }}
     >
-      <div style={{ fontSize: 14, fontWeight: 500, lineHeight: "20px", color: TEXT.muted }}>
-        Recent
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {ids.map((id) => {
           const note = noteData[id];
           const lines = cardPreview(note);

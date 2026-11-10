@@ -917,28 +917,21 @@ describe("Sidebar on the phone", () => {
       }
     }));
 
-  it("has one top row: the N for Settings, the Search field, and ··· for the rest", () =>
+  // No menu on Home: every control is in sight and does one thing.
+  it("has one top row: the N, the Search field and the cog; New folder and Sort on the list's row", () =>
     onPhone(async (PhoneSidebar) => {
       const onOpenSearch = vi.fn();
       const createFolder = vi.fn();
       const view = renderSidebar({ Component: PhoneSidebar, onOpenSearch, createFolder });
       fireEvent.click(view.getByTestId("wordmark-settings-button"));
-      expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
+      fireEvent.click(view.getByTestId("home-settings"));
+      expect(settingsState.setSettingsOpen).toHaveBeenCalledTimes(2);
       fireEvent.click(view.getByTestId("home-search"));
       expect(onOpenSearch).toHaveBeenCalledTimes(1);
-      // The desktop's row controls are in the menu here, and New note is not: it has one way in.
-      expect(view.queryByLabelText("New folder")).not.toBeInTheDocument();
-      expect(view.queryByLabelText("Sort")).not.toBeInTheDocument();
-      fireEvent.click(view.getByTestId("home-more"));
-      expect(view.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
-        "New folder",
-        "Sort by…",
-        "Settings",
-      ]);
-      fireEvent.click(view.getByText("New folder"));
+      expect(view.queryByTestId("home-more")).not.toBeInTheDocument();
+      fireEvent.click(view.getByLabelText("New folder"));
       expect(createFolder).toHaveBeenCalledWith(null);
-      fireEvent.click(view.getByTestId("home-more"));
-      fireEvent.click(view.getByText("Sort by…"));
+      fireEvent.click(view.getByLabelText("Sort"));
       expect(view.getByRole("menu", { name: "Sort notes" })).toBeInTheDocument();
     }));
 
@@ -969,10 +962,29 @@ describe("Sidebar on the phone", () => {
       expect(cards[0].lastChild.textContent).toMatch(/^Home · /);
       fireEvent.click(cards[1]);
       expect(handleNoteClick).toHaveBeenCalledWith("a", expect.anything());
-      // The cards and the list's name scroll with the list.
+      // The list's name heads Home, above the scroller; the cards scroll with the list
+      // and carry no heading of their own.
       const scroller = view.container.querySelector(".sidebar-scroll");
       expect(scroller.contains(view.getByTestId("recent-cards"))).toBe(true);
-      expect(scroller.querySelector(".sidebar-section-header")).not.toBeNull();
+      expect(scroller.querySelector(".sidebar-section-header")).toBeNull();
+      expect(view.queryByText("Recent")).not.toBeInTheDocument();
+    }));
+
+  // Sort orders the list and never filters it: the cards are what was edited last, either way.
+  it("keeps the same cards whichever way the list is sorted", () =>
+    onPhone(async (PhoneSidebar) => {
+      const noteData = {
+        z: { id: "z", title: "Zebra", folder: null, lastModified: 300, content: { blocks: [] } },
+        a: { id: "a", title: "Apple", folder: null, lastModified: 100, content: { blocks: [] } },
+      };
+      for (const sortMode of ["recent", "alpha"]) {
+        const view = renderSidebar({ Component: PhoneSidebar, noteData, sortMode });
+        expect(view.getAllByTestId("recent-card").map((c) => c.firstChild.textContent)).toEqual([
+          "Zebra",
+          "Apple",
+        ]);
+        view.unmount();
+      }
     }));
 
   it("shows no Recent section with no notes", () =>
