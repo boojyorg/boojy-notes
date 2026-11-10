@@ -69,19 +69,11 @@ describe("first launch on the phone: what the app is", () => {
 });
 
 describe("first launch on the phone: the folder and the appearance", () => {
-  it("has the default folder filled in, the appearance with an example note, and one way on", () => {
+  it("has the default folder filled in, the appearance, and one way on", () => {
     showSetup(access([]).plugin);
     expect(screen.getByText("Documents/Boojy Notes")).toBeTruthy();
     expect(screen.getByText("Android will ask you to confirm it.")).toBeTruthy();
     expect(screen.getByRole("radiogroup", { name: "Appearance" })).toBeTruthy();
-    // The example says what each line is, and its to-dos tick: nothing only looks as if it worked.
-    expect(screen.getByRole("region", { name: "Example note" }).textContent).toMatch(
-      /This is a heading.*This is a bullet point/,
-    );
-    const todo = screen.getByRole("checkbox", { name: "This is a to-do: tap it" });
-    expect(todo.getAttribute("aria-checked")).toBe("false");
-    fireEvent.click(todo);
-    expect(todo.getAttribute("aria-checked")).toBe("true");
     // The answer that loses the notes on uninstall is not offered up front.
     expect(screen.queryByRole("button", { name: APP_LINE })).toBeNull();
   });

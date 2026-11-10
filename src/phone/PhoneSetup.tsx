@@ -11,7 +11,6 @@ import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
 import {
   ArrowRightIcon,
   BackIcon,
-  CheckIcon,
   ChevronRightIcon,
   FolderIcon,
   OpenNoteIcon,
@@ -28,14 +27,27 @@ import {
   type PickedFolder,
 } from "./folderFiles";
 
-/** A phone's button: the desktop's shape at a finger's size, as wide as its words, centred. */
+/**
+ * A phone's button: the desktop's shape at a finger's size, as wide as its
+ * words, centred, a step under what it follows (not pinned to the foot: the
+ * page reads as one group).
+ */
 const TOUCH_BUTTON = {
   height: 48,
+  marginTop: 36,
   padding: "0 28px",
   fontSize: 16,
   borderRadius: 12,
   alignSelf: "center",
 };
+/** A first-run page's heading, centred. */
+const HEADING = {
+  margin: "0 0 10px",
+  fontSize: 26,
+  lineHeight: "32px",
+  fontWeight: 600,
+  textAlign: "center",
+} as const;
 /** A button's words with a glyph after them. */
 const withArrow = (label: string) => (
   <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
@@ -88,109 +100,11 @@ async function pickFolder(
 /** A glyph for each of `SETUP_POINTS`, in their order: a file, no connection, a cloud. */
 const POINT_ICONS = [OpenNoteIcon, SyncOfflineIcon, SyncOffIcon];
 
-/** A to-do in the example note: it ticks, as one in a note does. */
-function ExampleTodo({ label, done = false }: { label: string; done?: boolean }) {
-  const { theme } = useTheme();
-  const { TEXT } = theme;
-  const [checked, setChecked] = useState(done);
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={checked}
-      onClick={() => setChecked(!checked)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        minHeight: 32,
-        padding: 0,
-        border: "none",
-        background: "transparent",
-        font: "inherit",
-        textAlign: "left",
-        color: checked ? TEXT.muted : TEXT.primary,
-        textDecoration: checked ? "line-through" : "none",
-      }}
-    >
-      <span
-        style={{
-          width: 18,
-          height: 18,
-          boxSizing: "border-box",
-          borderRadius: 4,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: checked ? "none" : `1.5px solid ${TEXT.muted}`,
-          background: checked ? TEXT.secondary : "transparent",
-          color: theme.BG.editor,
-        }}
-      >
-        {checked && <CheckIcon size={13} />}
-      </span>
-      {label}
-    </button>
-  );
-}
-
-/**
- * An example note, drawn in the theme: what the Appearance row is choosing
- * between, and what a note can hold. Each line says what it is, and the
- * to-dos tick, so nothing in it only looks as if it worked.
- */
-function ExampleNote() {
-  const { theme } = useTheme();
-  const { TEXT } = theme;
-  return (
-    <section
-      aria-label="Example note"
-      data-testid="setup-preview"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        padding: "16px 18px",
-        border: `1px solid ${theme.BG.divider}`,
-        borderRadius: 14,
-        background: theme.BG.editor,
-        color: TEXT.primary,
-        fontSize: 16,
-        lineHeight: "24px",
-      }}
-    >
-      <div style={{ fontSize: 20, lineHeight: "28px", fontWeight: 600, marginBottom: 2 }}>
-        This is a heading
-      </div>
-      <div>
-        This is text, with <strong style={{ fontWeight: 600 }}>bold</strong> and a{" "}
-        <span
-          style={{
-            color: theme.link.color,
-            textDecoration: "underline",
-            textDecorationColor: theme.link.underline,
-          }}
-        >
-          link
-        </span>
-        .
-      </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 2 }}>
-        <span style={{ width: 18, textAlign: "center", color: TEXT.secondary }}>•</span>
-        This is a bullet point
-      </div>
-      <ExampleTodo label="This is a to-do: tap it" />
-      <ExampleTodo label="And one that is done" done />
-    </section>
-  );
-}
-
 /**
  * First launch on the phone, in two pages. The first says what the app is
  * and asks nothing. The second is the desktop's setup: the notes folder
  * (`Documents/<folderName>` unless another is chosen) and the appearance,
- * with an example note that shows it. Continue passes through Android's own
+ *  Continue passes through Android's own
  * folder screen once (an app cannot take a shared folder unasked); a folder
  * already granted goes straight on.
  *
@@ -266,17 +180,7 @@ export function PhoneSetup({
         <div style={{ flexGrow: 1 }} />
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           <Wordmark height={40} />
-          <h1
-            style={{
-              margin: "28px 0 10px",
-              fontSize: 26,
-              lineHeight: "32px",
-              fontWeight: 600,
-              textAlign: "center",
-            }}
-          >
-            {WELCOME_TITLE}
-          </h1>
+          <h1 style={{ ...HEADING, marginTop: 28 }}>{WELCOME_TITLE}</h1>
           <p
             style={{
               margin: "0 0 36px",
@@ -310,131 +214,141 @@ export function PhoneSetup({
               );
             })}
           </ul>
+          <SmallButton kind="strong" onClick={() => setPage(2)} style={TOUCH_BUTTON}>
+            {withArrow("Get started")}
+          </SmallButton>
         </div>
-        <div style={{ flexGrow: 1.4, minHeight: 32 }} />
-        <SmallButton kind="strong" onClick={() => setPage(2)} style={TOUCH_BUTTON}>
-          {withArrow("Get started")}
-        </SmallButton>
+        <div style={{ flexGrow: 1.4 }} />
       </Page>
     );
   }
 
+  // The same shape as the first page: one centred group, a little above the middle.
   return (
     <Page>
-      {/* Back and the page's name on one line, the name centred on the page. */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "44px 1fr 44px",
-          alignItems: "center",
-          margin: "-20px -12px 24px",
-        }}
-      >
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={() => setPage(1)}
-          style={{
-            width: 44,
-            height: 44,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: "none",
-            background: "transparent",
-            color: TEXT.primary,
-          }}
-        >
-          <BackIcon />
-        </button>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 20,
-            lineHeight: "28px",
-            fontWeight: 600,
-            textAlign: "center",
-          }}
-        >
-          Set up
-        </h1>
-      </div>
-
-      {/* The folder is one row: where the notes go, and a tap to change it. */}
       <button
         type="button"
-        onClick={choose}
+        aria-label="Back"
+        onClick={() => setPage(1)}
         style={{
+          width: 44,
+          height: 44,
+          margin: "-20px 0 0 -12px",
           display: "flex",
           alignItems: "center",
-          gap: 14,
-          minHeight: 64,
-          padding: "10px 12px 10px 16px",
-          border: `1px solid ${theme.BG.divider}`,
-          borderRadius: 14,
-          background: theme.BG.editor,
+          justifyContent: "center",
+          border: "none",
+          background: "transparent",
           color: TEXT.primary,
-          font: "inherit",
-          textAlign: "left",
         }}
       >
-        <span style={{ display: "flex", color: TEXT.secondary }}>
-          <FolderIcon size={20} />
-        </span>
-        <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: 14, lineHeight: "20px", color: TEXT.muted }}>
-            {NOTES_FOLDER_TITLE}
-          </span>
-          <span style={{ overflowWrap: "anywhere" }}>
-            {chosen ? folderLabel(chosen) : `Documents/${folderName}`}
-          </span>
-        </span>
-        <span style={{ display: "flex", color: TEXT.muted }}>
-          <ChevronRightIcon size={18} />
-        </span>
+        <BackIcon />
       </button>
-      {!chosen && (
-        <p style={{ margin: "8px 4px 0", fontSize: 14, lineHeight: "20px", color: TEXT.muted }}>
-          Android will ask you to confirm it.
-        </p>
-      )}
-      {refused && (
-        <p role="alert" style={{ margin: "8px 4px 0", fontSize: 14, color: theme.SEMANTIC.error }}>
-          Choose a folder on this phone.
-        </p>
-      )}
+      <div style={{ flexGrow: 1 }} />
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <h1 style={{ ...HEADING, marginBottom: 24 }}>Set up</h1>
 
-      <div style={{ height: 28 }} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <SectionTitle title={APPEARANCE_TITLE} />
-        <ThemePills />
-        <ExampleNote />
-      </div>
-
-      <div style={{ flexGrow: 1, minHeight: 32 }} />
-      <SmallButton kind="strong" onClick={carryOn} style={TOUCH_BUTTON}>
-        {withArrow("Continue")}
-      </SmallButton>
-      {offerApp && (
-        // The way on for someone who will not, or cannot, give a folder; its cost in the same breath.
+        {/* The folder is one row: where the notes go, and a tap to change it. */}
         <button
           type="button"
-          onClick={() => onDone(null)}
+          onClick={choose}
           style={{
-            margin: "12px 0 0",
-            minHeight: 44,
-            border: "none",
-            background: "transparent",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            minHeight: 64,
+            padding: "10px 12px 10px 16px",
+            border: `1px solid ${theme.BG.divider}`,
+            borderRadius: 14,
+            background: theme.BG.editor,
+            color: TEXT.primary,
             font: "inherit",
-            fontSize: 15,
-            lineHeight: "22px",
-            color: theme.link.color,
+            textAlign: "left",
           }}
         >
-          Or keep notes inside the app{" "}
-          <span style={{ color: TEXT.muted, whiteSpace: "nowrap" }}>(removed on uninstall)</span>
+          <span style={{ display: "flex", color: TEXT.secondary }}>
+            <FolderIcon size={20} />
+          </span>
+          <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: 14, lineHeight: "20px", color: TEXT.muted }}>
+              {NOTES_FOLDER_TITLE}
+            </span>
+            <span style={{ overflowWrap: "anywhere" }}>
+              {chosen ? folderLabel(chosen) : `Documents/${folderName}`}
+            </span>
+          </span>
+          <span style={{ display: "flex", color: TEXT.muted }}>
+            <ChevronRightIcon size={18} />
+          </span>
         </button>
-      )}
+        {!chosen && (
+          <p
+            style={{
+              margin: "8px 0 0",
+              fontSize: 14,
+              lineHeight: "20px",
+              textAlign: "center",
+              color: TEXT.muted,
+            }}
+          >
+            Android will ask you to confirm it.
+          </p>
+        )}
+        {refused && (
+          <p
+            role="alert"
+            style={{
+              margin: "8px 0 0",
+              fontSize: 14,
+              textAlign: "center",
+              color: theme.SEMANTIC.error,
+            }}
+          >
+            Choose a folder on this phone.
+          </p>
+        )}
+
+        <div
+          style={{
+            marginTop: 28,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <SectionTitle title={APPEARANCE_TITLE} />
+          {/* The pills carry a left pull for a left edge: undone, so they sit centred. */}
+          <div style={{ paddingLeft: 12 }}>
+            <ThemePills />
+          </div>
+        </div>
+
+        <SmallButton kind="strong" onClick={carryOn} style={TOUCH_BUTTON}>
+          {withArrow("Continue")}
+        </SmallButton>
+        {offerApp && (
+          // The way on for someone who will not, or cannot, give a folder; its cost in the same breath.
+          <button
+            type="button"
+            onClick={() => onDone(null)}
+            style={{
+              margin: "12px 0 0",
+              minHeight: 44,
+              border: "none",
+              background: "transparent",
+              font: "inherit",
+              fontSize: 15,
+              lineHeight: "22px",
+              color: theme.link.color,
+            }}
+          >
+            Or keep notes inside the app{" "}
+            <span style={{ color: TEXT.muted, whiteSpace: "nowrap" }}>(removed on uninstall)</span>
+          </button>
+        )}
+      </div>
+      <div style={{ flexGrow: 1.4 }} />
     </Page>
   );
 }
@@ -471,7 +385,6 @@ export function FolderLost({
           Choose a folder on this phone.
         </p>
       )}
-      <div style={{ flexGrow: 1, minHeight: 32 }} />
       <SmallButton kind="strong" onClick={again} style={TOUCH_BUTTON}>
         {withArrow("Choose the folder again")}
       </SmallButton>
