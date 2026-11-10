@@ -10,6 +10,8 @@
   file; pending edits go back. `outside-delete.spec.ts`.
 - **The phone's bin**: `deleted/<when>/<path>`; a crash between steps leaves the note in one
   place; a restore is handed to sync (`restored`). `recentlyDeleted.test.ts`.
+- **Phone notes in a picked folder** (`folderFiles.ts`): saves are journalled privately; a
+  taken name fails. `folderFiles.test.ts`.
 - **Phone sync is optional, the binding its connection**: no pass till the sign-in's account
   is its own. `phoneSync.test.ts`.
 - Desktop confirms only several files; one note goes at once, its toast with Undo.
@@ -35,7 +37,7 @@ iCloud eviction). `watcher-scale.spec.ts`.
 
 ## An outside rename or move is the same note
 
-Identity is the inode, read exact (`fileIdentity`: bigint, a Windows id rounds as a Number; `_identity`, memory only), asked by `relocateNote` for an unclaimed
+Identity is the inode, read exact (`fileIdentity`, memory only), asked by `relocateNote` for an unclaimed
 unlink or a save finding its file gone. Found elsewhere, the note follows (`file-moved` →
 `adoptNoteData`), pending edits flushed there; a save carrying an old name before the window's
 `outside-move-taken` is no rename back. No match is a delete. Never compare bytes to decide
@@ -83,9 +85,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 
 ## A note's title is its filename
 
-- **`write-note` is the only place that knows the final name** (collision suffix, `_` for
-  invalid characters and Windows device names, trim, `Untitled`, leading dot, 200-byte cut,
-  volume casing) and answers every write; `useResolvedTitle` adopts it. **Don't add a
+- **`write-note` is the only place that knows the final name** (collision suffix, invalid characters, length, casing) and answers every write; `useResolvedTitle` adopts it. **Don't add a
   sanitiser to an input.**
 - A name the app makes is sanitised; a name the disk holds is kept (`Why?.md` stays).
   `disk-names.spec.ts`.
@@ -101,15 +101,14 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 
 ## Attachments
 
-**Found as Obsidian finds it** (`pickAttachment`, desktop and phone): the path as written,
+**Found as Obsidian finds it** (`pickAttachment`): the path as written,
 the note's folder, then by name, shortest path first, ties A–Z. Every action takes the path the block found; a paste takes a name no file has.
 `attachment-resolution.spec.ts`. Loaded as `boojy-att://vault/<path>`, encoded in the **path,
 never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 
 ## Version history keeps what the file held
 
-- **A version is the file's text, taken where it is written or read** (`history.ts`,
-  fed by `write-note` and `parseNoteFile`), never the editor's state: a restore can only bring
+- **A version is the file's text, taken where it is written or read** (`history.ts`), never the editor's state: a restore can only bring
   back what the file was. Kept outside the vault (`userData/history/`).
 - **What makes one**: a session's end, a note's text before its first edit, and before a large
   delete, an outside change, Replace All, a restore or moving footnotes; `⌘S` a save point. Nothing

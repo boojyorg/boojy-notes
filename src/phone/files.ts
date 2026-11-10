@@ -27,6 +27,16 @@ export interface FileOps {
   mtime(path: string): Promise<number | null>;
   /** Finishes or undoes any `write` a crash cut short, under `dir`. Run before anything reads. */
   recover(dir: string): Promise<void>;
+  /**
+   * Everything under `dir` in one call, paths relative to it, dot entries
+   * left out. Only a store where a call per folder is slow has it (a picked
+   * folder: `folderFiles.ts`); without it the vault lists folder by folder.
+   */
+  walk?(
+    dir: string,
+  ): Promise<{ path: string; name: string; kind: "file" | "dir"; mtime: number; size: number }[]>;
+  /** Many files in one call, in `paths`' order; null for one that is missing. */
+  readMany?(paths: string[]): Promise<(Uint8Array | null)[]>;
 }
 
 /** The plugin's code for a file that does not exist (FilesystemErrors.doesNotExist). */
@@ -216,10 +226,12 @@ export async function recoverWrites(files: FileOps, dir: string): Promise<void> 
 }
 
 /**
- * The address the page loads a file in the app's storage from: Capacitor's
- * own server, so a picture is read by the WebView, never through the bridge.
+ * The address the page loads a file under `dir` of the app's storage from,
+ * given its path there: Capacitor's own server, so a picture is read by the
+ * WebView, never through the bridge. The path is encoded segment by segment.
  */
-export async function fileAddress(path: string) {
-  const { uri } = await Filesystem.getUri({ path, directory: Directory.Data });
-  return Capacitor.convertFileSrc(uri).replace(/\/+$/, "");
+export async function fileAddress(dir: string) {
+  const { uri } = await Filesystem.getUri({ path: dir, directory: Directory.Data });
+  const base = Capacitor.convertFileSrc(uri).replace(/\/+$/, "");
+  return (rel: string) => `${base}/${rel.split("/").map(encodeURIComponent).join("/")}`;
 }

@@ -241,8 +241,8 @@ declare global {
       holdFelt: () => void;
       /** A finger's long press on the word at a point, for a double-tap that missed it (src/phone/selectWord.ts). */
       selectWordAt: (x: number, y: number) => Promise<void>;
-      /** Where the page loads the vault's files from (src/utils/attachmentUrl.js). */
-      vaultAddress: string;
+      /** The address the page loads a vault file from, given its vault path (src/utils/attachmentUrl.js). */
+      attachmentAddress: (rel: string) => string;
       /** Sync's state and Dropbox's connection, for Home's folder row (src/phone/useSyncStatus.ts). */
       sync: import("../phone/useSyncStatus").PhoneSyncAPI;
     };

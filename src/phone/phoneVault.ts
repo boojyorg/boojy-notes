@@ -355,7 +355,19 @@ export function createPhoneVault(
       folders: [] as string[],
       mtimes: new Map<string, number>(),
     };
-    let depth = [""];
+    const file = (path: string, entry: { size: number; mtime: number }) => {
+      found.files.push(path);
+      found.mtimes.set(path, entry.mtime);
+      stamps.set(abs(path), `${entry.size}:${entry.mtime}`);
+    };
+    // A store that lists the whole vault in one call (a picked folder).
+    const all = await files.walk?.(VAULT);
+    for (const entry of all ?? []) {
+      if (entry.path.split("/").some(hidden)) continue;
+      if (entry.kind === "dir") found.folders.push(entry.path);
+      else file(entry.path, entry);
+    }
+    let depth = all ? [] : [""];
     while (depth.length) {
       const listed = await mapLimited(depth, (rel) => files.list(abs(rel)));
       const deeper: string[] = [];
@@ -367,9 +379,7 @@ export function createPhoneVault(
             found.folders.push(path);
             deeper.push(path);
           } else {
-            found.files.push(path);
-            found.mtimes.set(path, entry.mtime);
-            stamps.set(abs(path), `${entry.size}:${entry.mtime}`);
+            file(path, entry);
           }
         }
       });
@@ -554,7 +564,9 @@ export function createPhoneVault(
         const notePaths = paths.filter((rel) => isNote(rel) && !inAttachments(parentOf(rel) ?? ""));
         // Every file is read before any is taken in: a failed read publishes
         // nothing.
-        const read = await mapLimited(notePaths, (rel) => files.read(abs(rel)));
+        const read = files.readMany
+          ? await files.readMany(notePaths.map(abs))
+          : await mapLimited(notePaths, (rel) => files.read(abs(rel)));
         for (const [i, rel] of notePaths.entries()) {
           const note = await parse(rel, { bytes: read[i], mtime: mtimes.get(rel) ?? 0 });
           if (note) notes[note.id] = note;
@@ -803,8 +815,33 @@ export function createPhoneVault(
     return id !== null && (waiting.get(id) ?? 0) > 0;
   };
 
+  /**
+   * The hashes of the files whose stamp moved since they were last read, in
+   * one read: where a call per file is slow (a picked folder), a pass that
+   * asked for each in turn held every save back for seconds.
+   */
+  const hashChanged = async (rels: string[]) => {
+    if (!files.readMany) return;
+    const stale = rels.filter((rel) => {
+      const stamp = stamps.get(abs(rel));
+      return stamp && hashes.get(abs(rel))?.stamp !== stamp;
+    });
+    if (!stale.length) return;
+    const read = await files.readMany(stale.map(abs));
+    for (const [i, rel] of stale.entries()) {
+      const bytes = read[i];
+      const stamp = stamps.get(abs(rel));
+      if (bytes && stamp) hashes.set(abs(rel), { stamp, hash: await contentHash(bytes) });
+    }
+  };
+
   const store: LocalStore & { forgetSync(): Promise<void> } = {
-    list: () => lock(walk),
+    list: () =>
+      lock(async () => {
+        const found = await walk();
+        await hashChanged(found.files);
+        return found;
+      }),
     read: (rel) => lock(() => files.read(abs(rel))),
 
     hash: (rel) =>
