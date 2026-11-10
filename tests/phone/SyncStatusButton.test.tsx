@@ -21,7 +21,7 @@ const sync = (status: SyncStatus = OFF): PhoneSync => ({
 const openMenu = (s: PhoneSync, onOpenSettings = vi.fn()) => {
   render(
     <ThemeProvider>
-      <SyncStatusButton sync={s} onOpenSettings={onOpenSettings} />
+      <SyncStatusButton name="Phone" sync={s} onOpenSettings={onOpenSettings} />
     </ThemeProvider>,
   );
   fireEvent.click(screen.getByTestId("sync-status"));

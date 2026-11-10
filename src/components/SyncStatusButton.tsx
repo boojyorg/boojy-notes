@@ -63,16 +63,20 @@ export function syncAction(sync: PhoneSync): MenuItem | null {
 export const SYNC_GLYPH = GLYPH;
 
 /**
- * Sync's state after the phone's folder name on Home: muted, but in the
- * warning colour while something needs the person. A tap says it in words,
+ * Home's heading on the phone: the list's name, then sync's state as a glyph
+ * (none with no Dropbox), in the warning colour while something needs the
+ * person. One button: a tap says the state in words,
  * with the one thing to do about it (sign in again, try again, or sync now)
  * and the way to Settings, where Dropbox is connected and the notes' folder
  * is chosen.
  */
 export default function SyncStatusButton({
+  name,
   sync,
   onOpenSettings,
 }: {
+  /** The list's name ("Personal", or "Phone" with no Dropbox), which the button says first. */
+  name: string;
   sync: PhoneSync;
   onOpenSettings: () => void;
 }) {
@@ -109,28 +113,44 @@ export default function SyncStatusButton({
     <>
       <button
         type="button"
-        aria-label={`Sync: ${NAME[state]}`}
+        aria-label={`${name}. Sync: ${NAME[state]}`}
         aria-haspopup="menu"
         aria-expanded={anchor !== null}
         data-testid="sync-status"
         data-state={state}
         onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())}
         style={{
-          width: TOUCH,
           height: TOUCH,
+          maxWidth: "100%",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
+          gap: 8,
+          flexShrink: 1,
+          minWidth: 0,
           padding: 0,
           border: "none",
-          borderRadius: 8,
           background: "transparent",
-          color: state === "problem" ? theme.SEMANTIC.warning : theme.TEXT.muted,
+          font: "inherit",
+          fontSize: 14,
+          fontWeight: 500,
+          color: theme.TEXT.muted,
           cursor: "pointer",
         }}
       >
-        <Glyph />
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {name}
+        </span>
+        {/* No Dropbox, no glyph: the name alone says the notes are the phone's. */}
+        {state !== "off" && (
+          <span
+            style={{
+              display: "flex",
+              color: state === "problem" ? theme.SEMANTIC.warning : theme.TEXT.muted,
+            }}
+          >
+            <Glyph />
+          </span>
+        )}
       </button>
       {anchor && (
         <Menu

@@ -33,7 +33,6 @@ import {
   SearchIcon,
   MoreHorizontalIcon,
   NewNoteIcon,
-  SettingsIcon,
   SidebarToggleIcon,
   SortIcon,
 } from "./Icons";
@@ -50,6 +49,7 @@ import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import SyncStatusButton from "./SyncStatusButton";
+import { HomeFoot, HomeTop } from "../phone/HomeChrome";
 import RenameField from "./RenameField";
 import Collapsible, { IndentGuide } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
@@ -76,7 +76,6 @@ import {
   TREE_ROW_H as DESKTOP_ROW_H,
   WORDMARK_H,
 } from "../constants/layout";
-import { NAV_BAR_H } from "../utils/uiScale";
 import { fromTouch } from "../utils/touch";
 import { baseName, parentFolder } from "../utils/vaultPath";
 
@@ -123,7 +122,6 @@ const NOTE_MENU_GAP = 4;
 /** How far left of the ··· button's left edge the menu's left edge sits. */
 const NOTE_MENU_SHIFT = 8;
 /** A chrome control on the phone: a touch target, the same glyph. */
-const PHONE_BTN = { width: TOUCH, height: TOUCH };
 /** Keys the tree claims even where they move nothing (an arrow at the end
  *  would otherwise scroll the sidebar). */
 const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"]);
@@ -444,25 +442,8 @@ function VaultLabel({ name, open, onOpen }) {
  * (`SyncStatusButton`), close beside it rather than across the row, since it
  * speaks of that folder.
  */
-function SyncedVaultLabel({ name, sync, TEXT, onOpenSettings }) {
-  return (
-    <span style={{ display: "flex", alignItems: "center", minWidth: 0, gap: 2 }}>
-      <span
-        style={{
-          fontSize: 14,
-          fontWeight: 500,
-          color: TEXT.muted,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          minWidth: 0,
-        }}
-      >
-        {name}
-      </span>
-      <SyncStatusButton sync={sync} onOpenSettings={onOpenSettings} />
-    </span>
-  );
+function SyncedVaultLabel({ name, sync, onOpenSettings }) {
+  return <SyncStatusButton name={name} sync={sync} onOpenSettings={onOpenSettings} />;
 }
 
 const Sidebar = memo(function Sidebar({
@@ -1152,83 +1133,82 @@ const Sidebar = memo(function Sidebar({
           WebkitAppRegion: isElectronMac ? "drag" : undefined,
         }}
       >
-        <button
-          data-testid="wordmark-settings-button"
-          ref={wordmarkRef}
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          aria-label="Notes — open Settings"
-          style={{
-            position: "relative",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            display: "flex",
-            alignItems: "center",
-            flexShrink: 0,
-            WebkitAppRegion: "no-drag",
-          }}
-          onMouseEnter={(e) => {
-            if (fromTouch(e)) return;
-            e.currentTarget.style.opacity = "0.75";
-            wordmarkTip.handlers.onMouseEnter();
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "1";
-            wordmarkTip.handlers.onMouseLeave();
-          }}
-          onMouseDown={wordmarkTip.handlers.onMouseDown}
-          onMouseUp={wordmarkTip.handlers.onMouseUp}
-          onFocus={wordmarkTip.handlers.onFocus}
-          onBlur={wordmarkTip.handlers.onBlur}
-          onKeyDown={wordmarkTip.handlers.onKeyDown}
-        >
-          {/* WORDMARK_H, 18px: a label, not a headline — at 20 it out-shouted
+        {isPhone ? (
+          // The phone's one row: the N, the Search field and ··· (HomeChrome).
+          <HomeTop
+            onSettings={() => setSettingsOpen(true)}
+            onSearch={onOpenSearch}
+            onNewFolder={() => createFolder(null)}
+            onSort={setSortMenuAnchor}
+          />
+        ) : (
+          <>
+            <button
+              data-testid="wordmark-settings-button"
+              ref={wordmarkRef}
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Notes — open Settings"
+              style={{
+                position: "relative",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+                flexShrink: 0,
+                WebkitAppRegion: "no-drag",
+              }}
+              onMouseEnter={(e) => {
+                if (fromTouch(e)) return;
+                e.currentTarget.style.opacity = "0.75";
+                wordmarkTip.handlers.onMouseEnter();
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "1";
+                wordmarkTip.handlers.onMouseLeave();
+              }}
+              onMouseDown={wordmarkTip.handlers.onMouseDown}
+              onMouseUp={wordmarkTip.handlers.onMouseUp}
+              onFocus={wordmarkTip.handlers.onFocus}
+              onBlur={wordmarkTip.handlers.onBlur}
+              onKeyDown={wordmarkTip.handlers.onKeyDown}
+            >
+              {/* WORDMARK_H, 18px: a label, not a headline — at 20 it out-shouted
               the note's H1. Drawn in the theme's ink (Wordmark picks the
               per-theme asset); the 0.92-opacity stand-in for a black asset is
               gone with it. */}
-          <Wordmark height={WORDMARK_H} />
-          {/* The wordmark is the one control nothing marks as clickable: the
+              <Wordmark height={WORDMARK_H} />
+              {/* The wordmark is the one control nothing marks as clickable: the
               chip is what says it opens Settings. */}
-          {wordmarkTip.shown && (
-            <Tooltip
-              label="Settings"
-              shortcut={SHORTCUTS.settings}
-              anchor={wordmarkRef.current}
-              placement="below"
-              testId="chrome-tooltip"
-            />
-          )}
-        </button>
-        {/* Search and the toggle, one group at the chrome row's own gap. The
+              {wordmarkTip.shown && (
+                <Tooltip
+                  label="Settings"
+                  shortcut={SHORTCUTS.settings}
+                  anchor={wordmarkRef.current}
+                  placement="below"
+                  testId="chrome-tooltip"
+                />
+              )}
+            </button>
+            {/* Search and the toggle, one group at the chrome row's own gap. The
             same two neighbours the collapsed header shows, so Search keeps
             its place beside the toggle in both sidebar states. */}
-        <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP, flexShrink: 0 }}>
-          <ChromeButton
-            onClick={onOpenSearch}
-            label="Search notes"
-            shortcut={SHORTCUTS.search}
-            style={isPhone ? PHONE_BTN : undefined}
-          >
-            <SearchIcon size={18} />
-          </ChromeButton>
-          {isPhone ? (
-            // Home is the whole screen on the phone, so there is nothing to
-            // toggle; the corner is Settings, which has no menu bar to live in.
-            <ChromeButton onClick={() => setSettingsOpen(true)} label="Settings" style={PHONE_BTN}>
-              <SettingsIcon />
-            </ChromeButton>
-          ) : (
-            <ChromeButton
-              onClick={toggleSidebar}
-              label="Toggle sidebar"
-              shortcut={SHORTCUTS.toggleSidebar}
-            >
-              <SidebarToggleIcon />
-            </ChromeButton>
-          )}
-        </div>
+            <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP, flexShrink: 0 }}>
+              <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
+                <SearchIcon size={18} />
+              </ChromeButton>
+              <ChromeButton
+                onClick={toggleSidebar}
+                label="Toggle sidebar"
+                shortcut={SHORTCUTS.toggleSidebar}
+              >
+                <SidebarToggleIcon />
+              </ChromeButton>
+            </div>
+          </>
+        )}
       </div>
 
       {/* The drop zone (useSidebarDrag): the vault row above the scroller is
@@ -1243,7 +1223,8 @@ const Sidebar = memo(function Sidebar({
           under the vault row down to Recently Deleted. */}
           <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
             <div style={{ height: COLUMN_HEAD_GAP }} />
-            <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />
+            {/* On the phone New note is the teal button at the foot: one way in. */}
+            {!isPhone && <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />}
             <SectionHeader
               label={
                 vaults.length > 0 ? (
@@ -1256,7 +1237,6 @@ const Sidebar = memo(function Sidebar({
                   <SyncedVaultLabel
                     name={vaultName}
                     sync={sync}
-                    TEXT={TEXT}
                     onOpenSettings={() => setSettingsOpen(true)}
                   />
                 ) : (
@@ -1267,22 +1247,27 @@ const Sidebar = memo(function Sidebar({
               dropRoot
               menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
             >
-              <SectionAction
-                onClick={() => createFolder(null)}
-                label="New folder"
-                shortcut={SHORTCUTS.newFolder}
-              >
-                <NewFolderIcon size={16} />
-              </SectionAction>
-              <SectionAction
-                onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
-                label="Sort"
-                aria-haspopup="menu"
-                aria-expanded={sortMenuAnchor !== null}
-                active={sortMenuAnchor !== null}
-              >
-                <SortIcon size={16} />
-              </SectionAction>
+              {/* New folder and Sort are in the phone's ··· (HomeTop). */}
+              {!isPhone && (
+                <>
+                  <SectionAction
+                    onClick={() => createFolder(null)}
+                    label="New folder"
+                    shortcut={SHORTCUTS.newFolder}
+                  >
+                    <NewFolderIcon size={16} />
+                  </SectionAction>
+                  <SectionAction
+                    onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
+                    label="Sort"
+                    aria-haspopup="menu"
+                    aria-expanded={sortMenuAnchor !== null}
+                    active={sortMenuAnchor !== null}
+                  >
+                    <SortIcon size={16} />
+                  </SectionAction>
+                </>
+              )}
             </SectionHeader>
           </div>
         </>
@@ -1298,9 +1283,8 @@ const Sidebar = memo(function Sidebar({
             overflow: "auto",
             display: "flex",
             flexDirection: "column",
-            // On the phone the last row scrolls clear of Android's gesture
-            // bar, unless Recently Deleted stands below it and keeps it clear.
-            padding: isPhone && !recentlyDeleted ? `0 0 calc(2px + ${NAV_BAR_H})` : "0 0 2px",
+            // The phone's foot (HomeFoot) keeps the list clear of Android's gesture bar.
+            padding: "0 0 2px",
           }}
         >
           {/* The vault header: where you are, and everything that makes
@@ -1350,33 +1334,45 @@ const Sidebar = memo(function Sidebar({
           )}
         </div>
       </div>
-      {recentlyDeleted && (
-        // Pinned under the tree however long it is: where a deleted note
-        // waits, always in the same place (Apple Notes hides it when empty;
-        // a row that comes and goes is harder to trust).
-        <div
-          style={{
-            // On the phone a quiet last row, not a footer (it competed with the tree).
-            borderTop: isPhone ? undefined : `1px solid ${BG.divider}`,
-            padding: isPhone ? `4px 0 calc(8px + ${NAV_BAR_H})` : "6px 0",
-            flexShrink: 0,
-          }}
-        >
-          <button
-            type="button"
-            data-testid="recently-deleted-row"
-            className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
-            aria-haspopup="dialog"
-            aria-expanded={recentlyDeleted.open}
-            onClick={recentlyDeleted.onToggle}
-            style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
-          >
-            <TrashIcon />
-            {/* No count: no other row in the sidebar carries one, and a number
-                reads as something to clear, which a safety net is not. */}
-            <span style={{ flex: 1 }}>Recently Deleted</span>
-          </button>
-        </div>
+      {isPhone ? (
+        <HomeFoot onNewNote={() => createNote(null)}>
+          {recentlyDeleted && (
+            <button
+              type="button"
+              data-testid="recently-deleted-row"
+              className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
+              aria-haspopup="dialog"
+              aria-expanded={recentlyDeleted.open}
+              onClick={recentlyDeleted.onToggle}
+              style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
+            >
+              <TrashIcon />
+              <span style={{ flex: 1 }}>Recently Deleted</span>
+            </button>
+          )}
+        </HomeFoot>
+      ) : (
+        recentlyDeleted && (
+          // Pinned under the tree however long it is: where a deleted note
+          // waits, always in the same place (Apple Notes hides it when empty;
+          // a row that comes and goes is harder to trust).
+          <div style={{ borderTop: `1px solid ${BG.divider}`, padding: "6px 0", flexShrink: 0 }}>
+            <button
+              type="button"
+              data-testid="recently-deleted-row"
+              className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
+              aria-haspopup="dialog"
+              aria-expanded={recentlyDeleted.open}
+              onClick={recentlyDeleted.onToggle}
+              style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
+            >
+              <TrashIcon />
+              {/* No count: no other row in the sidebar carries one, and a number
+                  reads as something to clear, which a safety net is not. */}
+              <span style={{ flex: 1 }}>Recently Deleted</span>
+            </button>
+          </div>
+        )
       )}
     </div>
   );

@@ -881,7 +881,8 @@ describe("Sidebar vault menu and files", () => {
 // The phone draws under Android's gesture bar, so Home's last row was left
 // behind it, out of reach: the list keeps the bar's height clear at its end.
 describe("Sidebar on the phone", () => {
-  it("scrolls its last row clear of Android's gesture bar", async () => {
+  /** Home as the phone draws it. */
+  const onPhone = async (run) => {
     vi.resetModules();
     vi.doMock("../../src/utils/platform", async (actual) => ({
       ...(await actual()),
@@ -889,40 +890,67 @@ describe("Sidebar on the phone", () => {
     }));
     try {
       const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
-      const { NAV_BAR_H } = await import("../../src/utils/uiScale");
-      const { container } = renderSidebar({ Component: PhoneSidebar });
-      const scroller = container.querySelector(".sidebar-scroll");
-      expect(scroller.getAttribute("style")).toContain(NAV_BAR_H);
+      await run(PhoneSidebar);
     } finally {
       vi.doUnmock("../../src/utils/platform");
       vi.resetModules();
     }
-  });
+  };
 
-  // Recently Deleted stands below the list, so it is the row that must clear
-  // the gesture bar; the list's own end then needs no room for it.
-  it("keeps Recently Deleted clear of Android's gesture bar", async () => {
-    vi.resetModules();
-    vi.doMock("../../src/utils/platform", async (actual) => ({
-      ...(await actual()),
-      isPhone: true,
-    }));
-    try {
-      const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
+  // The foot stands below the list, so it is what must clear the gesture bar;
+  // the list's own end then needs no room for it.
+  it("keeps its foot clear of Android's gesture bar, with or without Recently Deleted", () =>
+    onPhone(async (PhoneSidebar) => {
       const { NAV_BAR_H } = await import("../../src/utils/uiScale");
-      const { container, getByTestId } = renderSidebar({
-        Component: PhoneSidebar,
-        recentlyDeleted: { open: false, onToggle: vi.fn() },
-      });
-      const footer = getByTestId("recently-deleted-row").parentElement;
-      expect(footer.getAttribute("style")).toContain(NAV_BAR_H);
-      const scroller = container.querySelector(".sidebar-scroll");
-      expect(scroller.getAttribute("style")).not.toContain(NAV_BAR_H);
-    } finally {
-      vi.doUnmock("../../src/utils/platform");
-      vi.resetModules();
-    }
-  });
+      for (const recentlyDeleted of [undefined, { open: false, onToggle: vi.fn() }]) {
+        const { container, getByTestId, unmount } = renderSidebar({
+          Component: PhoneSidebar,
+          recentlyDeleted,
+        });
+        const foot = getByTestId("home-new-note").parentElement;
+        expect(foot.getAttribute("style")).toContain(NAV_BAR_H);
+        expect(container.querySelector(".sidebar-scroll").getAttribute("style")).not.toContain(
+          NAV_BAR_H,
+        );
+        unmount();
+      }
+    }));
+
+  it("has one top row: the N for Settings, the Search field, and ··· for the rest", () =>
+    onPhone(async (PhoneSidebar) => {
+      const onOpenSearch = vi.fn();
+      const createFolder = vi.fn();
+      const view = renderSidebar({ Component: PhoneSidebar, onOpenSearch, createFolder });
+      fireEvent.click(view.getByTestId("wordmark-settings-button"));
+      expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
+      fireEvent.click(view.getByTestId("home-search"));
+      expect(onOpenSearch).toHaveBeenCalledTimes(1);
+      // The desktop's row controls are in the menu here, and New note is not: it has one way in.
+      expect(view.queryByLabelText("New folder")).not.toBeInTheDocument();
+      expect(view.queryByLabelText("Sort")).not.toBeInTheDocument();
+      fireEvent.click(view.getByTestId("home-more"));
+      expect(view.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
+        "New folder",
+        "Sort by…",
+        "Settings",
+      ]);
+      fireEvent.click(view.getByText("New folder"));
+      expect(createFolder).toHaveBeenCalledWith(null);
+      fireEvent.click(view.getByTestId("home-more"));
+      fireEvent.click(view.getByText("Sort by…"));
+      expect(view.getByRole("menu", { name: "Sort notes" })).toBeInTheDocument();
+    }));
+
+  it("makes a note from the teal button at the foot, the only New note on Home", () =>
+    onPhone(async (PhoneSidebar) => {
+      const createNote = vi.fn();
+      const view = renderSidebar({ Component: PhoneSidebar, createNote });
+      const buttons = view.getAllByRole("button", { name: "New note" });
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0].dataset.testid).toBe("home-new-note");
+      fireEvent.click(buttons[0]);
+      expect(createNote).toHaveBeenCalledWith(null);
+    }));
 
   // The row read `Notes` on the phone, not the Dropbox folder it syncs.
   it("names the vault row after the Dropbox folder it syncs, or the phone with none", async () => {
@@ -960,7 +988,7 @@ describe("Sidebar on the phone", () => {
     const { getByTestId, getByText } = renderSidebar({ sync });
     const glyph = getByTestId("sync-status");
     expect(glyph.dataset.state).toBe("problem");
-    expect(glyph.getAttribute("aria-label")).toBe("Sync: Needs attention");
+    expect(glyph.getAttribute("aria-label")).toBe("Notes. Sync: Needs attention");
     expect(glyph.parentElement.textContent).toBe("Notes");
     fireEvent.click(glyph);
     expect(getByText(/Dropbox sign-in has expired/)).toBeInTheDocument();
@@ -978,7 +1006,9 @@ describe("Sidebar on the phone", () => {
     };
     const off = renderSidebar({ sync });
     const glyph = off.getByTestId("sync-status");
-    expect(glyph.getAttribute("aria-label")).toBe("Sync: Dropbox not connected");
+    expect(glyph.getAttribute("aria-label")).toBe("Notes. Sync: Dropbox not connected");
+    // No Dropbox, no glyph: the name alone.
+    expect(glyph.querySelector("svg")).toBeNull();
     fireEvent.click(glyph);
     expect(
       off.getByText(/Dropbox not connected. Your notes are on this phone only./),

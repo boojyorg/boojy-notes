@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NIGHT, DAY } from "../../src/constants/themes.js";
+import { NIGHT, DAY, MARK, MARK_INK } from "../../src/constants/themes.js";
 import {
   REMOVE_X_ALPHA,
   TAG_PILL_ALPHA,
@@ -142,3 +142,9 @@ for (const theme of [NIGHT, DAY]) {
     });
   });
 }
+
+describe("the mark as a surface (the phone's New note)", () => {
+  it("carries its glyph in an ink that reads on it", () => {
+    expect(contrast(MARK_INK, MARK)).toBeGreaterThanOrEqual(4.5);
+  });
+});

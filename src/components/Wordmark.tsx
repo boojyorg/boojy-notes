@@ -12,16 +12,41 @@ import wordmarkDark from "/assets/boojy-notes-wordmark-dark.png";
  * The asset is chosen by theme rather than filtered in CSS because an
  * `invert()` would also turn the N into its complement.
  */
-export default function Wordmark({ height }: { height: number }) {
+/** The N's share of the artwork's width, and the artwork's shape (858 × 226; the N ends at 171). */
+const MARK_SHARE = 171 / 858;
+const ASPECT = 858 / 226;
+
+export default function Wordmark({
+  height,
+  markOnly = false,
+}: {
+  height: number;
+  markOnly?: boolean;
+}) {
   const { isDark } = useTheme();
-  return (
+  const img = (
     <img
       src={isDark ? wordmarkDark : wordmarkLight}
       alt=""
       data-testid="wordmark"
       data-theme={isDark ? "dark" : "light"}
-      style={{ height, display: "block" }}
+      style={{ height, display: "block", maxWidth: "none" }}
       draggable="false"
     />
+  );
+  if (!markOnly) return img;
+  // The N alone (the phone's Home): the same artwork, shown as far as the N goes.
+  return (
+    <span
+      data-testid="wordmark-mark"
+      style={{
+        display: "block",
+        overflow: "hidden",
+        height,
+        width: Math.round(height * ASPECT * MARK_SHARE),
+      }}
+    >
+      {img}
+    </span>
   );
 }
