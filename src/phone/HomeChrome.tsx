@@ -35,7 +35,7 @@ export function HomeTop({
   const [menu, setMenu] = useState<MenuAnchor | null>(null);
   const close = () => setMenu(null);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, flexGrow: 1, minWidth: 0 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, flexGrow: 1, minWidth: 0 }}>
       <button
         type="button"
         data-testid="wordmark-settings-button"
@@ -49,7 +49,8 @@ export function HomeTop({
           flexShrink: 0,
         }}
       >
-        <Wordmark height={22} markOnly />
+        {/* As tall as the Search field beside it: one row of one height. */}
+        <Wordmark height={TOUCH} markOnly />
       </button>
       <button
         type="button"
