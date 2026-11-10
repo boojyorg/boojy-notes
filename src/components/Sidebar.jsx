@@ -444,7 +444,7 @@ function VaultLabel({ name, open, onOpen }) {
  * (`SyncStatusButton`), close beside it rather than across the row, since it
  * speaks of that folder.
  */
-function SyncedVaultLabel({ name, sync, TEXT }) {
+function SyncedVaultLabel({ name, sync, TEXT, onOpenSettings }) {
   return (
     <span style={{ display: "flex", alignItems: "center", minWidth: 0, gap: 2 }}>
       <span
@@ -460,7 +460,7 @@ function SyncedVaultLabel({ name, sync, TEXT }) {
       >
         {name}
       </span>
-      <SyncStatusButton sync={sync} />
+      <SyncStatusButton sync={sync} onOpenSettings={onOpenSettings} />
     </span>
   );
 }
@@ -1253,7 +1253,12 @@ const Sidebar = memo(function Sidebar({
                     onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
                   />
                 ) : sync ? (
-                  <SyncedVaultLabel name={vaultName} sync={sync} TEXT={TEXT} />
+                  <SyncedVaultLabel
+                    name={vaultName}
+                    sync={sync}
+                    TEXT={TEXT}
+                    onOpenSettings={() => setSettingsOpen(true)}
+                  />
                 ) : (
                   vaultName
                 )

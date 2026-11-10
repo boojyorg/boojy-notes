@@ -164,7 +164,8 @@ the test its rule names when it is built.
 - **A folder the user can see** (Storage Access Framework), as well as app-private storage:
   chosen at first launch, other apps' changes noticed, and notes kept inside the app moved to
   an empty folder from Home (`moveToFolder.ts`; modified times are not kept, their order is).
-  Left: changing the folder, and all of it from Settings rather than Home's sync menu.
+  Storage and Dropbox are set in the phone's Settings page (`PhoneSettings.tsx`). Left:
+  changing the folder.
 - **Export and import**, **adding pictures** (off, `platform.js:12`), the Dropbox token in
   Android's Keystore (a plain file today), a deliberate backup setting (settings yes, token
   never), Settings laid out for a phone.

@@ -6,6 +6,7 @@ import {
   FolderAccess,
   folderAddress,
   folderFiles,
+  folderLabel,
   type PickedFolder,
   reachableFolder,
 } from "./folderFiles";
@@ -161,6 +162,8 @@ export async function installPhone() {
       connect: sync.connect,
       disconnect: sync.disconnect,
     },
+    // Where the notes are, for Settings: the folder as a person reads it, or null inside the app.
+    notesFolder: folder ? folderLabel(folder) : null,
     // Offered only where there is a folder to move to, and the notes are not in one.
     moveToFolder:
       !folder && Capacitor.isNativePlatform()

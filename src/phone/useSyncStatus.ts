@@ -31,6 +31,8 @@ type MoveToFolder = NonNullable<NonNullable<Window["boojyPhoneAPI"]>["moveToFold
 const moveAPI = (): MoveToFolder | undefined =>
   (getAPI() as { moveToFolder?: MoveToFolder } | undefined)?.moveToFolder;
 const MOVE_TOAST_KEY = "move-to-folder";
+const notesFolder = (): string | null =>
+  (getAPI() as { notesFolder?: string | null } | undefined)?.notesFolder ?? null;
 
 /**
  * Sync's state for Home's folder row, on the phone; null elsewhere. A new
@@ -48,6 +50,7 @@ export function useSyncStatus({
 }) {
   const api = useRef(syncAPI()).current;
   const move = useRef(moveAPI()).current;
+  const folder = useRef(notesFolder()).current;
   const [status, setStatus] = useState<SyncStatus | null>(() => api?.status() ?? null);
   const [shown, setShown] = useState<SyncStatus | null>(status);
   const told = useRef("");
@@ -99,9 +102,8 @@ export function useSyncStatus({
     }
   }, [api, showToast]);
 
-  // Home's "Move notes to a folder…", while the notes are in the app's
-  // storage (it sits in sync's menu until the phone has Settings). A folder
-  // taken restarts the app into the move; one refused says why.
+  // Settings' "Move to a folder…", while the notes are in the app's storage.
+  // A folder taken restarts the app into the move; one refused says why.
   const moveToFolder = useMemo(
     () =>
       move &&
@@ -153,9 +155,17 @@ export function useSyncStatus({
   return useMemo(
     () =>
       api && shown
-        ? { status: shown, syncNow, signInAgain, connect, disconnect, moveToFolder }
+        ? {
+            status: shown,
+            syncNow,
+            signInAgain,
+            connect,
+            disconnect,
+            moveToFolder,
+            notesFolder: folder,
+          }
         : null,
-    [api, shown, syncNow, signInAgain, connect, disconnect, moveToFolder],
+    [api, shown, syncNow, signInAgain, connect, disconnect, moveToFolder, folder],
   );
 }
 

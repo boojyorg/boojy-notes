@@ -94,6 +94,7 @@ vi.mock("../../src/phone/folderFiles", () => ({
   reachableFolder: reachable,
   folderFiles: () => ({ recover: async () => {} }),
   folderAddress: () => (rel: string) => rel,
+  folderLabel: ({ root }: { root: string }) => root.slice(root.indexOf(":") + 1),
 }));
 
 import config from "../../capacitor.config";
