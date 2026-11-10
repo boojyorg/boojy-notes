@@ -77,6 +77,7 @@ export function fakeFolderAccess({
     ensureDefault: async () => ({ made: true, initial: "root" }),
     pick: async () => ({ picked: true, tree: "tree", root: "root" }),
     persisted: async () => ({ trees: [{ tree: "tree", root: "root" }] }),
+    release: async () => {},
     async list({ id }) {
       calls.push("list");
       node(id);

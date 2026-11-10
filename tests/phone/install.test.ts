@@ -3,8 +3,25 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
+/** The app's private storage as a start finds it: `state/`'s files, and the storage choice. */
+const disk = vi.hoisted(() => ({
+  state: [] as string[],
+  choice: null as string | null,
+  written: [] as [string, string][],
+}));
 vi.mock("../../src/phone/files", () => ({
-  capacitorFiles: () => ({ recover: async () => {}, read: async () => null }),
+  capacitorFiles: () => ({
+    recover: async () => {},
+    read: async (path: string) =>
+      path === "state/storage.json" && disk.choice
+        ? new TextEncoder().encode(JSON.stringify({ kind: disk.choice }))
+        : null,
+    list: async (dir: string) =>
+      dir === "state" ? disk.state.map((name) => ({ name, kind: "file", mtime: 0, size: 1 })) : [],
+    write: async (path: string, bytes: Uint8Array) => {
+      disk.written.push([path, new TextDecoder().decode(bytes)]);
+    },
+  }),
   fileAddress: async () => (rel: string) => `https://localhost/_capacitor_file_/vault/${rel}`,
 }));
 vi.mock("../../src/phone/phoneVault", () => ({
@@ -20,6 +37,20 @@ vi.mock("../../src/phone/phoneSync", () => ({
   }),
 }));
 vi.mock("../../src/phone/commands", () => ({ onCommand: () => () => {} }));
+const screens = vi.hoisted(() => ({
+  askStorage: vi.fn(async () => null as { tree: string; root: string } | null),
+  askFolderAgain: vi.fn(async () => ({ tree: "again", root: "primary:Documents/Again" })),
+}));
+vi.mock("../../src/phone/storageScreens", () => screens);
+const reachable = vi.hoisted(() =>
+  vi.fn(async () => null as { tree: string; root: string } | null),
+);
+vi.mock("../../src/phone/folderFiles", () => ({
+  FolderAccess: {},
+  reachableFolder: reachable,
+  folderFiles: () => ({ recover: async () => {} }),
+  folderAddress: () => (rel: string) => rel,
+}));
 
 import config from "../../capacitor.config";
 import { installPhone } from "../../src/phone/install";
@@ -54,5 +85,58 @@ describe("the phone's start", () => {
     await installPhone();
     expect(start).toHaveBeenCalledOnce();
     expect(document.body.textContent).not.toMatch(/Dropbox/);
+  });
+});
+
+describe("where a start keeps the notes", () => {
+  /** The start of a build that offers a folder (the test app), or one that does not. */
+  const startOf = async (offered: boolean) => {
+    vi.resetModules();
+    vi.stubEnv("VITE_BOOJY_TEST_APP", offered ? "1" : "");
+    screens.askStorage.mockClear();
+    screens.askFolderAgain.mockClear();
+    reachable.mockClear();
+    disk.written.length = 0;
+    await (await import("../../src/phone/install")).installPhone();
+    vi.unstubAllEnvs();
+  };
+  const fresh = () => Object.assign(disk, { state: [], choice: null });
+
+  it("asks a fresh install once, and keeps the answer", async () => {
+    fresh();
+    await startOf(true);
+    expect(screens.askStorage).toHaveBeenCalledOnce();
+    expect(disk.written).toContainEqual(["state/storage.json", '{"kind":"app"}']);
+  });
+
+  it("keeps a folder picked at first launch as the choice", async () => {
+    fresh();
+    screens.askStorage.mockResolvedValueOnce({ tree: "t", root: "primary:Documents/Boojy Notes" });
+    await startOf(true);
+    expect(disk.written).toContainEqual(["state/storage.json", '{"kind":"folder"}']);
+  });
+
+  // Their notes are in the app's storage: a welcome screen would be a question about notes they already have.
+  it("never asks an install that already holds notes or a Dropbox connection", async () => {
+    Object.assign(disk, { state: ["ids.json"], choice: null });
+    await startOf(true);
+    expect(screens.askStorage).not.toHaveBeenCalled();
+    expect(disk.written).toEqual([]);
+  });
+
+  it("asks nothing, and Android nothing, in a build that does not offer a folder", async () => {
+    fresh();
+    await startOf(false);
+    expect(screens.askStorage).not.toHaveBeenCalled();
+    expect(reachable).not.toHaveBeenCalled();
+  });
+
+  it("asks for the folder again when the chosen one is out of reach, and never falls back", async () => {
+    Object.assign(disk, { state: ["ids.json"], choice: "folder" });
+    reachable.mockResolvedValueOnce(null);
+    await startOf(false);
+    expect(screens.askFolderAgain).toHaveBeenCalledOnce();
+    expect(screens.askStorage).not.toHaveBeenCalled();
+    expect(disk.written).toEqual([]);
   });
 });

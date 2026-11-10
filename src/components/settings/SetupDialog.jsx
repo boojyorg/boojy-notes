@@ -1,5 +1,11 @@
 import { useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import {
+  APPEARANCE_TITLE,
+  NOTES_FOLDER_TITLE,
+  SETUP_INTRO,
+  WELCOME_TITLE,
+} from "../../constants/setupCopy";
 import { ThemePills } from "./AppearanceTab";
 import { FolderPathControl, SectionTitle, SmallButton } from "./SettingsPrimitives";
 import { FolderOpenIcon, NewNoteIcon } from "../Icons";
@@ -34,8 +40,8 @@ export default function SetupDialog({ notesDir, folderExists, onChooseFolder, on
   const dismiss = () => onDone("dismiss");
   return (
     <DialogShell
-      label="Welcome to Boojy Notes"
-      title="Welcome to Boojy Notes"
+      label={WELCOME_TITLE}
+      title={WELCOME_TITLE}
       onClose={dismiss}
       width={SETUP_WIDTH}
       padding="20px 28px 28px"
@@ -43,12 +49,11 @@ export default function SetupDialog({ notesDir, folderExists, onChooseFolder, on
       scrimTestId="setup-scrim"
     >
       <p style={{ margin: "0 0 24px", fontSize: 14, lineHeight: "22px", color: TEXT.secondary }}>
-        A simple place to write and organise your notes, saved as Markdown files in a folder you
-        choose.
+        {SETUP_INTRO}
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <SectionTitle title="Notes folder" />
+        <SectionTitle title={NOTES_FOLDER_TITLE} />
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 16px" }}>
           <FolderPathControl path={notesDir} onReveal={folderExists ? onReveal : undefined} />
           <div style={{ marginLeft: "auto" }}>
@@ -62,7 +67,7 @@ export default function SetupDialog({ notesDir, folderExists, onChooseFolder, on
       <div style={{ height: 24 }} />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <SectionTitle title="Appearance" />
+        <SectionTitle title={APPEARANCE_TITLE} />
         <ThemePills />
       </div>
 

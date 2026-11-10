@@ -151,6 +151,8 @@ const contentIcon =
 // ── Disclosure ────────────────────────────────────────────────────────────
 export const ChevronDownIcon = contentIcon(LuChevronDown);
 export const ChevronRightIcon = contentIcon(LuChevronRight);
+/** Onward: the step after this one. */
+export const ArrowRightIcon = contentIcon(LuArrowRight);
 export const ChevronLeftIcon = contentIcon(LuChevronLeft);
 /** A section's fold control (Properties): chrome, so the navigation stroke. */
 export const FoldChevronIcon = navIcon(LuChevronDown);

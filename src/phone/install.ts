@@ -1,29 +1,51 @@
 import { Capacitor } from "@capacitor/core";
 import { onCommand } from "./commands";
 import { capacitorFiles, type FileOps, fileAddress } from "./files";
-import { FolderAccess, folderAddress, folderFiles, grantedFolder } from "./folderFiles";
+import {
+  FolderAccess,
+  folderAddress,
+  folderFiles,
+  type PickedFolder,
+  reachableFolder,
+} from "./folderFiles";
 import { createPhoneSync } from "./phoneSync";
 import { createPhoneVault, VAULT } from "./phoneVault";
 import { holdFelt } from "./haptics";
 import { routedFiles } from "./routedFiles";
 import { selectWordAt } from "./selectWord";
+import { hasBeenUsed, readChoice, startFor, writeChoice } from "./storageChoice";
+import { askFolderAgain, askStorage } from "./storageScreens";
 
 /**
- * `pnpm android --test-app --folder` only: the notes live in a folder picked
- * with Android's folder picker. Until the app has a screen for choosing one,
- * no other build reaches the folder code.
+ * Whether this build offers a notes folder at first launch. The test app
+ * alone, until the app notices what other apps change in the folder while it
+ * is open; every other build keeps its notes in its own storage, unasked.
  */
-const FOLDER_SWITCH =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_BOOJY_FOLDER === "1";
-const TEST_FOLDER = "Boojy Notes (test)";
+const FOLDER_OFFERED = import.meta.env.VITE_BOOJY_TEST_APP === "1";
+const FOLDER_NAME = FOLDER_OFFERED ? "Boojy Notes (test)" : "Boojy Notes";
 
-/** The folder this install was given; asked for once, at the first start. */
-async function testFolder() {
-  const kept = await grantedFolder();
-  if (kept) return kept;
-  const { initial } = await FolderAccess.ensureDefault({ name: TEST_FOLDER });
-  const got = await FolderAccess.pick({ initial });
-  return got.picked && got.tree && got.root ? { tree: got.tree, root: got.root } : null;
+/**
+ * The folder this install keeps its notes in, or null for the app's own
+ * storage: asked at a fresh install's first launch, and asked again when a
+ * chosen folder can no longer be reached (`storageChoice.ts` has the rules).
+ */
+async function notesFolder(priv: FileOps): Promise<PickedFolder | null> {
+  const choice = await readChoice(priv);
+  const used = choice === null && (await hasBeenUsed(priv));
+  // An install that was never offered a folder never asks Android about one.
+  const granted = choice === "folder" || (!used && FOLDER_OFFERED) ? await reachableFolder() : null;
+  const start = startFor({ choice, folder: granted, used, canAsk: FOLDER_OFFERED });
+  if (start === "app") return null;
+  if (start === "folder") return granted;
+  if (start === "lost") {
+    const again = await askFolderAgain();
+    await reachableFolder(FolderAccess, again);
+    return again;
+  }
+  const picked = await askStorage(FOLDER_NAME, granted);
+  await writeChoice(priv, picked ? "folder" : "app");
+  if (picked) await reachableFolder(FolderAccess, picked);
+  return picked;
 }
 
 /**
@@ -36,7 +58,7 @@ export async function installPhone() {
   const priv = capacitorFiles();
   // A save the app died in the middle of is finished or undone before anything reads.
   await priv.recover("state");
-  const folder = FOLDER_SWITCH ? await testFolder() : null;
+  const folder = await notesFolder(priv);
   // With a folder, the vault is the folder's and the rest stays private.
   const files: FileOps = folder ? routedFiles(priv, folderFiles(folder, priv), VAULT) : priv;
   await files.recover("vault");
