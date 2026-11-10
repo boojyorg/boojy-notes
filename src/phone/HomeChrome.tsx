@@ -3,12 +3,14 @@ import { MoreHorizontalIcon, NewNoteIcon, SearchIcon } from "../components/Icons
 import Menu, { type MenuAnchor } from "../components/Menu";
 import Wordmark from "../components/Wordmark";
 import { TOUCH } from "../constants/layout";
-import { MARK_INK } from "../constants/themes";
 import { useTheme } from "../hooks/useTheme";
 import { NAV_BAR_H } from "../utils/uiScale";
 
 /** The teal New note button's side. */
 export const NEW_NOTE_SIZE = 72;
+
+/** The N's height in the top row. */
+const MARK_H = 28;
 
 const PLAIN = { border: "none", background: "transparent", padding: 0, font: "inherit" } as const;
 
@@ -49,8 +51,8 @@ export function HomeTop({
           flexShrink: 0,
         }}
       >
-        {/* As tall as the Search field beside it: one row of one height. */}
-        <Wordmark height={TOUCH} markOnly />
+        {/* A mark beside the field, not a block as tall as it: the field is the row's height. */}
+        <Wordmark height={MARK_H} markOnly />
       </button>
       <button
         type="button"
@@ -140,7 +142,8 @@ export function HomeTop({
  * Home's foot on the phone, under a line as the desktop's is: Recently
  * Deleted on the left (`children`), and New note on the right, the one teal
  * surface in the app, so the thing done most is the easiest to find and
- * reach. Its glyph is dark: white on the mark is 2:1.
+ * reach. Its glyph is white on the mark by Tyr's choice (about 2:1): the
+ * button's place, size and colour say what it is, not the glyph alone.
  */
 export function HomeFoot({ onNewNote, children }: { onNewNote: () => void; children: ReactNode }) {
   const { theme } = useTheme();
@@ -172,7 +175,7 @@ export function HomeFoot({ onNewNote, children }: { onNewNote: () => void; child
           flexShrink: 0,
           borderRadius: 22,
           background: theme.ACCENT.primary,
-          color: MARK_INK,
+          color: theme.ACCENT.onAccent,
         }}
       >
         <NewNoteIcon size={28} />

@@ -7,8 +7,6 @@
 // on both grounds — so that is `ACCENT.text`, per theme.
 export const MARK = "#8FC1C6";
 export const ON_MARK = "#FFFFFF";
-// Words or a glyph that carries meaning on the mark (the phone's New note): white is 2:1 there.
-export const MARK_INK = "#14110F";
 
 export const NIGHT = {
   name: "night",
