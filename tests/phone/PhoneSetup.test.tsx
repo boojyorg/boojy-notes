@@ -29,74 +29,100 @@ const show = (plugin: FolderAccessPlugin, granted: typeof DEFAULT | null = null)
 };
 const tap = (name: string | RegExp) => fireEvent.click(screen.getByRole("button", { name }));
 
-describe("first launch on the phone", () => {
-  it("says what the desktop's setup says, with the default folder filled in", () => {
-    show(access([]).plugin);
-    expect(screen.getByRole("heading", { name: "Welcome to Boojy Notes" })).toBeTruthy();
-    expect(screen.getByText(/saved as Markdown files in a folder you choose/)).toBeTruthy();
-    expect(screen.getByText("Documents/Boojy Notes")).toBeTruthy();
-    expect(screen.getByRole("radiogroup", { name: "Appearance" })).toBeTruthy();
-    expect(screen.getByText("Android will ask you to confirm it.")).toBeTruthy();
-    // The other answer says what it costs in the same line.
-    expect(
-      screen.getByRole("button", { name: "Or keep notes inside the app (removed on uninstall)" }),
-    ).toBeTruthy();
-    // One bordered button on the screen: the folder is a row, not a second button.
+const APP_LINE = "Or keep notes inside the app (removed on uninstall)";
+/** The second page, where the choices are. */
+const showSetup = (plugin: FolderAccessPlugin) => {
+  const onDone = show(plugin);
+  tap(/Get started/);
+  return onDone;
+};
+
+describe("first launch on the phone: what the app is", () => {
+  it("names the app and says what it is, and asks nothing", () => {
+    const a = access([]);
+    show(a.plugin);
     expect(screen.getByTestId("wordmark")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Welcome to Boojy Notes" })).toBeTruthy();
+    expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "Your notes are Markdown files you own",
+      "Works offline, with no account",
+      "Sync with Dropbox if you want to",
+    ]);
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Get started"]);
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(a.pick).not.toHaveBeenCalled();
+  });
+
+  it("Get started shows the choices, and Back returns", () => {
+    show(access([]).plugin);
+    tap(/Get started/);
+    expect(screen.getByRole("heading", { name: "Set up" })).toBeTruthy();
+    tap("Back");
+    expect(screen.getByRole("heading", { name: "Welcome to Boojy Notes" })).toBeTruthy();
+  });
+
+  it("a setup cut short after its folder was granted opens on the choices, showing that folder", () => {
+    show(access([]).plugin, OTHER);
+    expect(screen.getByRole("heading", { name: "Set up" })).toBeTruthy();
+    expect(screen.getByText("Documents/Work notes")).toBeTruthy();
+  });
+});
+
+describe("first launch on the phone: the folder and the appearance", () => {
+  it("has the default folder filled in, the appearance with a note that shows it, and one way on", () => {
+    showSetup(access([]).plugin);
+    expect(screen.getByText("Documents/Boojy Notes")).toBeTruthy();
+    expect(screen.getByText("Android will ask you to confirm it.")).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: "Appearance" })).toBeTruthy();
+    expect(screen.getByTestId("setup-preview").getAttribute("aria-hidden")).toBe("true");
+    // The answer that loses the notes on uninstall is not offered up front.
+    expect(screen.queryByRole("button", { name: APP_LINE })).toBeNull();
   });
 
   it("Continue makes the default folder, opens Android's screen inside it, and goes on with what was picked", async () => {
     const a = access([{ picked: true, ...DEFAULT }]);
-    const onDone = show(a.plugin);
-    tap("Continue");
+    const onDone = showSetup(a.plugin);
+    tap(/Continue/);
     await waitFor(() => expect(onDone).toHaveBeenCalledWith(DEFAULT));
     expect(a.ensureDefault).toHaveBeenCalledWith({ name: "Boojy Notes" });
     expect(a.pick).toHaveBeenCalledWith({ initial: "primary:Documents/Boojy Notes" });
   });
 
-  it("leaving Android's screen changes nothing: the same screen, no choice made", async () => {
+  // Without it, someone who will not or cannot give a folder is held at setup.
+  it("leaving Android's screen changes nothing, and then offers the app's own storage", async () => {
     const a = access([{ picked: false }]);
-    const onDone = show(a.plugin);
-    tap("Continue");
-    await waitFor(() => expect(a.pick).toHaveBeenCalled());
+    const onDone = showSetup(a.plugin);
+    tap(/Continue/);
+    const line = await screen.findByRole("button", { name: APP_LINE });
     expect(onDone).not.toHaveBeenCalled();
     expect(screen.getByText("Documents/Boojy Notes")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(line);
+    expect(onDone).toHaveBeenCalledWith(null);
+    expect(a.pick).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses a folder that is not on the phone, in a line, and stays", async () => {
+  it("refuses a folder that is not on the phone, in a line, stays, and offers the app's storage", async () => {
     const a = access([{ picked: false, refused: "not-on-device" }]);
-    const onDone = show(a.plugin);
-    tap("Continue");
+    const onDone = showSetup(a.plugin);
+    tap(/Continue/);
     expect((await screen.findByRole("alert")).textContent).toBe("Choose a folder on this phone.");
+    expect(screen.getByRole("button", { name: APP_LINE })).toBeTruthy();
     expect(onDone).not.toHaveBeenCalled();
   });
 
   it("the folder row shows the folder picked, and Continue then asks Android nothing more", async () => {
     const a = access([{ picked: true, ...OTHER }]);
-    const onDone = show(a.plugin);
+    const onDone = showSetup(a.plugin);
     tap(/^Notes folder/);
     expect(await screen.findByText("Documents/Work notes")).toBeTruthy();
     expect(a.pick).toHaveBeenCalledWith({});
     expect(screen.queryByText("Android will ask you to confirm it.")).toBeNull();
     expect(onDone).not.toHaveBeenCalled();
-    tap("Continue");
+    tap(/Continue/);
     await waitFor(() => expect(onDone).toHaveBeenCalledWith(OTHER));
     expect(a.pick).toHaveBeenCalledTimes(1);
     expect(a.ensureDefault).not.toHaveBeenCalled();
-  });
-
-  it("Keep notes inside the app goes straight on, with no Android screen", () => {
-    const a = access([]);
-    const onDone = show(a.plugin);
-    tap(/keep notes inside the app/);
-    expect(onDone).toHaveBeenCalledWith(null);
-    expect(a.pick).not.toHaveBeenCalled();
-  });
-
-  it("a setup cut short after its folder was granted shows that folder", () => {
-    show(access([]).plugin, OTHER);
-    expect(screen.getByText("Documents/Work notes")).toBeTruthy();
   });
 });
 
@@ -125,10 +151,10 @@ describe("the chosen folder out of reach", () => {
   it("goes on with the folder chosen, and stays when Android's screen is left", async () => {
     const a = access([{ picked: false }, { picked: true, ...OTHER }]);
     const onDone = showLost(a.plugin);
-    tap("Choose the folder again");
+    tap(/Choose the folder again/);
     await waitFor(() => expect(a.pick).toHaveBeenCalledTimes(1));
     expect(onDone).not.toHaveBeenCalled();
-    tap("Choose the folder again");
+    tap(/Choose the folder again/);
     await waitFor(() => expect(onDone).toHaveBeenCalledWith(OTHER));
   });
 });
