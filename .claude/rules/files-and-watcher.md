@@ -11,17 +11,16 @@
 - **The phone's bin**: one place through a crash; sync is told of a restore.
   `recentlyDeleted.test.ts`.
 - **Phone notes in a picked folder**: saves journalled; a taken name fails; lost is
-  `FolderLost`, never empty or app storage; outside changes looked for (`checkOutside`; a
-  rename by text). `phoneVaultFolder.test.ts`.
-- **App storage moves to an empty folder at a start**: copied whole, chosen, then cleared.
-  `moveToFolder.test.ts`.
+  `FolderLost`, never empty or app storage; outside changes looked for (`checkOutside`).
+  `phoneVaultFolder.test.ts`. **App storage moves to an empty one at a start**: copied
+  whole, then chosen, then cleared. `moveToFolder.test.ts`.
 - **Phone sync is optional, the binding its connection**: no pass till accounts match. `phoneSync.test.ts`.
 - Desktop confirms only several files; one note goes at once, Undo in its toast.
 
 ## The watcher drops only an event it can trace to the app's own operation
 
-**One watch for the whole vault** (`treeWatcher.ts`), never a file open per note (it blocked
-iCloud eviction). `watcher-scale.spec.ts`.
+**One watch for the whole vault** (`treeWatcher.ts`), never a file open per note.
+`watcher-scale.spec.ts`.
 
 - **`write-note` claims the bytes it wrote**: a later event whose file holds exactly those bytes
   is the echo, however late; the claim ends at the first other bytes or the file gone.
@@ -87,8 +86,8 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 
 ## A note's title is its filename
 
-- **`write-note` is the only place that knows the final name** (collision suffix, invalid characters, length, casing) and answers every write; `useResolvedTitle` adopts it. **Don't add a
-  sanitiser to an input.**
+- **`write-note` is the only place that knows the final name**
+  and answers every write; `useResolvedTitle` adopts it. **Don't add a sanitiser to an input.**
 - A name the app makes is sanitised; a name the disk holds is kept (`Why?.md` stays).
   `disk-names.spec.ts`.
 - A note's own file is never its own collision (`ensureUniqueFilePath(target, ownPath)`).
