@@ -8,6 +8,7 @@ import { SYNC_GLYPH, syncAction, syncLines } from "../components/SyncStatusButto
 import { NOTES_FOLDER_TITLE } from "../constants/setupCopy";
 import { Z } from "../constants/zIndex";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useHeldScale } from "../hooks/useHeldScale";
 import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
@@ -137,6 +138,8 @@ export default function PhoneSettings({
   const pageRef = useRef<HTMLDivElement>(null);
   useFocusTrap(pageRef as RefObject<HTMLElement>, open, "container");
   useModalEscape(open, onClose);
+  // The page keeps the interface size it opened with: the − and + stay under the finger.
+  const heldScale = useHeldScale(open);
 
   if (!open) return null;
 
@@ -178,6 +181,7 @@ export default function PhoneSettings({
         lineHeight: "24px",
         overflowY: "auto",
         outline: "none",
+        ...heldScale,
       }}
     >
       {/* Back, and the page's name centred on its line, as the note's header has it. */}

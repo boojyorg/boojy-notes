@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useHeldScale } from "../../hooks/useHeldScale";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../context/SettingsContext";
 import AppearanceTab from "./AppearanceTab";
@@ -22,20 +22,10 @@ export default function SettingsModal({
   renameVault,
   revealVault,
 }) {
-  const { settingsOpen, setSettingsOpen, uiScale } = useSettings();
+  const { settingsOpen, setSettingsOpen } = useSettings();
 
-  // The scale the pane opened at. While it is open the app resizes under every
-  // press of Interface size, but the pane itself keeps the size and place it
-  // opened with: a panel that grows as you press the button inside it moves
-  // that button out from under the pointer. It is not excluded from the scale — the next time it opens it
-  // is drawn at whatever the scale is then. Captured in a layout effect, so the
-  // first paint of an open pane is already at its own scale.
-  const [openedAt, setOpenedAt] = useState(uiScale);
-  useLayoutEffect(() => {
-    if (settingsOpen) setOpenedAt(uiScale);
-    // Deliberately not on uiScale: the capture is the *opening*, and a scale
-    // change while the pane is open must not move it.
-  }, [settingsOpen]);
+  // The pane keeps the interface size it opened with (`useHeldScale`).
+  const heldScale = useHeldScale(settingsOpen);
 
   const { theme } = useTheme();
   const { TEXT } = theme;
@@ -62,14 +52,7 @@ export default function SettingsModal({
       padding="20px 28px"
       headerGap={20}
       paneProps={{ "data-settings-pane": "" }}
-      // Its own scale, held at the one it opened with: `zoom` nests
-      // multiplicatively, so this cancels the difference exactly. The local
-      // `--ui-scale` keeps the viewport-unit maths resolving against the
-      // pane's own scale rather than the app's (`atScale`).
-      paneStyle={{
-        zoom: openedAt === uiScale ? undefined : openedAt / uiScale,
-        "--ui-scale": openedAt / 100,
-      }}
+      paneStyle={heldScale}
     >
       <AppearanceTab SectionHeader={SectionTitle} />
       {isDesktop && (
