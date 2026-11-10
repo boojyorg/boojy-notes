@@ -36,7 +36,7 @@ export default function RecentCards({
     <section
       aria-label="Recent"
       data-testid="recent-cards"
-      style={{ padding: `4px ${inset}px 16px` }}
+      style={{ padding: `4px ${inset}px 10px` }}
     >
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {ids.map((id) => {

@@ -49,7 +49,7 @@ import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import SyncStatusButton from "./SyncStatusButton";
-import { HomeFoot, HomeTop } from "../phone/HomeChrome";
+import { HOME_LIST_END, HomeFoot, HomeTop } from "../phone/HomeChrome";
 import RecentCards from "../phone/RecentCards";
 import RenameField from "./RenameField";
 import Collapsible, { IndentGuide } from "./Collapsible";
@@ -217,6 +217,8 @@ const SECTION_HEADER_RIGHT = 5;
 /** Header controls share the chrome row's 32px hit box and 18px nav glyph
  *  (a touch target on the phone, where they show at rest). */
 const SECTION_BTN = isPhone ? TOUCH : 32;
+/** The row's glyphs: on the phone the cog's size, as they are its equals there. */
+const SECTION_GLYPH = isPhone ? 18 : 16;
 const SECTION_CONTENT_GAP = 2;
 // Header controls (New folder, Sort) are hidden at rest and revealed, muted,
 // while the pointer is on the Notes row or a keyboard focus is in it, lifting
@@ -1080,7 +1082,8 @@ const Sidebar = memo(function Sidebar({
           they never scroll, so the scrollbar spans the list alone, from
           under the vault row down to Recently Deleted. */}
       <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
-        <div style={{ height: COLUMN_HEAD_GAP }} />
+        {/* On the phone the list's name belongs to the row above it: close under it. */}
+        <div style={{ height: isPhone ? 2 : COLUMN_HEAD_GAP }} />
         {/* On the phone New note is the teal button at the foot: one way in. */}
         {!isPhone && <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />}
         <SectionHeader
@@ -1110,7 +1113,7 @@ const Sidebar = memo(function Sidebar({
             label="New folder"
             shortcut={SHORTCUTS.newFolder}
           >
-            <NewFolderIcon size={16} />
+            <NewFolderIcon size={SECTION_GLYPH} />
           </SectionAction>
           <SectionAction
             onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
@@ -1119,7 +1122,7 @@ const Sidebar = memo(function Sidebar({
             aria-expanded={sortMenuAnchor !== null}
             active={sortMenuAnchor !== null}
           >
-            <SortIcon size={16} />
+            <SortIcon size={SECTION_GLYPH} />
           </SectionAction>
         </SectionHeader>
       </div>
@@ -1282,8 +1285,9 @@ const Sidebar = memo(function Sidebar({
             overflow: "auto",
             display: "flex",
             flexDirection: "column",
-            // The phone's foot (HomeFoot) keeps the list clear of Android's gesture bar.
-            padding: "0 0 2px",
+            // The phone's foot (HomeFoot) keeps the list clear of Android's gesture
+            // bar; the list's last row scrolls clear of the New note button.
+            padding: isPhone ? `0 0 ${HOME_LIST_END}px` : "0 0 2px",
           }}
         >
           {/* The phone: the notes edited last, under the list's name and over the list. */}

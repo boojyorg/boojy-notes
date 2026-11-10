@@ -86,33 +86,41 @@ export function HomeTop({
           color: TEXT.secondary,
         }}
       >
-        <SettingsIcon />
+        <SettingsIcon size={18} />
       </button>
     </div>
   );
 }
 
+/** How far the New note button stands above the bottom of the screen's usable part. */
+const NEW_NOTE_LIFT = 12;
 /**
- * Home's foot on the phone, under a line as the desktop's is: Recently
- * Deleted on the left (`children`), and New note on the right, the one teal
- * surface in the app, so the thing done most is the easiest to find and
- * reach. Its glyph is white on the mark by Tyr's choice (about 2:1): the
- * button's place, size and colour say what it is, not the glyph alone.
+ * The room the list keeps at its end on the phone, so its last row scrolls
+ * clear of the New note button, which stands over the list's corner.
+ */
+export const HOME_LIST_END = 48;
+
+/**
+ * Home's foot on the phone, as the desktop's: a line the width of the screen,
+ * then Recently Deleted as one quiet row (`children`). New note stands over
+ * the corner, across the line: the one teal surface in the app, so the thing
+ * done most is the easiest to find and reach. Its glyph is white on the mark
+ * by Tyr's choice (about 2:1): the button's place, size and colour say what
+ * it is, not the glyph alone.
  */
 export function HomeFoot({ onNewNote, children }: { onNewNote: () => void; children: ReactNode }) {
   const { theme } = useTheme();
   return (
     <div
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
+        position: "relative",
         flexShrink: 0,
         borderTop: `1px solid ${theme.BG.divider}`,
-        padding: `12px 20px calc(12px + ${NAV_BAR_H}) 0`,
+        padding: `6px 0 calc(6px + ${NAV_BAR_H})`,
       }}
     >
-      <div style={{ flexGrow: 1, minWidth: 0 }}>{children}</div>
+      {/* Recently Deleted keeps clear of the button beside it. */}
+      <div style={{ marginRight: NEW_NOTE_SIZE + 28, minHeight: 1 }}>{children}</div>
       <button
         type="button"
         className="press"
@@ -121,12 +129,14 @@ export function HomeFoot({ onNewNote, children }: { onNewNote: () => void; child
         onClick={onNewNote}
         style={{
           ...PLAIN,
+          position: "absolute",
+          right: 20,
+          bottom: `calc(${NEW_NOTE_LIFT}px + ${NAV_BAR_H})`,
           width: NEW_NOTE_SIZE,
           height: NEW_NOTE_SIZE,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          flexShrink: 0,
           borderRadius: 22,
           background: theme.ACCENT.primary,
           color: theme.ACCENT.onAccent,

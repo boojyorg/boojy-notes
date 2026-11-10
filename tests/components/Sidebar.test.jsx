@@ -908,11 +908,15 @@ describe("Sidebar on the phone", () => {
           Component: PhoneSidebar,
           recentlyDeleted,
         });
-        const foot = getByTestId("home-new-note").parentElement;
+        const button = getByTestId("home-new-note");
+        const foot = button.parentElement;
         expect(foot.getAttribute("style")).toContain(NAV_BAR_H);
-        expect(container.querySelector(".sidebar-scroll").getAttribute("style")).not.toContain(
-          NAV_BAR_H,
-        );
+        // New note stands over the list's corner, across the foot's line, so the
+        // list keeps room at its end for its last row to scroll clear of it.
+        expect(button.style.position).toBe("absolute");
+        const scroller = container.querySelector(".sidebar-scroll");
+        expect(scroller.getAttribute("style")).not.toContain(NAV_BAR_H);
+        expect(scroller.style.paddingBottom).toBe("48px");
         unmount();
       }
     }));
