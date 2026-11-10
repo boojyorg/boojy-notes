@@ -33,13 +33,21 @@ export function useNoteHistory({
   exists: (key: string) => boolean;
   resetKey: unknown;
 }) {
+  // The list is a ref first and state second: Back and Forward are keys, and
+  // a key can come before the render that follows an opening or a step. The
+  // state only draws the arrows.
   const [history, setHistory] = useState<NoteHistory>(emptyHistory);
-  const stepping = useRef<string | null>(null);
+  // What Back and Forward have asked to open and has not opened yet, in
+  // order: two steps can be taken before the first note shows.
+  const stepping = useRef<string[]>([]);
   // Each visit's place, by its number: kept as you scroll and click, never
   // state (a scroll must not render the app), memory only like the list.
   const places = useRef(new Map<number, NotePlace>());
   const historyRef = useRef(history);
-  historyRef.current = history;
+  const move = useCallback((next: NoteHistory) => {
+    historyRef.current = next;
+    setHistory(next);
+  }, []);
   // A place recorded for the note opening before its visit was added (the
   // editor's effects run before this one), kept for that visit.
   const early = useRef<{ key: string; place: NotePlace } | null>(null);
@@ -52,46 +60,47 @@ export function useNoteHistory({
   useEffect(() => {
     places.current.clear();
     early.current = null;
-    const fresh = current ? historyOpen(emptyHistory(), current) : emptyHistory();
-    historyRef.current = fresh;
-    setHistory(fresh);
+    stepping.current = [];
+    move(current ? historyOpen(emptyHistory(), current) : emptyHistory());
   }, [resetKey]);
 
   useEffect(() => {
     if (!current) return;
-    if (stepping.current === current) {
-      stepping.current = null;
+    // A step's own opening, with any it passed through on the way.
+    const stepped = stepping.current.indexOf(current);
+    if (stepped >= 0) {
+      stepping.current.splice(0, stepped + 1);
       return;
     }
+    // An ordinary opening: a restore no step is still waiting on is stale.
+    if (stepping.current.length === 0) restoring.current = null;
     const before = historyRef.current;
     const next = historyOpen(before, current);
     const e = early.current;
     early.current = null;
     if (next === before) return;
     if (e?.key === current) places.current.set(next.visits[next.at], e.place);
-    historyRef.current = next;
-    setHistory(next);
-  }, [current]);
+    move(next);
+  }, [current, move]);
 
   const step = useCallback(
     (dir: -1 | 1) => {
+      const history = historyRef.current;
       const i = historyTarget(history, dir, exists);
       if (i < 0) return;
       const place = places.current.get(history.visits[i]) ?? null;
+      move({ ...history, at: i });
       // The same note: nothing opens, so nothing would take a restore or
       // clear the step's guard. The place goes back here and now.
       if (history.ids[i] === history.ids[history.at]) {
-        setHistory({ ...history, at: i });
-        historyRef.current = { ...history, at: i };
         restoreHere(place);
         return;
       }
-      stepping.current = history.ids[i];
+      stepping.current.push(history.ids[i]);
       restoring.current = { key: history.ids[i], place };
-      setHistory({ ...history, at: i });
       open(history.ids[i]);
     },
-    [history, exists, open, restoreHere],
+    [exists, open, restoreHere, move],
   );
 
   /**
@@ -99,12 +108,14 @@ export function useNoteHistory({
    * returns to where the link was. Returns the new visit. The ref moves at once, so the scroll the
    * jump makes is recorded as the new visit's place, never the old one's.
    */
-  const jump = useCallback((key: string): number => {
-    const next = historyJump(historyRef.current, key);
-    historyRef.current = next;
-    setHistory(next);
-    return next.visits[next.at];
-  }, []);
+  const jump = useCallback(
+    (key: string): number => {
+      const next = historyJump(historyRef.current, key);
+      move(next);
+      return next.visits[next.at];
+    },
+    [move],
+  );
 
   /** The visit open now: a footnote's ↩ asks whether its jump is still it. */
   const currentVisit = useCallback(() => {
@@ -135,12 +146,14 @@ export function useNoteHistory({
 
   /**
    * Whether `key` is opening by Back or Forward, and the place it had then
-   * (null when it never left the top): asked once, as the note opens.
+   * (null when it never left the top): asked once, as the note opens. A note
+   * a second step passed through on the way leaves it for the one it is for.
    */
   const takeRestore = useCallback((key: string) => {
     const r = restoring.current;
+    if (r?.key !== key) return null;
     restoring.current = null;
-    return r && r.key === key ? { place: r.place } : null;
+    return { place: r.place };
   }, []);
 
   return {
