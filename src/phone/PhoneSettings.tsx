@@ -11,7 +11,7 @@ import Menu, { type MenuAnchor, type MenuItem } from "../components/Menu";
 import { ThemePills } from "../components/settings/AppearanceTab";
 import SettingsFooter from "../components/settings/SettingsFooter";
 import { SectionTitle } from "../components/settings/SettingsPrimitives";
-import { SYNC_GLYPH, SYNC_NAME, syncAction, syncLines } from "../components/SyncStatusButton";
+import { SYNC_GLYPH, syncAction, syncLines } from "../components/SyncStatusButton";
 import { NOTES_FOLDER_TITLE } from "../constants/setupCopy";
 import { Z } from "../constants/zIndex";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -249,11 +249,8 @@ export default function PhoneSettings({
           title="Dropbox"
           Glyph={SYNC_GLYPH[sync.status.state]}
           testId="settings-dropbox"
-          value={
-            sync.status.state === "off"
-              ? "Not connected"
-              : `${sync.status.folder} · ${SYNC_NAME[sync.status.state]}`
-          }
+          // The folder's name alone: the line under it says how sync stands.
+          value={sync.status.folder ?? "Not connected"}
           note={syncLines(sync.status).map((line) => (
             <span key={line} style={{ display: "block" }}>
               {line}

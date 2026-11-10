@@ -61,10 +61,12 @@ describe("Settings on the phone", () => {
     expect(s.connect).toHaveBeenCalledOnce();
   });
 
-  it("names the Dropbox folder and its state, with Sync now and Disconnect", () => {
+  it("names the Dropbox folder, its state under it, with Sync now and Disconnect", () => {
     const s = sync({ status: SYNCED });
     show(s);
-    expect(screen.getByTestId("settings-dropbox").textContent).toContain("Personal · Synced");
+    // The state is said once, under the row.
+    expect(screen.getByTestId("settings-dropbox").textContent).toBe("Personal");
+    expect(screen.getByText(/Synced with Dropbox/)).toBeTruthy();
     expect(menuOf("settings-dropbox")).toEqual(["Sync now", "Disconnect Dropbox"]);
     fireEvent.click(screen.getByText("Disconnect Dropbox"));
     expect(s.disconnect).toHaveBeenCalledOnce();

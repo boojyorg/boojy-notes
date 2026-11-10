@@ -61,7 +61,6 @@ export function syncAction(sync: PhoneSync): MenuItem | null {
 }
 
 export const SYNC_GLYPH = GLYPH;
-export const SYNC_NAME = NAME;
 
 /**
  * Sync's state after the phone's folder name on Home: muted, but in the
