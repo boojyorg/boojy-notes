@@ -55,7 +55,8 @@ function Page({ children }: { children: React.ReactNode }) {
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        padding: `calc(${STATUS_BAR_H} + 32px) 24px calc(${NAV_BAR_H} + 20px)`,
+        // The button at the foot stands clear of the edge, where a thumb rests.
+        padding: `calc(${STATUS_BAR_H} + 32px) 24px calc(${NAV_BAR_H} + 64px)`,
         background: theme.BG.standard,
         color: theme.TEXT.primary,
         fontSize: 16,
@@ -96,6 +97,15 @@ function PreviewNote() {
   const { TEXT } = theme;
   const box = { width: 16, height: 16, boxSizing: "border-box", borderRadius: 4, flexShrink: 0 };
   const row = { display: "flex", alignItems: "center", gap: 10 };
+  const open = { ...box, border: `1.5px solid ${TEXT.muted}` } as React.CSSProperties;
+  const ticked = {
+    ...box,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: TEXT.secondary,
+    color: theme.BG.editor,
+  } as React.CSSProperties;
   return (
     <div
       aria-hidden="true"
@@ -104,35 +114,46 @@ function PreviewNote() {
         display: "flex",
         flexDirection: "column",
         gap: 6,
-        padding: "14px 16px",
+        padding: "16px 18px 18px",
         border: `1px solid ${theme.BG.divider}`,
         borderRadius: 14,
         background: theme.BG.editor,
+        color: TEXT.primary,
         fontSize: 15,
         lineHeight: "22px",
       }}
     >
-      <div style={{ fontSize: 16, fontWeight: 600, color: TEXT.primary }}>Shopping list</div>
-      <div style={{ ...row, color: TEXT.primary }}>
-        <span style={{ ...box, border: `1.5px solid ${TEXT.muted}` } as React.CSSProperties} />
-        Oat milk
+      <div style={{ fontSize: 19, lineHeight: "26px", fontWeight: 600 }}>Lisbon trip</div>
+      <div>
+        Flights on the <strong style={{ fontWeight: 600 }}>14th</strong>, back on the 21st. Hotel
+        near the river.
+      </div>
+      <div style={{ marginTop: 8, fontSize: 16, fontWeight: 600 }}>To pack</div>
+      <div style={row}>
+        <span style={open} />
+        Passport
       </div>
       <div style={{ ...row, color: TEXT.muted, textDecoration: "line-through" }}>
-        <span
-          style={
-            {
-              ...box,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: TEXT.secondary,
-              color: theme.BG.editor,
-            } as React.CSSProperties
-          }
-        >
+        <span style={ticked}>
           <CheckIcon size={12} />
         </span>
-        Bread
+        Phone charger
+      </div>
+      <div style={row}>
+        <span style={open} />
+        Sun cream
+      </div>
+      <div style={{ marginTop: 8 }}>
+        More in{" "}
+        <span
+          style={{
+            color: theme.link.color,
+            textDecoration: "underline",
+            textDecorationColor: theme.link.underline,
+          }}
+        >
+          Packing list
+        </span>
       </div>
     </div>
   );
@@ -212,38 +233,58 @@ export function PhoneSetup({
   };
 
   if (page === 1) {
+    // Centred, and a little above the middle: a first screen, not a form.
     return (
       <Page>
-        <div style={{ marginBottom: 28 }}>
-          <Wordmark height={30} />
+        <div style={{ flexGrow: 1 }} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <Wordmark height={40} />
+          <h1
+            style={{
+              margin: "28px 0 10px",
+              fontSize: 26,
+              lineHeight: "32px",
+              fontWeight: 600,
+              textAlign: "center",
+            }}
+          >
+            {WELCOME_TITLE}
+          </h1>
+          <p
+            style={{
+              margin: "0 0 36px",
+              fontSize: 18,
+              lineHeight: "27px",
+              textAlign: "center",
+              color: TEXT.secondary,
+            }}
+          >
+            {SETUP_LEAD}
+          </p>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: "none",
+              display: "flex",
+              flexDirection: "column",
+              gap: 18,
+            }}
+          >
+            {SETUP_POINTS.map((point, i) => {
+              const Icon = POINT_ICONS[i];
+              return (
+                <li key={point} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <span style={{ display: "flex", color: TEXT.secondary }}>
+                    <Icon size={20} />
+                  </span>
+                  {point}
+                </li>
+              );
+            })}
+          </ul>
         </div>
-        <Title>{WELCOME_TITLE}</Title>
-        <p style={{ margin: "0 0 28px", fontSize: 18, lineHeight: "27px", color: TEXT.secondary }}>
-          {SETUP_LEAD}
-        </p>
-        <ul
-          style={{
-            margin: 0,
-            padding: 0,
-            listStyle: "none",
-            display: "flex",
-            flexDirection: "column",
-            gap: 18,
-          }}
-        >
-          {SETUP_POINTS.map((point, i) => {
-            const Icon = POINT_ICONS[i];
-            return (
-              <li key={point} style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ display: "flex", color: TEXT.secondary }}>
-                  <Icon size={20} />
-                </span>
-                {point}
-              </li>
-            );
-          })}
-        </ul>
-        <div style={{ flexGrow: 1, minHeight: 32 }} />
+        <div style={{ flexGrow: 1.4, minHeight: 32 }} />
         <SmallButton kind="strong" onClick={() => setPage(2)} style={TOUCH_BUTTON}>
           {withArrow("Get started")}
         </SmallButton>
