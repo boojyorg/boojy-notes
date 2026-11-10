@@ -110,6 +110,31 @@ describe("Settings on the phone", () => {
     expect(screen.getByRole("button", { name: "Smaller" })).toBeTruthy();
   });
 
+  // The whole page grew under the finger at each press of − or +, moving the button pressed.
+  it("holds its size while the interface size changes under it, and takes the new one when next opened", () => {
+    const Page = ({ open }: { open: boolean }) => (
+      <ThemeProvider>
+        <SettingsProvider>
+          <PhoneSettings open={open} sync={sync()} storage={IN_APP} onClose={() => {}} />
+        </SettingsProvider>
+      </ThemeProvider>
+    );
+    const view = render(<Page open />);
+    const page = () => screen.getByTestId("phone-settings");
+    expect(page().style.zoom).toBe("");
+    const before = Number(page().style.getPropertyValue("--ui-scale"));
+    fireEvent.click(screen.getByRole("button", { name: "Larger" }));
+    // The app is larger now; the page's own zoom cancels exactly that.
+    const zoom = Number(page().style.zoom);
+    expect(zoom).toBeGreaterThan(0);
+    expect(zoom).toBeLessThan(1);
+    expect(Number(page().style.getPropertyValue("--ui-scale"))).toBe(before);
+    view.rerender(<Page open={false} />);
+    view.rerender(<Page open />);
+    expect(page().style.zoom).toBe("");
+    expect(Number(page().style.getPropertyValue("--ui-scale"))).toBeGreaterThan(before);
+  });
+
   // A closed menu leaves a copy of itself for a moment, still a `menu` by role:
   // Back then was no one's, and Android's Back put the app in the background.
   it("goes back on Escape while a closed menu's leaving copy is still there", () => {
