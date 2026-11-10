@@ -194,16 +194,20 @@ export function createPhoneVault(
   // the app makes forgets what it touched, so a rewrite within one modified
   // time at the same size is never taken for the old bytes; forgotten
   // whether the call succeeds or not, as a failed write may still have landed.
-  // Nothing else writes the app's private storage.
+  // Nothing else writes the app's private storage; a picked folder is other
+  // apps' too, and `checkOutside` looks for what they changed.
   const stamps = new Map<string, string>();
   const hashes = new Map<string, { stamp: string; hash: string }>();
+  /** A note file's stamp when its text was last read and found to be what `seen` holds. */
+  const sighted = new Map<string, string>();
   /** Forgets `path`; `folder` also what was under it (a rename may move a folder). */
   const forget = (path: string, folder = false) => {
     if (!path.startsWith(`${VAULT}/`)) return;
     stamps.delete(path);
     hashes.delete(path);
+    sighted.delete(path);
     if (!folder) return;
-    for (const map of [stamps, hashes])
+    for (const map of [stamps, hashes, sighted])
       for (const key of [...map.keys()]) if (key.startsWith(`${path}/`)) map.delete(key);
   };
   const files: FileOps = {
@@ -391,6 +395,23 @@ export function createPhoneVault(
     return found;
   };
 
+  /** A file the editor lists as a note: `.md`, outside the attachment store. */
+  const listedNote = (rel: string) => isNote(rel) && !inAttachments(parentOf(rel) ?? "");
+  /** Many files' bytes, in one call where the store has one. */
+  const readFiles = (rels: string[]) =>
+    files.readMany
+      ? files.readMany(rels.map(abs))
+      : mapLimited(rels, (rel) => files.read(abs(rel)));
+  /** The file at `rel` holds the text `seen` has, at the stamp the latest walk listed. */
+  const sight = (rel: string) => {
+    const stamp = stamps.get(abs(rel));
+    if (stamp) sighted.set(abs(rel), stamp);
+  };
+  /** The notes have been read once: before that there is nothing to compare a file with. */
+  let loaded = false;
+  /** The folders as the editor last had them listed. */
+  let folderList = "";
+
   // The files that are not notes, as the latest walk listed them (it runs on
   // every load and sync pass): what an embed is looked up in, so the phone
   // finds a picture where the desktop does without a walk of its own. A
@@ -560,17 +581,18 @@ export function createPhoneVault(
       lock(async () => {
         const idx = await loadIndex();
         const notes: NoteData = {};
-        const { files: paths, mtimes } = await walk();
-        const notePaths = paths.filter((rel) => isNote(rel) && !inAttachments(parentOf(rel) ?? ""));
+        const { files: paths, folders, mtimes } = await walk();
+        const notePaths = paths.filter(listedNote);
         // Every file is read before any is taken in: a failed read publishes
         // nothing.
-        const read = files.readMany
-          ? await files.readMany(notePaths.map(abs))
-          : await mapLimited(notePaths, (rel) => files.read(abs(rel)));
+        const read = await readFiles(notePaths);
         for (const [i, rel] of notePaths.entries()) {
           const note = await parse(rel, { bytes: read[i], mtime: mtimes.get(rel) ?? 0 });
           if (note) notes[note.id] = note;
+          sight(rel);
         }
+        folderList = folders.join("\n");
+        loaded = true;
         for (const [id, rel] of Object.entries(idx)) {
           if (!notes[id] || notes[id].folder !== parentOf(rel)) {
             if (!(await files.exists(abs(rel)))) delete idx[id];
@@ -944,5 +966,142 @@ export function createPhoneVault(
       }),
   };
 
-  return { api, store };
+  // ─── What other apps change (a picked folder) ───
+
+  /** How many notes the thorough look reads at a time; a save waits for one batch at most. */
+  const LOOK_BATCH = 100;
+
+  /** Whether the file's text is what the editor last read or wrote for `id`. */
+  const sameAsSeen = (id: string, raw: string | typeof UNREADABLE) =>
+    raw === UNREADABLE ? !seen.has(id) : seen.get(id) === raw;
+
+  /** A known note's file holds other text: the editor takes it as it takes a synced change. */
+  const takeChanged = async (rel: string, known: Known) => {
+    hashes.delete(abs(rel));
+    const note = await parse(rel, known);
+    if (!note) return;
+    changedAt.set(note.id, ++clock);
+    sight(rel);
+    emit(listeners.changed, note);
+  };
+
+  /**
+   * One look at the notes named: each whose text is not what the editor has
+   * is taken. A note whose save is waiting is left for that save, which is
+   * refused as stale, so the editor keeps both. Answers whether any changed.
+   */
+  const look = async (rels: string[], mtimes: Map<string, number>) => {
+    const idx = await loadIndex();
+    const ids = new Map(Object.entries(idx).map(([id, rel]) => [rel.toLowerCase(), id]));
+    const mine = rels.filter((rel) => {
+      const id = ids.get(rel.toLowerCase());
+      return id && !waiting.has(id);
+    });
+    const read = await readFiles(mine);
+    let changed = false;
+    for (const [i, rel] of mine.entries()) {
+      const known = { bytes: read[i], mtime: mtimes.get(rel) ?? 0 };
+      const raw = await readText(rel, known);
+      if (raw === null) continue; // Gone since the walk: the next look's news.
+      if (sameAsSeen(ids.get(rel.toLowerCase()) as string, raw)) sight(rel);
+      else {
+        await takeChanged(rel, known);
+        changed = true;
+      }
+    }
+    return changed;
+  };
+
+  /**
+   * Finds what another app changed in the vault since the notes were last
+   * read, and tells the editor as the engine's changes are told: a note
+   * edited or new (`changed`), renamed or moved (`moved`), gone (`deleted`),
+   * and folders. Android has no watcher for a picked folder, so the phone's
+   * start calls this when the app comes back to the front and now and then
+   * while it stays there.
+   *
+   * The quick look is one walk and reads only the notes whose size or
+   * modified time moved, and files it has no note for. A file with no note
+   * holding exactly the text of one note that is gone is that note under its
+   * new name (the folder gives a file no identity that outlives a rename);
+   * with two alike, nothing is guessed. `thorough` then reads every other
+   * note, a batch at a time so a save never waits long: a sync tool can leave
+   * new text at the old size and time. Files that are not notes are judged by
+   * the walk alone.
+   */
+  const checkOutside = async ({ thorough = false } = {}) => {
+    const rest = await lock(async () => {
+      if (!loaded) return null;
+      const idx = await loadIndex();
+      const found = await walk();
+      const notePaths = found.files.filter(listedNote);
+      const here = new Set(notePaths.map((rel) => rel.toLowerCase()));
+      const ids = new Map(Object.entries(idx).map(([id, rel]) => [rel.toLowerCase(), id]));
+      const gone = Object.keys(idx).filter((id) => !here.has(idx[id].toLowerCase()));
+      const fresh = notePaths.filter((rel) => !ids.has(rel.toLowerCase()));
+      const touched = notePaths.filter(
+        (rel) => ids.has(rel.toLowerCase()) && sighted.get(abs(rel)) !== stamps.get(abs(rel)),
+      );
+      let changed = await look(touched, found.mtimes);
+
+      // The files with no note: one of the notes that went, or new.
+      const read = await readFiles(fresh);
+      const texts = await Promise.all(
+        fresh.map((rel, i) => readText(rel, { bytes: read[i], mtime: 0 })),
+      );
+      const left = new Set(gone);
+      for (const [i, rel] of fresh.entries()) {
+        const raw = texts[i];
+        if (raw === null) continue;
+        const known = { bytes: read[i], mtime: found.mtimes.get(rel) ?? 0 };
+        const was =
+          raw !== UNREADABLE && texts.filter((t) => t === raw).length === 1
+            ? gone.filter((id) => seen.get(id) === raw)
+            : [];
+        changed = true;
+        if (was.length === 1) {
+          const [id] = was;
+          const from = idx[id];
+          left.delete(id);
+          idx[id] = rel;
+          movedAt.set(id, { at: ++clock, title: baseName(from), folder: parentOf(from) });
+          const note = await parse(rel, known);
+          sight(rel);
+          if (note) emit(listeners.moved, note);
+          continue;
+        }
+        const note = await parse(rel, known);
+        sight(rel);
+        if (note) emit(listeners.changed, note);
+      }
+      for (const id of left) {
+        delete idx[id];
+        seen.delete(id);
+        changedAt.set(id, ++clock);
+        changed = true;
+      }
+      if (JSON.stringify(idx) !== savedIndex) await saveIndex();
+      if (left.size > 0) emit(listeners.deleted, undefined);
+
+      const folders = found.folders.join("\n");
+      if (folders !== folderList) {
+        folderList = folders;
+        emit(listeners.folders, undefined);
+        changed = true;
+      }
+      if (changed) onLocalChange();
+      const looked = new Set([...touched, ...fresh]);
+      return { rels: notePaths.filter((rel) => !looked.has(rel)), mtimes: found.mtimes };
+    });
+    if (!thorough || !rest) return;
+    for (let i = 0; i < rest.rels.length; i += LOOK_BATCH) {
+      const batch = rest.rels.slice(i, i + LOOK_BATCH);
+      // A file the app wrote since the walk is the next quick look's.
+      const still = (rel: string) => sighted.get(abs(rel)) === stamps.get(abs(rel));
+      const changed = await lock(() => look(batch.filter(still), rest.mtimes));
+      if (changed) onLocalChange();
+    }
+  };
+
+  return { api, store, checkOutside };
 }

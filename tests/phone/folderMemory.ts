@@ -179,7 +179,8 @@ export function fakeFolderAccess({
   };
   /** A change made by another app, behind the page's back. */
   const outside = {
-    put(path: string, bytes: Uint8Array) {
+    /** `quiet`: the file's modified time is left as it was, as a sync tool restores it. */
+    put(path: string, bytes: Uint8Array, { quiet = false } = {}) {
       const parts = path.split("/");
       let parent = "root";
       for (const [i, name] of parts.entries()) {
@@ -190,7 +191,7 @@ export function fakeFolderAccess({
           nodes.set(n.id, n);
         } else if (last) {
           n.bytes = bytes;
-          n.mtime = ++tick;
+          if (!quiet) n.mtime = ++tick;
         }
         parent = n.id;
       }
@@ -198,6 +199,20 @@ export function fakeFolderAccess({
     remove(path: string) {
       const n = [...nodes.values()].find((x) => x.id !== "root" && pathOf(x) === path);
       if (n) drop(n.id);
+    },
+    /** A new name or folder for a file, its bytes and modified time untouched. */
+    rename(from: string, to: string) {
+      const n = [...nodes.values()].find((x) => x.id !== "root" && pathOf(x) === from);
+      if (!n) return;
+      const { bytes, mtime } = n;
+      drop(n.id);
+      outside.put(to, bytes as Uint8Array);
+      const made = [...nodes.values()].find((x) => x.id !== "root" && pathOf(x) === to);
+      if (made) made.mtime = mtime;
+    },
+    /** The folder itself renamed or removed: Android no longer finds it. */
+    lose() {
+      drop("root");
     },
   };
   return { plugin, calls, snapshot, outside };
