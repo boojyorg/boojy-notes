@@ -25,7 +25,7 @@ const FOLDER_NAME =
   import.meta.env.VITE_BOOJY_TEST_APP === "1" ? "Boojy Notes (test)" : "Boojy Notes";
 
 /**
- * A move into `to` that a press on Home began (`moveToFolder` below), run
+ * A move into `to` that a press in Settings began (`moveToFolder` below), run
  * here where no note is open and nothing syncs. The folder is the choice only
  * once every file is in it whole; then the app's own copies go. Killed at any
  * point, the next start carries on from the record. A move that fails leaves
@@ -98,7 +98,7 @@ async function notesFolder(priv: FileOps): Promise<PickedFolder | null> {
 export type MoveAnswer = "moving" | "cancelled" | "refused" | "not-empty";
 
 /**
- * Home's "Move notes to a folder…", for notes kept in the app's storage.
+ * Settings' "Move to a folder…", for notes kept in the app's storage.
  * Android's folder screen opens in `Documents/<FOLDER_NAME>`; the folder
  * taken must be on the phone and empty (nothing is merged). `saved` writes
  * the editor's waiting edits; then, with the vault at rest, the move is
@@ -131,7 +131,7 @@ async function moveToFolder(
  * Runs before the app renders, on the phone only (main.jsx). The vault
  * answers the editor's file calls (`getAPI()` returns it), and sync starts
  * if a Dropbox folder is connected; with none, the notes are the phone's
- * alone until one is connected from Home.
+ * alone until one is connected from Settings.
  */
 export async function installPhone() {
   const priv = capacitorFiles();

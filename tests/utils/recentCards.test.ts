@@ -75,6 +75,38 @@ describe("a card's preview", () => {
     expect(long.endsWith("…")).toBe(true);
   });
 
+  // A comment is kept out of sight in the note; Home must not be where it shows.
+  it("never shows a comment, a footnote's marker, a formula's source or a cell's <br>", () => {
+    expect(
+      cardPreview(
+        blocks([
+          { id: "1", type: "p", text: "%% private %% Shopping %% unclosed" },
+          { id: "2", type: "p", text: "Eggs[^1] and milk^[inline note]" },
+          { id: "3", type: "p", text: "Area is $\\pi r^2$ here" },
+          { id: "4", type: "table", rows: [["a<br>b", "c"]] },
+          { id: "5", type: "p", text: "%% only a comment %%" },
+        ]),
+      ),
+    ).toEqual(["Shopping", "Eggs and milk", "Area is here", "a b c"]);
+  });
+
+  it("passes over code and footnote definitions: source, not prose", () => {
+    expect(
+      cardPreview(
+        blocks([
+          { id: "1", type: "code", lang: "mermaid", text: "graph TD; A-->B" },
+          { id: "2", type: "footnote", label: "1", text: "the small print" },
+          { id: "3", type: "p", text: "The note itself" },
+        ]),
+      ),
+    ).toEqual(["The note itself"]);
+  });
+
+  it("never cuts a long line through the middle of an emoji", () => {
+    const [long] = cardPreview(blocks([{ id: "1", type: "p", text: `${"a".repeat(78)}😀😀😀` }]));
+    expect(long).toBe(`${"a".repeat(78)}😀…`);
+  });
+
   it("is empty for an empty or missing note", () => {
     expect(cardPreview(blocks([]))).toEqual([]);
     expect(cardPreview(undefined)).toEqual([]);

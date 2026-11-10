@@ -10,7 +10,40 @@ const PREVIEW_LINES = 4;
 const LINE_MAX = 80;
 
 /** The blocks a preview passes over: they are not the note's words. */
-const SKIPPED = new Set(["frontmatter", "spacer", "image", "file", "embed", "math"]);
+const SKIPPED = new Set([
+  "frontmatter",
+  "spacer",
+  "image",
+  "file",
+  "embed",
+  "math",
+  // Source, not prose: a diagram's code would be shown raw, a footnote out of its place.
+  "code",
+  "footnote",
+]);
+
+/**
+ * What a card never shows of a line: a `%%` comment (kept out of sight in
+ * the note too, and an unclosed one runs to the line's end), a footnote's
+ * marker, a formula's source, and a table cell's `<br>`.
+ */
+const unsaid = (text: string) =>
+  text
+    .replace(/%%[\s\S]*?(%%|$)/g, " ")
+    .replace(/\^\[[^\]]*\]|\[\^[^\]]+\]/g, "")
+    .replace(/\$\$?[^$\n]+\$\$?/g, " ")
+    .replace(/<br\s*\/?>/gi, " ");
+
+/** `text` cut to `max` characters with an ellipsis, never through the middle of one (an emoji is two units). */
+const cut = (text: string, max: number) => {
+  const chars = Array.from(text);
+  return chars.length > max
+    ? `${chars
+        .slice(0, max - 1)
+        .join("")
+        .trimEnd()}…`
+    : text;
+};
 
 /**
  * The notes edited most recently, newest first, for Home's cards. "Recent"
@@ -52,9 +85,11 @@ const lineOf = (b: Block): string => {
 export function cardPreview(note: Note | undefined, lines = PREVIEW_LINES): string[] {
   const out: string[] = [];
   for (const block of note?.content?.blocks ?? []) {
-    const text = stripMarkdownFormatting(lineOf(block)).replace(/\s+/g, " ").trim();
+    const text = stripMarkdownFormatting(unsaid(lineOf(block)))
+      .replace(/\s+/g, " ")
+      .trim();
     if (!text) continue;
-    out.push(text.length > LINE_MAX ? `${text.slice(0, LINE_MAX - 1).trimEnd()}…` : text);
+    out.push(cut(text, LINE_MAX));
     if (out.length >= lines) break;
   }
   return out;

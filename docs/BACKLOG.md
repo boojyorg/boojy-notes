@@ -158,14 +158,19 @@ the test its rule names when it is built.
 **Phone (Android)**
 
 - **Works offline with no Dropbox and no account.** The sign-in screen goes
-  (`src/phone/install.ts:43`); Connect Dropbox is optional, from Home, choosing the folder
+  (`src/phone/install.ts:43`); Connect Dropbox is optional, from Settings, choosing the folder
   (fixed to `Personal` today, `syncFolder.ts:8`). A damaged sign-in file never locks anyone
   out (`phoneSync.ts:59-68`). The first connect is tested on a phone that already has notes.
 - **A folder the user can see** (Storage Access Framework), as well as app-private storage:
   chosen at first launch, other apps' changes noticed, and notes kept inside the app moved to
-  an empty folder from Home (`moveToFolder.ts`; modified times are not kept, their order is).
-  Storage and Dropbox are set in the phone's Settings page (`PhoneSettings.tsx`). Left:
-  changing the folder.
+  an empty folder (`moveToFolder.ts`; modified times are not kept, their order is). Storage
+  and Dropbox are set in the phone's Settings page (`PhoneSettings.tsx`). Left: changing the
+  folder.
+- **Home's cards show the notes written to this phone last**, which is the notes edited last
+  only once the phone has been in use: a file Dropbox downloads, or a move to a folder writes,
+  is stamped with that moment (Android sets no modified time), so after a first connect or a
+  reinstall the cards are the last four downloaded. Putting it right needs the edit's own time
+  carried through sync.
 - **Export and import**, **adding pictures** (off, `platform.js:12`), the Dropbox token in
   Android's Keystore (a plain file today), a deliberate backup setting (settings yes, token
   never), Settings laid out for a phone.

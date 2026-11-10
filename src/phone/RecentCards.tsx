@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import type { NoteData } from "../types/notes";
 import { cardPreview, cardTime, recentlyEdited } from "../utils/recentCards";
@@ -6,6 +6,8 @@ import { recencyOf } from "../utils/noteSort";
 
 /** A card's height: the name, three lines of the note, and where and when. */
 const CARD_H = 124;
+/** How often the cards' times are said again. */
+const TICK_MS = 30_000;
 
 /**
  * Home's recent notes on the phone: the notes edited last, up to four, as a
@@ -19,18 +21,28 @@ export default function RecentCards({
   editedAt,
   onOpen,
   inset,
-  now = Date.now(),
 }: {
   noteData: NoteData;
   editedAt: Record<string, number>;
   onOpen: (id: string, event: React.MouseEvent) => void;
   /** The list's left edge, which the heading and the grid keep. */
   inset: number;
-  now?: number;
 }) {
   const { theme } = useTheme();
   const { TEXT, BG } = theme;
   const ids = useMemo(() => recentlyEdited(noteData, editedAt), [noteData, editedAt]);
+  // The cards' own clock: "Just now" must not stand for an hour. It moves
+  // every half minute, and at once when the app comes back to the front.
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const timer = setInterval(tick, TICK_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, []);
   if (ids.length === 0) return null;
   return (
     <section

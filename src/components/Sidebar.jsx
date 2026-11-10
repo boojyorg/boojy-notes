@@ -122,7 +122,6 @@ const ROW_GAP = isPhone ? 0 : TREE_ROW_GAP;
 const NOTE_MENU_GAP = 4;
 /** How far left of the ··· button's left edge the menu's left edge sits. */
 const NOTE_MENU_SHIFT = 8;
-/** A chrome control on the phone: a touch target, the same glyph. */
 /** Keys the tree claims even where they move nothing (an arrow at the end
  *  would otherwise scroll the sidebar). */
 const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"]);
@@ -438,15 +437,6 @@ function VaultLabel({ name, open, onOpen }) {
       )}
     </button>
   );
-}
-
-/**
- * The phone's folder row: the Dropbox folder's name (or "Phone"), then sync's state
- * (`SyncStatusButton`), close beside it rather than across the row, since it
- * speaks of that folder.
- */
-function SyncedVaultLabel({ name, sync, onOpenSettings }) {
-  return <SyncStatusButton name={name} sync={sync} onOpenSettings={onOpenSettings} />;
 }
 
 const Sidebar = memo(function Sidebar({
@@ -1076,57 +1066,73 @@ const Sidebar = memo(function Sidebar({
   // The list's head: New note (desktop) and the list's name with its controls,
   // above the scroller. On the phone the name heads Home: the Recent cards
   // and the list both stand under it.
+  // The list's head stands above the list's scroller: it never scrolls, so the
+  // scrollbar spans the list alone, from under it down to Recently Deleted.
   const listHead = (
-    <>
-      {/* New note and the list's controls, above the list's scroller:
-          they never scroll, so the scrollbar spans the list alone, from
-          under the vault row down to Recently Deleted. */}
-      <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
-        {/* On the phone the list's name belongs to the row above it: close under it. */}
-        <div style={{ height: isPhone ? 2 : COLUMN_HEAD_GAP }} />
-        {/* On the phone New note is the teal button at the foot: one way in. */}
-        {!isPhone && <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />}
-        <SectionHeader
-          label={
-            vaults.length > 0 ? (
-              <VaultLabel
-                name={vaultName}
-                open={vaultMenu !== null}
-                onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
-              />
-            ) : sync ? (
-              <SyncedVaultLabel
-                name={vaultName}
-                sync={sync}
-                onOpenSettings={() => setSettingsOpen(true)}
-              />
-            ) : (
-              vaultName
-            )
-          }
-          TEXT={TEXT}
-          dropRoot
-          menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
+    <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
+      {/* On the phone the list's name belongs to the row above it: close under it. */}
+      <div style={{ height: isPhone ? 2 : COLUMN_HEAD_GAP }} />
+      {/* On the phone New note is the teal button at the foot: one way in. */}
+      {!isPhone && <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />}
+      <SectionHeader
+        label={
+          vaults.length > 0 ? (
+            <VaultLabel
+              name={vaultName}
+              open={vaultMenu !== null}
+              onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
+            />
+          ) : sync ? (
+            <SyncStatusButton
+              name={vaultName}
+              sync={sync}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          ) : (
+            vaultName
+          )
+        }
+        TEXT={TEXT}
+        dropRoot
+        menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
+      >
+        <SectionAction
+          onClick={() => createFolder(null)}
+          label="New folder"
+          shortcut={SHORTCUTS.newFolder}
         >
-          <SectionAction
-            onClick={() => createFolder(null)}
-            label="New folder"
-            shortcut={SHORTCUTS.newFolder}
-          >
-            <NewFolderIcon size={SECTION_GLYPH} />
-          </SectionAction>
-          <SectionAction
-            onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
-            label="Sort"
-            aria-haspopup="menu"
-            aria-expanded={sortMenuAnchor !== null}
-            active={sortMenuAnchor !== null}
-          >
-            <SortIcon size={SECTION_GLYPH} />
-          </SectionAction>
-        </SectionHeader>
-      </div>
-    </>
+          <NewFolderIcon size={SECTION_GLYPH} />
+        </SectionAction>
+        <SectionAction
+          onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
+          label="Sort"
+          aria-haspopup="menu"
+          aria-expanded={sortMenuAnchor !== null}
+          active={sortMenuAnchor !== null}
+        >
+          <SortIcon size={SECTION_GLYPH} />
+        </SectionAction>
+      </SectionHeader>
+    </div>
+  );
+
+  // Pinned under the tree however long it is: where a deleted note waits,
+  // always in the same place (Apple Notes hides it when empty; a row that
+  // comes and goes is harder to trust). No count: no other row carries one,
+  // and a number reads as something to clear, which a safety net is not.
+  const recentlyDeletedRow = recentlyDeleted && (
+    <button
+      type="button"
+      data-testid="recently-deleted-row"
+      className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
+      aria-haspopup="dialog"
+      aria-expanded={recentlyDeleted.open}
+      onClick={recentlyDeleted.onToggle}
+      style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
+    >
+      <TrashIcon />
+      <span style={{ flex: 1 }}>Recently Deleted</span>
+    </button>
   );
 
   return (
@@ -1347,42 +1353,11 @@ const Sidebar = memo(function Sidebar({
         </div>
       </div>
       {isPhone ? (
-        <HomeFoot onNewNote={() => createNote(null)}>
-          {recentlyDeleted && (
-            <button
-              type="button"
-              data-testid="recently-deleted-row"
-              className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
-              aria-haspopup="dialog"
-              aria-expanded={recentlyDeleted.open}
-              onClick={recentlyDeleted.onToggle}
-              style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
-            >
-              <TrashIcon />
-              <span style={{ flex: 1 }}>Recently Deleted</span>
-            </button>
-          )}
-        </HomeFoot>
+        <HomeFoot onNewNote={() => createNote(null)}>{recentlyDeletedRow}</HomeFoot>
       ) : (
-        recentlyDeleted && (
-          // Pinned under the tree however long it is: where a deleted note
-          // waits, always in the same place (Apple Notes hides it when empty;
-          // a row that comes and goes is harder to trust).
+        recentlyDeletedRow && (
           <div style={{ borderTop: `1px solid ${BG.divider}`, padding: "6px 0", flexShrink: 0 }}>
-            <button
-              type="button"
-              data-testid="recently-deleted-row"
-              className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
-              aria-haspopup="dialog"
-              aria-expanded={recentlyDeleted.open}
-              onClick={recentlyDeleted.onToggle}
-              style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
-            >
-              <TrashIcon />
-              {/* No count: no other row in the sidebar carries one, and a number
-                  reads as something to clear, which a safety net is not. */}
-              <span style={{ flex: 1 }}>Recently Deleted</span>
-            </button>
+            {recentlyDeletedRow}
           </div>
         )
       )}
