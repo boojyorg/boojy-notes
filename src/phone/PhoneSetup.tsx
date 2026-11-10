@@ -7,7 +7,8 @@ import {
   WELCOME_TITLE,
 } from "../constants/setupCopy";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
-import { FolderOpenIcon } from "../components/Icons";
+import { ArrowRightIcon, ChevronRightIcon, FolderIcon } from "../components/Icons";
+import Wordmark from "../components/Wordmark";
 import { ThemePills } from "../components/settings/AppearanceTab";
 import { SectionTitle, SmallButton } from "../components/settings/SettingsPrimitives";
 import {
@@ -17,8 +18,21 @@ import {
   type PickedFolder,
 } from "./folderFiles";
 
-/** A phone's button: the desktop's shape at a finger's size. */
-const TOUCH_BUTTON = { height: 48, fontSize: 16, borderRadius: 12, justifyContent: "center" };
+/** A phone's button: the desktop's shape at a finger's size, as wide as its words, centred. */
+const TOUCH_BUTTON = {
+  height: 48,
+  padding: "0 28px",
+  fontSize: 16,
+  borderRadius: 12,
+  alignSelf: "center",
+};
+/** A button's words with a glyph after them. */
+const withArrow = (label: string) => (
+  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+    {label}
+    <ArrowRightIcon size={18} />
+  </span>
+);
 
 /** The page both first-run screens stand on: the app's ground, clear of Android's bars. */
 function Page({ children }: { children: React.ReactNode }) {
@@ -108,27 +122,57 @@ export function PhoneSetup({
 
   return (
     <Page>
-      <Title>{WELCOME_TITLE}</Title>
-      <p style={{ margin: "0 0 28px", color: TEXT.secondary }}>{SETUP_INTRO}</p>
+      {/* The mark Home carries, in a heading that says what the screen is. */}
+      <h1 aria-label={WELCOME_TITLE} style={{ margin: "0 0 20px" }}>
+        <Wordmark height={30} />
+      </h1>
+      <p style={{ margin: "0 0 28px", fontSize: 18, lineHeight: "27px", color: TEXT.secondary }}>
+        {SETUP_INTRO}
+      </p>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
-        <SectionTitle title={NOTES_FOLDER_TITLE} />
-        <div style={{ overflowWrap: "anywhere" }}>
-          {chosen ? folderLabel(chosen) : `Documents/${folderName}`}
-        </div>
-        <SmallButton
-          icon={<FolderOpenIcon />}
-          onClick={choose}
-          style={{ height: 44, fontSize: 15 }}
-        >
-          Choose folder…
-        </SmallButton>
-        {refused && (
-          <p role="alert" style={{ margin: 0, fontSize: 14, color: theme.SEMANTIC.error }}>
-            Choose a folder on this phone.
-          </p>
-        )}
-      </div>
+      {/* The folder is one row: where the notes go, and a tap to change it. */}
+      <button
+        type="button"
+        onClick={choose}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          minHeight: 64,
+          padding: "10px 12px 10px 16px",
+          border: `1px solid ${theme.BG.divider}`,
+          borderRadius: 14,
+          background: theme.BG.editor,
+          color: TEXT.primary,
+          font: "inherit",
+          textAlign: "left",
+        }}
+      >
+        <span style={{ display: "flex", color: TEXT.secondary }}>
+          <FolderIcon size={20} />
+        </span>
+        <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          <span style={{ fontSize: 14, lineHeight: "20px", color: TEXT.muted }}>
+            {NOTES_FOLDER_TITLE}
+          </span>
+          <span style={{ overflowWrap: "anywhere" }}>
+            {chosen ? folderLabel(chosen) : `Documents/${folderName}`}
+          </span>
+        </span>
+        <span style={{ display: "flex", color: TEXT.muted }}>
+          <ChevronRightIcon size={18} />
+        </span>
+      </button>
+      {!chosen && (
+        <p style={{ margin: "8px 4px 0", fontSize: 14, lineHeight: "20px", color: TEXT.muted }}>
+          Android will ask you to confirm it.
+        </p>
+      )}
+      {refused && (
+        <p role="alert" style={{ margin: "8px 4px 0", fontSize: 14, color: theme.SEMANTIC.error }}>
+          Choose a folder on this phone.
+        </p>
+      )}
 
       <div style={{ height: 28 }} />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -138,31 +182,26 @@ export function PhoneSetup({
 
       <div style={{ flexGrow: 1, minHeight: 32 }} />
       <SmallButton kind="strong" onClick={carryOn} style={TOUCH_BUTTON}>
-        Continue
+        {withArrow("Continue")}
       </SmallButton>
-      {!chosen && (
-        <p style={{ margin: "10px 0 0", fontSize: 14, textAlign: "center", color: TEXT.muted }}>
-          Android will ask you to confirm the folder.
-        </p>
-      )}
+      {/* The other answer, with what it costs said in the same breath. */}
       <button
         type="button"
         onClick={() => onDone(null)}
         style={{
-          margin: "20px 0 0",
+          margin: "12px 0 0",
           minHeight: 44,
           border: "none",
           background: "transparent",
           font: "inherit",
           fontSize: 15,
-          color: TEXT.secondary,
+          lineHeight: "22px",
+          color: theme.link.color,
         }}
       >
-        Keep notes inside the app
+        Or keep notes inside the app{" "}
+        <span style={{ color: TEXT.muted, whiteSpace: "nowrap" }}>(removed on uninstall)</span>
       </button>
-      <p style={{ margin: 0, fontSize: 14, textAlign: "center", color: TEXT.muted }}>
-        Removed if you uninstall.
-      </p>
     </Page>
   );
 }
@@ -201,7 +240,7 @@ export function FolderLost({
       )}
       <div style={{ flexGrow: 1, minHeight: 32 }} />
       <SmallButton kind="strong" onClick={again} style={TOUCH_BUTTON}>
-        Choose the folder again
+        {withArrow("Choose the folder again")}
       </SmallButton>
     </Page>
   );
