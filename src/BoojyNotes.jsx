@@ -368,7 +368,7 @@ export default function BoojyNotes() {
     showToast,
   });
   // The phone's sync, shown on Home's folder row; null elsewhere.
-  const sync = useSyncStatus({ showToast });
+  const sync = useSyncStatus({ showToast, flushAll });
   const [binOpen, setBinOpen] = useState(false);
   const recentlyDeleted = useRecentlyDeleted({
     notesDir,

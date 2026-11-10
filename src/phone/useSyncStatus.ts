@@ -27,14 +27,27 @@ type ShowToast = (message: string, kind?: ToastKind, options?: ToastOptions) => 
 const syncAPI = (): PhoneSyncAPI | undefined =>
   (getAPI() as { sync?: PhoneSyncAPI } | undefined)?.sync;
 
+type MoveToFolder = NonNullable<NonNullable<Window["boojyPhoneAPI"]>["moveToFolder"]>;
+const moveAPI = (): MoveToFolder | undefined =>
+  (getAPI() as { moveToFolder?: MoveToFolder } | undefined)?.moveToFolder;
+const MOVE_TOAST_KEY = "move-to-folder";
+
 /**
  * Sync's state for Home's folder row, on the phone; null elsewhere. A new
  * problem also says so in a toast, which waits for its ×, so it is seen from
  * the note's screen too; once every problem it told of has gone, a receipt
  * says so. Being offline is no news.
  */
-export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
+export function useSyncStatus({
+  showToast,
+  flushAll = async () => {},
+}: {
+  showToast: ShowToast;
+  /** Writes the editor's waiting edits, before a move to a folder restarts the app. */
+  flushAll?: () => unknown;
+}) {
   const api = useRef(syncAPI()).current;
+  const move = useRef(moveAPI()).current;
   const [status, setStatus] = useState<SyncStatus | null>(() => api?.status() ?? null);
   const [shown, setShown] = useState<SyncStatus | null>(status);
   const told = useRef("");
@@ -86,6 +99,30 @@ export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
     }
   }, [api, showToast]);
 
+  // Home's "Move notes to a folder…", while the notes are in the app's
+  // storage (it sits in sync's menu until the phone has Settings). A folder
+  // taken restarts the app into the move; one refused says why.
+  const moveToFolder = useMemo(
+    () =>
+      move &&
+      (async () => {
+        try {
+          const answer = await move(async () => flushAll());
+          if (answer === "not-empty")
+            showToast("That folder has files in it. Choose an empty folder.", "notice", {
+              key: MOVE_TOAST_KEY,
+            });
+          if (answer === "refused")
+            showToast("Choose a folder on this phone.", "notice", { key: MOVE_TOAST_KEY });
+        } catch (error) {
+          showToast(`Couldn't move your notes: ${(error as Error)?.message ?? error}`, "warning", {
+            key: MOVE_TOAST_KEY,
+          });
+        }
+      }),
+    [move, flushAll, showToast],
+  );
+
   useEffect(() => {
     if (!status) return;
     // Nothing connected is nothing to tell of; a later connect starts afresh.
@@ -114,8 +151,11 @@ export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
 
   // One object per shown state: the sidebar is memoised on its props.
   return useMemo(
-    () => (api && shown ? { status: shown, syncNow, signInAgain, connect, disconnect } : null),
-    [api, shown, syncNow, signInAgain, connect, disconnect],
+    () =>
+      api && shown
+        ? { status: shown, syncNow, signInAgain, connect, disconnect, moveToFolder }
+        : null,
+    [api, shown, syncNow, signInAgain, connect, disconnect, moveToFolder],
   );
 }
 

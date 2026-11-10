@@ -10,9 +10,11 @@
   file; pending edits go back. `outside-delete.spec.ts`.
 - **The phone's bin**: one place through a crash; sync is told of a restore.
   `recentlyDeleted.test.ts`.
-- **Phone notes in a picked folder**: saves journalled; a taken name fails; lost is an error
-  (`FolderLost`), never empty or app storage. **Outside changes are looked for**
-  (`checkOutside`; a rename by text). `phoneVaultFolder.test.ts`.
+- **Phone notes in a picked folder**: saves journalled; a taken name fails; lost is
+  `FolderLost`, never empty or app storage; outside changes looked for (`checkOutside`; a
+  rename by text). `phoneVaultFolder.test.ts`.
+- **App storage moves to an empty folder at a start**: copied whole, chosen, then cleared.
+  `moveToFolder.test.ts`.
 - **Phone sync is optional, the binding its connection**: no pass till accounts match. `phoneSync.test.ts`.
 - Desktop confirms only several files; one note goes at once, Undo in its toast.
 

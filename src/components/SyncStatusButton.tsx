@@ -61,8 +61,8 @@ export default function SyncStatusButton({ sync }: { sync: PhoneSync }) {
 
   const signIn = problems.some((p) => describeProblem(p).action === "sign-in");
   const close = () => setAnchor(null);
-  const items: MenuItem[] =
-    state === "off"
+  const items: MenuItem[] = [
+    ...(state === "off"
       ? [
           {
             label: "Connect Dropbox",
@@ -91,7 +91,21 @@ export default function SyncStatusButton({ sync }: { sync: PhoneSync }) {
               sync.disconnect();
             },
           },
-        ];
+        ]),
+    // While the notes are inside the app; here until the phone has Settings.
+    ...(sync.moveToFolder
+      ? [
+          {
+            label: "Move notes to a folder…",
+            testId: "move-to-folder",
+            action: () => {
+              close();
+              sync.moveToFolder?.();
+            },
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>

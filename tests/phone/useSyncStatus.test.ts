@@ -163,3 +163,61 @@ describe("connecting and disconnecting from Home", () => {
     );
   });
 });
+
+describe("moving the notes to a folder, from Home", () => {
+  const hook = (moveToFolder: unknown, flushAll = vi.fn()) => {
+    api = { sync: fakeSync(status("off")).sync, moveToFolder };
+    const showToast = vi.fn();
+    const { result } = renderHook(() => useSyncStatus({ showToast, flushAll }));
+    return { result, showToast, flushAll };
+  };
+
+  it("is not offered where the notes are already in a folder", () => {
+    expect(hook(undefined).result.current?.moveToFolder).toBeUndefined();
+  });
+
+  it("hands over the editor's flush, to run once a folder is taken", async () => {
+    const move = vi.fn(async (saved: () => Promise<unknown>) => {
+      await saved();
+      return "moving";
+    });
+    const { result, showToast, flushAll } = hook(move);
+    await act(async () => result.current?.moveToFolder?.());
+    expect(flushAll).toHaveBeenCalledOnce();
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it("says why a folder was not taken, and nothing when the picker was left", async () => {
+    for (const [answer, said] of [
+      ["not-empty", /Choose an empty folder/],
+      ["refused", /on this phone/],
+      ["cancelled", null],
+    ] as const) {
+      const { result, showToast, flushAll } = hook(vi.fn(async () => answer));
+      await act(async () => result.current?.moveToFolder?.());
+      if (said)
+        expect(showToast).toHaveBeenCalledWith(
+          expect.stringMatching(said),
+          "notice",
+          expect.anything(),
+        );
+      else expect(showToast).not.toHaveBeenCalled();
+      expect(flushAll).not.toHaveBeenCalled();
+      cleanup();
+    }
+  });
+
+  it("says a move that could not start", async () => {
+    const { result, showToast } = hook(
+      vi.fn(async () => {
+        throw new Error("A note is still being saved. Try again in a moment.");
+      }),
+    );
+    await act(async () => result.current?.moveToFolder?.());
+    expect(showToast).toHaveBeenCalledWith(
+      expect.stringMatching(/Couldn't move your notes: A note is still being saved/),
+      "warning",
+      expect.anything(),
+    );
+  });
+});
