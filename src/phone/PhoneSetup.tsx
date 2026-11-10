@@ -165,6 +165,7 @@ export function PhoneSetup({
     const got = taken(await pickFolder(access));
     if (got) setChosen(got);
   };
+  const folderPath = chosen ? folderLabel(chosen) : `Documents/${folderName}`;
   const carryOn = async () => {
     if (chosen) return onDone(chosen);
     // Made first, so Android's screen opens inside it.
@@ -226,37 +227,53 @@ export function PhoneSetup({
   // The same shape as the first page: one centred group, a little above the middle.
   return (
     <Page>
-      <button
-        type="button"
-        aria-label="Back"
-        onClick={() => setPage(1)}
+      {/* Back, and the mark on its line: the same app as the page before. */}
+      <div
         style={{
-          width: 44,
-          height: 44,
-          margin: "-20px 0 0 -12px",
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "44px 1fr 44px",
           alignItems: "center",
-          justifyContent: "center",
-          border: "none",
-          background: "transparent",
-          color: TEXT.primary,
+          margin: "-20px -12px 0",
         }}
       >
-        <BackIcon />
-      </button>
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => setPage(1)}
+          style={{
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "none",
+            background: "transparent",
+            color: TEXT.primary,
+          }}
+        >
+          <BackIcon />
+        </button>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <Wordmark height={20} />
+        </div>
+      </div>
       <div style={{ flexGrow: 1 }} />
       <div style={{ display: "flex", flexDirection: "column" }}>
         <h1 style={{ ...HEADING, marginBottom: 24 }}>Set up</h1>
 
-        {/* The folder is one row: where the notes go, and a tap to change it. */}
+        {/* The folder: its name over a row that holds the path and changes it, and what it is under. */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+          <SectionTitle title={NOTES_FOLDER_TITLE} />
+        </div>
         <button
           type="button"
+          aria-label={`${NOTES_FOLDER_TITLE}: ${folderPath}`}
           onClick={choose}
           style={{
             display: "flex",
             alignItems: "center",
             gap: 14,
-            minHeight: 64,
+            minHeight: 56,
             padding: "10px 12px 10px 16px",
             border: `1px solid ${theme.BG.divider}`,
             borderRadius: 14,
@@ -269,31 +286,28 @@ export function PhoneSetup({
           <span style={{ display: "flex", color: TEXT.secondary }}>
             <FolderIcon size={20} />
           </span>
-          <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 14, lineHeight: "20px", color: TEXT.muted }}>
-              {NOTES_FOLDER_TITLE}
-            </span>
-            <span style={{ overflowWrap: "anywhere" }}>
-              {chosen ? folderLabel(chosen) : `Documents/${folderName}`}
-            </span>
-          </span>
+          <span style={{ flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>{folderPath}</span>
           <span style={{ display: "flex", color: TEXT.muted }}>
             <ChevronRightIcon size={18} />
           </span>
         </button>
-        {!chosen && (
-          <p
-            style={{
-              margin: "8px 0 0",
-              fontSize: 14,
-              lineHeight: "20px",
-              textAlign: "center",
-              color: TEXT.muted,
-            }}
-          >
-            Android will ask you to confirm it.
-          </p>
-        )}
+        <p
+          style={{
+            margin: "10px 0 0",
+            fontSize: 14,
+            lineHeight: "20px",
+            textAlign: "center",
+            color: TEXT.muted,
+          }}
+        >
+          Where your notes are saved, as ordinary files.
+          {!chosen && (
+            <>
+              <br />
+              <span>Android will ask you to confirm it.</span>
+            </>
+          )}
+        </p>
         {refused && (
           <p
             role="alert"
