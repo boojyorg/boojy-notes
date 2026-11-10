@@ -57,3 +57,61 @@ describe("useNoteHistory", () => {
     expect(open).toHaveBeenCalledWith("a");
   });
 });
+
+/**
+ * Back and Forward are keys, and keys come faster than renders: the note
+ * history spec failed now and then on CI (a Back ignored just after a note
+ * opened; the second of two Forwards landing at the note's top).
+ */
+describe("steps taken faster than the page renders", () => {
+  const place = (id: string) => ({
+    atTop: false,
+    anchor: { id, before: null, after: null, top: 30 },
+    caret: null,
+  });
+  const walked = () => {
+    const open = vi.fn();
+    const h = renderHook(
+      (p) => useNoteHistory({ open, restoreHere: () => {}, exists: () => true, ...p }),
+      { initialProps: { current: "a" as string | null, resetKey: "/v" } },
+    );
+    const show = (current: string) => h.rerender({ current, resetKey: "/v" });
+    return { h, open, show };
+  };
+
+  it("goes back from a note opened a moment ago, asked by a key bound before the render", () => {
+    const { h, open, show } = walked();
+    const back = h.result.current.back;
+    show("b");
+    act(() => back());
+    expect(open).toHaveBeenCalledWith("a");
+  });
+
+  it("takes two Forwards pressed together as two steps, and returns to the second's place", () => {
+    const { h, open, show } = walked();
+    show("b");
+    show("a");
+    act(() => h.result.current.recordPlace("a", place("a35")));
+    act(() => h.result.current.back());
+    show("b");
+    act(() => h.result.current.back());
+    show("a");
+    open.mockClear();
+
+    act(() => {
+      h.result.current.forward();
+      h.result.current.forward();
+    });
+    expect(open.mock.calls).toEqual([["b"], ["a"]]);
+    // The notes open one after the other; the first is passed through.
+    show("b");
+    expect(h.result.current.takeRestore("b")).toBeNull();
+    show("a");
+    expect(h.result.current.takeRestore("a")).toEqual({ place: place("a35") });
+    // Neither was recorded as a new opening: this is still the list's end.
+    expect(h.result.current.canForward).toBe(false);
+    open.mockClear();
+    act(() => h.result.current.back());
+    expect(open).toHaveBeenCalledWith("b");
+  });
+});
