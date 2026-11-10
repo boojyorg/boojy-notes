@@ -245,6 +245,10 @@ declare global {
       attachmentAddress: (rel: string) => string;
       /** Sync's state and Dropbox's connection, for Home's folder row (src/phone/useSyncStatus.ts). */
       sync: import("../phone/useSyncStatus").PhoneSyncAPI;
+      /** Moves notes kept in the app's storage into a picked folder; absent when they are in one. */
+      moveToFolder?: (
+        saved: () => Promise<unknown>,
+      ) => Promise<import("../phone/install").MoveAnswer>;
     };
     /** Capacitor's bridge, present in the Android app before any script runs. */
     Capacitor?: { isNativePlatform?: () => boolean };

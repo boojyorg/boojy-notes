@@ -7,6 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 const disk = vi.hoisted(() => ({
   state: [] as string[],
   choice: null as string | null,
+  /** What a move under way adds to the choice's file. */
+  under: {} as Record<string, unknown>,
   written: [] as [string, string][],
 }));
 vi.mock("../../src/phone/files", () => ({
@@ -14,7 +16,7 @@ vi.mock("../../src/phone/files", () => ({
     recover: async () => {},
     read: async (path: string) =>
       path === "state/storage.json" && disk.choice
-        ? new TextEncoder().encode(JSON.stringify({ kind: disk.choice }))
+        ? new TextEncoder().encode(JSON.stringify({ kind: disk.choice, ...disk.under }))
         : null,
     list: async (dir: string) =>
       dir === "state" ? disk.state.map((name) => ({ name, kind: "file", mtime: 0, size: 1 })) : [],
@@ -27,7 +29,12 @@ vi.mock("../../src/phone/files", () => ({
 const checkOutside = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/phone/phoneVault", () => ({
   VAULT: "vault",
-  createPhoneVault: () => ({ api: {}, store: {}, checkOutside }),
+  createPhoneVault: () => ({
+    api: {},
+    store: {},
+    checkOutside,
+    atRest: (work: () => Promise<unknown>) => work(),
+  }),
 }));
 /** Android, or the page in a browser; and the app's coming to the front, as Android says it. */
 const device = vi.hoisted(() => ({
@@ -57,13 +64,33 @@ vi.mock("../../src/phone/commands", () => ({ onCommand: () => () => {} }));
 const screens = vi.hoisted(() => ({
   askStorage: vi.fn(async () => null as { tree: string; root: string } | null),
   askFolderAgain: vi.fn(async () => ({ tree: "again", root: "primary:Documents/Again" })),
+  showMoving: vi.fn(() => ({ progress() {}, close() {} })),
+  sayNotMoved: vi.fn(async (_reason: string) => {}),
+}));
+const move = vi.hoisted(() => ({
+  copyNotes: vi.fn(async () => {}),
+  clearCopied: vi.fn(async () => {}),
+}));
+vi.mock("../../src/phone/moveToFolder", () => move);
+const released = vi.hoisted(() => [] as string[]);
+/** Android's folder screen: what it answers, and what the folder taken holds. */
+const picker = vi.hoisted(() => ({
+  answer: { picked: false } as { picked: boolean; tree?: string; root?: string; refused?: string },
+  holds: [] as string[],
 }));
 vi.mock("../../src/phone/storageScreens", () => screens);
 const reachable = vi.hoisted(() =>
   vi.fn(async () => null as { tree: string; root: string } | null),
 );
 vi.mock("../../src/phone/folderFiles", () => ({
-  FolderAccess: {},
+  FolderAccess: {
+    ensureDefault: async () => ({ made: true, initial: "initial" }),
+    pick: async () => picker.answer,
+    list: async () => ({ entries: picker.holds.map((name) => ({ name })) }),
+    release: async ({ tree }: { tree: string }) => {
+      released.push(tree);
+    },
+  },
   reachableFolder: reachable,
   folderFiles: () => ({ recover: async () => {} }),
   folderAddress: () => (rel: string) => rel,
@@ -119,7 +146,7 @@ describe("where a start keeps the notes", () => {
     await (await import("../../src/phone/install")).installPhone();
     device.native = true;
   };
-  const fresh = () => Object.assign(disk, { state: [], choice: null });
+  const fresh = () => Object.assign(disk, { state: [], choice: null, under: {} });
 
   it("asks a fresh install once, and keeps the answer", async () => {
     fresh();
@@ -173,5 +200,119 @@ describe("where a start keeps the notes", () => {
     Object.assign(disk, { state: ["ids.json"], choice: "app" });
     await startOf(true);
     expect(device.stateChange).toBeNull();
+  });
+
+  const TO = { tree: "to", root: "primary:Documents/Boojy Notes" };
+  const storage = () => disk.written.filter(([path]) => path === "state/storage.json");
+
+  describe("with a move to a folder under way", () => {
+    it("copies, makes the folder the choice, then clears the app's copies, in that order", async () => {
+      Object.assign(disk, { state: ["ids.json"], choice: "app", under: { moving: TO } });
+      const order: string[] = [];
+      move.copyNotes.mockImplementationOnce(async () => {
+        order.push(`copy, ${storage().length} written`);
+      });
+      move.clearCopied.mockImplementationOnce(async () => {
+        order.push(`clear after ${storage().at(-1)?.[1]}`);
+      });
+      await startOf(true);
+      expect(order).toEqual(["copy, 0 written", 'clear after {"kind":"folder","clearing":true}']);
+      expect(storage().at(-1)?.[1]).toBe('{"kind":"folder"}');
+      expect(reachable).toHaveBeenCalledWith(expect.anything(), TO);
+      expect(screens.sayNotMoved).not.toHaveBeenCalled();
+      // The app is in the folder: other apps' changes are looked for.
+      expect(device.stateChange).not.toBeNull();
+    });
+
+    it("failed, keeps the notes in the app's storage, gives the folder back and says so", async () => {
+      Object.assign(disk, { state: ["ids.json"], choice: "app", under: { moving: TO } });
+      screens.sayNotMoved.mockClear();
+      move.clearCopied.mockClear();
+      released.length = 0;
+      move.copyNotes.mockRejectedValueOnce(new Error("No space left"));
+      await startOf(true);
+      expect(storage()).toEqual([["state/storage.json", '{"kind":"app"}']]);
+      expect(released).toEqual(["to"]);
+      expect(screens.sayNotMoved).toHaveBeenCalledWith("No space left");
+      expect(move.clearCopied).not.toHaveBeenCalled();
+      expect(device.stateChange).toBeNull();
+    });
+
+    it("killed while clearing, clears at the next start", async () => {
+      Object.assign(disk, { state: ["ids.json"], choice: "folder", under: { clearing: true } });
+      move.copyNotes.mockClear();
+      move.clearCopied.mockClear();
+      reachable.mockResolvedValueOnce(TO);
+      await startOf(true);
+      expect(move.copyNotes).not.toHaveBeenCalled();
+      expect(move.clearCopied).toHaveBeenCalledOnce();
+      expect(storage()).toEqual([["state/storage.json", '{"kind":"folder"}']]);
+    });
+
+    // The folder is where the notes are from the flip on, whatever the clearing does.
+    it("opens the folder even when clearing fails, and tries again next time", async () => {
+      Object.assign(disk, { state: ["ids.json"], choice: "folder", under: { clearing: true } });
+      move.clearCopied.mockRejectedValueOnce(new Error("busy"));
+      reachable.mockResolvedValueOnce(TO);
+      await startOf(true);
+      expect(storage()).toEqual([]);
+      expect(device.stateChange).not.toBeNull();
+    });
+  });
+
+  describe("Move notes to a folder", () => {
+    type Move = (saved: () => Promise<unknown>) => Promise<string>;
+    const offered = () =>
+      (window as unknown as { boojyPhoneAPI: { moveToFolder?: Move } }).boojyPhoneAPI.moveToFolder;
+    const inApp = async () => {
+      Object.assign(disk, { state: ["ids.json"], choice: "app", under: {} });
+      await startOf(true);
+      released.length = 0;
+      return offered() as Move;
+    };
+
+    it("is offered only while the notes are in the app's storage, on Android", async () => {
+      expect(await inApp()).toBeTypeOf("function");
+      Object.assign(disk, { state: ["ids.json"], choice: "app", under: {} });
+      await startOf(false);
+      expect(offered()).toBeUndefined();
+      Object.assign(disk, { state: ["ids.json"], choice: "folder", under: {} });
+      reachable.mockResolvedValueOnce(TO);
+      await startOf(true);
+      expect(offered()).toBeUndefined();
+    });
+
+    it("records the move only once the edits waiting are saved", async () => {
+      const moveToFolder = await inApp();
+      Object.assign(picker, { answer: { picked: true, ...TO }, holds: [".nomedia"] });
+      const saved = vi.fn(async () => {
+        expect(storage()).toEqual([]);
+      });
+      expect(await moveToFolder(saved)).toBe("moving");
+      expect(saved).toHaveBeenCalledOnce();
+      expect(storage()).toEqual([
+        ["state/storage.json", JSON.stringify({ kind: "app", moving: TO })],
+      ]);
+    });
+
+    // Nothing is merged: whose note wins is a question nobody was asked.
+    it("refuses a folder that holds anything, and gives it back", async () => {
+      const moveToFolder = await inApp();
+      Object.assign(picker, { answer: { picked: true, ...TO }, holds: ["Diary.md"] });
+      const saved = vi.fn(async () => {});
+      expect(await moveToFolder(saved)).toBe("not-empty");
+      expect(released).toEqual(["to"]);
+      expect(saved).not.toHaveBeenCalled();
+      expect(storage()).toEqual([]);
+    });
+
+    it("does nothing when Android's screen is left, or the folder is not on the phone", async () => {
+      const moveToFolder = await inApp();
+      Object.assign(picker, { answer: { picked: false }, holds: [] });
+      expect(await moveToFolder(async () => {})).toBe("cancelled");
+      Object.assign(picker, { answer: { picked: false, refused: "cloud" }, holds: [] });
+      expect(await moveToFolder(async () => {})).toBe("refused");
+      expect(storage()).toEqual([]);
+    });
   });
 });

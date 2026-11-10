@@ -161,11 +161,10 @@ the test its rule names when it is built.
   (`src/phone/install.ts:43`); Connect Dropbox is optional, from Home, choosing the folder
   (fixed to `Personal` today, `syncFolder.ts:8`). A damaged sign-in file never locks anyone
   out (`phoneSync.ts:59-68`). The first connect is tested on a phone that already has notes.
-- **A folder the user can see** (Storage Access Framework), as well as app-private storage.
-  The file layer and the first-launch choice exist, offered by the test app alone
-  (`install.ts`, `FOLDER_OFFERED`). Left before every build offers it: noticing what other
-  apps change while the app is open (the hash cache assumes they never do); then moving
-  app-storage notes into a folder, and changing the folder from Settings.
+- **A folder the user can see** (Storage Access Framework), as well as app-private storage:
+  chosen at first launch, other apps' changes noticed, and notes kept inside the app moved to
+  an empty folder from Home (`moveToFolder.ts`; modified times are not kept, their order is).
+  Left: changing the folder, and all of it from Settings rather than Home's sync menu.
 - **Export and import**, **adding pictures** (off, `platform.js:12`), the Dropbox token in
   Android's Keystore (a plain file today), a deliberate backup setting (settings yes, token
   never), Settings laid out for a phone.

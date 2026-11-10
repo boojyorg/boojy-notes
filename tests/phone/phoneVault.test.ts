@@ -600,3 +600,27 @@ describe("attachments on the phone", () => {
     await vi.waitFor(() => expect(changed).toHaveBeenCalledTimes(2));
   });
 });
+
+describe("the vault at rest", () => {
+  it("runs a last step after the saves already asked for, ahead of what is asked later", async () => {
+    const vault = createPhoneVault(memoryFiles());
+    await vault.api.readAllNotes();
+    const order: string[] = [];
+    const save = vault.api.writeNote(note("n1", "Shopping", "eggs")).then(() => order.push("save"));
+    const rest = vault.atRest(async () => order.push("rest"));
+    const later = vault.api.readFolders().then(() => order.push("later"));
+    await Promise.all([save, rest, later]);
+    expect(order).toEqual(["save", "rest", "later"]);
+  });
+
+  // The step ends in a restart: a save queued behind it would never be written.
+  it("refuses while a save asked for since is waiting", async () => {
+    const vault = createPhoneVault(memoryFiles());
+    await vault.api.readAllNotes();
+    const held = vault.api.readFolders();
+    const rest = vault.atRest(async () => "ran");
+    const save = vault.api.writeNote(note("n1", "Shopping", "eggs"));
+    await expect(rest).rejects.toThrow(/still being saved/);
+    await Promise.all([held, save]);
+  });
+});

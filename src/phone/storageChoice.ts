@@ -7,20 +7,44 @@ export type StorageChoice = "app" | "folder";
 const CHOICE = "state/storage.json";
 const decoder = new TextDecoder();
 
-/** The choice made at first launch; null before one was made. Which folder is Android's grant. */
-export async function readChoice(priv: FileOps): Promise<StorageChoice | null> {
+/**
+ * What `state/storage.json` holds: the choice, and a move from the app's
+ * storage into a folder that is under way. `moving` is the folder being
+ * copied into (the notes are still the app's); `clearing` says the folder is
+ * now where they are and the app's own copies are being removed.
+ */
+export interface StorageRecord {
+  kind: StorageChoice;
+  moving?: PickedFolder;
+  clearing?: true;
+}
+
+/** The record as written; null before a choice was made, or when the file is damaged. */
+export async function readStorage(priv: FileOps): Promise<StorageRecord | null> {
   const bytes = await priv.read(CHOICE);
   if (!bytes) return null;
   try {
-    const kind = JSON.parse(decoder.decode(bytes))?.kind;
-    return kind === "app" || kind === "folder" ? kind : null;
+    const { kind, moving, clearing } = JSON.parse(decoder.decode(bytes)) ?? {};
+    if (kind !== "app" && kind !== "folder") return null;
+    const record: StorageRecord = { kind };
+    if (kind === "app" && typeof moving?.tree === "string" && typeof moving?.root === "string")
+      record.moving = { tree: moving.tree, root: moving.root };
+    if (kind === "folder" && clearing === true) record.clearing = true;
+    return record;
   } catch {
     return null;
   }
 }
 
-export const writeChoice = (priv: FileOps, kind: StorageChoice) =>
-  priv.write(CHOICE, new TextEncoder().encode(JSON.stringify({ kind })));
+/** The choice made at first launch; null before one was made. Which folder is Android's grant. */
+export const readChoice = async (priv: FileOps): Promise<StorageChoice | null> =>
+  (await readStorage(priv))?.kind ?? null;
+
+export const writeChoice = (
+  priv: FileOps,
+  kind: StorageChoice,
+  under: Pick<StorageRecord, "moving" | "clearing"> = {},
+) => priv.write(CHOICE, new TextEncoder().encode(JSON.stringify({ kind, ...under })));
 
 /**
  * An install that has been used: a note or folder in the private vault, or

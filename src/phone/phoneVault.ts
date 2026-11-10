@@ -1103,5 +1103,16 @@ export function createPhoneVault(
     }
   };
 
-  return { api, store, checkOutside };
+  /**
+   * Runs `work` after every operation already asked for, holding back any
+   * asked for meanwhile: for a step nothing may follow (the start of a move
+   * to a folder, ended by a reload). Refused while a save is still waiting.
+   */
+  const atRest = <T>(work: () => Promise<T>) =>
+    lock(async () => {
+      if (waiting.size) throw new Error("A note is still being saved. Try again in a moment.");
+      return work();
+    });
+
+  return { api, store, checkOutside, atRest };
 }

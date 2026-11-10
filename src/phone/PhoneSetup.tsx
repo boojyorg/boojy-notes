@@ -405,3 +405,46 @@ export function FolderLost({
     </Page>
   );
 }
+
+/**
+ * In the app's place while a move from the app's storage into a folder runs
+ * (`moveToFolder.ts`), before the app starts in that folder. Nothing to press:
+ * closing the app is safe, and the next start carries on.
+ */
+export function MovingNotes({ done, total }: { done: number; total: number }) {
+  const { theme } = useTheme();
+  return (
+    <Page>
+      <div style={{ flexGrow: 1 }} />
+      <h1 style={HEADING}>Moving your notes</h1>
+      <p
+        role="status"
+        style={{ margin: 0, textAlign: "center", color: theme.TEXT.secondary }}
+        data-testid="moving-count"
+      >
+        {total ? `${done} of ${total} files` : "Getting ready…"}
+      </p>
+      <div style={{ flexGrow: 2 }} />
+    </Page>
+  );
+}
+
+/** A move that could not finish: the notes are where they were, and the app opens there. */
+export function NotMoved({ reason, onDone }: { reason: string; onDone: () => void }) {
+  const { theme } = useTheme();
+  return (
+    <Page>
+      <Title>Your notes were not moved</Title>
+      <p style={{ margin: 0, color: theme.TEXT.secondary }}>
+        They are still inside the app, unchanged. Files already copied to the folder were left
+        there; you can delete them.
+      </p>
+      <p role="alert" style={{ margin: "12px 0 0", fontSize: 14, color: theme.SEMANTIC.error }}>
+        {reason}
+      </p>
+      <SmallButton kind="strong" onClick={onDone} style={TOUCH_BUTTON}>
+        {withArrow("Continue")}
+      </SmallButton>
+    </Page>
+  );
+}

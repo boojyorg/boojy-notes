@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { reachableFolder } from "../../src/phone/folderFiles";
-import { hasBeenUsed, readChoice, startFor, writeChoice } from "../../src/phone/storageChoice";
+import {
+  hasBeenUsed,
+  readChoice,
+  readStorage,
+  startFor,
+  writeChoice,
+} from "../../src/phone/storageChoice";
 import { fakeFolderAccess } from "./folderMemory";
 import { memoryFiles } from "./memoryFiles";
 
@@ -106,5 +112,25 @@ describe("the folder Android still reaches", () => {
       throw new Error("the provider died");
     };
     await expect(reachableFolder(plugin)).rejects.toThrow(/provider died/);
+  });
+});
+
+describe("a move to a folder, kept with the choice", () => {
+  it("is read back: the folder being copied into, then the clearing", async () => {
+    const priv = memoryFiles();
+    await writeChoice(priv, "app", { moving: FOLDER });
+    expect(await readStorage(priv)).toEqual({ kind: "app", moving: FOLDER });
+    // Until every file is in the folder, the notes are the app's.
+    expect(await readChoice(priv)).toBe("app");
+    await writeChoice(priv, "folder", { clearing: true });
+    expect(await readStorage(priv)).toEqual({ kind: "folder", clearing: true });
+    await writeChoice(priv, "folder");
+    expect(await readStorage(priv)).toEqual({ kind: "folder" });
+  });
+
+  it("reads a damaged move as none, never as a folder", async () => {
+    const priv = memoryFiles();
+    await priv.write("state/storage.json", bytes('{"kind":"app","moving":{"tree":7}}'));
+    expect(await readStorage(priv)).toEqual({ kind: "app" });
   });
 });
