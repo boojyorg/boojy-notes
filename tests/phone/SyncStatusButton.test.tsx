@@ -8,9 +8,16 @@ import type { SyncStatus } from "../../src/sync/syncStatus";
 
 afterEach(cleanup);
 
-const OFF: SyncStatus = { state: "off", folder: null, lastSynced: null, problems: [] };
+const OFF: SyncStatus = {
+  state: "off",
+  folder: null,
+  lastSynced: null,
+  problems: [],
+  progress: null,
+};
 const sync = (status: SyncStatus = OFF): PhoneSync => ({
   status,
+  choosing: null,
   syncNow: vi.fn(),
   signInAgain: vi.fn(async () => {}),
   connect: vi.fn(async () => {}),
@@ -26,6 +33,26 @@ const openMenu = (s: PhoneSync, onOpenSettings = vi.fn()) => {
   return onOpenSettings;
 };
 const items = () => screen.getAllByRole("menuitem").map((el) => el.textContent);
+
+// A first sync of a full Dropbox takes minutes: a count says it is working.
+describe("a long sync", () => {
+  const syncing = (progress: SyncStatus["progress"]): SyncStatus => ({
+    ...OFF,
+    state: "syncing",
+    folder: "Personal",
+    progress,
+  });
+
+  it("counts the files on Home's heading and in words, but not for one file", () => {
+    openMenu(sync(syncing({ done: 34, total: 180 })));
+    expect(screen.getByTestId("sync-status").textContent).toBe("Phone34 of 180");
+    expect(screen.getByText("Syncing with Dropbox… 34 of 180 files")).toBeTruthy();
+    cleanup();
+    openMenu(sync(syncing({ done: 0, total: 1 })));
+    expect(screen.getByTestId("sync-status").textContent).toBe("Phone");
+    expect(screen.getByText("Syncing with Dropbox…")).toBeTruthy();
+  });
+});
 
 // Connecting, disconnecting and moving the notes are Settings': one way to each.
 describe("sync's menu on Home", () => {

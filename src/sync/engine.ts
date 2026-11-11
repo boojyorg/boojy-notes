@@ -19,7 +19,9 @@ import {
  * holds, and what both held at the last sync (the record). Contents are
  * compared by hash, so a pass repeated after a crash finds the work already
  * done and records it rather than copying anything twice. The record is saved
- * after every change, never before the change it describes.
+ * after every change, never before the change it describes; what such a repeat
+ * would find done (a download, a file already the same on both sides) waits
+ * for the next save, at most `SAVE_EVERY` files on.
  *
  * When both sides changed a file differently, both versions are kept: the
  * phone's goes up as `Name (conflicted copy YYYY-MM-DD).md`. An edit beats a
@@ -48,7 +50,16 @@ export interface PassDeps {
   local: LocalStore;
   remote: Remote;
   now?: () => Date;
+  /** How many of the files that differ are dealt with, said as each one is. */
+  onProgress?: (done: number, total: number) => void;
 }
+
+/** Files recorded without a save of their own, before the record is saved for them all. */
+export const SAVE_EVERY = 25;
+
+/** Notes first, then A to Z: a first sync fills the list before the pictures arrive. */
+const notesFirst = (a: string, b: string) =>
+  Number(!a.endsWith(".md")) - Number(!b.endsWith(".md")) || (a < b ? -1 : a > b ? 1 : 0);
 
 interface LocalFile {
   path: string;
@@ -87,8 +98,13 @@ const syncedFrom = (file: RemoteFile, hash: string): Synced => ({
   hash,
 });
 
-export async function syncPass({ local, remote, now = () => new Date() }: PassDeps) {
-  return new Pass(local, remote, now).run();
+export async function syncPass({
+  local,
+  remote,
+  now = () => new Date(),
+  onProgress = () => {},
+}: PassDeps) {
+  return new Pass(local, remote, now, onProgress).run();
 }
 
 class Pass {
@@ -97,11 +113,14 @@ class Pass {
   private folders = new Map<string, string>();
   private skip = new Set<string>();
   private result: PassResult = { again: false, attention: [], log: [] };
+  /** Files recorded since the record was last saved (`saveSoon`). */
+  private unsaved = 0;
 
   constructor(
     private local: LocalStore,
     private remote: Remote,
     private now: () => Date,
+    private onProgress: (done: number, total: number) => void,
   ) {}
 
   async run(): Promise<PassResult> {
@@ -122,8 +141,18 @@ class Pass {
       ...Object.keys(this.record.remote),
       ...Object.keys(this.record.synced),
     ]);
-    for (const key of [...keys].sort()) {
-      if (this.skip.has(key) || isIgnored(key)) continue;
+    const order = [...keys]
+      .filter((key) => !this.skip.has(key) && !isIgnored(key))
+      .sort(notesFirst);
+    // Judged before anything is done: the work changes both pictures.
+    const differ = new Set(
+      order.filter(
+        (key) => (this.files.get(key)?.hash ?? null) !== (this.record.remote[key]?.hash ?? null),
+      ),
+    );
+    let done = 0;
+    if (differ.size) this.onProgress(0, differ.size);
+    for (const key of order) {
       try {
         await this.reconcile(key);
       } catch (error) {
@@ -131,13 +160,25 @@ class Pass {
         const path = this.files.get(key)?.path ?? this.record.remote[key]?.path ?? key;
         if (!this.refused(error, path)) throw error;
       }
+      if (differ.has(key)) this.onProgress(++done, differ.size);
     }
+    if (this.unsaved) await this.save();
     await this.reconcileFolders();
     return this.result;
   }
 
   private save() {
+    this.unsaved = 0;
     return saveRecord(this.local, this.record);
+  }
+
+  /**
+   * For a change a repeated pass would find already made: saved with the
+   * next save, or once `SAVE_EVERY` are waiting. The record lists every
+   * file, so a save per file made a first sync slower with each one.
+   */
+  private async saveSoon() {
+    if (++this.unsaved >= SAVE_EVERY) await this.save();
   }
 
   /** Holds `path` back if Dropbox refused it; false for any other failure. */
@@ -413,7 +454,7 @@ class Pass {
       if (here && there) {
         if (synced?.rev !== there.rev || synced.path !== there.path) {
           this.record.synced[key] = syncedFrom(there, there.hash);
-          await this.save();
+          await this.saveSoon();
         }
       } else if (synced) {
         delete this.record.synced[key];
@@ -493,7 +534,7 @@ class Pass {
     }
     this.record.remote[key] = got.file;
     this.record.synced[key] = syncedFrom(got.file, hash);
-    await this.save();
+    await this.saveSoon();
     this.note(`downloaded: ${got.file.path}`);
   }
 
