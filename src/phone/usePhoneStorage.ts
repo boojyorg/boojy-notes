@@ -89,10 +89,7 @@ export function usePhoneStorage({
     (id: string) => restart((saved) => api.locations?.open(id, saved), "Couldn't switch"),
     [api, restart],
   );
-  const addLocation = useCallback(
-    (name: string) => restart((saved) => api.locations?.add(name, saved), "Couldn't add it"),
-    [api, restart],
-  );
+
   // Neither starts the app again: the list is read afresh, and Home follows.
   const change = useCallback(
     async (work: () => Promise<void> | undefined, failed: string) => {
@@ -114,6 +111,22 @@ export function usePhoneStorage({
     (id: string, name: string) =>
       change(() => api.locations?.rename(id, name), "Couldn't rename it"),
     [api, change],
+  );
+  // Android's folder screen, then the folder is in the list: the open location stays open.
+  const addLocation = useCallback(
+    () =>
+      change(async () => {
+        const answer = await api.locations?.add();
+        // A receipt, which also ends a notice about a folder that was not taken.
+        if (answer === "added") showToast("Location added", "done", { key: LOCATION_KEY });
+        if (answer === "in-use")
+          showToast("Another storage location keeps its notes in that folder.", "notice", {
+            key: LOCATION_KEY,
+          });
+        if (answer === "refused")
+          showToast("Choose a folder on this phone.", "notice", { key: LOCATION_KEY });
+      }, "Couldn't add it"),
+    [api, change, showToast],
   );
   const removeLocation = useCallback(
     (id: string) => change(() => api.locations?.remove(id), "Couldn't remove it"),

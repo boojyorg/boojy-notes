@@ -18,29 +18,17 @@ function ask<T>(screen: (done: (answer: T) => void) => React.ReactNode): Promise
   });
 }
 
-/** A location added later was backed out of at its folder: it is not added after all. */
-export const CANCELLED = "cancelled";
-
 /**
- * First launch, or the first start of a storage location just added (by its
- * name): the folder chosen, null for the app's own storage, or `CANCELLED`
- * for an added location backed out of. `taken` are other locations' folders.
+ * First launch: the folder chosen, or null for the app's own storage. `taken`
+ * are the other storage locations' folders, never this one's.
  */
 export const askStorage = (
   folderName: string,
   granted: PickedFolder | null,
-  location?: string,
   taken: string[] = [],
 ) =>
-  ask<PickedFolder | null | typeof CANCELLED>((done) => (
-    <PhoneSetup
-      folderName={folderName}
-      granted={granted}
-      location={location}
-      taken={taken}
-      onCancel={() => done(CANCELLED)}
-      onDone={done}
-    />
+  ask<PickedFolder | null>((done) => (
+    <PhoneSetup folderName={folderName} granted={granted} taken={taken} onDone={done} />
   ));
 
 /** The chosen folder is out of reach: the folder chosen again, never another location's. */

@@ -265,40 +265,6 @@ describe("where a start keeps the notes", () => {
       expect(reachable).toHaveBeenLastCalledWith(expect.anything(), T2, []);
     });
 
-    it("asks a location added later for its folder alone, under its name", async () => {
-      Object.assign(disk, {
-        state: ["ids.json"],
-        choice: "app",
-        under: {},
-        files: { "state/locations.json": listed("work") },
-      });
-      await startOf(true);
-      expect(screens.askStorage).toHaveBeenCalledWith("Work", null, "Work", []);
-    });
-
-    // Added by mistake: Back at its folder page leaves it unadded, and the first opens again.
-    it("drops a location backed out of before its folder was chosen, and opens the first", async () => {
-      Object.assign(disk, {
-        state: ["ids.json"],
-        choice: "app",
-        under: {},
-        files: { "state/locations.json": listed("work") },
-      });
-      screens.askStorage.mockResolvedValueOnce("cancelled");
-      vi.resetModules();
-      disk.written.length = 0;
-      // The start never finishes: the page is reloaded into the first location.
-      const start = (await import("../../src/phone/install")).installPhone();
-      await vi.waitFor(() => expect(disk.written).toHaveLength(1));
-      expect(disk.written[0]).toEqual([
-        "state/locations.json",
-        JSON.stringify({ open: "main", list: [{ id: "main" }] }),
-      ]);
-      expect(await Promise.race([start.then(() => "started"), Promise.resolve("held")])).toBe(
-        "held",
-      );
-    });
-
     // Two locations over one folder would each sync, and delete, the other's files.
     it("tells the folder screens which folders the other locations hold", async () => {
       Object.assign(disk, {
@@ -312,7 +278,7 @@ describe("where a start keeps the notes", () => {
       });
       disk.state = [];
       await startOf(true);
-      expect(screens.askStorage).toHaveBeenCalledWith("Boojy Notes", null, undefined, ["t2"]);
+      expect(screens.askStorage).toHaveBeenCalledWith("Boojy Notes", null, ["t2"]);
     });
 
     describe("listed, opened and added from Home", () => {
@@ -331,7 +297,7 @@ describe("where a start keeps the notes", () => {
               locations: {
                 list(): Promise<Rows>;
                 open(id: string, saved: () => Promise<unknown>): Promise<void>;
-                add(name: string, saved: () => Promise<unknown>): Promise<void>;
+                add(): Promise<string>;
                 rename(id: string, name: string): Promise<void>;
                 remove(id: string): Promise<void>;
               };
@@ -387,13 +353,64 @@ describe("where a start keeps the notes", () => {
         expect(() => api().open("nowhere", saved)).toThrow(/No such/);
       });
 
-      it("adds one under a new id and opens it, the rest of the list kept", async () => {
+      // The desktop's Add folder…: the picker, and the folder joins the list under its own name.
+      it("adds the folder Android grants under its own name, its choice written before the list", async () => {
         await two();
-        await api().add("  Private ", async () => {});
-        const { open, list } = JSON.parse(lists()[0][1]);
-        expect(list.slice(0, 2)).toEqual([{ id: "main" }, { id: "work", name: "Work" }]);
-        expect(list[2]).toEqual({ id: open, name: "Private" });
-        expect(open).toMatch(/^[a-z0-9]+$/);
+        const NEW = { tree: "new", root: "primary:Documents/Recipes" };
+        Object.assign(picker, { answer: { picked: true, ...NEW }, holds: ["Soup.md"] });
+        expect(await api().add()).toBe("added");
+        const [[choiceAt, choice], [listAt, list]] = disk.written;
+        expect(choiceAt).toMatch(/^locations\/[a-z0-9]+\/state\/storage\.json$/);
+        expect(JSON.parse(choice)).toEqual({ kind: "folder", folder: NEW });
+        expect(listAt).toBe("state/locations.json");
+        const kept = JSON.parse(list);
+        // The open location stays open: nothing starts again.
+        expect(kept.open).toBe("main");
+        expect(kept.list.slice(0, 2)).toEqual([{ id: "main" }, { id: "work", name: "Work" }]);
+        expect(kept.list[2].name).toBe("Recipes");
+        expect(choiceAt).toBe(`locations/${kept.list[2].id}/state/storage.json`);
+        expect((await api().list()).map((l) => l.name)).toEqual(["Phone", "Work", "Recipes"]);
+      });
+
+      it("gives a folder named as another location is the next free name", async () => {
+        await two();
+        Object.assign(picker, {
+          answer: { picked: true, tree: "w2", root: "primary:Downloads/work" },
+          holds: [],
+        });
+        await api().add();
+        expect(JSON.parse(lists()[0][1]).list[2].name).toBe("work 2");
+      });
+
+      // No two locations share files; another's own grant is never given back.
+      it("refuses a folder another location, or the open one, keeps its notes in", async () => {
+        Object.assign(disk, {
+          state: ["ids.json"],
+          choice: "folder",
+          under: { folder: T1 },
+          files: {
+            "state/locations.json": listed("main"),
+            [WORK]: JSON.stringify({ kind: "folder", folder: T2 }),
+          },
+        });
+        await startOf(true);
+        disk.written.length = 0;
+        released.length = 0;
+        for (const tree of ["t1", "t2"]) {
+          Object.assign(picker, { answer: { picked: true, tree, root: "primary:x" }, holds: [] });
+          expect(await api().add()).toBe("in-use");
+        }
+        expect(released).toEqual([]);
+        expect(disk.written).toEqual([]);
+      });
+
+      it("adds nothing when Android's screen is left, or the folder is not on the phone", async () => {
+        await two();
+        Object.assign(picker, { answer: { picked: false }, holds: [] });
+        expect(await api().add()).toBe("cancelled");
+        Object.assign(picker, { answer: { picked: false, refused: "cloud" }, holds: [] });
+        expect(await api().add()).toBe("refused");
+        expect(disk.written).toEqual([]);
       });
 
       it("renames one in the app alone, at once, and refuses a name another shows", async () => {
@@ -430,7 +447,7 @@ describe("where a start keeps the notes", () => {
       });
 
       // A list that couldn't be read opens the first location alone: written back, the rest are lost.
-      it("adds and opens nothing while the list can't be read", async () => {
+      it("adds nothing while the list can't be read", async () => {
         Object.assign(disk, {
           state: ["ids.json"],
           choice: "app",
@@ -438,15 +455,12 @@ describe("where a start keeps the notes", () => {
           files: { "state/locations.json": "{" },
         });
         await startOf(true);
-        await expect(api().add("Private", async () => {})).rejects.toThrow(/couldn't be read/);
-        expect(lists()).toEqual([]);
-      });
-
-      it("refuses a name another location shows, writing nothing", async () => {
-        await two();
-        await expect(api().add("work", async () => {})).rejects.toThrow(/Another location/);
-        await expect(api().add("Phone", async () => {})).rejects.toThrow(/Another location/);
-        expect(lists()).toEqual([]);
+        Object.assign(picker, {
+          answer: { picked: true, tree: "n", root: "primary:Documents/N" },
+          holds: [],
+        });
+        await expect(api().add()).rejects.toThrow(/couldn't be read/);
+        expect(disk.written).toEqual([]);
       });
     });
 

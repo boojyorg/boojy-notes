@@ -53,6 +53,15 @@ export function nameProblem(name: string, taken: string[]): string | null {
     : null;
 }
 
+/** `base`, or `base 2`, `base 3`…: the first no other location shows. */
+export function freeName(base: string, taken: string[]) {
+  const shown = new Set(taken.map((t) => t.trim().toLowerCase()));
+  for (let n = 1; ; n++) {
+    const name = n === 1 ? base : `${base} ${n}`;
+    if (!shown.has(name.toLowerCase())) return name;
+  }
+}
+
 /** A location as Home and Settings list it. */
 export interface LocationRow {
   id: string;

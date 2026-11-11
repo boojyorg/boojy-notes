@@ -249,7 +249,7 @@ declare global {
       locations: {
         list: () => Promise<import("../phone/locations").LocationRow[]>;
         open: (id: string, saved: () => Promise<unknown>) => Promise<void>;
-        add: (name: string, saved: () => Promise<unknown>) => Promise<void>;
+        add: () => Promise<import("../phone/install").AddAnswer>;
         rename: (id: string, name: string) => Promise<void>;
         remove: (id: string) => Promise<void>;
       };

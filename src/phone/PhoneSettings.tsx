@@ -23,7 +23,7 @@ import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
 import { type LocationRow, liveRows, whereOf } from "./locations";
-import NewLocation from "./NewLocation";
+import RenameLocation from "./RenameLocation";
 import { PageHead, rowStyle } from "./pageParts";
 import { reopenSettingsAfterRestart } from "./reopenSettings";
 import { APP_FOLDER, folderChosen, folderClash } from "./syncFolder";
@@ -369,10 +369,9 @@ export default function PhoneSettings({
   const pageRef = useRef<HTMLDivElement>(null);
   useFocusTrap(pageRef as RefObject<HTMLElement>, open, "container");
   const choosing = sync?.choosing ?? null;
-  const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState<LocationRow | null>(null);
   // A question standing over the page takes Back first.
-  useModalEscape(open && !choosing && !adding && !renaming, onClose);
+  useModalEscape(open && !choosing && !renaming, onClose);
   // The page keeps the interface size it opened with: the − and + stay under the finger.
   const heldScale = useHeldScale(open);
 
@@ -491,13 +490,13 @@ export default function PhoneSettings({
         />
       ))}
 
-      {/* A second set of notes, with its own folder: named here, its folder asked as it opens. */}
+      {/* The desktop's Add folder…: Android's folder screen, and the folder joins the list under its name. */}
       {rows.length > 0 && (
         <button
           type="button"
           className="press"
           data-testid="location-add"
-          onClick={() => setAdding(true)}
+          onClick={() => storage.addLocation()}
           style={{ ...rowStyle(theme), marginBottom: 28 }}
         >
           <span style={{ display: "flex", color: theme.TEXT.secondary }}>
@@ -520,20 +519,13 @@ export default function PhoneSettings({
         />
       )}
       {renaming && (
-        <NewLocation
-          renaming={renaming.name}
+        <RenameLocation
+          name={renaming.name}
           taken={rows.filter((l) => l.id !== renaming.id).map((l) => l.name)}
-          onAdd={async (name) => {
+          onRename={async (name) => {
             if (await storage.renameLocation(renaming.id, name)) setRenaming(null);
           }}
           onClose={() => setRenaming(null)}
-        />
-      )}
-      {adding && (
-        <NewLocation
-          taken={rows.map((l) => l.name)}
-          onAdd={storage.addLocation}
-          onClose={() => setAdding(false)}
         />
       )}
     </div>

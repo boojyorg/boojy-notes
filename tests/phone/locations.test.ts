@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  freeName,
   liveRows,
   MAIN,
   removeLocationFiles,
@@ -178,6 +179,12 @@ describe("a new location", () => {
     for (const id of ids) expect(id).toMatch(/^[a-z0-9]+$/);
     expect(ids).not.toContain(MAIN);
     expect(new Set(ids).size).toBe(50);
+  });
+
+  // Named after its folder; a folder named as another location is gets the next number.
+  it("takes its folder's name, or the next free one", () => {
+    expect(freeName("Work", ["Phone"])).toBe("Work");
+    expect(freeName("Work", ["work", "Work 2"])).toBe("Work 3");
   });
 
   it("needs a name, and one no other location shows", () => {

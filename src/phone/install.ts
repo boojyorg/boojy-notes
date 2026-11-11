@@ -15,7 +15,7 @@ import {
 import {
   type LocationRow,
   type Locations,
-  MAIN,
+  freeName,
   nameProblem,
   newLocationId,
   prefixOf,
@@ -33,7 +33,7 @@ import { watchOutside } from "./outsideWatch";
 import { routedFiles } from "./routedFiles";
 import { selectWordAt } from "./selectWord";
 import { hasBeenUsed, readStorage, startFor, writeChoice } from "./storageChoice";
-import { askFolderAgain, askStorage, CANCELLED, sayNotMoved, showMoving } from "./storageScreens";
+import { askFolderAgain, askStorage, sayNotMoved, showMoving } from "./storageScreens";
 
 /** The folder a first launch suggests; the test app's is its own, beside the everyday app's. */
 const FOLDER_NAME =
@@ -98,13 +98,8 @@ async function foldersElsewhere(root: FileOps, { open, list }: Locations): Promi
  * storage: asked at a fresh install's first launch, and asked again when a
  * chosen folder can no longer be reached (`storageChoice.ts` has the rules).
  * `others` are the other locations' folders: theirs, never this one's.
- * `added` names a location added later, asked for its folder under that name.
  */
-async function notesFolder(
-  priv: FileOps,
-  others: string[],
-  added?: string,
-): Promise<PickedFolder | null | typeof CANCELLED> {
+async function notesFolder(priv: FileOps, others: string[]): Promise<PickedFolder | null> {
   const record = await readStorage(priv);
   if (record?.moving) return finishMove(priv, record.moving, others);
   const choice = record?.kind ?? null;
@@ -131,8 +126,7 @@ async function notesFolder(
     else if (record?.folder?.tree !== folder.tree) await writeChoice(priv, "folder", { folder });
     return folder;
   }
-  const picked = await askStorage(added ?? FOLDER_NAME, granted, added, others);
-  if (picked === CANCELLED) return CANCELLED;
+  const picked = await askStorage(FOLDER_NAME, granted, others);
   await writeChoice(priv, picked ? "folder" : "app", picked ? { folder: picked } : {});
   if (picked) await reachableFolder(FolderAccess, picked, others);
   return picked;
@@ -178,6 +172,9 @@ async function startIn(
     location.reload();
   });
 }
+
+/** What Add a location… came to: nothing is said of a picker that was left. */
+export type AddAnswer = "added" | "cancelled" | "refused" | "in-use";
 
 /** What a press on "Move notes to a folder…" came to; `moving` is followed by a restart. */
 export type MoveAnswer = "moving" | "cancelled" | "refused" | "not-empty" | "in-use";
@@ -232,16 +229,8 @@ export async function installPhone() {
   // Everything from here on is the open location's: its own state, vault and bin.
   const priv = scopedFiles(root, prefix);
   if (prefix) await priv.recover("state");
-  const here = locations.list.find((l) => l.id === locations.open);
   const others = await foldersElsewhere(root, locations);
-  const folder = await notesFolder(priv, others, locations.open === MAIN ? undefined : here?.name);
-  if (folder === CANCELLED) {
-    // Backed out of before it held anything: it leaves the list, and the first listed opens.
-    const list = locations.list.filter((l) => l.id !== locations.open);
-    await writeLocations(root, { ...locations, open: list[0].id, list });
-    location.reload();
-    return new Promise<void>(() => {});
-  }
+  const folder = await notesFolder(priv, others);
   // With a folder, the vault is the folder's and the rest stays private.
   const files: FileOps = folder ? routedFiles(priv, folderFiles(folder, priv), VAULT) : priv;
   await files.recover("vault");
@@ -277,14 +266,37 @@ export async function installPhone() {
         if (!locations.list.some((l) => l.id === id)) throw new Error("No such storage location");
         return startIn(root, vault.atRest, { ...locations, open: id }, saved);
       },
-      add: async (name: string, saved: () => Promise<unknown>) => {
-        const taken = (await locationRows(root, locations)).map((l) => l.name);
-        const problem = nameProblem(name, taken);
-        if (problem) throw new Error(problem);
+      /**
+       * Adds a folder as a location, as the desktop's Add folder… does:
+       * Android's folder screen, and the folder taken joins the list under
+       * its own name. The open location stays open. Its choice is written
+       * before the list, so a location listed always knows its folder.
+       */
+      add: async (): Promise<AddAnswer> => {
+        const got = await FolderAccess.pick({});
+        if (got.refused) return "refused";
+        if (!got.picked || !got.tree || !got.root) return "cancelled";
+        const picked = { tree: got.tree, root: got.root };
+        // No two locations share files: not the same folder, nor one inside another.
+        const held = [
+          ...(await foldersElsewhere(root, locations)),
+          ...(folder ? [folder.tree] : []),
+        ];
+        if (held.some((tree) => treesOverlap(tree, picked.tree))) {
+          // Another's own grant is kept; one over or under it is given back.
+          if (!held.includes(picked.tree)) await FolderAccess.release({ tree: picked.tree });
+          return "in-use";
+        }
         const id = newLocationId();
-        const list = [...locations.list, { id, name: name.trim() }];
+        const taken = (await locationRows(root, locations)).map((l) => l.name);
+        const name = freeName(folderLabel(picked).split("/").pop() || "Notes", taken);
         // A list that couldn't be read stays unwritten (`writeLocations` refuses it).
-        return startIn(root, vault.atRest, { ...locations, open: id, list }, saved);
+        const next = { ...locations, list: [...locations.list, { id, name }] };
+        if (next.damaged) await writeLocations(root, next); // refuses, before anything is written
+        await writeChoice(scopedFiles(root, prefixOf(id)), "folder", { folder: picked });
+        await writeLocations(root, next);
+        locations = next;
+        return "added";
       },
       /** A name in the app alone: its folder, and its Dropbox folder, keep theirs. */
       rename: async (id: string, name: string) => {

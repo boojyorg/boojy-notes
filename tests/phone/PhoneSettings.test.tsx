@@ -300,27 +300,14 @@ describe("Settings on the phone", () => {
     });
   });
 
-  // A location is added rarely and switched often: Home's menu switches, Settings adds.
+  // The desktop's Add folder…: no page of the app's own, only Android's folder screen.
   describe("adding a storage location", () => {
-    it("asks its name over the page, and adds it", () => {
+    it("asks for nothing itself: the press goes straight to the folder", () => {
       const storage = storageOf();
       show(sync(), storage);
       fireEvent.click(screen.getByTestId("location-add"));
-      const page = within(screen.getByTestId("new-location"));
-      fireEvent.change(page.getByLabelText("Name"), { target: { value: "Phone" } });
-      fireEvent.click(page.getByRole("button", { name: "Add" }));
-      expect(page.getByRole("alert").textContent).toBe("Another location has this name.");
-      fireEvent.change(page.getByLabelText("Name"), { target: { value: "Private" } });
-      fireEvent.click(page.getByRole("button", { name: "Add" }));
-      expect(storage.addLocation).toHaveBeenCalledWith("Private");
-    });
-
-    it("goes back to Settings, not out of it, on Back", () => {
-      const { onClose } = show(sync());
-      fireEvent.click(screen.getByTestId("location-add"));
-      fireEvent.keyDown(document, { key: "Escape" });
-      expect(screen.queryByTestId("new-location")).toBeNull();
-      expect(onClose).not.toHaveBeenCalled();
+      expect(storage.addLocation).toHaveBeenCalledOnce();
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
     });
 
     it("lists and offers nothing where the app has no locations (a browser)", () => {

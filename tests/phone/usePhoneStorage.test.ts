@@ -53,9 +53,7 @@ describe("where the phone keeps its notes, for Settings", () => {
         open: vi.fn(async (_id: string, saved: () => Promise<unknown>) => {
           await saved();
         }),
-        add: vi.fn(async (_name: string, saved: () => Promise<unknown>) => {
-          await saved();
-        }),
+        add: vi.fn(async () => "added"),
         ...over,
       };
       return { locations, ...hook({ locations }) };
@@ -68,15 +66,36 @@ describe("where the phone keeps its notes, for Settings", () => {
       expect(result.current.locations).toEqual(ROWS);
     });
 
-    it("writes the editor's waiting edits before another is opened or added", async () => {
+    it("writes the editor's waiting edits before another is opened", async () => {
       const { result, locations, flushAll } = withLocations();
       await act(async () => {
         expect(await result.current.openLocation("work")).toBe(true);
-        expect(await result.current.addLocation("Private")).toBe(true);
       });
       expect(locations.open).toHaveBeenCalledWith("work", expect.any(Function));
-      expect(locations.add).toHaveBeenCalledWith("Private", expect.any(Function));
-      expect(flushAll).toHaveBeenCalledTimes(2);
+      expect(flushAll).toHaveBeenCalledOnce();
+    });
+
+    // The open location stays open: the list is read again, and nothing starts again.
+    it("adds a folder as one, reads the list again, and says why a folder was not taken", async () => {
+      for (const [answer, said] of [
+        ["added", /^Location added$/],
+        ["cancelled", null],
+        ["in-use", /Another storage location/],
+        ["refused", /on this phone/],
+      ] as const) {
+        const { result, locations, showToast, flushAll } = withLocations({
+          add: vi.fn(async () => answer),
+        });
+        await act(async () => {});
+        await act(async () => {
+          await result.current.addLocation();
+        });
+        expect(locations.list).toHaveBeenCalledTimes(2);
+        expect(flushAll).not.toHaveBeenCalled();
+        if (said) expect(showToast.mock.calls[0][0]).toMatch(said);
+        else expect(showToast).not.toHaveBeenCalled();
+        cleanup();
+      }
     });
 
     // Neither starts the app again: the list is read afresh, so Home and Settings follow.
