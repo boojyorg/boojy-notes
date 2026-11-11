@@ -39,23 +39,47 @@ const showSetup = (plugin: FolderAccessPlugin) => {
 
 // A location added from Home starts the app again with no folder chosen yet.
 describe("a storage location added later", () => {
-  const showAdded = (plugin: FolderAccessPlugin) => {
+  const onCancel = vi.fn();
+  const showAdded = (plugin: FolderAccessPlugin, taken: string[] = []) => {
     const onDone = vi.fn();
+    onCancel.mockClear();
     render(
       <ThemeProvider>
-        <PhoneSetup folderName="Work" location="Work" onDone={onDone} access={plugin} />
+        <PhoneSetup
+          folderName="Work"
+          location="Work"
+          taken={taken}
+          onCancel={onCancel}
+          onDone={onDone}
+          access={plugin}
+        />
       </ThemeProvider>,
     );
     return onDone;
   };
 
-  it("is asked its folder alone, under its name: no welcome, no way back, no appearance", () => {
+  it("is asked its folder alone, under its name: no welcome, no appearance", () => {
     showAdded(access([]).plugin);
     expect(screen.getByRole("heading", { name: "Work" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Welcome to Boojy Notes" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
     expect(screen.queryByText("Appearance")).toBeNull();
     expect(screen.getByRole("button", { name: /Documents\/Work/ })).toBeTruthy();
+  });
+
+  // Added by mistake: there must be a way out that adds nothing.
+  it("is left unadded on Back", () => {
+    const onDone = showAdded(access([]).plugin);
+    tap("Back");
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it("refuses the folder another location keeps its notes in, and says why", async () => {
+    const a = access([{ picked: true, ...DEFAULT }]);
+    const onDone = showAdded(a.plugin, [DEFAULT.tree]);
+    tap(/Continue/);
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Another storage location/);
+    expect(onDone).not.toHaveBeenCalled();
   });
 
   it("takes the folder Android grants, in a folder named after it", async () => {

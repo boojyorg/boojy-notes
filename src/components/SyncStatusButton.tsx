@@ -108,6 +108,7 @@ export default function SyncStatusButton({
   sync,
   onOpenSettings,
   onOpen,
+  expanded = false,
 }: {
   /** The list's name ("Personal", or "Phone" with no Dropbox), which the button says first. */
   name: string;
@@ -115,6 +116,8 @@ export default function SyncStatusButton({
   onOpenSettings: () => void;
   /** The storage-location menu's, where there is one: the tap opens that, as the desktop's name does. */
   onOpen?: (anchor: MenuAnchor) => void;
+  /** Whether that menu is open. */
+  expanded?: boolean;
 }) {
   const { theme } = useTheme();
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
@@ -152,7 +155,7 @@ export default function SyncStatusButton({
         type="button"
         aria-label={`${name}. Sync: ${NAME[state]}`}
         aria-haspopup="menu"
-        aria-expanded={anchor !== null}
+        aria-expanded={onOpen ? expanded : anchor !== null}
         data-testid="sync-status"
         data-state={state}
         onClick={(e) => (onOpen ?? setAnchor)(e.currentTarget.getBoundingClientRect())}

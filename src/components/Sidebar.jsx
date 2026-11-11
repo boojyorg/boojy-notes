@@ -51,6 +51,7 @@ import VaultMenu from "./VaultMenu";
 import SyncStatusButton, { SyncWords, syncAction, syncLines } from "./SyncStatusButton";
 import { HOME_LIST_END, HomeFoot, HomeTop } from "../phone/HomeChrome";
 import RecentCards from "../phone/RecentCards";
+import { liveRows } from "../phone/locations";
 import { syncFolderName } from "../phone/syncFolder";
 import RenameField from "./RenameField";
 import Collapsible, { IndentGuide } from "./Collapsible";
@@ -527,24 +528,33 @@ const Sidebar = memo(function Sidebar({
   };
   const closeVaultMenu = () => setVaultMenu(null);
   // The phone's locations, as the desktop's menu takes its own.
+  // The open one as sync has it now: a connect or disconnect shows at once.
+  const liveLocations = useMemo(
+    () => liveRows(locations, sync?.status.folder),
+    [locations, sync?.status.folder],
+  );
   const phoneVaults = useMemo(
     () =>
-      locations.map((l) => ({
+      liveLocations.map((l) => ({
         path: l.id,
         name: l.name,
         current: l.open,
         exists: true,
         cloud: l.cloud,
       })),
-    [locations],
+    [liveLocations],
   );
   const syncTrouble = isPhone && sync?.status.state === "problem";
+  const syncFirst = useMemo(
+    () => (syncTrouble ? [syncAction(sync)].filter(Boolean) : undefined),
+    [syncTrouble, sync],
+  );
   const [vaultView, setVaultView] = useVaultView(notesDir || "web");
   // The phone's open storage location: its own name, or until it has one the
   // Dropbox folder it syncs with, or "Phone".
   const vaultName =
     vaults.find((v) => v.current)?.name ??
-    locations.find((l) => l.open)?.name ??
+    liveLocations.find((l) => l.open)?.name ??
     (!isPhone
       ? "Notes"
       : sync?.status.folder == null
@@ -1115,6 +1125,7 @@ const Sidebar = memo(function Sidebar({
                   ? (anchor) => setVaultMenu({ anchor, fromKeyboard: false })
                   : undefined
               }
+              expanded={vaultMenu !== null}
             />
           ) : (
             vaultName
@@ -1356,7 +1367,7 @@ const Sidebar = memo(function Sidebar({
               // when it needs the person, with the one thing to do about it.
               fileToggles={!isPhone}
               header={syncTrouble ? <SyncWords lines={syncLines(sync.status)} /> : undefined}
-              first={syncTrouble ? [syncAction(sync)].filter(Boolean) : undefined}
+              first={syncFirst}
             />
           )}
           {sortMenuAnchor && (

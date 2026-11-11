@@ -1053,12 +1053,20 @@ describe("Sidebar on the phone", () => {
         Component: PhoneSidebar,
         sync: bound("Work"),
         locations: [
-          { id: "main", name: "Private", open: true, cloud: false },
-          { id: "l1", name: "Other", open: false, cloud: true },
+          { id: "main", name: "Private", named: true, open: true, cloud: false },
+          { id: "l1", name: "Other", named: true, open: false, cloud: true },
         ],
       });
       expect(named.getByTestId("sync-status").parentElement.textContent).toBe("Private");
       named.unmount();
+      // One with no name of its own follows sync as it is now, not as the list was read.
+      const unnamed = renderSidebar({
+        Component: PhoneSidebar,
+        sync: bound("Work"),
+        locations: [{ id: "main", name: "Phone", named: false, open: true, cloud: false }],
+      });
+      expect(unnamed.getByTestId("sync-status").parentElement.textContent).toBe("Work");
+      unnamed.unmount();
       // The app folder itself, which the binding writes "".
       const root = renderSidebar({ Component: PhoneSidebar, sync: bound("") });
       expect(root.getByTestId("sync-status").parentElement.textContent).toBe("Boojy Notes");
@@ -1083,8 +1091,8 @@ describe("Sidebar on the phone", () => {
         progress: null,
       });
       const locations = [
-        { id: "main", name: "Work", open: true, cloud: true },
-        { id: "l1", name: "Private", open: false, cloud: false },
+        { id: "main", name: "Work", named: true, open: true, cloud: true },
+        { id: "l1", name: "Private", named: true, open: false, cloud: false },
       ];
       const view = renderSidebar({
         Component: PhoneSidebar,
@@ -1092,7 +1100,9 @@ describe("Sidebar on the phone", () => {
         locations,
         onOpenLocation,
       });
+      expect(view.getByTestId("sync-status").getAttribute("aria-expanded")).toBe("false");
       fireEvent.click(view.getByTestId("sync-status"));
+      expect(view.getByTestId("sync-status").getAttribute("aria-expanded")).toBe("true");
       const rows = view.getAllByRole("menuitemradio");
       expect(rows.map((el) => el.textContent)).toEqual(["Work", "Private"]);
       expect(rows.map((el) => el.getAttribute("aria-checked"))).toEqual(["true", "false"]);

@@ -87,15 +87,29 @@ const Title = ({ children }: { children: React.ReactNode }) => (
   </h1>
 );
 
-/** Asks Android for a folder; null when the picker was left, `refused` for one not on the phone. */
+type NotTaken = "refused" | "taken";
+
+/**
+ * Asks Android for a folder; null when the picker was left, `refused` for one
+ * not on the phone, `taken` for one another storage location keeps its notes
+ * in (`taken`, by tree): two locations over one folder would each sync and
+ * delete the other's files. Its grant is the other location's, so it is kept.
+ */
 async function pickFolder(
   access: FolderAccessPlugin,
   initial?: string,
-): Promise<PickedFolder | "refused" | null> {
+  taken: string[] = [],
+): Promise<PickedFolder | NotTaken | null> {
   const got = await access.pick(initial ? { initial } : {});
   if (got.refused) return "refused";
-  return got.picked && got.tree && got.root ? { tree: got.tree, root: got.root } : null;
+  if (!got.picked || !got.tree || !got.root) return null;
+  return taken.includes(got.tree) ? "taken" : { tree: got.tree, root: got.root };
 }
+
+const WHY_NOT: Record<NotTaken, string> = {
+  refused: "Choose a folder on this phone.",
+  taken: "Another storage location keeps its notes there. Choose a different folder.",
+};
 
 /** A glyph for each of `SETUP_POINTS`, in their order: a file, no connection, a cloud. */
 const POINT_ICONS = [OpenNoteIcon, SyncOfflineIcon, SyncOffIcon];
@@ -117,13 +131,19 @@ export function PhoneSetup({
   folderName,
   granted = null,
   location,
+  taken: inUse = [],
+  onCancel,
   onDone,
   access = FolderAccess,
 }: {
   folderName: string;
+  /** The folders other storage locations keep their notes in: never this one's. */
+  taken?: string[];
+  /** Back, for a location added later: it is not added after all. */
+  onCancel?: () => void;
   /**
    * A storage location added later, by name: only its folder is asked, under
-   * that name. There is no first page to go back to, and the appearance is
+   * that name. Back leaves it unadded (`onCancel`), and the appearance is
    * already chosen.
    */
   location?: string;
@@ -136,7 +156,7 @@ export function PhoneSetup({
   const { TEXT } = theme;
   const [page, setPage] = useState<1 | 2>(granted || location ? 2 : 1);
   const [chosen, setChosen] = useState<PickedFolder | null>(granted);
-  const [refused, setRefused] = useState(false);
+  const [refused, setRefused] = useState<NotTaken | null>(null);
   const [offerApp, setOfferApp] = useState(false);
 
   // A fresh install starts on System, as the desktop's does.
@@ -151,7 +171,8 @@ export function PhoneSetup({
     import("@capacitor/app").then(({ App }) => {
       if (gone) return;
       const handle = App.addListener("backButton", () => {
-        if (page === 2 && !location) setPage(1);
+        if (location) onCancel?.();
+        else if (page === 2) setPage(1);
         else App.minimizeApp();
       });
       remove = () => handle.then((h) => h.remove());
@@ -160,16 +181,16 @@ export function PhoneSetup({
       gone = true;
       remove?.();
     };
-  }, [page, location]);
+  }, [page, location, onCancel]);
 
-  const taken = (got: PickedFolder | "refused" | null) => {
-    setRefused(got === "refused");
-    if (got && got !== "refused") return got;
+  const taken = (got: PickedFolder | NotTaken | null) => {
+    setRefused(typeof got === "string" ? got : null);
+    if (got && typeof got !== "string") return got;
     setOfferApp(true);
     return null;
   };
   const choose = async () => {
-    const got = taken(await pickFolder(access));
+    const got = taken(await pickFolder(access, undefined, inUse));
     if (got) setChosen(got);
   };
   const folderPath = chosen ? folderLabel(chosen) : `Documents/${folderName}`;
@@ -177,7 +198,7 @@ export function PhoneSetup({
     if (chosen) return onDone(chosen);
     // Made first, so Android's screen opens inside it.
     const { initial } = await access.ensureDefault({ name: folderName });
-    const got = taken(await pickFolder(access, initial));
+    const got = taken(await pickFolder(access, initial, inUse));
     if (got) onDone(got);
   };
 
@@ -243,27 +264,23 @@ export function PhoneSetup({
           margin: "-20px -12px 0",
         }}
       >
-        {location ? (
-          <span />
-        ) : (
-          <button
-            type="button"
-            aria-label="Back"
-            onClick={() => setPage(1)}
-            style={{
-              width: 44,
-              height: 44,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: "none",
-              background: "transparent",
-              color: TEXT.primary,
-            }}
-          >
-            <BackIcon />
-          </button>
-        )}
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => (location ? onCancel?.() : setPage(1))}
+          style={{
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "none",
+            background: "transparent",
+            color: TEXT.primary,
+          }}
+        >
+          <BackIcon />
+        </button>
         <div style={{ display: "flex", justifyContent: "center" }}>
           <Wordmark height={20} />
         </div>
@@ -329,7 +346,7 @@ export function PhoneSetup({
               color: theme.SEMANTIC.error,
             }}
           >
-            Choose a folder on this phone.
+            {WHY_NOT[refused]}
           </p>
         )}
 
@@ -387,18 +404,21 @@ export function PhoneSetup({
  * would read as every note being gone.
  */
 export function FolderLost({
+  taken = [],
   onDone,
   access = FolderAccess,
 }: {
+  /** The folders other storage locations keep their notes in. */
+  taken?: string[];
   onDone: (folder: PickedFolder) => void;
   access?: FolderAccessPlugin;
 }) {
   const { theme } = useTheme();
-  const [refused, setRefused] = useState(false);
+  const [refused, setRefused] = useState<NotTaken | null>(null);
   const again = async () => {
-    const got = await pickFolder(access);
-    setRefused(got === "refused");
-    if (got && got !== "refused") onDone(got);
+    const got = await pickFolder(access, undefined, taken);
+    setRefused(typeof got === "string" ? got : null);
+    if (got && typeof got !== "string") onDone(got);
   };
   return (
     <Page>
@@ -409,7 +429,7 @@ export function FolderLost({
       </p>
       {refused && (
         <p role="alert" style={{ margin: "12px 0 0", fontSize: 14, color: theme.SEMANTIC.error }}>
-          Choose a folder on this phone.
+          {WHY_NOT[refused]}
         </p>
       )}
       <SmallButton kind="strong" onClick={again} style={TOUCH_BUTTON}>

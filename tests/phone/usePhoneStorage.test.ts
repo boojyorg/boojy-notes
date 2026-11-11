@@ -44,8 +44,8 @@ describe("where the phone keeps its notes, for Settings", () => {
 
   describe("the storage locations", () => {
     const ROWS = [
-      { id: "main", name: "Phone", open: true, cloud: false },
-      { id: "work", name: "Work", open: false, cloud: true },
+      { id: "main", name: "Phone", named: false, open: true, cloud: false },
+      { id: "work", name: "Work", named: true, open: false, cloud: true },
     ];
     const withLocations = (over: Record<string, unknown> = {}) => {
       const locations = {
@@ -100,6 +100,7 @@ describe("where the phone keeps its notes, for Settings", () => {
     for (const [answer, said] of [
       ["not-empty", /Choose an empty folder/],
       ["refused", /on this phone/],
+      ["in-use", /Another storage location/],
       ["cancelled", null],
     ] as const) {
       const { result, showToast, flushAll } = hook({ moveToFolder: vi.fn(async () => answer) });

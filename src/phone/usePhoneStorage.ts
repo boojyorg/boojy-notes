@@ -39,6 +39,10 @@ export function usePhoneStorage({
             showToast("That folder has files in it. Choose an empty folder.", "notice", {
               key: TOAST_KEY,
             });
+          if (answer === "in-use")
+            showToast("Another storage location keeps its notes in that folder.", "notice", {
+              key: TOAST_KEY,
+            });
           if (answer === "refused")
             showToast("Choose a folder on this phone.", "notice", { key: TOAST_KEY });
         } catch (error) {

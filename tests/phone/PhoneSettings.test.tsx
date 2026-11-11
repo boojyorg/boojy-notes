@@ -150,7 +150,7 @@ describe("Settings on the phone", () => {
       const addLocation = vi.fn(async () => true);
       const onClose = show(sync(), {
         ...IN_APP,
-        locations: [{ id: "main", name: "Phone", open: true, cloud: false }],
+        locations: [{ id: "main", name: "Phone", named: false, open: true, cloud: false }],
         addLocation,
       });
       return { addLocation, onClose };

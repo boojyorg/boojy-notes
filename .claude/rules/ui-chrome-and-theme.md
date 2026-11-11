@@ -222,8 +222,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   keyboard bar sends menu-bar commands; **a list item brings the list row** (✕ till it
   leaves); in a field what can't act greys; **tap acts, hold explains** (no Markdown),
   a held slide following (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.
-- **Home there**: the N, a Search field, the cog, no ··· menu; sync's state follows the
-  name. **New note is the one teal surface.** **Cards: the notes edited last**
+- **Home there**: N, Search, cog, no ··· menu; the name opens `VaultMenu`, sync's state
+  after. **New note is the one teal surface.** **Cards: the notes edited last**
   (`recentCards.ts`), at any sort. **Settings: a page** (`PhoneSettings`).
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`). **A line is at
   most `rhythm.measure` ems**, centred under the name; margins go first, then gutters.

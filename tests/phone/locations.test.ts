@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  liveRows,
   MAIN,
   nameProblem,
   newLocationId,
@@ -50,8 +51,26 @@ describe("the phone's storage locations", () => {
     ]) {
       const root = memoryFiles();
       await root.write(LIST, bytes(damaged));
-      expect(await readLocations(root)).toEqual({ open: MAIN, list: [{ id: MAIN }] });
+      expect(await readLocations(root)).toEqual({
+        open: MAIN,
+        list: [{ id: MAIN }],
+        damaged: true,
+      });
     }
+  });
+
+  // Opened that way and then written, the list would lose every other location for good.
+  it("never writes back a list it could not read", async () => {
+    const root = memoryFiles();
+    await root.write(LIST, bytes("{"));
+    const read = await readLocations(root);
+    await expect(
+      writeLocations(root, { ...read, list: [...read.list, { id: "new1" }] }),
+    ).rejects.toThrow(/couldn't be read/);
+    expect(text(await root.read(LIST))).toBe("{");
+    // A read that fails is no proof there is no list either.
+    const failing = { ...root, read: async () => Promise.reject(new Error("I/O")) };
+    expect((await readLocations(failing)).damaged).toBe(true);
   });
 
   // An id becomes a path: nothing in it may leave the location's own area.
@@ -68,6 +87,27 @@ describe("the phone's storage locations", () => {
     );
     expect(await readLocations(root)).toEqual({ open: "ok1", list: [{ id: "ok1" }] });
     await expect(writeLocations(root, { open: "x/y", list: [{ id: "x/y" }] })).rejects.toThrow();
+  });
+});
+
+describe("the rows as Home shows them", () => {
+  const ROWS = [
+    { id: MAIN, name: "Phone", named: false, open: true, cloud: false },
+    { id: "w", name: "Work", named: true, open: false, cloud: true },
+  ];
+
+  // The list is read once; a connect made since must not wait for a restart to show.
+  it("follows sync for the open one: its cloud, and its name while it has none of its own", () => {
+    expect(liveRows(ROWS, "Personal")[0]).toMatchObject({ name: "Personal", cloud: true });
+    expect(liveRows(ROWS, "")[0]).toMatchObject({ name: "Boojy Notes", cloud: true });
+    expect(liveRows(ROWS, null)[0]).toMatchObject({ name: "Phone", cloud: false });
+    expect(liveRows(ROWS, "Personal")[1]).toBe(ROWS[1]);
+    expect(liveRows(ROWS, undefined)).toBe(ROWS);
+  });
+
+  it("keeps a name the location was given, whatever it syncs with", () => {
+    const named = [{ ...ROWS[0], name: "Journal", named: true }];
+    expect(liveRows(named, "Personal")[0]).toMatchObject({ name: "Journal", cloud: true });
   });
 });
 

@@ -12,6 +12,7 @@ import { useHeldScale } from "../hooks/useHeldScale";
 import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
+import { liveRows } from "./locations";
 import NewLocation from "./NewLocation";
 import { PageHead, rowStyle } from "./pageParts";
 import { APP_FOLDER, folderChosen, syncFolderName, syncFolderPath } from "./syncFolder";
@@ -367,7 +368,7 @@ export default function PhoneSettings({
       {choosing && <ChooseSyncFolder folders={choosing.folders} onAnswer={choosing.answer} />}
       {adding && (
         <NewLocation
-          taken={storage.locations.map((l) => l.name)}
+          taken={liveRows(storage.locations, sync?.status.folder).map((l) => l.name)}
           onAdd={storage.addLocation}
           onClose={() => setAdding(false)}
         />

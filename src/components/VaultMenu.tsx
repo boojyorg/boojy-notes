@@ -41,6 +41,8 @@ interface VaultMenuProps {
   first?: MenuItem[];
 }
 
+const NONE: MenuItem[] = [];
+
 export default function VaultMenu({
   anchor,
   vaults,
@@ -52,7 +54,7 @@ export default function VaultMenu({
   fromKeyboard = false,
   fileToggles = true,
   header,
-  first = [],
+  first = NONE,
 }: VaultMenuProps) {
   const items = useMemo<MenuItem[]>(
     () => [
@@ -127,7 +129,8 @@ export default function VaultMenu({
       // menu's first row does.
       initialActive={
         fromKeyboard
-          ? Math.max(
+          ? first.length +
+            Math.max(
               0,
               vaults.findIndex((v) => v.current),
             )
