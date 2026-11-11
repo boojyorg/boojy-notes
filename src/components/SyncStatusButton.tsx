@@ -31,8 +31,17 @@ export function syncedAt(ms: number, now = new Date()) {
     : at.toLocaleDateString([], { day: "numeric", month: "short" });
 }
 
+/** "34 of 180" while a pass works through more than one file: a first sync takes minutes. */
+export function syncCount({ state, progress }: PhoneSync["status"]) {
+  return state === "syncing" && progress && progress.total > 1
+    ? `${progress.done} of ${progress.total}`
+    : null;
+}
+
 /** Sync's state in words, a line each: what the menu on Home and Settings both say. */
-export function syncLines({ state, problems, lastSynced }: PhoneSync["status"]): string[] {
+export function syncLines(status: PhoneSync["status"]): string[] {
+  const { state, problems, lastSynced } = status;
+  const count = syncCount(status);
   const last = lastSynced === null ? null : syncedAt(lastSynced);
   return state === "off"
     ? ["Dropbox not connected. Your notes are on this phone only."]
@@ -44,7 +53,7 @@ export function syncLines({ state, problems, lastSynced }: PhoneSync["status"]):
             ...(last ? [`Last synced ${last}.`] : []),
           ]
         : state === "syncing"
-          ? ["Syncing with Dropbox…"]
+          ? [`Syncing with Dropbox…${count ? ` ${count} files` : ""}`]
           : [`Synced with Dropbox${last ? ` · ${last}` : ""}`];
 }
 
@@ -85,6 +94,7 @@ export default function SyncStatusButton({
   const { state } = sync.status;
   const Glyph = GLYPH[state];
   const lines = syncLines(sync.status);
+  const count = syncCount(sync.status);
   const close = () => setAnchor(null);
   const act = syncAction(sync);
   const items: MenuItem[] = [
@@ -149,6 +159,11 @@ export default function SyncStatusButton({
             }}
           >
             <Glyph />
+          </span>
+        )}
+        {count && (
+          <span style={{ flexShrink: 0, fontWeight: 400, fontVariantNumeric: "tabular-nums" }}>
+            {count}
           </span>
         )}
       </button>

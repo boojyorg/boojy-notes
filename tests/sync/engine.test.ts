@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clashCopyPath, type PassResult, syncPass } from "../../src/sync/engine";
+import { clashCopyPath, type PassResult, SAVE_EVERY, syncPass } from "../../src/sync/engine";
 import { RemoteNotFoundError } from "../../src/sync/types";
 import { Crash, FakeDropbox, FakeLocal } from "./fakes";
 
@@ -194,6 +194,92 @@ describe("the sync engine: one row of the design's table each", () => {
     expect(result.attention).toEqual([{ kind: "too-large", path: `A ${COPY}.md` }]);
     expect(env.dropbox.read("A.md")).toBe("mac's");
     expect(env.phone.text(`A ${COPY}.md`)).toBe("phone's long version");
+  });
+});
+
+describe("a first sync of many files", () => {
+  // A picture early in the alphabet held up every note after it.
+  it("brings the notes down before the files that are not notes", async () => {
+    const env = setup();
+    for (const path of ["a.png", "B.md", "m.pdf", "Z/c.md"]) await env.dropbox.macWrite(path, path);
+    const { log } = await env.sync();
+    expect(log.filter((line) => line.startsWith("downloaded"))).toEqual([
+      "downloaded: B.md",
+      "downloaded: Z/c.md",
+      "downloaded: a.png",
+      "downloaded: m.pdf",
+    ]);
+  });
+
+  it("says how far it is through the files that differ, and nothing when none do", async () => {
+    const env = await started({ "A.md": "alpha" });
+    const said: [number, number][] = [];
+    const onProgress = (done: number, total: number) => said.push([done, total]);
+    const pass = () =>
+      syncPass({ local: env.phone, remote: env.dropbox, now: () => new Date(), onProgress });
+    await pass();
+    expect(said).toEqual([]);
+    await env.dropbox.macWrite("B.md", "beta");
+    await env.dropbox.macWrite("C.md", "gamma");
+    env.phone.type("D.md", "delta");
+    await pass();
+    expect(said).toEqual([
+      [0, 3],
+      [1, 3],
+      [2, 3],
+      [3, 3],
+    ]);
+  });
+
+  /** The record's saves during `run`. */
+  const savesDuring = async (env: ReturnType<typeof setup>, run: () => Promise<unknown>) => {
+    let saves = 0;
+    const save = env.phone.saveRecord.bind(env.phone);
+    env.phone.saveRecord = (text) => {
+      saves++;
+      return save(text);
+    };
+    await run();
+    env.phone.saveRecord = save;
+    return saves;
+  };
+  const many = (n: number) =>
+    Object.fromEntries(
+      Array.from({ length: n }, (_, i) => [`Note ${String(i).padStart(3, "0")}.md`, `text ${i}`]),
+    );
+
+  // The record lists every file, and was written whole after each one.
+  it("saves the record once per batch of downloads, and at the end", async () => {
+    const env = setup();
+    const notes = many(SAVE_EVERY * 2 + 3);
+    for (const [path, content] of Object.entries(notes)) await env.dropbox.macWrite(path, content);
+    // The listing, two full batches, the rest.
+    expect(await savesDuring(env, env.sync)).toBe(4);
+    expectBoth(env, notes);
+    expect(await env.callsDuring(env.sync)).toEqual(["listContinue"]);
+  });
+
+  it("downloads nothing twice when killed with downloads not yet recorded", async () => {
+    const env = setup();
+    const notes = many(SAVE_EVERY + 5);
+    for (const [path, content] of Object.entries(notes)) await env.dropbox.macWrite(path, content);
+    // The listing's save, the first batch's, then killed at the last.
+    env.phone.failAt("saveRecord", "before", { skip: 2 });
+    await expect(env.sync()).rejects.toBeInstanceOf(Crash);
+    const calls = await env.callsDuring(env.settle);
+    expect(calls).not.toContain("download");
+    expectBoth(env, notes);
+  });
+
+  it("records a phone that already holds the same notes in batches too", async () => {
+    const env = setup();
+    const notes = many(SAVE_EVERY + 1);
+    for (const [path, content] of Object.entries(notes)) {
+      await env.dropbox.macWrite(path, content);
+      env.phone.type(path, content);
+    }
+    expect(await savesDuring(env, env.sync)).toBe(3);
+    expect(await env.callsDuring(env.sync)).toEqual(["listContinue"]);
   });
 });
 

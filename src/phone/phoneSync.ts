@@ -276,7 +276,7 @@ export function createPhoneSync(files: FileOps, local: PhoneSyncStore) {
     status.started();
     try {
       await verify(bound, through);
-      const result = await syncPass({ local, remote: through });
+      const result = await syncPass({ local, remote: through, onProgress: status.progress });
       for (const line of result.log) log(line);
       if (result.attention.length) log("needs attention:", JSON.stringify(result.attention));
       log(`pass done in ${Date.now() - started} ms${result.again ? ", another to follow" : ""}`);

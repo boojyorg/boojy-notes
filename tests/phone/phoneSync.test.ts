@@ -500,6 +500,7 @@ describe("with no Dropbox connected", () => {
       folder: null,
       lastSynced: null,
       problems: [],
+      progress: null,
     });
     expect(remotes).toHaveLength(0);
     expect(passes).not.toHaveBeenCalled();
@@ -653,6 +654,7 @@ describe("disconnecting", () => {
       folder: null,
       lastSynced: null,
       problems: [],
+      progress: null,
     });
     // Nothing goes up after it.
     sync.localChanged();
