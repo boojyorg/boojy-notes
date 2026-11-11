@@ -159,7 +159,7 @@ the test its rule names when it is built.
 
 - **Works offline with no Dropbox and no account.** The sign-in screen goes
   (`src/phone/install.ts:43`); Connect Dropbox is optional, from Settings, choosing the folder
-  (fixed to `Personal` today, `syncFolder.ts:8`). A damaged sign-in file never locks anyone
+  (`syncFolder.ts`). A damaged sign-in file never locks anyone
   out (`phoneSync.ts:59-68`). The first connect is tested on a phone that already has notes.
 - **A folder the user can see** (Storage Access Framework), as well as app-private storage:
   chosen at first launch, other apps' changes noticed, and notes kept inside the app moved to

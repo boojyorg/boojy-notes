@@ -14,7 +14,7 @@
   `FolderLost`, never empty or app storage; outside changes looked for (`checkOutside`).
   `phoneVaultFolder.test.ts`. **App storage moves to an empty one at a start**: copied
   whole, then chosen, then cleared. `moveToFolder.test.ts`.
-- **Phone sync is optional, the binding its connection**: no pass till accounts match. `phoneSync.test.ts`.
+- **Phone sync is optional, the binding its connection**: no pass till accounts match; its folder asked at connect. `phoneSync.test.ts`.
 - Desktop confirms only several files; one note goes at once, Undo in its toast.
 
 ## The watcher drops only an event it can trace to the app's own operation
@@ -123,4 +123,4 @@ never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 
 ## Tracing
 
-`BOOJY_TRACE=<log> node_modules/.bin/electron .` (built, app quit): both processes, one clock.
+`BOOJY_TRACE=<log> node_modules/.bin/electron .` (built, app quit).

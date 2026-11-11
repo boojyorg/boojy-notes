@@ -13,7 +13,7 @@ import { createSyncRunner } from "../sync/syncRunner";
 import { createSyncStatus, type FailureMeaning, SyncProblemError } from "../sync/syncStatus";
 import { CursorResetError, type LocalStore } from "../sync/types";
 import type { FileOps } from "./files";
-import { SYNC_FOLDER } from "./syncFolder";
+import { type ChooseFolder, folderChosen } from "./syncFolder";
 
 /**
  * Sign-in and sync for the phone, both optional: with no Dropbox connected
@@ -73,6 +73,7 @@ interface Secrets {
 
 /** The Dropbox folder the notes sync with, and the account it is in. */
 interface Binding {
+  /** Its name in Apps/Boojy Notes; "" is that folder itself. */
   folder: string;
   /** Missing in a binding made before accounts were bound: learnt before its first pass. */
   accountId?: string;
@@ -81,13 +82,19 @@ interface Binding {
 /** The phone's store, which also forgets what sync knew (the record) on a disconnect. */
 export type PhoneSyncStore = LocalStore & { forgetSync(): Promise<void> };
 
-/** Dropbox's page was closed without an answer: nothing changes, and nothing needs saying. */
+/**
+ * Dropbox's page was closed without an answer, or the folder's choice was
+ * left: nothing changes, and nothing needs saying.
+ */
 export class SignInCancelled extends Error {
   name = "SignInCancelled";
   constructor() {
     super("the page was closed");
   }
 }
+
+/** Where a binding's folder is for Dropbox's API, whose root is Apps/Boojy Notes. */
+const rootOf = (bound: Binding) => (bound.folder ? `/${bound.folder}` : "");
 
 const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
 const decode = (bytes: Uint8Array | null) =>
@@ -289,7 +296,7 @@ export function createPhoneSync(files: FileOps, local: PhoneSyncStore) {
   /** Syncs `kept` from now, with `signIn` (null: signed out, said by the first pass). */
   function bind(kept: Binding, signIn: Secrets | null, { accountKnown = false } = {}) {
     binding = kept;
-    remote = createDropboxRemote({ root: `/${kept.folder}`, token: () => token() });
+    remote = createDropboxRemote({ root: rootOf(kept), token: () => token() });
     takeSecrets(signIn);
     verified = accountKnown && signIn ? signIn.refreshToken : null;
     notBefore = 0;
@@ -388,7 +395,7 @@ export function createPhoneSync(files: FileOps, local: PhoneSyncStore) {
    */
   async function belongs(bound: Binding, fresh: Secrets) {
     const probe = createDropboxRemote({
-      root: `/${bound.folder}`,
+      root: rootOf(bound),
       token: refreshingToken({ clientId: APP_KEY, refreshToken: fresh.refreshToken }),
     });
     if (bound.accountId) return (fresh.accountId ?? (await probe.accountId())) === bound.accountId;
@@ -403,19 +410,28 @@ export function createPhoneSync(files: FileOps, local: PhoneSyncStore) {
     status,
     start,
     /**
-     * From Home, with no Dropbox connected: signs in, then binds the folder
-     * from no record, so the first pass merges. A record left by a connect
-     * or binding that didn't last is forgotten first: it must never be read
-     * against this account. Throws when cancelled (`SignInCancelled`) or
-     * failed; nothing is connected then.
+     * With no Dropbox connected: signs in, settles the folder, then binds it
+     * from no record, so the first pass merges. While Dropbox holds no folder
+     * in Apps/Boojy Notes there is nothing to choose between: the notes sync
+     * with that folder itself, unasked. Nothing is kept until the folder is
+     * settled, so leaving the choice leaves nothing connected. A record left
+     * by a connect or binding that didn't last is forgotten first: it must
+     * never be read against this account. Throws when cancelled
+     * (`SignInCancelled`) or failed; nothing is connected then.
      */
-    async connect() {
+    async connect(choose: ChooseFolder) {
       if (binding) throw new Error("Dropbox is already connected");
       const fresh = await signIn();
       if (!fresh.accountId) throw new Error("Dropbox didn't say which account signed in");
+      const there = await createDropboxRemote({
+        root: "",
+        token: refreshingToken({ clientId: APP_KEY, refreshToken: fresh.refreshToken }),
+      }).folders();
+      const choice = there.length ? await choose(there) : "";
+      if (choice === null) throw new SignInCancelled();
+      const kept: Binding = { folder: folderChosen(choice, there), accountId: fresh.accountId };
       await local.forgetSync();
       await files.write(SECRETS, encode(fresh));
-      const kept: Binding = { folder: SYNC_FOLDER, accountId: fresh.accountId };
       await files.write(BINDING, encode(kept));
       log("connected", kept.folder, kept.accountId);
       // Its account is the binding's: the binding was made from it.
