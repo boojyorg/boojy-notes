@@ -1,8 +1,13 @@
 import { type RefObject, useRef, useState } from "react";
 import {
   CheckIcon,
+  CloseIcon,
   FolderIcon,
   MoreHorizontalIcon,
+  MoveToIcon,
+  PencilIcon,
+  SyncingIcon,
+  SyncOfflineIcon,
   NewFolderIcon,
   VaultIcon,
 } from "../components/Icons";
@@ -20,6 +25,7 @@ import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
 import { type LocationRow, liveRows, whereOf } from "./locations";
 import NewLocation from "./NewLocation";
 import { PageHead, rowStyle } from "./pageParts";
+import { reopenSettingsAfterRestart } from "./reopenSettings";
 import { APP_FOLDER, folderChosen, folderClash } from "./syncFolder";
 import type { PhoneStorage } from "./usePhoneStorage";
 import type { PhoneSync } from "./useSyncStatus";
@@ -196,10 +202,10 @@ function Location({
   return (
     <div style={{ marginBottom: 10 }}>
       {/* The desktop's row: a press on it opens that location; its ··· is what can be done to it. */}
-      <div style={{ ...rowStyle(theme), padding: 0, gap: 0 }}>
+      <div className="press-card" style={{ ...rowStyle(theme), padding: 0, gap: 0 }}>
         <Body
           {...(onOpen
-            ? { type: "button", className: "press", onClick: onOpen }
+            ? { type: "button", className: "press-card-body", onClick: onOpen }
             : { "aria-current": "true" })}
           aria-label={`${row.name}: ${where}${row.open ? ", open" : ""}`}
           data-testid={`location-${row.id}`}
@@ -374,8 +380,14 @@ export default function PhoneSettings({
 
   const rows = liveRows(storage.locations, sync?.status.folder);
   const move = storage.moveToFolder;
+  // Opened from here, the app starts again here: not on Home, a step away from where it was asked.
+  const openFromHere = async (id: string) => {
+    reopenSettingsAfterRestart();
+    if (!(await storage.openLocation(id))) reopenSettingsAfterRestart(false);
+  };
   const rename = (row: LocationRow): MenuItem => ({
     label: "Rename…",
+    icon: <PencilIcon />,
     testId: "location-rename",
     action: () => setRenaming(row),
   });
@@ -386,25 +398,42 @@ export default function PhoneSettings({
       ...(!sync
         ? []
         : sync.status.state === "off"
-          ? [{ label: "Sync with Dropbox…", testId: "sync-connect", action: () => sync.connect() }]
+          ? [
+              {
+                label: "Sync with Dropbox…",
+                icon: <VaultIcon cloud />,
+                testId: "sync-connect",
+                action: () => sync.connect(),
+              },
+            ]
           : [
-              ...(act ? [act] : []),
+              ...(act ? [{ ...act, icon: <SyncingIcon /> }] : []),
               {
                 label: "Disconnect Dropbox",
+                icon: <SyncOfflineIcon />,
                 testId: "sync-disconnect",
                 action: () => sync.disconnect(),
               },
             ]),
       { ...rename(row), rule: sync !== null },
       ...(move
-        ? [{ label: "Move to a folder…", testId: "move-to-folder", action: () => move() }]
+        ? [
+            {
+              label: "Move to a folder…",
+              icon: <MoveToIcon />,
+              testId: "move-to-folder",
+              action: () => move(),
+            },
+          ]
         : []),
     ];
   };
   const closedItems = (row: LocationRow): MenuItem[] => [
     rename(row),
     {
-      label: "Remove",
+      label: "Remove from list…",
+      icon: <CloseIcon size={16} />,
+      rule: true,
       testId: "location-remove",
       danger: row.phone === null,
       action: async () => {
@@ -458,7 +487,7 @@ export default function PhoneSettings({
           lines={row.open ? lines : []}
           warn={state === "problem"}
           items={row.open ? openItems(row) : closedItems(row)}
-          onOpen={row.open ? undefined : () => storage.openLocation(row.id)}
+          onOpen={row.open ? undefined : () => openFromHere(row.id)}
         />
       ))}
 

@@ -60,6 +60,7 @@ import { caretLength, caretOffsetAt, getCaretOffset, placeCaret } from "./utils/
 import { binnedToast, deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useRecentlyDeleted } from "./hooks/useRecentlyDeleted";
 import { usePhoneStorage } from "./phone/usePhoneStorage";
+import { settingsToReopen } from "./phone/reopenSettings";
 import { useSyncStatus } from "./phone/useSyncStatus";
 import RecentlyDeletedMenu from "./components/RecentlyDeletedMenu";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
@@ -373,6 +374,11 @@ export default function BoojyNotes() {
   const sync = useSyncStatus({ showToast });
   // Where the phone keeps its notes, for its Settings page.
   const phoneStorage = usePhoneStorage({ showToast, flushAll });
+  // A storage location opened from the phone's Settings starts the app again there.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked once, at the start
+  useEffect(() => {
+    if (isPhone && settingsToReopen()) setSettingsOpen(true);
+  }, []);
   const [binOpen, setBinOpen] = useState(false);
   const recentlyDeleted = useRecentlyDeleted({
     notesDir,

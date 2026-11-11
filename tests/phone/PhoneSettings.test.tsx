@@ -5,6 +5,7 @@ import { SettingsProvider } from "../../src/context/SettingsContext";
 import { ThemeProvider } from "../../src/context/ThemeContext";
 import type { LocationRow } from "../../src/phone/locations";
 import PhoneSettings, { removePrompt } from "../../src/phone/PhoneSettings";
+import { settingsToReopen } from "../../src/phone/reopenSettings";
 import type { PhoneStorage } from "../../src/phone/usePhoneStorage";
 import type { PhoneSync } from "../../src/phone/useSyncStatus";
 import type { SyncStatus } from "../../src/sync/syncStatus";
@@ -97,11 +98,22 @@ describe("Settings on the phone", () => {
     expect(screen.getByTestId("location-main").getAttribute("aria-current")).toBe("true");
     fireEvent.click(screen.getByTestId("location-w"));
     expect(storage.openLocation).toHaveBeenCalledWith("w");
+    // The app starts again in it, here in Settings: not on Home, a step from where it was asked.
+    expect(settingsToReopen()).toBe(true);
+    expect(settingsToReopen()).toBe(false);
     expect(screen.queryByRole("menu")).toBeNull();
     // The ··· opens the menu and opens nothing.
     fireEvent.click(screen.getByRole("button", { name: "More for Work" }));
     expect(screen.getByRole("menu")).toBeTruthy();
     expect(storage.openLocation).toHaveBeenCalledOnce();
+  });
+
+  it("doesn't ask a later start for Settings when the location could not be opened", async () => {
+    const storage = storageOf({ locations: [MAIN, WORK], openLocation: vi.fn(async () => false) });
+    show(sync(), storage);
+    fireEvent.click(screen.getByTestId("location-w"));
+    await waitFor(() => expect(storage.openLocation).toHaveBeenCalled());
+    await waitFor(() => expect(settingsToReopen()).toBe(false));
   });
 
   it("says where a location that doesn't sync is on the phone: its folder, or inside the app", () => {
@@ -169,7 +181,7 @@ describe("Settings on the phone", () => {
   describe("a closed location's menu", () => {
     it("renames it or removes it, and nothing else", () => {
       show(sync(), storageOf({ locations: [MAIN, WORK] }));
-      expect(menuOf("w")).toEqual(["Rename…", "Remove"]);
+      expect(menuOf("w")).toEqual(["Rename…", "Remove from list…"]);
     });
 
     it("removes it only once asked, saying its folder and its Dropbox stay", async () => {
@@ -177,7 +189,7 @@ describe("Settings on the phone", () => {
       const confirm = vi.fn(async () => false);
       show(sync(), storage, { confirm });
       menuOf("w");
-      fireEvent.click(screen.getByText("Remove"));
+      fireEvent.click(screen.getByText("Remove from list…"));
       await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
       expect(confirm.mock.calls[0][0]).toMatchObject({
         message: "The folder and its notes stay in Documents/Work. Nothing in Dropbox changes.",
@@ -186,7 +198,7 @@ describe("Settings on the phone", () => {
       expect(storage.removeLocation).not.toHaveBeenCalled();
       confirm.mockResolvedValueOnce(true);
       menuOf("w");
-      fireEvent.click(screen.getByText("Remove"));
+      fireEvent.click(screen.getByText("Remove from list…"));
       await waitFor(() => expect(storage.removeLocation).toHaveBeenCalledWith("w"));
     });
 
