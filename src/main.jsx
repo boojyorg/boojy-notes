@@ -51,7 +51,12 @@ installTraceProbes();
 installFocusRingGuard();
 
 // The phone's vault and sign-in come before the app's first render.
-const ready = isPhone ? import("./phone/install").then((m) => m.installPhone()) : Promise.resolve();
+const ready = isPhone
+  ? import("./phone/install")
+      .then((m) => m.installPhone())
+      .then(() => import("./phone/reopenSettings"))
+      .then((m) => m.prepareSettingsToReopen())
+  : Promise.resolve();
 
 ready.then(
   () =>

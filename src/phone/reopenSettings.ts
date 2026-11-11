@@ -25,3 +25,18 @@ export function settingsToReopen() {
     return false;
   }
 }
+
+type SettingsPage = typeof import("./PhoneSettings").default;
+let page: SettingsPage | null = null;
+
+/**
+ * Before the app's first render, on a start that is to open Settings: its
+ * page is loaded now, so the first frame is Settings itself. Opened by an
+ * effect, or loaded lazily, Home showed for a moment first.
+ */
+export async function prepareSettingsToReopen() {
+  if (settingsToReopen()) page = (await import("./PhoneSettings")).default;
+}
+
+/** The Settings page loaded for this start to open on; null on any other start. */
+export const settingsPageToOpen = () => page;
