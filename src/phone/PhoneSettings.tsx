@@ -149,7 +149,6 @@ function ChooseSyncFolder({
             <NewFolderIcon size={20} />
           </span>
           <input
-            // biome-ignore lint/a11y/noAutofocus: the row was tapped to type here
             autoFocus
             aria-label="New folder's name"
             value={name}

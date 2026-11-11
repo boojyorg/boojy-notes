@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reachableFolder } from "../../src/phone/folderFiles";
+import { folderReached, reachableFolder } from "../../src/phone/folderFiles";
 import {
   hasBeenUsed,
   readChoice,
@@ -106,6 +106,23 @@ describe("the folder Android still reaches", () => {
     expect(await reachableFolder(plugin)).toEqual(B);
   });
 
+  // Each storage location has its own folder: one's choice must not cost another its grant.
+  it("neither finds nor gives back the folders other storage locations hold", async () => {
+    const { plugin, released } = access([A, B]);
+    expect(await reachableFolder(plugin, undefined, ["a"])).toEqual(B);
+    expect(await reachableFolder(plugin, undefined, ["a", "b"])).toBeNull();
+    const C = { tree: "c", root: "primary:Documents/C" };
+    const again = access([A, B, C]);
+    expect(await reachableFolder(again.plugin, C, ["a"])).toEqual(C);
+    expect(again.released).toEqual(["b"]);
+  });
+
+  it("says whether one folder is still granted and where it was", async () => {
+    expect(await folderReached(A, access([A, B]).plugin)).toEqual(A);
+    expect(await folderReached(A, access([B]).plugin)).toBeNull();
+    expect(await folderReached(A, access([A], ["a"]).plugin)).toBeNull();
+  });
+
   it("does not take an error that is not 'missing' for a lost folder", async () => {
     const { plugin } = access([A]);
     plugin.list = async () => {
@@ -122,8 +139,8 @@ describe("a move to a folder, kept with the choice", () => {
     expect(await readStorage(priv)).toEqual({ kind: "app", moving: FOLDER });
     // Until every file is in the folder, the notes are the app's.
     expect(await readChoice(priv)).toBe("app");
-    await writeChoice(priv, "folder", { clearing: true });
-    expect(await readStorage(priv)).toEqual({ kind: "folder", clearing: true });
+    await writeChoice(priv, "folder", { folder: FOLDER, clearing: true });
+    expect(await readStorage(priv)).toEqual({ kind: "folder", folder: FOLDER, clearing: true });
     await writeChoice(priv, "folder");
     expect(await readStorage(priv)).toEqual({ kind: "folder" });
   });
