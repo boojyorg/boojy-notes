@@ -48,7 +48,7 @@ import {
 import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
-import SyncStatusButton from "./SyncStatusButton";
+import SyncStatusButton, { SyncWords, syncAction, syncLines } from "./SyncStatusButton";
 import { HOME_LIST_END, HomeFoot, HomeTop } from "../phone/HomeChrome";
 import RecentCards from "../phone/RecentCards";
 import { syncFolderName } from "../phone/syncFolder";
@@ -483,7 +483,6 @@ const Sidebar = memo(function Sidebar({
   sync = null,
   locations = [],
   onOpenLocation,
-  onAddLocation,
 }) {
   const { sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
   // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
@@ -527,6 +526,19 @@ const Sidebar = memo(function Sidebar({
     setVaultMenuState(next);
   };
   const closeVaultMenu = () => setVaultMenu(null);
+  // The phone's locations, as the desktop's menu takes its own.
+  const phoneVaults = useMemo(
+    () =>
+      locations.map((l) => ({
+        path: l.id,
+        name: l.name,
+        current: l.open,
+        exists: true,
+        cloud: l.cloud,
+      })),
+    [locations],
+  );
+  const syncTrouble = isPhone && sync?.status.state === "problem";
   const [vaultView, setVaultView] = useVaultView(notesDir || "web");
   // The phone's open storage location: its own name, or until it has one the
   // Dropbox folder it syncs with, or "Phone".
@@ -1097,9 +1109,12 @@ const Sidebar = memo(function Sidebar({
               name={vaultName}
               sync={sync}
               onOpenSettings={() => setSettingsOpen(true)}
-              locations={locations}
-              onOpenLocation={onOpenLocation}
-              onAddLocation={onAddLocation}
+              // With locations to list, the name opens the desktop's menu of them.
+              onOpen={
+                locations.length > 0
+                  ? (anchor) => setVaultMenu({ anchor, fromKeyboard: false })
+                  : undefined
+              }
             />
           ) : (
             vaultName
@@ -1331,12 +1346,17 @@ const Sidebar = memo(function Sidebar({
             <VaultMenu
               anchor={vaultMenu.anchor}
               fromKeyboard={vaultMenu.fromKeyboard}
-              vaults={vaults}
+              vaults={isPhone ? phoneVaults : vaults}
               view={vaultView}
               setView={setVaultView}
-              onSwitch={(path) => onSwitchVault?.(path)}
-              onManage={() => onManageVaults?.()}
+              onSwitch={(path) => (isPhone ? onOpenLocation?.(path) : onSwitchVault?.(path))}
+              onManage={() => (isPhone ? setSettingsOpen(true) : onManageVaults?.())}
               onClose={closeVaultMenu}
+              // The phone lists no files but notes; and says sync's state in words only
+              // when it needs the person, with the one thing to do about it.
+              fileToggles={!isPhone}
+              header={syncTrouble ? <SyncWords lines={syncLines(sync.status)} /> : undefined}
+              first={syncTrouble ? [syncAction(sync)].filter(Boolean) : undefined}
             />
           )}
           {sortMenuAnchor && (

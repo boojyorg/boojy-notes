@@ -44,8 +44,8 @@ describe("where the phone keeps its notes, for Settings", () => {
 
   describe("the storage locations", () => {
     const ROWS = [
-      { id: "main", name: "Phone", open: true },
-      { id: "work", name: "Work", open: false },
+      { id: "main", name: "Phone", open: true, cloud: false },
+      { id: "work", name: "Work", open: false, cloud: true },
     ];
     const withLocations = (over: Record<string, unknown> = {}) => {
       const locations = {

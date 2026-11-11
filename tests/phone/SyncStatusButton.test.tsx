@@ -23,14 +23,10 @@ const sync = (status: SyncStatus = OFF): PhoneSync => ({
   connect: vi.fn(async () => {}),
   disconnect: vi.fn(async () => {}),
 });
-const openMenu = (
-  s: PhoneSync,
-  onOpenSettings = vi.fn(),
-  locations: Partial<Parameters<typeof SyncStatusButton>[0]> = {},
-) => {
+const openMenu = (s: PhoneSync, onOpenSettings = vi.fn()) => {
   render(
     <ThemeProvider>
-      <SyncStatusButton name="Phone" sync={s} onOpenSettings={onOpenSettings} {...locations} />
+      <SyncStatusButton name="Phone" sync={s} onOpenSettings={onOpenSettings} />
     </ThemeProvider>,
   );
   fireEvent.click(screen.getByTestId("sync-status"));
@@ -58,41 +54,18 @@ describe("a long sync", () => {
   });
 });
 
-describe("the storage locations in Home's menu", () => {
-  const ROWS = [
-    { id: "main", name: "Phone", open: true },
-    { id: "work", name: "Work", open: false },
-  ];
-  const withLocations = () => {
-    const onOpenLocation = vi.fn();
-    const onAddLocation = vi.fn();
-    openMenu(sync(), vi.fn(), { locations: ROWS, onOpenLocation, onAddLocation });
-    return { onOpenLocation, onAddLocation };
-  };
-
-  it("lists them under sync's own rows, the open one ticked, then the way to add one", () => {
-    withLocations();
-    expect(items()).toEqual(["Storage and sync…", "Add a location…"]);
-    const rows = screen.getAllByRole("menuitemradio");
-    expect(rows.map((el) => el.textContent)).toEqual(["Phone", "Work"]);
-    expect(rows.map((el) => el.getAttribute("aria-checked"))).toEqual(["true", "false"]);
-    expect(screen.getByTestId("location-add").textContent).toBe("Add a location…");
-  });
-
-  it("opens the one tapped, but not the one already open", () => {
-    const { onOpenLocation } = withLocations();
-    fireEvent.click(screen.getByText("Work"));
-    expect(onOpenLocation).toHaveBeenCalledWith("work");
-    cleanup();
-    const again = withLocations();
-    fireEvent.click(screen.getAllByRole("menuitemradio")[0]);
-    expect(again.onOpenLocation).not.toHaveBeenCalled();
-  });
-
-  it("asks for a new one", () => {
-    const { onAddLocation } = withLocations();
-    fireEvent.click(screen.getByTestId("location-add"));
-    expect(onAddLocation).toHaveBeenCalledOnce();
+// Where the phone has storage locations, the name opens their menu, as the desktop's does.
+describe("the heading with a menu of its own to open", () => {
+  it("hands the tap over, and opens no menu itself", () => {
+    const onOpen = vi.fn();
+    render(
+      <ThemeProvider>
+        <SyncStatusButton name="Phone" sync={sync()} onOpenSettings={vi.fn()} onOpen={onOpen} />
+      </ThemeProvider>,
+    );
+    fireEvent.click(screen.getByTestId("sync-status"));
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 });
 

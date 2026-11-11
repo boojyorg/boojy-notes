@@ -269,7 +269,7 @@ describe("where a start keeps the notes", () => {
     });
 
     describe("listed, opened and added from Home", () => {
-      type Rows = { id: string; name: string; open: boolean }[];
+      type Rows = { id: string; name: string; open: boolean; cloud: boolean }[];
       const api = () =>
         (
           window as unknown as {
@@ -297,19 +297,24 @@ describe("where a start keeps the notes", () => {
       it("names each one: its own name, else its Dropbox folder, else Phone", async () => {
         await two();
         expect(await api().list()).toEqual([
-          { id: "main", name: "Phone", open: true },
-          { id: "work", name: "Work", open: false },
+          { id: "main", name: "Phone", open: true, cloud: false },
+          { id: "work", name: "Work", open: false, cloud: false },
         ]);
         await two({ "state/binding.json": JSON.stringify({ folder: "Personal" }) });
-        expect((await api().list())[0].name).toBe("Personal");
+        expect((await api().list())[0]).toMatchObject({ name: "Personal", cloud: true });
         await two({ "state/binding.json": JSON.stringify({ folder: "" }) });
         expect((await api().list())[0].name).toBe("Boojy Notes");
+        // One with a name of its own that syncs keeps the name, and is a cloud.
+        await two({ "locations/work/state/binding.json": JSON.stringify({ folder: "Team" }) });
+        expect((await api().list())[1]).toMatchObject({ name: "Work", cloud: true });
       });
 
       it("is one location, listed, on a phone that never added another", async () => {
         Object.assign(disk, { state: ["ids.json"], choice: "app", under: {}, files: {} });
         await startOf(true);
-        expect(await api().list()).toEqual([{ id: "main", name: "Phone", open: true }]);
+        expect(await api().list()).toEqual([
+          { id: "main", name: "Phone", open: true, cloud: false },
+        ]);
       });
 
       it("opens another only once the edits waiting are saved, by writing which is open", async () => {

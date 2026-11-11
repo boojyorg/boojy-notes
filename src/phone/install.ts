@@ -143,11 +143,12 @@ async function notesFolder(
 async function locationRows(root: FileOps, { open, list }: Locations): Promise<LocationRow[]> {
   return Promise.all(
     list.map(async ({ id, name }) => {
-      const bound = name ? null : await readBinding(scopedFiles(root, prefixOf(id)));
+      const bound = await readBinding(scopedFiles(root, prefixOf(id)));
       return {
         id,
         name: name ?? (bound ? syncFolderName(bound.folder) : "Phone"),
         open: id === open,
+        cloud: bound !== null,
       };
     }),
   );

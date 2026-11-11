@@ -1,7 +1,6 @@
 import { type ComponentType, useState } from "react";
 import { TOUCH } from "../constants/layout";
 import { useTheme } from "../hooks/useTheme";
-import type { LocationRow } from "../phone/locations";
 import type { PhoneSync } from "../phone/useSyncStatus";
 import { describeProblem, type SyncState } from "../sync/syncStatus";
 import { clock } from "../utils/versionTime";
@@ -72,6 +71,30 @@ export function syncAction(sync: PhoneSync): MenuItem | null {
 
 export const SYNC_GLYPH = GLYPH;
 
+/** Sync's state in words, at the head of a menu. */
+export function SyncWords({ lines }: { lines: string[] }) {
+  const { theme } = useTheme();
+  return (
+    <div
+      style={{
+        padding: "8px 10px",
+        fontSize: 14,
+        lineHeight: 1.45,
+        color: theme.TEXT.primary,
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      {lines.map((line) => (
+        <p key={line} style={{ margin: 0 }}>
+          {line}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Home's heading on the phone: the list's name, then sync's state as a glyph
  * (none with no Dropbox), in the warning colour while something needs the
@@ -84,18 +107,14 @@ export default function SyncStatusButton({
   name,
   sync,
   onOpenSettings,
-  locations = [],
-  onOpenLocation,
-  onAddLocation,
+  onOpen,
 }: {
   /** The list's name ("Personal", or "Phone" with no Dropbox), which the button says first. */
   name: string;
   sync: PhoneSync;
   onOpenSettings: () => void;
-  /** The storage locations, the open one ticked; a tap on another opens it. */
-  locations?: LocationRow[];
-  onOpenLocation?: (id: string) => void;
-  onAddLocation?: () => void;
+  /** The storage-location menu's, where there is one: the tap opens that, as the desktop's name does. */
+  onOpen?: (anchor: MenuAnchor) => void;
 }) {
   const { theme } = useTheme();
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
@@ -125,32 +144,6 @@ export default function SyncStatusButton({
         onOpenSettings();
       },
     },
-    // Which notes these are, and the others: the open one ticked, as the desktop's menu has it.
-    ...locations.map(
-      (location, i): MenuItem => ({
-        label: location.name,
-        role: "menuitemradio",
-        checked: location.open,
-        rule: i === 0,
-        testId: `location-${location.id}`,
-        action: () => {
-          close();
-          if (!location.open) onOpenLocation?.(location.id);
-        },
-      }),
-    ),
-    ...(locations.length && onAddLocation
-      ? [
-          {
-            label: "Add a location…",
-            testId: "location-add",
-            action: () => {
-              close();
-              onAddLocation();
-            },
-          },
-        ]
-      : []),
   ];
 
   return (
@@ -162,7 +155,7 @@ export default function SyncStatusButton({
         aria-expanded={anchor !== null}
         data-testid="sync-status"
         data-state={state}
-        onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())}
+        onClick={(e) => (onOpen ?? setAnchor)(e.currentTarget.getBoundingClientRect())}
         style={{
           height: TOUCH,
           maxWidth: "100%",
@@ -210,25 +203,7 @@ export default function SyncStatusButton({
           onClose={close}
           maxWidth={300}
           items={items}
-          header={
-            <div
-              style={{
-                padding: "8px 10px",
-                fontSize: 14,
-                lineHeight: 1.45,
-                color: theme.TEXT.primary,
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-              }}
-            >
-              {lines.map((line) => (
-                <p key={line} style={{ margin: 0 }}>
-                  {line}
-                </p>
-              ))}
-            </div>
-          }
+          header={<SyncWords lines={lines} />}
         />
       )}
     </>

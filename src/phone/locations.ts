@@ -51,6 +51,8 @@ export interface LocationRow {
   id: string;
   name: string;
   open: boolean;
+  /** It syncs with Dropbox: drawn as a cloud, as the desktop draws a folder in a sync service. */
+  cloud: boolean;
 }
 
 /** Where a location keeps its files in the phone's storage: "" for the first. */

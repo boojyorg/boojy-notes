@@ -21,7 +21,12 @@ const sync = (over: Partial<PhoneSync> = {}): PhoneSync => ({
   disconnect: vi.fn(async () => {}),
   ...over,
 });
-const IN_APP: PhoneStorage = { notesFolder: null, moveToFolder: undefined };
+const NO_LOCATIONS = {
+  locations: [],
+  openLocation: vi.fn(async () => true),
+  addLocation: vi.fn(async () => true),
+};
+const IN_APP: PhoneStorage = { notesFolder: null, moveToFolder: undefined, ...NO_LOCATIONS };
 const show = (s: PhoneSync | null, storage: PhoneStorage = IN_APP, onClose = vi.fn()) => {
   render(
     <ThemeProvider>
@@ -40,7 +45,7 @@ const menuOf = (testId: string) => {
 describe("Settings on the phone", () => {
   it("says the notes are inside the app, and offers to move them to a folder", () => {
     const move = vi.fn(async () => {});
-    show(sync(), { notesFolder: null, moveToFolder: move });
+    show(sync(), { ...IN_APP, moveToFolder: move });
     expect(screen.getByTestId("settings-folder").textContent).toContain("Inside the app");
     expect(screen.getByText(/removed if you uninstall/)).toBeTruthy();
     expect(menuOf("settings-folder")).toEqual(["Move to a folder…"]);
@@ -50,7 +55,7 @@ describe("Settings on the phone", () => {
 
   // Nothing can be done about a folder yet: a row that opened an empty menu would be a dead control.
   it("names the folder the notes are in, as a row that is only read", () => {
-    show(sync(), { notesFolder: "Documents/Boojy Notes", moveToFolder: undefined });
+    show(sync(), { ...IN_APP, notesFolder: "Documents/Boojy Notes" });
     const row = screen.getByTestId("settings-folder");
     expect(row.textContent).toContain("Documents/Boojy Notes");
     expect(row.tagName).toBe("DIV");
@@ -139,6 +144,44 @@ describe("Settings on the phone", () => {
     });
   });
 
+  // A location is added rarely and switched often: Home's menu switches, Settings adds.
+  describe("adding a storage location", () => {
+    const listed = () => {
+      const addLocation = vi.fn(async () => true);
+      const onClose = show(sync(), {
+        ...IN_APP,
+        locations: [{ id: "main", name: "Phone", open: true, cloud: false }],
+        addLocation,
+      });
+      return { addLocation, onClose };
+    };
+
+    it("asks its name over the page, and adds it", () => {
+      const { addLocation } = listed();
+      fireEvent.click(screen.getByTestId("location-add"));
+      const page = within(screen.getByTestId("new-location"));
+      fireEvent.change(page.getByLabelText("Name"), { target: { value: "Phone" } });
+      fireEvent.click(page.getByRole("button", { name: "Add" }));
+      expect(page.getByRole("alert").textContent).toBe("Another location has this name.");
+      fireEvent.change(page.getByLabelText("Name"), { target: { value: "Private" } });
+      fireEvent.click(page.getByRole("button", { name: "Add" }));
+      expect(addLocation).toHaveBeenCalledWith("Private");
+    });
+
+    it("goes back to Settings, not out of it, on Back", () => {
+      const { onClose } = listed();
+      fireEvent.click(screen.getByTestId("location-add"));
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(screen.queryByTestId("new-location")).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("is not offered where the app has no locations (a browser)", () => {
+      show(sync());
+      expect(screen.queryByTestId("location-add")).toBeNull();
+    });
+  });
+
   it("leads with Sign in again when Dropbox wants the person", () => {
     show(
       sync({
@@ -161,7 +204,7 @@ describe("Settings on the phone", () => {
 
   // Where the notes are is true with or without sync: it once read "Inside the app" with none.
   it("names the folder with no sync at all", () => {
-    show(null, { notesFolder: "Documents/Boojy Notes", moveToFolder: undefined });
+    show(null, { ...IN_APP, notesFolder: "Documents/Boojy Notes" });
     expect(screen.getByTestId("settings-folder").textContent).toContain("Documents/Boojy Notes");
     expect(screen.queryByTestId("settings-dropbox")).toBeNull();
   });

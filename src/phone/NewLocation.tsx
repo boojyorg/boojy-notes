@@ -1,5 +1,4 @@
 import { type RefObject, useRef, useState } from "react";
-import { Z } from "../constants/zIndex";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
@@ -8,7 +7,7 @@ import { nameProblem } from "./locations";
 import { PageHead, rowStyle } from "./pageParts";
 
 /**
- * A new storage location, from Home's heading: its name alone. Adding it
+ * A new storage location, over Settings: its name alone. Adding it
  * starts the app again in it, where its folder is asked as a first launch
  * asks (`PhoneSetup`): one way of choosing where notes are kept. Back (and
  * Escape) adds nothing.
@@ -48,7 +47,7 @@ export default function NewLocation({
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: Z.SETTINGS_INNER,
+        zIndex: 1,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",

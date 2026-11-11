@@ -12,6 +12,7 @@ import { useHeldScale } from "../hooks/useHeldScale";
 import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
+import NewLocation from "./NewLocation";
 import { PageHead, rowStyle } from "./pageParts";
 import { APP_FOLDER, folderChosen, syncFolderName, syncFolderPath } from "./syncFolder";
 import type { PhoneStorage } from "./usePhoneStorage";
@@ -250,8 +251,9 @@ export default function PhoneSettings({
   const pageRef = useRef<HTMLDivElement>(null);
   useFocusTrap(pageRef as RefObject<HTMLElement>, open, "container");
   const choosing = sync?.choosing ?? null;
-  // The folder's question stands over the page and takes Back first.
-  useModalEscape(open && !choosing, onClose);
+  const [adding, setAdding] = useState(false);
+  // A question standing over the page takes Back first.
+  useModalEscape(open && !choosing && !adding, onClose);
   // The page keeps the interface size it opened with: the − and + stay under the finger.
   const heldScale = useHeldScale(open);
 
@@ -341,12 +343,35 @@ export default function PhoneSettings({
         />
       )}
 
+      {/* A second set of notes, with its own folder: named here, its folder asked as it opens. */}
+      {storage.locations.length > 0 && (
+        <button
+          type="button"
+          className="press"
+          data-testid="location-add"
+          onClick={() => setAdding(true)}
+          style={{ ...rowStyle(theme), marginBottom: 28 }}
+        >
+          <span style={{ display: "flex", color: theme.TEXT.secondary }}>
+            <NewFolderIcon size={20} />
+          </span>
+          <span style={{ flexGrow: 1 }}>Add a location…</span>
+        </button>
+      )}
+
       {/* The desktop's own section: the theme, and the interface size (the phone has no keys for it). */}
       <AppearanceTab SectionHeader={SectionTitle} />
 
       <div style={{ flexGrow: 1 }} />
       <SettingsFooter />
       {choosing && <ChooseSyncFolder folders={choosing.folders} onAnswer={choosing.answer} />}
+      {adding && (
+        <NewLocation
+          taken={storage.locations.map((l) => l.name)}
+          onAdd={storage.addLocation}
+          onClose={() => setAdding(false)}
+        />
+      )}
     </div>
   );
 }

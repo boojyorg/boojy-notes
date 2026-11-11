@@ -28,7 +28,6 @@ import { SIDEBAR_GRAB_OVERLAP, SIDEBAR_GRAB_W, SIDEBAR_HANDLE_W } from "./consta
 import { paintHandles } from "./hooks/usePanelResize";
 const SettingsModal = React.lazy(() => import("./components/settings/SettingsModal"));
 const PhoneSettings = React.lazy(() => import("./phone/PhoneSettings"));
-const NewLocation = React.lazy(() => import("./phone/NewLocation"));
 const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
 import ContextMenu from "./components/ContextMenu";
 import PathTreeMenu from "./components/PathTreeMenu";
@@ -374,9 +373,6 @@ export default function BoojyNotes() {
   const sync = useSyncStatus({ showToast });
   // Where the phone keeps its notes, for its Settings page.
   const phoneStorage = usePhoneStorage({ showToast, flushAll });
-  // The phone's "Add a location…": its name is asked over Home.
-  const [addingLocation, setAddingLocation] = useState(false);
-  const askNewLocation = useCallback(() => setAddingLocation(true), []);
   const [binOpen, setBinOpen] = useState(false);
   const recentlyDeleted = useRecentlyDeleted({
     notesDir,
@@ -1794,7 +1790,6 @@ export default function BoojyNotes() {
             sync={sync}
             locations={phoneStorage.locations}
             onOpenLocation={phoneStorage.openLocation}
-            onAddLocation={askNewLocation}
             recentlyDeleted={
               recentlyDeleted.available
                 ? {
@@ -2032,13 +2027,6 @@ export default function BoojyNotes() {
       )}
 
       <React.Suspense fallback={null}>
-        {isPhone && addingLocation && (
-          <NewLocation
-            taken={phoneStorage.locations.map((l) => l.name)}
-            onAdd={phoneStorage.addLocation}
-            onClose={() => setAddingLocation(false)}
-          />
-        )}
         {isPhone ? (
           <PhoneSettings
             open={settingsOpen}
