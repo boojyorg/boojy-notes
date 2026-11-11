@@ -216,6 +216,27 @@ describe("createDropboxRemote", () => {
     expect(await none.remote.holdsAnyOf(["id:gone"])).toBe(false);
   });
 
+  it("names the folders directly in the app folder, A to Z, across pages", async () => {
+    const f = fakeFetch(
+      json({
+        entries: [
+          { ".tag": "folder", path_display: "/work", path_lower: "/work" },
+          fileMeta("/Loose.md"),
+        ],
+        cursor: "C1",
+        has_more: true,
+      }),
+      json({
+        entries: [{ ".tag": "folder", path_display: "/Personal", path_lower: "/personal" }],
+        cursor: "C2",
+        has_more: false,
+      }),
+    );
+    const remote = createDropboxRemote({ root: "", token: async () => "T", fetch: f.fetch });
+    expect(await remote.folders()).toEqual(["Personal", "work"]);
+    expect(f.sent.map((s) => s.body)).toEqual([{ path: "", recursive: false }, { cursor: "C1" }]);
+  });
+
   it("names the signed-in account", async () => {
     const { remote, sent } = remoteWith(json({ account_id: "dbid:A" }));
     expect(await remote.accountId()).toBe("dbid:A");

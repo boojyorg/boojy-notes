@@ -130,6 +130,29 @@ describe("sync's state on Home", () => {
 });
 
 describe("connecting and disconnecting from Home", () => {
+  it("holds a connect's question about the folder until it is answered, once", async () => {
+    const { sync } = fakeSync(status("off"));
+    api = { sync };
+    let chosen: Promise<string | null> | undefined;
+    sync.connect.mockImplementationOnce(async (choose: (f: string[]) => Promise<string | null>) => {
+      chosen = choose(["Personal"]);
+      await chosen;
+    });
+    const { result } = renderHook(() => useSyncStatus({ showToast: vi.fn() }));
+    expect(result.current?.choosing).toBeNull();
+    let connecting: Promise<void> | undefined;
+    act(() => {
+      connecting = result.current?.connect();
+    });
+    expect(result.current?.choosing?.folders).toEqual(["Personal"]);
+    await act(async () => {
+      result.current?.choosing?.answer("Personal");
+      await connecting;
+    });
+    expect(await chosen).toBe("Personal");
+    expect(result.current?.choosing).toBeNull();
+  });
+
   it("says nothing when the sign-in page is closed, and why when the connect fails", async () => {
     const { sync } = fakeSync(status("off"));
     api = { sync };

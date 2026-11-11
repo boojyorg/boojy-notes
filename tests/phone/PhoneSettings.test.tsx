@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SettingsProvider } from "../../src/context/SettingsContext";
 import { ThemeProvider } from "../../src/context/ThemeContext";
@@ -14,6 +14,7 @@ const OFF: SyncStatus = { state: "off", folder: null, lastSynced: null, problems
 const SYNCED: SyncStatus = { state: "synced", folder: "Personal", lastSynced: null, problems: [] };
 const sync = (over: Partial<PhoneSync> = {}): PhoneSync => ({
   status: OFF,
+  choosing: null,
   syncNow: vi.fn(),
   signInAgain: vi.fn(async () => {}),
   connect: vi.fn(async () => {}),
@@ -84,6 +85,58 @@ describe("Settings on the phone", () => {
     cleanup();
     show(sync());
     expect(screen.queryByText(/On a computer/)).toBeNull();
+  });
+
+  it("calls the app folder itself Boojy Notes, and says so for a computer", () => {
+    show(sync({ status: { ...SYNCED, folder: "" } }));
+    expect(screen.getByTestId("settings-dropbox").textContent).toBe("Boojy Notes");
+    expect(
+      screen.getByText("On a computer: Boojy Notes, in your Dropbox's Apps folder."),
+    ).toBeTruthy();
+  });
+
+  describe("a connect asking which Dropbox folder", () => {
+    const asking = (answer = vi.fn()) => {
+      const onClose = show(sync({ choosing: { folders: ["Personal", "Work"], answer } }));
+      return { answer, onClose };
+    };
+    const rows = () => screen.getAllByTestId("sync-folder-choice").map((el) => el.textContent);
+
+    it("offers the app folder first, then each folder, and answers with the one tapped", () => {
+      const { answer } = asking();
+      expect(rows()).toEqual(["Everything in Boojy Notes", "Personal", "Work"]);
+      fireEvent.click(screen.getByText("Work"));
+      expect(answer).toHaveBeenCalledWith("Work");
+      fireEvent.click(screen.getByText("Everything in Boojy Notes"));
+      expect(answer).toHaveBeenLastCalledWith("");
+    });
+
+    it("takes a new folder's name, but none that is no single folder", () => {
+      const { answer } = asking();
+      fireEvent.click(screen.getByTestId("sync-folder-new"));
+      const field = screen.getByLabelText("New folder's name");
+      const create = screen.getByRole("button", { name: "Create" });
+      for (const bad of ["", "a/b"]) {
+        fireEvent.change(field, { target: { value: bad } });
+        expect(create.getAttribute("aria-disabled")).toBe("true");
+        fireEvent.click(create);
+      }
+      expect(answer).not.toHaveBeenCalled();
+      fireEvent.change(field, { target: { value: "Recipes" } });
+      fireEvent.click(create);
+      expect(answer).toHaveBeenCalledWith("Recipes");
+    });
+
+    // Back answers the question, not Settings under it.
+    it("connects nothing on Back or Escape, leaving Settings open", () => {
+      const { answer, onClose } = asking();
+      fireEvent.keyDown(document, { key: "Escape" });
+      fireEvent.click(
+        within(screen.getByTestId("choose-sync-folder")).getByRole("button", { name: "Back" }),
+      );
+      expect(answer.mock.calls).toEqual([[null], [null]]);
+      expect(onClose).not.toHaveBeenCalled();
+    });
   });
 
   it("leads with Sign in again when Dropbox wants the person", () => {

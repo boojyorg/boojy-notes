@@ -23,7 +23,9 @@ vi.mock("@capacitor/browser", () => ({
   Browser: { open: (o: { url: string }) => browserOpen(o), close: async () => {} },
 }));
 
-const remotes: { token: () => Promise<string> }[] = [];
+const remotes: { root: string; token: () => Promise<string> }[] = [];
+/** The folders in Apps/Boojy Notes, as Dropbox lists them. */
+let appFolders: string[] = [];
 let dropboxReachable = true;
 /** Dropbox's long-poll; by default it never answers. */
 const hang = () => new Promise<never>(() => {});
@@ -31,7 +33,7 @@ let longpoll: () => Promise<unknown> = hang;
 const exchangeCode = vi.fn();
 vi.mock("../../src/sync/dropboxClient", async (actual) => ({
   ...(await actual<typeof import("../../src/sync/dropboxClient")>()),
-  createDropboxRemote: (opts: { token: () => Promise<string> }) => {
+  createDropboxRemote: (opts: { root: string; token: () => Promise<string> }) => {
     remotes.push(opts);
     return {
       longpoll: () => longpoll(),
@@ -41,6 +43,7 @@ vi.mock("../../src/sync/dropboxClient", async (actual) => ({
       },
       // Account A's files are found only by A's sign-ins.
       holdsAnyOf: async () => (await opts.token()) !== "access-for-theirs",
+      folders: async () => appFolders,
     };
   },
   refreshingToken:
@@ -170,6 +173,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   listeners.clear();
   remotes.length = 0;
+  appFolders = [];
   dropboxReachable = true;
   longpoll = hang;
   tokensUsed.length = 0;
@@ -507,19 +511,85 @@ describe("connecting", () => {
   async function connect(
     files = memoryFiles(),
     fresh = { refreshToken: "new", accountId: "dbid:A" },
+    choose: (folders: string[]) => Promise<string | null> = async () => "Personal",
   ) {
     const sync = createPhoneSync(files, storeOn(files));
     await sync.start();
     passes.mockResolvedValue(done());
     exchangeCode.mockResolvedValue(fresh);
     dropboxAnswers(files);
-    const attempt = sync.connect();
+    const attempt = sync.connect(choose);
     attempt.catch(() => {}); // asserted by the test, after it settles
     await vi.advanceTimersByTimeAsync(0);
     return { files, sync, attempt };
   }
 
+  // Someone new has nothing to choose between: their notes are the app folder itself.
+  it("binds the app folder itself, asking nothing, while Dropbox holds no folder there", async () => {
+    const choose = vi.fn(async () => "Never");
+    const { files, sync, attempt } = await connect(memoryFiles(), undefined, choose);
+    await attempt;
+    expect(choose).not.toHaveBeenCalled();
+    expect(await readBinding(files)).toEqual({ folder: "", accountId: "dbid:A" });
+    expect(remotes.at(-1)?.root).toBe("");
+    expect(sync.status.status()).toMatchObject({ state: "synced", folder: "" });
+    // The next start syncs the same place.
+    remotes.length = 0;
+    await createPhoneSync(files, storeOn(files)).start();
+    expect(remotes.map((r) => r.root)).toEqual([""]);
+  });
+
+  it("asks which folder when Dropbox holds some, and binds the one chosen", async () => {
+    appFolders = ["Personal", "Work"];
+    const choose = vi.fn(async () => "Work");
+    const { files, attempt } = await connect(memoryFiles(), undefined, choose);
+    await attempt;
+    expect(choose).toHaveBeenCalledWith(["Personal", "Work"]);
+    expect(await readBinding(files)).toEqual({ folder: "Work", accountId: "dbid:A" });
+    expect(remotes.at(-1)?.root).toBe("/Work");
+  });
+
+  it("takes the app folder itself when that is the choice", async () => {
+    appFolders = ["Personal"];
+    const { files, attempt } = await connect(memoryFiles(), undefined, async () => "");
+    await attempt;
+    expect(await readBinding(files)).toEqual({ folder: "", accountId: "dbid:A" });
+  });
+
+  // The first pass makes a folder Dropbox doesn't hold yet (syncRecord's discover).
+  it("binds a new name, and an existing folder under the spelling Dropbox holds", async () => {
+    appFolders = ["Personal"];
+    const made = await connect(memoryFiles(), undefined, async () => "  Recipes ");
+    await made.attempt;
+    expect((await readBinding(made.files))?.folder).toBe("Recipes");
+    const same = await connect(memoryFiles(), undefined, async () => "personal");
+    await same.attempt;
+    expect((await readBinding(same.files))?.folder).toBe("Personal");
+  });
+
+  it("refuses a name that is no single folder, connecting nothing", async () => {
+    appFolders = ["Personal"];
+    for (const name of ["a/b", "a\\b", "..", "   "]) {
+      const { files, sync, attempt } = await connect(memoryFiles(), undefined, async () => name);
+      await expect(attempt).rejects.toThrow(/folder name/);
+      expect(await readBinding(files)).toBeNull();
+      expect(await readSecrets(files)).toBeNull();
+      expect(sync.status.status().state).toBe("off");
+    }
+  });
+
+  it("connects nothing when the choice is cancelled: no sign-in kept, no pass", async () => {
+    appFolders = ["Personal"];
+    const { files, sync, attempt } = await connect(memoryFiles(), undefined, async () => null);
+    await expect(attempt).rejects.toMatchObject({ name: "SignInCancelled" });
+    expect(await readBinding(files)).toBeNull();
+    expect(await readSecrets(files)).toBeNull();
+    expect(passes).not.toHaveBeenCalled();
+    expect(sync.status.status().state).toBe("off");
+  });
+
   it("binds the folder to the account signed in, and syncs from no record so both sides merge", async () => {
+    appFolders = ["Personal"];
     const files = memoryFiles();
     // A record left by a binding that didn't last.
     await holding(files, { secrets: null, binding: null });
@@ -551,7 +621,7 @@ describe("connecting", () => {
     const files = memoryFiles();
     const sync = createPhoneSync(files, storeOn(files));
     await sync.start();
-    const attempt = sync.connect();
+    const attempt = sync.connect(async () => "");
     const failed = expect(attempt).rejects.toMatchObject({ name: "SignInCancelled" });
     await vi.advanceTimersByTimeAsync(0);
     fire("resume");

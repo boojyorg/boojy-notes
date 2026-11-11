@@ -14,8 +14,8 @@ import {
 /**
  * Dropbox's HTTP API as the sync engine's Remote, with app-folder access:
  * every path is inside `Apps/Boojy Notes/`, which Dropbox calls the root.
- * `root` is the vault's folder there (`/Personal`, SYNC_FOLDER), or "" for the
- * app folder itself. Plain `fetch`, no SDK.
+ * `root` is the vault's folder there (`/Personal`), or "" for the app folder
+ * itself. Plain `fetch`, no SDK.
  * https://www.dropbox.com/developers/documentation/http/documentation
  */
 
@@ -85,6 +85,8 @@ export interface DropboxRemote extends Remote {
   accountId(): Promise<string>;
   /** Whether any of these Dropbox ids names a file here: ids are one account's own. */
   holdsAnyOf(ids: string[]): Promise<boolean>;
+  /** The names of the folders directly in the root, A to Z. */
+  folders(): Promise<string[]>;
 }
 
 export function createDropboxRemote({
@@ -243,6 +245,19 @@ export function createDropboxRemote({
         }
       }
       return false;
+    },
+
+    async folders() {
+      const names: string[] = [];
+      let page = await rpc<ListResult>("files/list_folder", { path: root, recursive: false });
+      for (;;) {
+        for (const meta of page.entries) {
+          if (meta[".tag"] === "folder") names.push(relative(meta));
+        }
+        if (!page.has_more) break;
+        page = await rpc<ListResult>("files/list_folder/continue", { cursor: page.cursor });
+      }
+      return names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
     },
   };
 }

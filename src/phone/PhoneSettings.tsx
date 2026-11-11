@@ -1,5 +1,5 @@
 import { type ComponentType, type ReactNode, type RefObject, useRef, useState } from "react";
-import { BackIcon, ChevronRightIcon, FolderIcon } from "../components/Icons";
+import { BackIcon, ChevronRightIcon, FolderIcon, NewFolderIcon } from "../components/Icons";
 import Menu, { type MenuAnchor, type MenuItem } from "../components/Menu";
 import AppearanceTab from "../components/settings/AppearanceTab";
 import SettingsFooter from "../components/settings/SettingsFooter";
@@ -12,10 +12,193 @@ import { useHeldScale } from "../hooks/useHeldScale";
 import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
+import { APP_FOLDER, folderChosen, syncFolderName, syncFolderPath } from "./syncFolder";
 import type { PhoneStorage } from "./usePhoneStorage";
 import type { PhoneSync } from "./useSyncStatus";
 
 const BACK = 44;
+
+type Theme = ReturnType<typeof useTheme>["theme"];
+
+/** A row of the page: a glyph, what it says, and room for its chevron. */
+const rowStyle = ({ TEXT, BG }: Theme) =>
+  ({
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    width: "100%",
+    minHeight: 56,
+    boxSizing: "border-box",
+    padding: "10px 12px 10px 16px",
+    border: `1px solid ${BG.divider}`,
+    borderRadius: 14,
+    background: BG.editor,
+    color: TEXT.primary,
+    font: "inherit",
+    textAlign: "left",
+  }) as const;
+
+/** Back, and the page's name centred on its line, as the note's header has it. */
+function PageHead({ title, onBack }: { title: string; onBack: () => void }) {
+  const { theme } = useTheme();
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: `${BACK}px 1fr ${BACK}px`,
+        alignItems: "center",
+        margin: "4px -12px 20px",
+        flexShrink: 0,
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Back"
+        onClick={onBack}
+        style={{
+          width: BACK,
+          height: BACK,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "none",
+          background: "transparent",
+          color: theme.TEXT.primary,
+        }}
+      >
+        <BackIcon />
+      </button>
+      <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, textAlign: "center" }}>{title}</h1>
+    </div>
+  );
+}
+
+/**
+ * A connect's one question, over Settings: which folder in the Dropbox's
+ * Boojy Notes these notes sync with. A row is the answer; Back (and Escape)
+ * connects nothing. Asked only when Dropbox holds folders there.
+ */
+function ChooseSyncFolder({
+  folders,
+  onAnswer,
+}: {
+  folders: string[];
+  onAnswer: (folder: string | null) => void;
+}) {
+  const { theme } = useTheme();
+  const { TEXT, BG } = theme;
+  const [naming, setNaming] = useState(false);
+  const [name, setName] = useState("");
+  useModalEscape(true, () => onAnswer(null));
+  const row = rowStyle(theme);
+  let usable = true;
+  try {
+    folderChosen(name || " ", folders);
+  } catch {
+    usable = false;
+  }
+  const choice = (label: string, folder: string) => (
+    <button
+      key={label}
+      type="button"
+      className="press"
+      data-testid="sync-folder-choice"
+      onClick={() => onAnswer(folder)}
+      style={row}
+    >
+      <span style={{ display: "flex", color: TEXT.secondary }}>
+        <FolderIcon size={20} />
+      </span>
+      <span style={{ flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>{label}</span>
+    </button>
+  );
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Dropbox folder"
+      data-testid="choose-sync-folder"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1,
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        padding: `${STATUS_BAR_H} 20px calc(${NAV_BAR_H} + 16px)`,
+        background: BG.standard,
+        overflowY: "auto",
+      }}
+    >
+      <PageHead title="Dropbox folder" onBack={() => onAnswer(null)} />
+      <p style={{ margin: "0 2px 10px", fontSize: 14, lineHeight: "20px", color: TEXT.muted }}>
+        Your Dropbox already has folders in {APP_FOLDER}. Choose what this phone's notes sync with.
+      </p>
+      {choice(`Everything in ${APP_FOLDER}`, "")}
+      {folders.map((folder) => choice(folder, folder))}
+      {naming ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (usable) onAnswer(name);
+          }}
+          style={{ ...row, padding: "6px 8px 6px 16px" }}
+        >
+          <span style={{ display: "flex", color: TEXT.secondary }}>
+            <NewFolderIcon size={20} />
+          </span>
+          <input
+            // biome-ignore lint/a11y/noAutofocus: the row was tapped to type here
+            autoFocus
+            aria-label="New folder's name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Folder name"
+            style={{
+              flexGrow: 1,
+              minWidth: 0,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              color: TEXT.primary,
+              font: "inherit",
+            }}
+          />
+          <button
+            type="submit"
+            aria-disabled={!usable}
+            style={{
+              minHeight: 44,
+              padding: "0 14px",
+              border: `1px solid ${BG.divider}`,
+              borderRadius: 10,
+              background: "transparent",
+              color: usable ? TEXT.primary : TEXT.muted,
+              font: "inherit",
+              fontWeight: 600,
+            }}
+          >
+            Create
+          </button>
+        </form>
+      ) : (
+        <button
+          type="button"
+          className="press"
+          data-testid="sync-folder-new"
+          onClick={() => setNaming(true)}
+          style={row}
+        >
+          <span style={{ display: "flex", color: TEXT.secondary }}>
+            <NewFolderIcon size={20} />
+          </span>
+          <span style={{ flexGrow: 1 }}>New folder…</span>
+        </button>
+      )}
+    </div>
+  );
+}
 
 /**
  * One thing Settings holds: its name over a row that says how it stands, and
@@ -38,24 +221,10 @@ function Setting({
   testId: string;
 }) {
   const { theme } = useTheme();
-  const { TEXT, BG } = theme;
+  const { TEXT } = theme;
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
   const close = () => setAnchor(null);
-  const row = {
-    display: "flex",
-    alignItems: "center",
-    gap: 14,
-    width: "100%",
-    minHeight: 56,
-    boxSizing: "border-box",
-    padding: "10px 12px 10px 16px",
-    border: `1px solid ${BG.divider}`,
-    borderRadius: 14,
-    background: BG.editor,
-    color: TEXT.primary,
-    font: "inherit",
-    textAlign: "left",
-  } as const;
+  const row = rowStyle(theme);
   const inside = (
     <>
       <span style={{ display: "flex", color: TEXT.secondary }}>
@@ -137,7 +306,9 @@ export default function PhoneSettings({
   const { theme } = useTheme();
   const pageRef = useRef<HTMLDivElement>(null);
   useFocusTrap(pageRef as RefObject<HTMLElement>, open, "container");
-  useModalEscape(open, onClose);
+  const choosing = sync?.choosing ?? null;
+  // The folder's question stands over the page and takes Back first.
+  useModalEscape(open && !choosing, onClose);
   // The page keeps the interface size it opened with: the − and + stay under the finger.
   const heldScale = useHeldScale(open);
 
@@ -184,35 +355,7 @@ export default function PhoneSettings({
         ...heldScale,
       }}
     >
-      {/* Back, and the page's name centred on its line, as the note's header has it. */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: `${BACK}px 1fr ${BACK}px`,
-          alignItems: "center",
-          margin: "4px -12px 20px",
-          flexShrink: 0,
-        }}
-      >
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={onClose}
-          style={{
-            width: BACK,
-            height: BACK,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: "none",
-            background: "transparent",
-            color: theme.TEXT.primary,
-          }}
-        >
-          <BackIcon />
-        </button>
-        <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, textAlign: "center" }}>Settings</h1>
-      </div>
+      <PageHead title="Settings" onBack={onClose} />
 
       <Setting
         title={NOTES_FOLDER_TITLE}
@@ -237,15 +380,15 @@ export default function PhoneSettings({
           Glyph={SYNC_GLYPH[sync.status.state]}
           testId="settings-dropbox"
           // The folder's name alone: the line under it says how sync stands.
-          value={sync.status.folder ?? "Not connected"}
+          value={sync.status.folder === null ? "Not connected" : syncFolderName(sync.status.folder)}
           // Dropbox names the Apps folder in the account's language, and the app can't see it.
           note={[
             ...syncLines(sync.status),
-            ...(sync.status.folder
-              ? [
-                  `On a computer: Boojy Notes › ${sync.status.folder}, in your Dropbox's Apps folder.`,
-                ]
-              : []),
+            ...(sync.status.folder === null
+              ? []
+              : [
+                  `On a computer: ${syncFolderPath(sync.status.folder)}, in your Dropbox's Apps folder.`,
+                ]),
           ].map((line) => (
             <span key={line} style={{ display: "block" }}>
               {line}
@@ -260,6 +403,7 @@ export default function PhoneSettings({
 
       <div style={{ flexGrow: 1 }} />
       <SettingsFooter />
+      {choosing && <ChooseSyncFolder folders={choosing.folders} onAnswer={choosing.answer} />}
     </div>
   );
 }

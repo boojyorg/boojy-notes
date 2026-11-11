@@ -1032,7 +1032,12 @@ describe("Sidebar on the phone", () => {
     try {
       const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
       const bound = (folder) => ({
-        status: { state: folder ? "synced" : "off", folder, lastSynced: null, problems: [] },
+        status: {
+          state: folder === null ? "off" : "synced",
+          folder,
+          lastSynced: null,
+          problems: [],
+        },
       });
       const { getByTestId, queryByText, unmount } = renderSidebar({
         Component: PhoneSidebar,
@@ -1041,6 +1046,10 @@ describe("Sidebar on the phone", () => {
       expect(getByTestId("sync-status").parentElement.textContent).toBe("Work");
       expect(queryByText("Notes")).not.toBeInTheDocument();
       unmount();
+      // The app folder itself, which the binding writes "".
+      const root = renderSidebar({ Component: PhoneSidebar, sync: bound("") });
+      expect(root.getByTestId("sync-status").parentElement.textContent).toBe("Boojy Notes");
+      root.unmount();
       const off = renderSidebar({ Component: PhoneSidebar, sync: bound(null) });
       expect(off.getByTestId("sync-status").parentElement.textContent).toBe("Phone");
     } finally {

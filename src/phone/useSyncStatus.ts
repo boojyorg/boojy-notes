@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToastKind, ToastOptions } from "../hooks/useToast";
 import { getAPI } from "../services/apiProvider";
 import { describeProblem, problemsKey, type SyncStatus } from "../sync/syncStatus";
+import type { ChooseFolder } from "./syncFolder";
 
 /** Sync as the app sees it (install.ts hands it over on the phone). */
 export interface PhoneSyncAPI {
@@ -10,8 +11,11 @@ export interface PhoneSyncAPI {
   syncNow(): void;
   /** Throws when the sign-in is cancelled or fails; nothing changes then. */
   signInAgain(): Promise<void>;
-  /** Signs in and binds a Dropbox folder; throws when cancelled or failed, connecting nothing. */
-  connect(): Promise<void>;
+  /**
+   * Signs in and binds a Dropbox folder, asking which when there are some;
+   * throws when cancelled or failed, connecting nothing.
+   */
+  connect(choose: ChooseFolder): Promise<void>;
   /** Forgets Dropbox; the notes stay on the phone. */
   disconnect(): Promise<void>;
 }
@@ -38,6 +42,11 @@ export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
   const [status, setStatus] = useState<SyncStatus | null>(() => api?.status() ?? null);
   const [shown, setShown] = useState<SyncStatus | null>(status);
   const told = useRef("");
+  /** A connect waiting to be told the folder: Settings asks, and answers once. */
+  const [choosing, setChoosing] = useState<{
+    folders: string[];
+    answer: (folder: string | null) => void;
+  } | null>(null);
 
   useEffect(() => api?.subscribe(setStatus), [api]);
 
@@ -66,7 +75,18 @@ export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
 
   const connect = useCallback(async () => {
     try {
-      await api?.connect();
+      await api?.connect(
+        (folders) =>
+          new Promise((resolve) =>
+            setChoosing({
+              folders,
+              answer: (folder) => {
+                setChoosing(null);
+                resolve(folder);
+              },
+            }),
+          ),
+      );
     } catch (error) {
       if (cancelled(error)) return;
       showToast(`Couldn't connect to Dropbox: ${(error as Error)?.message ?? error}`, "warning", {
@@ -114,8 +134,9 @@ export function useSyncStatus({ showToast }: { showToast: ShowToast }) {
 
   // One object per shown state: the sidebar is memoised on its props.
   return useMemo(
-    () => (api && shown ? { status: shown, syncNow, signInAgain, connect, disconnect } : null),
-    [api, shown, syncNow, signInAgain, connect, disconnect],
+    () =>
+      api && shown ? { status: shown, choosing, syncNow, signInAgain, connect, disconnect } : null,
+    [api, shown, choosing, syncNow, signInAgain, connect, disconnect],
   );
 }
 

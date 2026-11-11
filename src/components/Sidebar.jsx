@@ -51,6 +51,7 @@ import VaultMenu from "./VaultMenu";
 import SyncStatusButton from "./SyncStatusButton";
 import { HOME_LIST_END, HomeFoot, HomeTop } from "../phone/HomeChrome";
 import RecentCards from "../phone/RecentCards";
+import { syncFolderName } from "../phone/syncFolder";
 import RenameField from "./RenameField";
 import Collapsible, { IndentGuide } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
@@ -527,7 +528,12 @@ const Sidebar = memo(function Sidebar({
   // The phone has one storage location, named by its Dropbox folder or, with
   // none connected, "Phone": never a switcher.
   const vaultName =
-    vaults.find((v) => v.current)?.name ?? (isPhone ? (sync?.status.folder ?? "Phone") : "Notes");
+    vaults.find((v) => v.current)?.name ??
+    (!isPhone
+      ? "Notes"
+      : sync?.status.folder == null
+        ? "Phone"
+        : syncFolderName(sync.status.folder));
   // ⌘O, File → Open Vault…: the same menu from the keyboard, its open vault
   // active. The app shows a hidden sidebar first and asks once it has arrived.
   useEffect(() => {
