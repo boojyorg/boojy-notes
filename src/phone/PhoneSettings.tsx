@@ -1,8 +1,8 @@
 import { type RefObject, useRef, useState } from "react";
 import {
   CheckIcon,
-  ChevronRightIcon,
   FolderIcon,
+  MoreHorizontalIcon,
   NewFolderIcon,
   VaultIcon,
 } from "../components/Icons";
@@ -167,16 +167,20 @@ const onPhone = (row: LocationRow) => `On this phone: ${row.phone ?? "inside the
 /**
  * A storage location, as the desktop lists one: its glyph (a cloud if it
  * syncs), its name, where it is in one line, and a tick on the open one. A
- * tap opens what can be done about it, which is only what can work: sync and
- * a move need the location open, a removal needs it closed.
+ * press opens that location; its ··· holds what can be done about it, which
+ * is only what can work: sync and a move need the location open, a removal
+ * needs it closed.
  */
 function Location({
   row,
   lines,
   warn,
   items,
+  onOpen,
 }: {
   row: LocationRow;
+  /** Opens it, for one that is not open: a press on the row, as on the desktop. */
+  onOpen?: () => void;
   /** Sync's words, under the open one: only what the glyph can't say. */
   lines: string[];
   warn: boolean;
@@ -187,43 +191,81 @@ function Location({
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
   const close = () => setAnchor(null);
   const where = whereOf(row);
+  // The open one is where you are: nothing to press.
+  const Body = onOpen ? "button" : "div";
   return (
     <div style={{ marginBottom: 10 }}>
-      <button
-        type="button"
-        className="press"
-        aria-label={`${row.name}: ${where}${row.open ? ", open" : ""}`}
-        aria-haspopup="menu"
-        aria-expanded={anchor !== null}
-        data-testid={`location-${row.id}`}
-        onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())}
-        style={rowStyle(theme)}
-      >
-        <span style={{ display: "flex", color: TEXT.secondary }}>
-          <VaultIcon cloud={row.dropbox !== null} size={20} />
-        </span>
-        <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          <span style={{ overflowWrap: "anywhere" }}>{row.name}</span>
-          <span
-            style={{
-              fontSize: 14,
-              lineHeight: "20px",
-              color: TEXT.muted,
-              overflowWrap: "anywhere",
-            }}
-          >
-            {where}
+      {/* The desktop's row: a press on it opens that location; its ··· is what can be done to it. */}
+      <div style={{ ...rowStyle(theme), padding: 0, gap: 0 }}>
+        <Body
+          {...(onOpen
+            ? { type: "button", className: "press", onClick: onOpen }
+            : { "aria-current": "true" })}
+          aria-label={`${row.name}: ${where}${row.open ? ", open" : ""}`}
+          data-testid={`location-${row.id}`}
+          style={{
+            flexGrow: 1,
+            minWidth: 0,
+            minHeight: 56,
+            boxSizing: "border-box",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            padding: "10px 4px 10px 16px",
+            border: "none",
+            borderRadius: 14,
+            background: "transparent",
+            color: "inherit",
+            font: "inherit",
+            textAlign: "left",
+          }}
+        >
+          <span style={{ display: "flex", color: TEXT.secondary }}>
+            <VaultIcon cloud={row.dropbox !== null} size={20} />
           </span>
-        </span>
-        {row.open && (
-          <span style={{ display: "flex", color: TEXT.primary }}>
-            <CheckIcon size={18} />
+          <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            <span style={{ overflowWrap: "anywhere" }}>{row.name}</span>
+            <span
+              style={{
+                fontSize: 14,
+                lineHeight: "20px",
+                color: TEXT.muted,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {where}
+            </span>
           </span>
-        )}
-        <span style={{ display: "flex", color: TEXT.muted }}>
-          <ChevronRightIcon size={18} />
-        </span>
-      </button>
+          {row.open && (
+            <span style={{ display: "flex", color: TEXT.primary }}>
+              <CheckIcon size={18} />
+            </span>
+          )}
+        </Body>
+        <button
+          type="button"
+          className="press"
+          aria-label={`More for ${row.name}`}
+          aria-haspopup="menu"
+          aria-expanded={anchor !== null}
+          data-testid={`location-more-${row.id}`}
+          onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())}
+          style={{
+            width: 48,
+            alignSelf: "stretch",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "none",
+            borderRadius: 14,
+            background: "transparent",
+            color: TEXT.secondary,
+          }}
+        >
+          <MoreHorizontalIcon size={20} />
+        </button>
+      </div>
       {lines.length > 0 && (
         <p
           role={warn ? "alert" : "status"}
@@ -416,6 +458,7 @@ export default function PhoneSettings({
           lines={row.open ? lines : []}
           warn={state === "problem"}
           items={row.open ? openItems(row) : closedItems(row)}
+          onOpen={row.open ? undefined : () => storage.openLocation(row.id)}
         />
       ))}
 

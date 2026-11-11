@@ -70,7 +70,7 @@ const show = (
   return { onClose, confirm };
 };
 const menuOf = (id: string) => {
-  fireEvent.click(screen.getByTestId(`location-${id}`));
+  fireEvent.click(screen.getByTestId(`location-more-${id}`));
   return screen.getAllByRole("menuitem").map((el) => el.textContent);
 };
 const rowText = (id: string) => screen.getByTestId(`location-${id}`).textContent;
@@ -87,6 +87,21 @@ describe("Settings on the phone", () => {
     expect(screen.getByTestId("location-w").getAttribute("aria-label")).not.toMatch(/open/);
     expect(screen.queryByText("Notes folder")).toBeNull();
     expect(screen.queryByText(/On a computer/)).toBeNull();
+  });
+
+  // As on the desktop: the row is the way to it, and its ··· is what can be done to it.
+  it("opens a location on a press of its row; the open one is not there to press", () => {
+    const storage = storageOf({ locations: [MAIN, WORK] });
+    show(sync(), storage);
+    expect(screen.getByTestId("location-main").tagName).toBe("DIV");
+    expect(screen.getByTestId("location-main").getAttribute("aria-current")).toBe("true");
+    fireEvent.click(screen.getByTestId("location-w"));
+    expect(storage.openLocation).toHaveBeenCalledWith("w");
+    expect(screen.queryByRole("menu")).toBeNull();
+    // The ··· opens the menu and opens nothing.
+    fireEvent.click(screen.getByRole("button", { name: "More for Work" }));
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(storage.openLocation).toHaveBeenCalledOnce();
   });
 
   it("says where a location that doesn't sync is on the phone: its folder, or inside the app", () => {
@@ -309,7 +324,7 @@ describe("Settings on the phone", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.keyDown(document.body, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(2);
-    fireEvent.click(screen.getByTestId("location-main"));
+    fireEvent.click(screen.getByTestId("location-more-main"));
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(2);
   });
