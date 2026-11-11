@@ -2032,6 +2032,7 @@ export default function BoojyNotes() {
             open={settingsOpen}
             sync={sync}
             storage={phoneStorage}
+            confirm={requestConfirm}
             onClose={() => setSettingsOpen(false)}
           />
         ) : (

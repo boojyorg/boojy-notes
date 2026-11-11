@@ -540,7 +540,7 @@ const Sidebar = memo(function Sidebar({
         name: l.name,
         current: l.open,
         exists: true,
-        cloud: l.cloud,
+        cloud: l.dropbox !== null,
       })),
     [liveLocations],
   );

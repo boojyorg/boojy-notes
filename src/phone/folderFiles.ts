@@ -402,6 +402,18 @@ export async function reachableFolder(
   return found;
 }
 
+/** A granted tree's place on the phone (`primary:Documents/Notes`), read from its address. */
+const placeOf = (tree: string) => {
+  const at = tree.indexOf("/tree/");
+  return at < 0 ? tree : decodeURIComponent(tree.slice(at + 6));
+};
+
+/** Whether two granted folders are one, or one is inside the other: no two locations may share files. */
+export function treesOverlap(a: string, b: string) {
+  const [x, y] = [placeOf(a), placeOf(b)];
+  return x === y || x.startsWith(`${y}/`) || y.startsWith(`${x}/`);
+}
+
 /** `folder` if Android still grants it and it is where it was; null when lost. */
 export async function folderReached(
   folder: PickedFolder,

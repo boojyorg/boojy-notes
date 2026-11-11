@@ -25,6 +25,7 @@ import {
   type FolderAccessPlugin,
   folderLabel,
   type PickedFolder,
+  treesOverlap,
 } from "./folderFiles";
 
 /**
@@ -92,8 +93,8 @@ type NotTaken = "refused" | "taken";
 /**
  * Asks Android for a folder; null when the picker was left, `refused` for one
  * not on the phone, `taken` for one another storage location keeps its notes
- * in (`taken`, by tree): two locations over one folder would each sync and
- * delete the other's files. Its grant is the other location's, so it is kept.
+ * in, or one inside or around it (`taken`, by tree): two locations over the
+ * same files would each sync and delete the other's. Its grant is the other location's, so it is kept.
  */
 async function pickFolder(
   access: FolderAccessPlugin,
@@ -103,7 +104,8 @@ async function pickFolder(
   const got = await access.pick(initial ? { initial } : {});
   if (got.refused) return "refused";
   if (!got.picked || !got.tree || !got.root) return null;
-  return taken.includes(got.tree) ? "taken" : { tree: got.tree, root: got.root };
+  const tree = got.tree;
+  return taken.some((t) => treesOverlap(t, tree)) ? "taken" : { tree, root: got.root };
 }
 
 const WHY_NOT: Record<NotTaken, string> = {

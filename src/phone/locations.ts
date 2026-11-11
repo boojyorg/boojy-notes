@@ -1,5 +1,5 @@
 import type { FileOps } from "./files";
-import { syncFolderName } from "./syncFolder";
+import { syncFolderName, syncFolderPath } from "./syncFolder";
 
 /**
  * The phone's storage locations: each a set of notes with its own vault,
@@ -60,13 +60,52 @@ export interface LocationRow {
   /** It was given a name; without one it follows the Dropbox folder it syncs with. */
   named: boolean;
   open: boolean;
-  /** It syncs with Dropbox: drawn as a cloud, as the desktop draws a folder in a sync service. */
-  cloud: boolean;
+  /** The Dropbox folder it syncs with ("" is the app folder itself); null with none. */
+  dropbox: string | null;
+  /** The folder its notes are in on the phone, as a person reads it; null inside the app. */
+  phone: string | null;
+}
+
+/** Where a location's notes are, in one line: in Dropbox if it syncs, else on the phone. */
+export const whereOf = ({ dropbox, phone }: LocationRow) =>
+  dropbox !== null ? syncFolderPath(dropbox) : (phone ?? "Inside the app");
+
+/** Everything under `dir`, then `dir` itself; nothing when it isn't there. */
+export async function removeTree(files: FileOps, dir: string): Promise<void> {
+  for (const entry of await files.list(dir)) {
+    const path = `${dir}/${entry.name}`;
+    if (entry.kind === "dir") await removeTree(files, path);
+    else await files.remove(path);
+  }
+  if (await files.exists(dir)) await files.rmdir(dir);
+}
+
+/**
+ * A location's own files in the app's storage go: its note ids, bin, sync
+ * record and sign-in, and the notes of one kept inside the app. A folder it
+ * kept its notes in is outside the app's storage, and is not touched. The
+ * first location's are the storage's own top level, less the list itself.
+ */
+export async function removeLocationFiles(root: FileOps, id: string) {
+  if (id !== MAIN) return removeTree(root, `locations/${id}`);
+  for (const entry of await root.list("")) {
+    if (entry.name === "locations") continue;
+    if (entry.name !== "state") {
+      if (entry.kind === "dir") await removeTree(root, entry.name);
+      else await root.remove(entry.name);
+      continue;
+    }
+    for (const kept of await root.list("state")) {
+      if (`state/${kept.name}` === LIST) continue;
+      if (kept.kind === "dir") await removeTree(root, `state/${kept.name}`);
+      else await root.remove(`state/${kept.name}`);
+    }
+  }
 }
 
 /**
  * The rows with the open one as sync has it now (`folder`: its Dropbox
- * folder, null with none, undefined where sync isn't known): its cloud, and
+ * folder, null with none, undefined where sync isn't known): where it is, and
  * its name when it has none of its own. A connect or disconnect then shows at
  * once; a closed location's can't change while it is closed.
  */
@@ -76,7 +115,7 @@ export function liveRows(rows: LocationRow[], folder: string | null | undefined)
     row.open
       ? {
           ...row,
-          cloud: folder !== null,
+          dropbox: folder,
           name: row.named ? row.name : folder === null ? "Phone" : syncFolderName(folder),
         }
       : row,

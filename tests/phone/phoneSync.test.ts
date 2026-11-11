@@ -513,8 +513,9 @@ describe("connecting", () => {
     files = memoryFiles(),
     fresh = { refreshToken: "new", accountId: "dbid:A" },
     choose: (folders: string[]) => Promise<string | null> = async () => "Personal",
+    taken: string[] = [],
   ) {
-    const sync = createPhoneSync(files, storeOn(files));
+    const sync = createPhoneSync(files, storeOn(files), { taken });
     await sync.start();
     passes.mockResolvedValue(done());
     exchangeCode.mockResolvedValue(fresh);
@@ -577,6 +578,45 @@ describe("connecting", () => {
       expect(await readSecrets(files)).toBeNull();
       expect(sync.status.status().state).toBe("off");
     }
+  });
+
+  // Two locations over one Dropbox folder would each read the other's notes as its own.
+  describe("with another storage location on the phone syncing with Dropbox", () => {
+    // The other's folder may not be in Dropbox yet (its first pass makes it).
+    it("asks even when Dropbox holds no folder: the app folder itself is not free to take", async () => {
+      const choose = vi.fn(async () => "Journal");
+      const { files, attempt } = await connect(memoryFiles(), undefined, choose, ["Team"]);
+      await attempt;
+      expect(choose).toHaveBeenCalledWith([]);
+      expect((await readBinding(files))?.folder).toBe("Journal");
+    });
+
+    it("has no folder free while the other one syncs with the app folder itself", async () => {
+      const { files, attempt } = await connect(memoryFiles(), undefined, async () => "Journal", [
+        "",
+      ]);
+      await expect(attempt).rejects.toThrow(/Another storage location/);
+      expect(await readBinding(files)).toBeNull();
+    });
+
+    it("refuses the folder the other one syncs with, and the app folder around it", async () => {
+      appFolders = ["Team", "Mine"];
+      for (const choice of ["team", ""]) {
+        const { files, sync, attempt } = await connect(
+          memoryFiles(),
+          undefined,
+          async () => choice,
+          ["Team"],
+        );
+        await expect(attempt).rejects.toThrow(/Another storage location/);
+        expect(await readBinding(files)).toBeNull();
+        expect(await readSecrets(files)).toBeNull();
+        expect(sync.status.status().state).toBe("off");
+      }
+      const free = await connect(memoryFiles(), undefined, async () => "Mine", ["Team"]);
+      await free.attempt;
+      expect((await readBinding(free.files))?.folder).toBe("Mine");
+    });
   });
 
   it("connects nothing when the choice is cancelled: no sign-in kept, no pass", async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { folderReached, reachableFolder } from "../../src/phone/folderFiles";
+import { folderReached, reachableFolder, treesOverlap } from "../../src/phone/folderFiles";
 import {
   hasBeenUsed,
   readChoice,
@@ -115,6 +115,18 @@ describe("the folder Android still reaches", () => {
     const again = access([A, B, C]);
     expect(await reachableFolder(again.plugin, C, ["a"])).toEqual(C);
     expect(again.released).toEqual(["b"]);
+  });
+
+  // No two storage locations may share files: one folder, or one inside the other.
+  it("knows two granted folders that are one, or one inside the other", () => {
+    const tree = (place: string) =>
+      `content://com.android.externalstorage.documents/tree/${encodeURIComponent(place)}`;
+    const notes = tree("primary:Documents/Notes");
+    expect(treesOverlap(notes, notes)).toBe(true);
+    expect(treesOverlap(notes, tree("primary:Documents/Notes/Work"))).toBe(true);
+    expect(treesOverlap(tree("primary:Documents"), notes)).toBe(true);
+    expect(treesOverlap(notes, tree("primary:Documents/Notes 2"))).toBe(false);
+    expect(treesOverlap(notes, tree("primary:Documents/Work"))).toBe(false);
   });
 
   it("says whether one folder is still granted and where it was", async () => {

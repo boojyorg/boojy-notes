@@ -7,25 +7,28 @@ import { nameProblem } from "./locations";
 import { PageHead, rowStyle } from "./pageParts";
 
 /**
- * A new storage location, over Settings: its name alone. Adding it
- * starts the app again in it, where its folder is asked as a first launch
- * asks (`PhoneSetup`): one way of choosing where notes are kept. Back (and
- * Escape) adds nothing.
+ * A storage location's name, over Settings: a new one's, or another for one
+ * there is (`renaming`, its name now). Adding one starts the app again in
+ * it, where its folder is asked as a first launch asks (`PhoneSetup`): one
+ * way of choosing where notes are kept. Back (and Escape) changes nothing.
  */
 export default function NewLocation({
   taken,
+  renaming,
   onAdd,
   onClose,
 }: {
   /** The names the other locations show. */
   taken: string[];
+  renaming?: string;
   onAdd: (name: string) => void;
   onClose: () => void;
 }) {
   const { theme } = useTheme();
   const { TEXT, BG } = theme;
   const pageRef = useRef<HTMLFormElement>(null);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(renaming ?? "");
+  const title = renaming === undefined ? "New location" : "Rename location";
   // A problem is said once Add was tried, not while the name is still being typed.
   const [tried, setTried] = useState(false);
   useFocusTrap(pageRef as RefObject<HTMLElement>, true);
@@ -37,7 +40,7 @@ export default function NewLocation({
       ref={pageRef}
       role="dialog"
       aria-modal="true"
-      aria-label="New location"
+      aria-label={title}
       data-testid="new-location"
       onSubmit={(e) => {
         e.preventDefault();
@@ -58,7 +61,7 @@ export default function NewLocation({
         lineHeight: "24px",
       }}
     >
-      <PageHead title="New location" onBack={onClose} />
+      <PageHead title={title} onBack={onClose} />
       <label
         htmlFor="new-location-name"
         style={{ margin: "0 2px 10px", fontSize: 14, fontWeight: 500, color: TEXT.muted }}
@@ -85,7 +88,9 @@ export default function NewLocation({
         }}
       >
         {(tried && problem) ||
-          "A separate set of notes, with its own folder. You choose the folder next."}
+          (renaming === undefined
+            ? "A separate set of notes, with its own folder. You choose the folder next."
+            : "Its name in Boojy Notes. Its folder keeps its own name.")}
       </p>
       <button
         type="submit"
@@ -96,7 +101,7 @@ export default function NewLocation({
           fontWeight: 600,
         }}
       >
-        Add
+        {renaming === undefined ? "Add" : "Rename"}
       </button>
     </form>
   );

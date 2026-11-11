@@ -44,8 +44,8 @@ describe("where the phone keeps its notes, for Settings", () => {
 
   describe("the storage locations", () => {
     const ROWS = [
-      { id: "main", name: "Phone", named: false, open: true, cloud: false },
-      { id: "work", name: "Work", named: true, open: false, cloud: true },
+      { id: "main", name: "Phone", named: false, open: true, dropbox: null, phone: null },
+      { id: "work", name: "Work", named: true, open: false, dropbox: "Team", phone: null },
     ];
     const withLocations = (over: Record<string, unknown> = {}) => {
       const locations = {
@@ -77,6 +77,31 @@ describe("where the phone keeps its notes, for Settings", () => {
       expect(locations.open).toHaveBeenCalledWith("work", expect.any(Function));
       expect(locations.add).toHaveBeenCalledWith("Private", expect.any(Function));
       expect(flushAll).toHaveBeenCalledTimes(2);
+    });
+
+    // Neither starts the app again: the list is read afresh, so Home and Settings follow.
+    it("renames or removes one, then reads the list again", async () => {
+      const rename = vi.fn(async () => {});
+      const remove = vi.fn(async () => {
+        throw new Error("The open storage location can't be removed");
+      });
+      const { result, locations, showToast } = withLocations({ rename, remove });
+      await act(async () => {});
+      expect(locations.list).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        expect(await result.current.renameLocation("work", "Journal")).toBe(true);
+      });
+      expect(rename).toHaveBeenCalledWith("work", "Journal");
+      expect(locations.list).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        expect(await result.current.removeLocation("main")).toBe(false);
+      });
+      expect(showToast).toHaveBeenCalledWith(
+        "Couldn't remove it: The open storage location can't be removed",
+        "warning",
+        { key: "storage-location" },
+      );
+      expect(locations.list).toHaveBeenCalledTimes(3);
     });
 
     it("says why when it can't, and stays where it is", async () => {

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   liveRows,
   MAIN,
+  removeLocationFiles,
+  whereOf,
   nameProblem,
   newLocationId,
   prefixOf,
@@ -92,22 +94,81 @@ describe("the phone's storage locations", () => {
 
 describe("the rows as Home shows them", () => {
   const ROWS = [
-    { id: MAIN, name: "Phone", named: false, open: true, cloud: false },
-    { id: "w", name: "Work", named: true, open: false, cloud: true },
+    { id: MAIN, name: "Phone", named: false, open: true, dropbox: null, phone: "Documents/Notes" },
+    { id: "w", name: "Work", named: true, open: false, dropbox: "Team", phone: null },
   ];
 
   // The list is read once; a connect made since must not wait for a restart to show.
-  it("follows sync for the open one: its cloud, and its name while it has none of its own", () => {
-    expect(liveRows(ROWS, "Personal")[0]).toMatchObject({ name: "Personal", cloud: true });
-    expect(liveRows(ROWS, "")[0]).toMatchObject({ name: "Boojy Notes", cloud: true });
-    expect(liveRows(ROWS, null)[0]).toMatchObject({ name: "Phone", cloud: false });
+  it("follows sync for the open one: where it is, and its name while it has none of its own", () => {
+    expect(liveRows(ROWS, "Personal")[0]).toMatchObject({ name: "Personal", dropbox: "Personal" });
+    expect(liveRows(ROWS, "")[0]).toMatchObject({ name: "Boojy Notes", dropbox: "" });
+    expect(liveRows(ROWS, null)[0]).toMatchObject({ name: "Phone", dropbox: null });
     expect(liveRows(ROWS, "Personal")[1]).toBe(ROWS[1]);
     expect(liveRows(ROWS, undefined)).toBe(ROWS);
   });
 
   it("keeps a name the location was given, whatever it syncs with", () => {
     const named = [{ ...ROWS[0], name: "Journal", named: true }];
-    expect(liveRows(named, "Personal")[0]).toMatchObject({ name: "Journal", cloud: true });
+    expect(liveRows(named, "Personal")[0]).toMatchObject({ name: "Journal", dropbox: "Personal" });
+  });
+
+  // One line, as the desktop's row has: in Dropbox if it syncs, else on the phone.
+  it("says where each one is in one line", () => {
+    expect(whereOf(ROWS[0])).toBe("Documents/Notes");
+    expect(whereOf(ROWS[1])).toBe("Dropbox/Apps/Boojy Notes/Team");
+    expect(whereOf({ ...ROWS[1], dropbox: "" })).toBe("Dropbox/Apps/Boojy Notes");
+    expect(whereOf({ ...ROWS[1], dropbox: null })).toBe("Inside the app");
+  });
+});
+
+describe("a location removed", () => {
+  const filled = async () => {
+    const root = memoryFiles();
+    for (const path of [
+      "state/locations.json",
+      "state/ids.json",
+      "state/binding.json",
+      "vault/Diary.md",
+      "vault/Ideas/Plan.md",
+      "deleted/1/Old.md",
+      "locations/work/state/ids.json",
+      "locations/work/vault/Work.md",
+      "locations/other/state/ids.json",
+    ]) {
+      await root.write(path, bytes(path));
+    }
+    return root;
+  };
+  const left = (root: ReturnType<typeof memoryFiles>) =>
+    [...root.store.entries()]
+      .filter(([, v]) => v !== "dir")
+      .map(([path]) => path)
+      .sort();
+
+  it("loses its own area of the storage, and nothing of any other's", async () => {
+    const root = await filled();
+    await removeLocationFiles(root, "work");
+    expect(left(root)).toEqual([
+      "deleted/1/Old.md",
+      "locations/other/state/ids.json",
+      "state/binding.json",
+      "state/ids.json",
+      "state/locations.json",
+      "vault/Diary.md",
+      "vault/Ideas/Plan.md",
+    ]);
+  });
+
+  // The first one's files are the storage's own top level, where the list is kept too.
+  it("as the first location, loses everything at the top but the list and the other locations", async () => {
+    const root = await filled();
+    await removeLocationFiles(root, MAIN);
+    expect(left(root)).toEqual([
+      "locations/other/state/ids.json",
+      "locations/work/state/ids.json",
+      "locations/work/vault/Work.md",
+      "state/locations.json",
+    ]);
   });
 });
 

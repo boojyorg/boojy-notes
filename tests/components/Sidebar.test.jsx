@@ -1053,8 +1053,8 @@ describe("Sidebar on the phone", () => {
         Component: PhoneSidebar,
         sync: bound("Work"),
         locations: [
-          { id: "main", name: "Private", named: true, open: true, cloud: false },
-          { id: "l1", name: "Other", named: true, open: false, cloud: true },
+          { id: "main", name: "Private", named: true, open: true, dropbox: null, phone: null },
+          { id: "l1", name: "Other", named: true, open: false, dropbox: "Team", phone: null },
         ],
       });
       expect(named.getByTestId("sync-status").parentElement.textContent).toBe("Private");
@@ -1063,7 +1063,9 @@ describe("Sidebar on the phone", () => {
       const unnamed = renderSidebar({
         Component: PhoneSidebar,
         sync: bound("Work"),
-        locations: [{ id: "main", name: "Phone", named: false, open: true, cloud: false }],
+        locations: [
+          { id: "main", name: "Phone", named: false, open: true, dropbox: null, phone: null },
+        ],
       });
       expect(unnamed.getByTestId("sync-status").parentElement.textContent).toBe("Work");
       unnamed.unmount();
@@ -1091,8 +1093,15 @@ describe("Sidebar on the phone", () => {
         progress: null,
       });
       const locations = [
-        { id: "main", name: "Work", named: true, open: true, cloud: true },
-        { id: "l1", name: "Private", named: true, open: false, cloud: false },
+        { id: "main", name: "Work", named: true, open: true, dropbox: "Work", phone: null },
+        {
+          id: "l1",
+          name: "Private",
+          named: true,
+          open: false,
+          dropbox: null,
+          phone: "Documents/P",
+        },
       ];
       const view = renderSidebar({
         Component: PhoneSidebar,

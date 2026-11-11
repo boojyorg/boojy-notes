@@ -1,21 +1,26 @@
-import { type ComponentType, type ReactNode, type RefObject, useRef, useState } from "react";
-import { ChevronRightIcon, FolderIcon, NewFolderIcon } from "../components/Icons";
+import { type RefObject, useRef, useState } from "react";
+import {
+  CheckIcon,
+  ChevronRightIcon,
+  FolderIcon,
+  NewFolderIcon,
+  VaultIcon,
+} from "../components/Icons";
 import Menu, { type MenuAnchor, type MenuItem } from "../components/Menu";
 import AppearanceTab from "../components/settings/AppearanceTab";
 import SettingsFooter from "../components/settings/SettingsFooter";
 import { SectionTitle } from "../components/settings/SettingsPrimitives";
-import { SYNC_GLYPH, syncAction, syncLines } from "../components/SyncStatusButton";
-import { NOTES_FOLDER_TITLE } from "../constants/setupCopy";
+import { syncAction, syncCount, syncLines } from "../components/SyncStatusButton";
 import { Z } from "../constants/zIndex";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useHeldScale } from "../hooks/useHeldScale";
 import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
-import { liveRows } from "./locations";
+import { type LocationRow, liveRows, whereOf } from "./locations";
 import NewLocation from "./NewLocation";
 import { PageHead, rowStyle } from "./pageParts";
-import { APP_FOLDER, folderChosen, syncFolderName, syncFolderPath } from "./syncFolder";
+import { APP_FOLDER, folderChosen, folderClash } from "./syncFolder";
 import type { PhoneStorage } from "./usePhoneStorage";
 import type { PhoneSync } from "./useSyncStatus";
 
@@ -26,9 +31,12 @@ import type { PhoneSync } from "./useSyncStatus";
  */
 function ChooseSyncFolder({
   folders,
+  taken,
   onAnswer,
 }: {
   folders: string[];
+  /** The Dropbox folders this phone's other locations sync with: shown, never offered. */
+  taken: string[];
   onAnswer: (folder: string | null) => void;
 }) {
   const { theme } = useTheme();
@@ -39,25 +47,31 @@ function ChooseSyncFolder({
   const row = rowStyle(theme);
   let usable = true;
   try {
-    folderChosen(name || " ", folders);
+    usable = !folderClash(folderChosen(name || " ", folders), taken);
   } catch {
     usable = false;
   }
-  const choice = (label: string, folder: string) => (
-    <button
-      key={label}
-      type="button"
-      className="press"
-      data-testid="sync-folder-choice"
-      onClick={() => onAnswer(folder)}
-      style={row}
-    >
-      <span style={{ display: "flex", color: TEXT.secondary }}>
-        <FolderIcon size={20} />
-      </span>
-      <span style={{ flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>{label}</span>
-    </button>
-  );
+  const choice = (label: string, folder: string) => {
+    // Two locations over one Dropbox folder would each take the other's notes for its own.
+    const used = folderClash(folder, taken);
+    return (
+      <button
+        key={label}
+        type="button"
+        className="press"
+        data-testid="sync-folder-choice"
+        aria-disabled={used}
+        onClick={() => !used && onAnswer(folder)}
+        style={{ ...row, color: used ? TEXT.muted : TEXT.primary }}
+      >
+        <span style={{ display: "flex", color: used ? TEXT.muted : TEXT.secondary }}>
+          <FolderIcon size={20} />
+        </span>
+        <span style={{ flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>{label}</span>
+        {used && <span style={{ fontSize: 14 }}>Used by another location</span>}
+      </button>
+    );
+  };
   return (
     <div
       role="dialog"
@@ -79,7 +93,9 @@ function ChooseSyncFolder({
     >
       <PageHead title="Dropbox folder" onBack={() => onAnswer(null)} />
       <p style={{ margin: "0 2px 10px", fontSize: 14, lineHeight: "20px", color: TEXT.muted }}>
-        Your Dropbox already has folders in {APP_FOLDER}. Choose what this phone's notes sync with.
+        {taken.includes("")
+          ? `Another location on this phone syncs with all of ${APP_FOLDER}, so no folder in it is free. Disconnect that one first.`
+          : `Choose the folder in your Dropbox's ${APP_FOLDER} that these notes sync with.`}
       </p>
       {choice(`Everything in ${APP_FOLDER}`, "")}
       {folders.map((folder) => choice(folder, folder))}
@@ -145,78 +161,104 @@ function ChooseSyncFolder({
   );
 }
 
+/** A menu's first words: where a synced location's notes are on the phone itself. */
+const onPhone = (row: LocationRow) => `On this phone: ${row.phone ?? "inside the app"}`;
+
 /**
- * One thing Settings holds: its name over a row that says how it stands, and
- * a muted line under it. A row with something to do is a button that opens
- * its menu beside itself; one with nothing to do is only read.
+ * A storage location, as the desktop lists one: its glyph (a cloud if it
+ * syncs), its name, where it is in one line, and a tick on the open one. A
+ * tap opens what can be done about it, which is only what can work: sync and
+ * a move need the location open, a removal needs it closed.
  */
-function Setting({
-  title,
-  Glyph,
-  value,
-  note,
+function Location({
+  row,
+  lines,
+  warn,
   items,
-  testId,
 }: {
-  title: string;
-  Glyph: ComponentType<{ size?: number }>;
-  value: string;
-  note: ReactNode;
+  row: LocationRow;
+  /** Sync's words, under the open one: only what the glyph can't say. */
+  lines: string[];
+  warn: boolean;
   items: MenuItem[];
-  testId: string;
 }) {
   const { theme } = useTheme();
   const { TEXT } = theme;
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
   const close = () => setAnchor(null);
-  const row = rowStyle(theme);
-  const inside = (
-    <>
-      <span style={{ display: "flex", color: TEXT.secondary }}>
-        <Glyph size={20} />
-      </span>
-      <span style={{ flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>{value}</span>
-      {items.length > 0 && (
+  const where = whereOf(row);
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <button
+        type="button"
+        className="press"
+        aria-label={`${row.name}: ${where}${row.open ? ", open" : ""}`}
+        aria-haspopup="menu"
+        aria-expanded={anchor !== null}
+        data-testid={`location-${row.id}`}
+        onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())}
+        style={rowStyle(theme)}
+      >
+        <span style={{ display: "flex", color: TEXT.secondary }}>
+          <VaultIcon cloud={row.dropbox !== null} size={20} />
+        </span>
+        <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          <span style={{ overflowWrap: "anywhere" }}>{row.name}</span>
+          <span
+            style={{
+              fontSize: 14,
+              lineHeight: "20px",
+              color: TEXT.muted,
+              overflowWrap: "anywhere",
+            }}
+          >
+            {where}
+          </span>
+        </span>
+        {row.open && (
+          <span style={{ display: "flex", color: TEXT.primary }}>
+            <CheckIcon size={18} />
+          </span>
+        )}
         <span style={{ display: "flex", color: TEXT.muted }}>
           <ChevronRightIcon size={18} />
         </span>
-      )}
-    </>
-  );
-  return (
-    <section style={{ marginBottom: 28 }}>
-      <div style={{ marginBottom: 10 }}>
-        <SectionTitle title={title} />
-      </div>
-      {items.length > 0 ? (
-        <button
-          type="button"
-          aria-label={`${title}: ${value}`}
-          aria-haspopup="menu"
-          aria-expanded={anchor !== null}
-          data-testid={testId}
-          onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())}
-          style={row}
+      </button>
+      {lines.length > 0 && (
+        <p
+          role={warn ? "alert" : "status"}
+          style={{
+            margin: "8px 2px 0",
+            fontSize: 14,
+            lineHeight: "20px",
+            color: warn ? theme.SEMANTIC.warning : TEXT.muted,
+          }}
         >
-          {inside}
-        </button>
-      ) : (
-        <div data-testid={testId} style={row}>
-          {inside}
-        </div>
+          {lines.map((line) => (
+            <span key={line} style={{ display: "block" }}>
+              {line}
+            </span>
+          ))}
+        </p>
       )}
-      <p style={{ margin: "10px 2px 0", fontSize: 14, lineHeight: "20px", color: TEXT.muted }}>
-        {note}
-      </p>
       {anchor && (
         <Menu
-          label={title}
-          idPrefix={testId}
-          testId={`${testId}-menu`}
+          label={row.name}
+          idPrefix={`location-${row.id}`}
+          testId="location-menu"
           anchor={anchor}
           onClose={close}
           maxWidth={300}
           overSettings
+          header={
+            row.dropbox !== null ? (
+              <div
+                style={{ padding: "8px 10px", fontSize: 14, lineHeight: 1.45, color: TEXT.muted }}
+              >
+                {onPhone(row)}
+              </div>
+            ) : undefined
+          }
           items={items.map((item) => ({
             ...item,
             action: () => {
@@ -226,26 +268,53 @@ function Setting({
           }))}
         />
       )}
-    </section>
+    </div>
   );
+}
+
+/** What Remove asks first: the folder stays, but notes kept inside the app go with it. */
+export function removePrompt(row: LocationRow) {
+  const title = `Remove "${row.name}" from Boojy Notes?`;
+  if (row.phone) {
+    return {
+      title,
+      message: `The folder and its notes stay in ${row.phone}.${
+        row.dropbox !== null ? " Nothing in Dropbox changes." : ""
+      }`,
+      confirmLabel: "Remove",
+      danger: false,
+    };
+  }
+  return {
+    title,
+    message: `Its notes are kept inside the app, so they will be deleted from this phone. ${
+      row.dropbox !== null ? "The copies in Dropbox stay." : "This can't be undone."
+    }`,
+    confirmLabel: "Remove and delete",
+    danger: true,
+  };
 }
 
 /**
  * Settings on the phone: a page of its own in Home's place, not the desktop's
- * pane. Where the notes are kept and Dropbox each stand as one row saying how
- * things are, with what can be done about it in the row's menu; then the
- * appearance and the version line. Back (Android's is Escape) returns to Home.
+ * pane. The storage locations stand as the desktop lists them, each saying
+ * where it is, with what can be done about it in its menu: Dropbox is the
+ * location's own, not a section beside it. Then the appearance and the
+ * version line. Back (Android's is Escape) returns to Home.
  */
 export default function PhoneSettings({
   open,
   sync,
   storage,
+  confirm,
   onClose,
 }: {
   open: boolean;
   sync: PhoneSync | null;
   /** Where the notes are kept: its own, not sync's (`usePhoneStorage`). */
   storage: PhoneStorage;
+  /** Asks before a removal (the app's confirm dialog). */
+  confirm: (prompt: ReturnType<typeof removePrompt>) => Promise<boolean>;
   onClose: () => void;
 }) {
   const { theme } = useTheme();
@@ -253,28 +322,60 @@ export default function PhoneSettings({
   useFocusTrap(pageRef as RefObject<HTMLElement>, open, "container");
   const choosing = sync?.choosing ?? null;
   const [adding, setAdding] = useState(false);
+  const [renaming, setRenaming] = useState<LocationRow | null>(null);
   // A question standing over the page takes Back first.
-  useModalEscape(open && !choosing && !adding, onClose);
+  useModalEscape(open && !choosing && !adding && !renaming, onClose);
   // The page keeps the interface size it opened with: the − and + stay under the finger.
   const heldScale = useHeldScale(open);
 
   if (!open) return null;
 
-  const folder = storage.notesFolder;
+  const rows = liveRows(storage.locations, sync?.status.folder);
   const move = storage.moveToFolder;
-  const act = sync ? syncAction(sync) : null;
-  const dropbox: MenuItem[] = !sync
-    ? []
-    : sync.status.state === "off"
-      ? [{ label: "Connect Dropbox", testId: "sync-connect", action: () => sync.connect() }]
-      : [
-          ...(act ? [act] : []),
-          {
-            label: "Disconnect Dropbox",
-            testId: "sync-disconnect",
-            action: () => sync.disconnect(),
-          },
-        ];
+  const rename = (row: LocationRow): MenuItem => ({
+    label: "Rename…",
+    testId: "location-rename",
+    action: () => setRenaming(row),
+  });
+  /** The open location's: sync is its own, and only an open one can sync or move. */
+  const openItems = (row: LocationRow): MenuItem[] => {
+    const act = sync ? syncAction(sync) : null;
+    return [
+      ...(!sync
+        ? []
+        : sync.status.state === "off"
+          ? [{ label: "Sync with Dropbox…", testId: "sync-connect", action: () => sync.connect() }]
+          : [
+              ...(act ? [act] : []),
+              {
+                label: "Disconnect Dropbox",
+                testId: "sync-disconnect",
+                action: () => sync.disconnect(),
+              },
+            ]),
+      { ...rename(row), rule: sync !== null },
+      ...(move
+        ? [{ label: "Move to a folder…", testId: "move-to-folder", action: () => move() }]
+        : []),
+    ];
+  };
+  const closedItems = (row: LocationRow): MenuItem[] => [
+    rename(row),
+    {
+      label: "Remove",
+      testId: "location-remove",
+      danger: row.phone === null,
+      action: async () => {
+        if (await confirm(removePrompt(row))) storage.removeLocation(row.id);
+      },
+    },
+  ];
+  // The glyph says synced; words are for what it can't say: trouble, no network, a long sync.
+  const state = sync?.status.state;
+  const lines =
+    sync && (state === "problem" || state === "offline" || syncCount(sync.status))
+      ? syncLines(sync.status)
+      : [];
 
   return (
     <div
@@ -303,49 +404,23 @@ export default function PhoneSettings({
     >
       <PageHead title="Settings" onBack={onClose} />
 
-      <Setting
-        title={NOTES_FOLDER_TITLE}
-        Glyph={FolderIcon}
-        testId="settings-folder"
-        value={folder ?? "Inside the app"}
-        note={
-          folder
-            ? "Your notes are ordinary files in this folder, on your phone."
-            : "Notes kept inside the app are removed if you uninstall it."
-        }
-        items={
-          move
-            ? [{ label: "Move to a folder…", testId: "move-to-folder", action: () => move() }]
-            : []
-        }
-      />
-
-      {sync && (
-        <Setting
-          title="Dropbox"
-          Glyph={SYNC_GLYPH[sync.status.state]}
-          testId="settings-dropbox"
-          // The folder's name alone: the line under it says how sync stands.
-          value={sync.status.folder === null ? "Not connected" : syncFolderName(sync.status.folder)}
-          // Dropbox names the Apps folder in the account's language, and the app can't see it.
-          note={[
-            ...syncLines(sync.status),
-            ...(sync.status.folder === null
-              ? []
-              : [
-                  `On a computer: ${syncFolderPath(sync.status.folder)}, in your Dropbox's Apps folder.`,
-                ]),
-          ].map((line) => (
-            <span key={line} style={{ display: "block" }}>
-              {line}
-            </span>
-          ))}
-          items={dropbox}
-        />
+      {rows.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <SectionTitle title="Storage locations" />
+        </div>
       )}
+      {rows.map((row) => (
+        <Location
+          key={row.id}
+          row={row}
+          lines={row.open ? lines : []}
+          warn={state === "problem"}
+          items={row.open ? openItems(row) : closedItems(row)}
+        />
+      ))}
 
       {/* A second set of notes, with its own folder: named here, its folder asked as it opens. */}
-      {storage.locations.length > 0 && (
+      {rows.length > 0 && (
         <button
           type="button"
           className="press"
@@ -365,10 +440,26 @@ export default function PhoneSettings({
 
       <div style={{ flexGrow: 1 }} />
       <SettingsFooter />
-      {choosing && <ChooseSyncFolder folders={choosing.folders} onAnswer={choosing.answer} />}
+      {choosing && (
+        <ChooseSyncFolder
+          folders={choosing.folders}
+          taken={rows.filter((l) => !l.open && l.dropbox !== null).map((l) => l.dropbox as string)}
+          onAnswer={choosing.answer}
+        />
+      )}
+      {renaming && (
+        <NewLocation
+          renaming={renaming.name}
+          taken={rows.filter((l) => l.id !== renaming.id).map((l) => l.name)}
+          onAdd={async (name) => {
+            if (await storage.renameLocation(renaming.id, name)) setRenaming(null);
+          }}
+          onClose={() => setRenaming(null)}
+        />
+      )}
       {adding && (
         <NewLocation
-          taken={liveRows(storage.locations, sync?.status.folder).map((l) => l.name)}
+          taken={rows.map((l) => l.name)}
           onAdd={storage.addLocation}
           onClose={() => setAdding(false)}
         />

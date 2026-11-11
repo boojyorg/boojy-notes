@@ -10,6 +10,7 @@ import {
   folderReached,
   type PickedFolder,
   reachableFolder,
+  treesOverlap,
 } from "./folderFiles";
 import {
   type LocationRow,
@@ -19,6 +20,7 @@ import {
   newLocationId,
   prefixOf,
   readLocations,
+  removeLocationFiles,
   scopedFiles,
   writeLocations,
 } from "./locations";
@@ -144,13 +146,16 @@ async function notesFolder(
 async function locationRows(root: FileOps, { open, list }: Locations): Promise<LocationRow[]> {
   return Promise.all(
     list.map(async ({ id, name }) => {
-      const bound = await readBinding(scopedFiles(root, prefixOf(id)));
+      const files = scopedFiles(root, prefixOf(id));
+      const bound = await readBinding(files);
+      const kept = (await readStorage(files))?.folder;
       return {
         id,
         name: name ?? (bound ? syncFolderName(bound.folder) : "Phone"),
         named: name !== undefined,
         open: id === open,
-        cloud: bound !== null,
+        dropbox: bound ? bound.folder : null,
+        phone: kept ? folderLabel(kept) : null,
       };
     }),
   );
@@ -195,7 +200,7 @@ async function moveToFolder(
   if (got.refused) return "refused";
   if (!got.picked || !got.tree || !got.root) return "cancelled";
   // Another location's folder: its grant is that location's, so it is not given back.
-  if (others.includes(got.tree)) return "in-use";
+  if (others.some((tree) => treesOverlap(tree, got.tree as string))) return "in-use";
   const to = { tree: got.tree, root: got.root };
   const { entries } = await FolderAccess.list({ tree: to.tree, id: to.root });
   if (entries.some((e) => !e.name.startsWith("."))) {
@@ -221,7 +226,8 @@ export async function installPhone() {
   const root = capacitorFiles();
   // A save the app died in the middle of is finished or undone before anything reads.
   await root.recover("state");
-  const locations = await readLocations(root);
+  // The list as it stands: a rename or a removal changes it while the app runs.
+  let locations = await readLocations(root);
   const prefix = prefixOf(locations.open);
   // Everything from here on is the open location's: its own state, vault and bin.
   const priv = scopedFiles(root, prefix);
@@ -241,7 +247,11 @@ export async function installPhone() {
   await files.recover("vault");
   let sync: ReturnType<typeof createPhoneSync> | null = null;
   const vault = createPhoneVault(files, { onLocalChange: () => sync?.localChanged() });
-  sync = createPhoneSync(files, vault.store);
+  // The Dropbox folders the other locations sync with are theirs alone.
+  const taken = (await locationRows(root, locations))
+    .filter((l) => !l.open && l.dropbox !== null)
+    .map((l) => l.dropbox as string);
+  sync = createPhoneSync(files, vault.store, { taken });
   // The vault's file calls, the menu bar's command channel (the bar above the
   // keyboard sends on it), the feel of a hold, and sync for Home's folder row.
   (window as unknown as { boojyPhoneAPI: unknown }).boojyPhoneAPI = {
@@ -275,6 +285,38 @@ export async function installPhone() {
         const list = [...locations.list, { id, name: name.trim() }];
         // A list that couldn't be read stays unwritten (`writeLocations` refuses it).
         return startIn(root, vault.atRest, { ...locations, open: id, list }, saved);
+      },
+      /** A name in the app alone: its folder, and its Dropbox folder, keep theirs. */
+      rename: async (id: string, name: string) => {
+        const rows = await locationRows(root, locations);
+        const problem = nameProblem(
+          name,
+          rows.filter((l) => l.id !== id).map((l) => l.name),
+        );
+        if (problem) throw new Error(problem);
+        const next = {
+          ...locations,
+          list: locations.list.map((l) => (l.id === id ? { id, name: name.trim() } : l)),
+        };
+        await writeLocations(root, next);
+        locations = next;
+      },
+      /**
+       * Forgets a location that is not open: off the list first, then its own
+       * files in the app's storage, then its folder's grant. The folder and
+       * the notes in it stay; a location kept inside the app loses its notes,
+       * which Settings says before asking. Killed part-way, what is left is
+       * files nothing lists.
+       */
+      remove: async (id: string) => {
+        if (id === locations.open) throw new Error("The open storage location can't be removed");
+        if (!locations.list.some((l) => l.id === id)) return;
+        const kept = (await readStorage(scopedFiles(root, prefixOf(id))))?.folder;
+        const next = { ...locations, list: locations.list.filter((l) => l.id !== id) };
+        await writeLocations(root, next);
+        locations = next;
+        await removeLocationFiles(root, id);
+        if (kept) await FolderAccess.release({ tree: kept.tree }).catch(() => {});
       },
     },
     // Where the notes are, for Settings: the folder as a person reads it, or null inside the app.

@@ -250,6 +250,8 @@ declare global {
         list: () => Promise<import("../phone/locations").LocationRow[]>;
         open: (id: string, saved: () => Promise<unknown>) => Promise<void>;
         add: (name: string, saved: () => Promise<unknown>) => Promise<void>;
+        rename: (id: string, name: string) => Promise<void>;
+        remove: (id: string) => Promise<void>;
       };
       /** The folder the notes are in, as a person reads it; null when they are inside the app. */
       notesFolder: string | null;

@@ -13,7 +13,7 @@ import { createSyncRunner } from "../sync/syncRunner";
 import { createSyncStatus, type FailureMeaning, SyncProblemError } from "../sync/syncStatus";
 import { CursorResetError, type LocalStore } from "../sync/types";
 import type { FileOps } from "./files";
-import { type ChooseFolder, folderChosen } from "./syncFolder";
+import { type ChooseFolder, folderChosen, folderClash } from "./syncFolder";
 
 /**
  * Sign-in and sync for the phone, both optional: with no Dropbox connected
@@ -131,7 +131,12 @@ export async function readBinding(files: FileOps): Promise<Binding | null> {
 const log = (...parts: unknown[]) => console.log("[sync]", ...parts);
 const nothingDone = (): PassResult => ({ again: false, attention: [], log: [] });
 
-export function createPhoneSync(files: FileOps, local: PhoneSyncStore) {
+export function createPhoneSync(
+  files: FileOps,
+  local: PhoneSyncStore,
+  /** The Dropbox folders the phone's other storage locations sync with: never this one's. */
+  { taken = [] }: { taken?: string[] } = {},
+) {
   const status = createSyncStatus();
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
@@ -427,9 +432,14 @@ export function createPhoneSync(files: FileOps, local: PhoneSyncStore) {
         root: "",
         token: refreshingToken({ clientId: APP_KEY, refreshToken: fresh.refreshToken }),
       }).folders();
-      const choice = there.length ? await choose(there) : "";
+      // With another location syncing here, the app folder itself is not free to take unasked.
+      const choice = there.length || taken.length ? await choose(there) : "";
       if (choice === null) throw new SignInCancelled();
-      const kept: Binding = { folder: folderChosen(choice, there), accountId: fresh.accountId };
+      const folder = folderChosen(choice, there);
+      if (folderClash(folder, taken)) {
+        throw new Error("Another storage location syncs with that Dropbox folder");
+      }
+      const kept: Binding = { folder, accountId: fresh.accountId };
       await local.forgetSync();
       await files.write(SECRETS, encode(fresh));
       await files.write(BINDING, encode(kept));

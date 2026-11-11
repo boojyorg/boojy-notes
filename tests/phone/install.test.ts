@@ -29,6 +29,9 @@ vi.mock("../../src/phone/files", () => ({
     write: async (path: string, bytes: Uint8Array) => {
       disk.written.push([path, new TextDecoder().decode(bytes)]);
     },
+    exists: async () => false,
+    remove: async () => {},
+    rmdir: async () => {},
   }),
   fileAddress: async (dir: string) => {
     disk.addressed.push(dir);
@@ -62,12 +65,15 @@ vi.mock("@capacitor/app", () => ({
   },
 }));
 const start = vi.hoisted(() => vi.fn(async () => {}));
+/** The Dropbox folders sync was told the other locations hold. */
+const syncTaken = vi.hoisted(() => [] as string[]);
 vi.mock("../../src/phone/phoneSync", () => ({
   readBinding: async (files: { read(path: string): Promise<Uint8Array | null> }) => {
     const bytes = await files.read("state/binding.json");
     return bytes ? JSON.parse(new TextDecoder().decode(bytes)) : null;
   },
-  createPhoneSync: () => ({
+  createPhoneSync: (_files: unknown, _store: unknown, opts: { taken?: string[] }) => ({
+    taken: syncTaken.splice(0, syncTaken.length, ...(opts?.taken ?? [])),
     start: () => start(),
     localChanged() {},
     status: { status: () => null, subscribe: () => () => {} },
@@ -111,6 +117,7 @@ vi.mock("../../src/phone/folderFiles", () => ({
   },
   reachableFolder: reachable,
   folderReached: reached,
+  treesOverlap: (a: string, b: string) => a === b,
   folderFiles: () => ({ recover: async () => {} }),
   folderAddress: () => (rel: string) => rel,
   folderLabel: ({ root }: { root: string }) => root.slice(root.indexOf(":") + 1),
@@ -309,7 +316,14 @@ describe("where a start keeps the notes", () => {
     });
 
     describe("listed, opened and added from Home", () => {
-      type Rows = { id: string; name: string; named: boolean; open: boolean; cloud: boolean }[];
+      type Rows = {
+        id: string;
+        name: string;
+        named: boolean;
+        open: boolean;
+        dropbox: string | null;
+        phone: string | null;
+      }[];
       const api = () =>
         (
           window as unknown as {
@@ -318,6 +332,8 @@ describe("where a start keeps the notes", () => {
                 list(): Promise<Rows>;
                 open(id: string, saved: () => Promise<unknown>): Promise<void>;
                 add(name: string, saved: () => Promise<unknown>): Promise<void>;
+                rename(id: string, name: string): Promise<void>;
+                remove(id: string): Promise<void>;
               };
             };
           }
@@ -337,23 +353,26 @@ describe("where a start keeps the notes", () => {
       it("names each one: its own name, else its Dropbox folder, else Phone", async () => {
         await two();
         expect(await api().list()).toEqual([
-          { id: "main", name: "Phone", named: false, open: true, cloud: false },
-          { id: "work", name: "Work", named: true, open: false, cloud: false },
+          { id: "main", name: "Phone", named: false, open: true, dropbox: null, phone: null },
+          { id: "work", name: "Work", named: true, open: false, dropbox: null, phone: null },
         ]);
         await two({ "state/binding.json": JSON.stringify({ folder: "Personal" }) });
-        expect((await api().list())[0]).toMatchObject({ name: "Personal", cloud: true });
+        expect((await api().list())[0]).toMatchObject({ name: "Personal", dropbox: "Personal" });
         await two({ "state/binding.json": JSON.stringify({ folder: "" }) });
         expect((await api().list())[0].name).toBe("Boojy Notes");
         // One with a name of its own that syncs keeps the name, and is a cloud.
         await two({ "locations/work/state/binding.json": JSON.stringify({ folder: "Team" }) });
-        expect((await api().list())[1]).toMatchObject({ name: "Work", cloud: true });
+        expect((await api().list())[1]).toMatchObject({ name: "Work", dropbox: "Team" });
+        // And says where its notes are on the phone: its folder, as a person reads it.
+        await two({ [WORK]: JSON.stringify({ kind: "folder", folder: T2 }) });
+        expect((await api().list())[1].phone).toBe("Documents/Work");
       });
 
       it("is one location, listed, on a phone that never added another", async () => {
         Object.assign(disk, { state: ["ids.json"], choice: "app", under: {}, files: {} });
         await startOf(true);
         expect(await api().list()).toEqual([
-          { id: "main", name: "Phone", named: false, open: true, cloud: false },
+          { id: "main", name: "Phone", named: false, open: true, dropbox: null, phone: null },
         ]);
       });
 
@@ -375,6 +394,39 @@ describe("where a start keeps the notes", () => {
         expect(list.slice(0, 2)).toEqual([{ id: "main" }, { id: "work", name: "Work" }]);
         expect(list[2]).toEqual({ id: open, name: "Private" });
         expect(open).toMatch(/^[a-z0-9]+$/);
+      });
+
+      it("renames one in the app alone, at once, and refuses a name another shows", async () => {
+        await two();
+        await api().rename("work", " Journal ");
+        expect(JSON.parse(lists()[0][1]).list).toEqual([
+          { id: "main" },
+          { id: "work", name: "Journal" },
+        ]);
+        expect((await api().list())[1].name).toBe("Journal");
+        // The first can take a name of its own; its own name is no clash.
+        await api().rename("main", "Phone");
+        expect((await api().list())[0]).toMatchObject({ name: "Phone", named: true });
+        await expect(api().rename("work", "phone")).rejects.toThrow(/Another location/);
+      });
+
+      // Forgotten, never deleted: its folder is outside the app's storage.
+      it("removes a closed one from the list and gives its folder's grant back; never the open one", async () => {
+        await two({ [WORK]: JSON.stringify({ kind: "folder", folder: T2 }) });
+        released.length = 0;
+        await api().remove("work");
+        expect(JSON.parse(lists()[0][1])).toEqual({ open: "main", list: [{ id: "main" }] });
+        expect(released).toEqual(["t2"]);
+        expect(await api().list()).toHaveLength(1);
+        await expect(api().remove("main")).rejects.toThrow(/open storage location/);
+      });
+
+      // Two locations over one Dropbox folder would each take the other's notes for its own.
+      it("tells sync which Dropbox folders the other locations sync with", async () => {
+        await two({ "locations/work/state/binding.json": JSON.stringify({ folder: "Team" }) });
+        expect(syncTaken).toEqual(["Team"]);
+        await two();
+        expect(syncTaken).toEqual([]);
       });
 
       // A list that couldn't be read opens the first location alone: written back, the rest are lost.
