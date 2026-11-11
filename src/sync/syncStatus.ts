@@ -37,6 +37,8 @@ export interface SyncStatus {
   /** When a pass last settled (ms), or null since the app opened. */
   lastSynced: number | null;
   problems: SyncProblem[];
+  /** How far the pass under way is through the files that differ; null when none do. */
+  progress: { done: number; total: number } | null;
 }
 
 /** What a failed pass means, and when to try again (null: not until asked). */
@@ -94,10 +96,13 @@ export function createSyncStatus({ now = Date.now } = {}) {
   /** A sign-in refused: passes go on with the kept one, so no pass ends it. */
   let refusal: SyncProblem | null = null;
   let failures = 0;
+  let progress: SyncStatus["progress"] = null;
   const listeners = new Set<(status: SyncStatus) => void>();
 
   const status = (): SyncStatus => {
-    if (folder === null) return { state: "off", folder, lastSynced: null, problems: [] };
+    if (folder === null) {
+      return { state: "off", folder, lastSynced: null, problems: [], progress: null };
+    }
     // A refusal and a stop for the same cause are said once.
     const refused = refusal && refusal.kind !== stopped?.kind ? [refusal] : [];
     const problems = [...refused, ...(stopped ? [stopped] : []), ...held];
@@ -108,12 +113,12 @@ export function createSyncStatus({ now = Date.now } = {}) {
         : running || pending || !settled
           ? "syncing"
           : "synced";
-    return { state, folder, lastSynced, problems };
+    return { state, folder, lastSynced, problems, progress };
   };
   /** Back to the start: nothing synced, sent, held or refused. */
   const reset = () => {
     pending = running = settled = offline = false;
-    lastSynced = stopped = refusal = null;
+    lastSynced = stopped = refusal = progress = null;
     held = [];
     failures = 0;
   };
@@ -150,10 +155,17 @@ export function createSyncStatus({ now = Date.now } = {}) {
     started() {
       running = true;
       pending = false;
+      progress = null;
+      emit();
+    },
+    /** The pass under way has dealt with `done` of the `total` files that differ. */
+    progress(done: number, total: number) {
+      progress = { done, total };
       emit();
     },
     finished(result: PassResult) {
       running = false;
+      progress = null;
       offline = false;
       failures = 0;
       held = result.attention;
@@ -166,6 +178,7 @@ export function createSyncStatus({ now = Date.now } = {}) {
     },
     failed(error: unknown): FailureMeaning {
       running = false;
+      progress = null;
       settled = false;
       const meaning = failureMeaning(error);
       if ("offline" in meaning) offline = true;

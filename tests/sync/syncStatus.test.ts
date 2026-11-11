@@ -36,7 +36,13 @@ describe("sync's state", () => {
   it("is off until a folder is connected", () => {
     const sync = createSyncStatus();
     sync.changed();
-    expect(sync.status()).toEqual({ state: "off", folder: null, lastSynced: null, problems: [] });
+    expect(sync.status()).toEqual({
+      state: "off",
+      folder: null,
+      lastSynced: null,
+      problems: [],
+      progress: null,
+    });
   });
 
   it("is syncing until a first pass settles, never assumed synced", () => {
@@ -46,6 +52,7 @@ describe("sync's state", () => {
       folder: "Personal",
       lastSynced: null,
       problems: [],
+      progress: null,
     });
     sync.started();
     sync.finished(done());
@@ -54,6 +61,7 @@ describe("sync's state", () => {
       folder: "Personal",
       lastSynced: 1000,
       problems: [],
+      progress: null,
     });
   });
 
@@ -62,13 +70,20 @@ describe("sync's state", () => {
     sync.failed(new DropboxHttpError(400, '{"error": "invalid_grant"}', null));
     sync.refused({ kind: "other-account" });
     sync.disconnected();
-    expect(sync.status()).toEqual({ state: "off", folder: null, lastSynced: null, problems: [] });
+    expect(sync.status()).toEqual({
+      state: "off",
+      folder: null,
+      lastSynced: null,
+      problems: [],
+      progress: null,
+    });
     sync.connected("Work");
     expect(sync.status()).toEqual({
       state: "syncing",
       folder: "Work",
       lastSynced: null,
       problems: [],
+      progress: null,
     });
   });
 
@@ -103,6 +118,21 @@ describe("sync's state", () => {
     sync.finished(done({ again: true }));
     expect(sync.status().state).toBe("syncing");
     expect(sync.status().lastSynced).toBe(1000);
+  });
+
+  it("says how far a pass is, until the pass ends either way", () => {
+    const status = createSyncStatus();
+    status.connected("Personal");
+    status.started();
+    expect(status.status().progress).toBeNull();
+    status.progress(3, 40);
+    expect(status.status()).toMatchObject({ state: "syncing", progress: { done: 3, total: 40 } });
+    status.finished({ again: false, attention: [], log: [] });
+    expect(status.status().progress).toBeNull();
+    status.started();
+    status.progress(1, 2);
+    status.failed(new Error("no"));
+    expect(status.status().progress).toBeNull();
   });
 
   it("is offline when Dropbox can't be reached, until a pass gets through", () => {
