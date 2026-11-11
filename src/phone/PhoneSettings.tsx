@@ -238,7 +238,15 @@ export default function PhoneSettings({
           testId="settings-dropbox"
           // The folder's name alone: the line under it says how sync stands.
           value={sync.status.folder ?? "Not connected"}
-          note={syncLines(sync.status).map((line) => (
+          // Dropbox names the Apps folder in the account's language, and the app can't see it.
+          note={[
+            ...syncLines(sync.status),
+            ...(sync.status.folder
+              ? [
+                  `On a computer: Boojy Notes › ${sync.status.folder}, in your Dropbox's Apps folder.`,
+                ]
+              : []),
+          ].map((line) => (
             <span key={line} style={{ display: "block" }}>
               {line}
             </span>

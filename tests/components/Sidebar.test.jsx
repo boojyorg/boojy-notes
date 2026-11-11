@@ -939,6 +939,20 @@ describe("Sidebar on the phone", () => {
       expect(view.getByRole("menu", { name: "Sort notes" })).toBeInTheDocument();
     }));
 
+  // A new phone's Home was a blank page: nothing said the app had loaded.
+  it("says there are no notes yet while the list is empty, and only then", () =>
+    onPhone(async (PhoneSidebar) => {
+      const empty = renderSidebar({ Component: PhoneSidebar });
+      expect(empty.getByText("No notes yet")).toBeInTheDocument();
+      empty.unmount();
+      const one = renderSidebar({
+        Component: PhoneSidebar,
+        noteData: { a: { id: "a", title: "First", folder: null, content: { blocks: [] } } },
+        sortedRootNotes: ["a"],
+      });
+      expect(one.queryByText("No notes yet")).not.toBeInTheDocument();
+    }));
+
   it("shows the notes edited last as cards, newest first, each a way to its note", () =>
     onPhone(async (PhoneSidebar) => {
       const handleNoteClick = vi.fn();

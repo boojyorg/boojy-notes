@@ -1337,10 +1337,10 @@ const Sidebar = memo(function Sidebar({
           {/* An empty tree fails axe, so the element exists only with rows. */}
           {/* The unfiltered tree: the palette's query never reaches the
               sidebar, which stays exactly as it was behind the scrim. */}
-          {(folderTree.length > 0 ||
-            sortedRootNotes.length > 0 ||
-            filesIn("").length > 0 ||
-            fileGroups.attachments) && (
+          {folderTree.length > 0 ||
+          sortedRootNotes.length > 0 ||
+          filesIn("").length > 0 ||
+          fileGroups.attachments ? (
             <div role="tree" aria-label={vaultName} ref={treeRef} onKeyDown={onTreeKeyDown}>
               {folderTree.map((f) => renderFolder(f, 0))}
               {/* No breath before the root notes: the guide line ending
@@ -1349,6 +1349,20 @@ const Sidebar = memo(function Sidebar({
               {filesIn("").map((path) => renderFile(path, 0))}
               {renderAttachments()}
             </div>
+          ) : (
+            // The phone's Home is the whole screen: an empty one says so, or it reads as not loaded.
+            isPhone && (
+              <p
+                style={{
+                  margin: 0,
+                  padding: `12px ${TREE_SPINE}px`,
+                  fontSize: PHONE_LABEL_SIZE,
+                  color: TEXT.muted,
+                }}
+              >
+                No notes yet
+              </p>
+            )
           )}
         </div>
       </div>

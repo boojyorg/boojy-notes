@@ -75,6 +75,17 @@ describe("Settings on the phone", () => {
     expect(s.disconnect).toHaveBeenCalledOnce();
   });
 
+  // The folder is one nobody chose a place for: the page says where a computer finds it.
+  it("says where the Dropbox folder is on a computer, only while connected", () => {
+    show(sync({ status: SYNCED }));
+    expect(
+      screen.getByText("On a computer: Boojy Notes › Personal, in your Dropbox's Apps folder."),
+    ).toBeTruthy();
+    cleanup();
+    show(sync());
+    expect(screen.queryByText(/On a computer/)).toBeNull();
+  });
+
   it("leads with Sign in again when Dropbox wants the person", () => {
     show(
       sync({
