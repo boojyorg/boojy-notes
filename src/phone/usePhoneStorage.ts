@@ -1,19 +1,23 @@
-import { useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToastKind, ToastOptions } from "../hooks/useToast";
 import { getAPI } from "../services/apiProvider";
+import type { LocationRow } from "./locations";
 
 type PhoneAPI = NonNullable<Window["boojyPhoneAPI"]>;
 type ShowToast = (message: string, kind?: ToastKind, options?: ToastOptions) => unknown;
 
 const TOAST_KEY = "move-to-folder";
-const phoneAPI = () => getAPI() as Partial<Pick<PhoneAPI, "notesFolder" | "moveToFolder">>;
+const LOCATION_KEY = "storage-location";
+const phoneAPI = () =>
+  getAPI() as Partial<Pick<PhoneAPI, "notesFolder" | "moveToFolder" | "locations">>;
 
 /**
  * Where the phone keeps its notes, for Settings: the folder as a person
  * reads it (null inside the app), and "Move to a folder…" while they are
  * inside the app. A folder taken restarts the app into the move; one refused
  * says why. Its own hook, not sync's: where the notes are is true with or
- * without Dropbox.
+ * without Dropbox. Also the storage locations, for Home's heading: opening or
+ * adding one writes the editor's waiting edits, then starts the app again.
  */
 export function usePhoneStorage({
   showToast,
@@ -45,9 +49,50 @@ export function usePhoneStorage({
       }),
     [move, flushAll, showToast],
   );
+  const [locations, setLocations] = useState<LocationRow[]>([]);
+  useEffect(() => {
+    let gone = false;
+    api.locations
+      ?.list()
+      .then((rows) => !gone && setLocations(rows))
+      .catch((error) => console.warn("[locations]", error));
+    return () => {
+      gone = true;
+    };
+  }, [api]);
+
+  const restart = useCallback(
+    async (start: (saved: () => Promise<unknown>) => Promise<void> | undefined, failed: string) => {
+      try {
+        await start(async () => flushAll());
+        return true;
+      } catch (error) {
+        showToast(`${failed}: ${(error as Error)?.message ?? error}`, "warning", {
+          key: LOCATION_KEY,
+        });
+        return false;
+      }
+    },
+    [flushAll, showToast],
+  );
+  const openLocation = useCallback(
+    (id: string) => restart((saved) => api.locations?.open(id, saved), "Couldn't switch"),
+    [api, restart],
+  );
+  const addLocation = useCallback(
+    (name: string) => restart((saved) => api.locations?.add(name, saved), "Couldn't add it"),
+    [api, restart],
+  );
+
   return useMemo(
-    () => ({ notesFolder: api.notesFolder ?? null, moveToFolder }),
-    [api, moveToFolder],
+    () => ({
+      notesFolder: api.notesFolder ?? null,
+      moveToFolder,
+      locations,
+      openLocation,
+      addLocation,
+    }),
+    [api, moveToFolder, locations, openLocation, addLocation],
   );
 }
 

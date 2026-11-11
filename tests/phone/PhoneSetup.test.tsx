@@ -37,6 +37,37 @@ const showSetup = (plugin: FolderAccessPlugin) => {
   return onDone;
 };
 
+// A location added from Home starts the app again with no folder chosen yet.
+describe("a storage location added later", () => {
+  const showAdded = (plugin: FolderAccessPlugin) => {
+    const onDone = vi.fn();
+    render(
+      <ThemeProvider>
+        <PhoneSetup folderName="Work" location="Work" onDone={onDone} access={plugin} />
+      </ThemeProvider>,
+    );
+    return onDone;
+  };
+
+  it("is asked its folder alone, under its name: no welcome, no way back, no appearance", () => {
+    showAdded(access([]).plugin);
+    expect(screen.getByRole("heading", { name: "Work" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Welcome to Boojy Notes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+    expect(screen.queryByText("Appearance")).toBeNull();
+    expect(screen.getByRole("button", { name: /Documents\/Work/ })).toBeTruthy();
+  });
+
+  it("takes the folder Android grants, in a folder named after it", async () => {
+    const WORK = { tree: "content://tree/work", root: "primary:Documents/Work" };
+    const a = access([{ picked: true, ...WORK }]);
+    const onDone = showAdded(a.plugin);
+    tap(/Continue/);
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith(WORK));
+    expect(a.ensureDefault).toHaveBeenCalledWith({ name: "Work" });
+  });
+});
+
 describe("first launch on the phone: what the app is", () => {
   it("names the app and says what it is, and asks nothing", () => {
     const a = access([]);

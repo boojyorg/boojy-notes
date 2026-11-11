@@ -31,6 +31,28 @@ const LIST = "state/locations.json";
 const ID = /^[a-z0-9]+$/;
 const alone = (): Locations => ({ open: MAIN, list: [{ id: MAIN }] });
 
+/** A new location's id: random, never its name, which can change and can be another's later. */
+export function newLocationId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return `l${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Why `name` can't be a new location's, or null: it needs one, and one no other row shows. */
+export function nameProblem(name: string, taken: string[]): string | null {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return "Give it a name.";
+  return taken.some((t) => t.trim().toLowerCase() === wanted)
+    ? "Another location has this name."
+    : null;
+}
+
+/** A location as Home and Settings list it. */
+export interface LocationRow {
+  id: string;
+  name: string;
+  open: boolean;
+}
+
 /** Where a location keeps its files in the phone's storage: "" for the first. */
 export const prefixOf = (id: string) => (id === MAIN ? "" : `locations/${id}/`);
 

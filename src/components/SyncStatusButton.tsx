@@ -1,6 +1,7 @@
 import { type ComponentType, useState } from "react";
 import { TOUCH } from "../constants/layout";
 import { useTheme } from "../hooks/useTheme";
+import type { LocationRow } from "../phone/locations";
 import type { PhoneSync } from "../phone/useSyncStatus";
 import { describeProblem, type SyncState } from "../sync/syncStatus";
 import { clock } from "../utils/versionTime";
@@ -83,11 +84,18 @@ export default function SyncStatusButton({
   name,
   sync,
   onOpenSettings,
+  locations = [],
+  onOpenLocation,
+  onAddLocation,
 }: {
   /** The list's name ("Personal", or "Phone" with no Dropbox), which the button says first. */
   name: string;
   sync: PhoneSync;
   onOpenSettings: () => void;
+  /** The storage locations, the open one ticked; a tap on another opens it. */
+  locations?: LocationRow[];
+  onOpenLocation?: (id: string) => void;
+  onAddLocation?: () => void;
 }) {
   const { theme } = useTheme();
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
@@ -117,6 +125,32 @@ export default function SyncStatusButton({
         onOpenSettings();
       },
     },
+    // Which notes these are, and the others: the open one ticked, as the desktop's menu has it.
+    ...locations.map(
+      (location, i): MenuItem => ({
+        label: location.name,
+        role: "menuitemradio",
+        checked: location.open,
+        rule: i === 0,
+        testId: `location-${location.id}`,
+        action: () => {
+          close();
+          if (!location.open) onOpenLocation?.(location.id);
+        },
+      }),
+    ),
+    ...(locations.length && onAddLocation
+      ? [
+          {
+            label: "Add a location…",
+            testId: "location-add",
+            action: () => {
+              close();
+              onAddLocation();
+            },
+          },
+        ]
+      : []),
   ];
 
   return (

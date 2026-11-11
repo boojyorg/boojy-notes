@@ -1,5 +1,5 @@
 import { type ComponentType, type ReactNode, type RefObject, useRef, useState } from "react";
-import { BackIcon, ChevronRightIcon, FolderIcon, NewFolderIcon } from "../components/Icons";
+import { ChevronRightIcon, FolderIcon, NewFolderIcon } from "../components/Icons";
 import Menu, { type MenuAnchor, type MenuItem } from "../components/Menu";
 import AppearanceTab from "../components/settings/AppearanceTab";
 import SettingsFooter from "../components/settings/SettingsFooter";
@@ -12,66 +12,10 @@ import { useHeldScale } from "../hooks/useHeldScale";
 import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
+import { PageHead, rowStyle } from "./pageParts";
 import { APP_FOLDER, folderChosen, syncFolderName, syncFolderPath } from "./syncFolder";
 import type { PhoneStorage } from "./usePhoneStorage";
 import type { PhoneSync } from "./useSyncStatus";
-
-const BACK = 44;
-
-type Theme = ReturnType<typeof useTheme>["theme"];
-
-/** A row of the page: a glyph, what it says, and room for its chevron. */
-const rowStyle = ({ TEXT, BG }: Theme) =>
-  ({
-    display: "flex",
-    alignItems: "center",
-    gap: 14,
-    width: "100%",
-    minHeight: 56,
-    boxSizing: "border-box",
-    padding: "10px 12px 10px 16px",
-    border: `1px solid ${BG.divider}`,
-    borderRadius: 14,
-    background: BG.editor,
-    color: TEXT.primary,
-    font: "inherit",
-    textAlign: "left",
-  }) as const;
-
-/** Back, and the page's name centred on its line, as the note's header has it. */
-function PageHead({ title, onBack }: { title: string; onBack: () => void }) {
-  const { theme } = useTheme();
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: `${BACK}px 1fr ${BACK}px`,
-        alignItems: "center",
-        margin: "4px -12px 20px",
-        flexShrink: 0,
-      }}
-    >
-      <button
-        type="button"
-        aria-label="Back"
-        onClick={onBack}
-        style={{
-          width: BACK,
-          height: BACK,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: "none",
-          background: "transparent",
-          color: theme.TEXT.primary,
-        }}
-      >
-        <BackIcon />
-      </button>
-      <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, textAlign: "center" }}>{title}</h1>
-    </div>
-  );
-}
 
 /**
  * A connect's one question, over Settings: which folder in the Dropbox's

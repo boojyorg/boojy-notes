@@ -11,8 +11,19 @@ import {
   type PickedFolder,
   reachableFolder,
 } from "./folderFiles";
-import { type Locations, prefixOf, readLocations, scopedFiles } from "./locations";
-import { createPhoneSync } from "./phoneSync";
+import {
+  type LocationRow,
+  type Locations,
+  MAIN,
+  nameProblem,
+  newLocationId,
+  prefixOf,
+  readLocations,
+  scopedFiles,
+  writeLocations,
+} from "./locations";
+import { createPhoneSync, readBinding } from "./phoneSync";
+import { syncFolderName } from "./syncFolder";
 import { createPhoneVault, VAULT } from "./phoneVault";
 import { holdFelt } from "./haptics";
 import { clearCopied, copyNotes } from "./moveToFolder";
@@ -85,8 +96,13 @@ async function foldersElsewhere(root: FileOps, { open, list }: Locations): Promi
  * storage: asked at a fresh install's first launch, and asked again when a
  * chosen folder can no longer be reached (`storageChoice.ts` has the rules).
  * `others` are the other locations' folders: theirs, never this one's.
+ * `added` names a location added later, asked for its folder under that name.
  */
-async function notesFolder(priv: FileOps, others: string[]): Promise<PickedFolder | null> {
+async function notesFolder(
+  priv: FileOps,
+  others: string[],
+  added?: string,
+): Promise<PickedFolder | null> {
   const record = await readStorage(priv);
   if (record?.moving) return finishMove(priv, record.moving, others);
   const choice = record?.kind ?? null;
@@ -113,10 +129,46 @@ async function notesFolder(priv: FileOps, others: string[]): Promise<PickedFolde
     else if (record?.folder?.tree !== folder.tree) await writeChoice(priv, "folder", { folder });
     return folder;
   }
-  const picked = await askStorage(FOLDER_NAME, granted);
+  const picked = await askStorage(added ?? FOLDER_NAME, granted, added);
   await writeChoice(priv, picked ? "folder" : "app", picked ? { folder: picked } : {});
   if (picked) await reachableFolder(FolderAccess, picked, others);
   return picked;
+}
+
+/**
+ * The locations as Home lists them. One with no name of its own (the first,
+ * until it is renamed) is called what Home's heading calls it: the Dropbox
+ * folder it syncs with, or "Phone".
+ */
+async function locationRows(root: FileOps, { open, list }: Locations): Promise<LocationRow[]> {
+  return Promise.all(
+    list.map(async ({ id, name }) => {
+      const bound = name ? null : await readBinding(scopedFiles(root, prefixOf(id)));
+      return {
+        id,
+        name: name ?? (bound ? syncFolderName(bound.folder) : "Phone"),
+        open: id === open,
+      };
+    }),
+  );
+}
+
+/**
+ * Starts the app again in `next`'s open location: `saved` writes the editor's
+ * waiting edits, then, with the vault at rest, the list is written and the
+ * page reloaded. A sync pass cut off by it is one the next start repeats.
+ */
+async function startIn(
+  root: FileOps,
+  atRest: <T>(work: () => Promise<T>) => Promise<T>,
+  next: Locations,
+  saved: () => Promise<unknown>,
+) {
+  await saved();
+  await atRest(async () => {
+    await writeLocations(root, next);
+    location.reload();
+  });
 }
 
 /** What a press on "Move notes to a folder…" came to; `moving` is followed by a restart. */
@@ -168,7 +220,12 @@ export async function installPhone() {
   // Everything from here on is the open location's: its own state, vault and bin.
   const priv = scopedFiles(root, prefix);
   if (prefix) await priv.recover("state");
-  const folder = await notesFolder(priv, await foldersElsewhere(root, locations));
+  const here = locations.list.find((l) => l.id === locations.open);
+  const folder = await notesFolder(
+    priv,
+    await foldersElsewhere(root, locations),
+    locations.open === MAIN ? undefined : here?.name,
+  );
   // With a folder, the vault is the folder's and the rest stays private.
   const files: FileOps = folder ? routedFiles(priv, folderFiles(folder, priv), VAULT) : priv;
   await files.recover("vault");
@@ -192,6 +249,22 @@ export async function installPhone() {
       signInAgain: sync.signInAgain,
       connect: sync.connect,
       disconnect: sync.disconnect,
+    },
+    locations: {
+      list: () => locationRows(root, locations),
+      // Another location is another start: the app is built for one (`locations.ts`).
+      open: (id: string, saved: () => Promise<unknown>) => {
+        if (!locations.list.some((l) => l.id === id)) throw new Error("No such storage location");
+        return startIn(root, vault.atRest, { ...locations, open: id }, saved);
+      },
+      add: async (name: string, saved: () => Promise<unknown>) => {
+        const taken = (await locationRows(root, locations)).map((l) => l.name);
+        const problem = nameProblem(name, taken);
+        if (problem) throw new Error(problem);
+        const id = newLocationId();
+        const list = [...locations.list, { id, name: name.trim() }];
+        return startIn(root, vault.atRest, { open: id, list }, saved);
+      },
     },
     // Where the notes are, for Settings: the folder as a person reads it, or null inside the app.
     notesFolder: folder ? folderLabel(folder) : null,

@@ -141,6 +141,8 @@ Each has caused a real bug.
 - **Correctness fixes include a regression test that fails first**, at the lowest trustworthy
   layer; anything crossing debounces, IPC, the watcher or a restart goes in the Electron suite.
 - Never skip the pre-commit hook with `--no-verify`.
+- **Tracing**: `BOOJY_TRACE=<log> node_modules/.bin/electron .` (built, app quit) logs both
+  processes on one clock.
 
 ## Release
 

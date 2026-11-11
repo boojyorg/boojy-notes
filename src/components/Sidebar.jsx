@@ -481,6 +481,9 @@ const Sidebar = memo(function Sidebar({
   recentlyDeleted,
   // The phone: sync's state, after the folder's name (useSyncStatus).
   sync = null,
+  locations = [],
+  onOpenLocation,
+  onAddLocation,
 }) {
   const { sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
   // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
@@ -525,10 +528,11 @@ const Sidebar = memo(function Sidebar({
   };
   const closeVaultMenu = () => setVaultMenu(null);
   const [vaultView, setVaultView] = useVaultView(notesDir || "web");
-  // The phone has one storage location, named by its Dropbox folder or, with
-  // none connected, "Phone": never a switcher.
+  // The phone's open storage location: its own name, or until it has one the
+  // Dropbox folder it syncs with, or "Phone".
   const vaultName =
     vaults.find((v) => v.current)?.name ??
+    locations.find((l) => l.open)?.name ??
     (!isPhone
       ? "Notes"
       : sync?.status.folder == null
@@ -1093,6 +1097,9 @@ const Sidebar = memo(function Sidebar({
               name={vaultName}
               sync={sync}
               onOpenSettings={() => setSettingsOpen(true)}
+              locations={locations}
+              onOpenLocation={onOpenLocation}
+              onAddLocation={onAddLocation}
             />
           ) : (
             vaultName

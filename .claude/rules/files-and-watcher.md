@@ -14,7 +14,9 @@
   `FolderLost`, never empty or app storage; outside changes looked for (`checkOutside`).
   `phoneVaultFolder.test.ts`. **App storage moves to an empty one at a start**: copied
   whole, then chosen, then cleared. `moveToFolder.test.ts`.
-- **Phone sync is optional, the binding its connection**: no pass till accounts match; its folder asked at connect. `phoneSync.test.ts`.
+- **Phone storage locations**: the first in place, the rest in `locations/`, opened by
+  restart. `locations.test.ts`.
+- **Phone sync is optional, the binding its connection**: no pass till accounts match; folder asked at connect. `phoneSync.test.ts`.
 - Desktop confirms only several files; one note goes at once, Undo in its toast.
 
 ## The watcher drops only an event it can trace to the app's own operation
@@ -69,7 +71,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - **The main process alone names folders** (`electron/folders.ts`): sanitises and de-duplicates
   a new last segment, keeps a moved folder's disk name, never escapes the vault
   (`resolveVaultDir`), answers with the final path. No input sanitises a folder name.
-- Rename and move are one `renameSync`, after flushing edits under it; not undoable. Delete waits for the Trash flush. A folder outlives its notes.
+- Rename and move are one `renameSync`, after flushing edits under it; not undoable. Delete waits for the Trash flush.
 - **A missing chosen vault is never recreated**; writes refuse.
 - **Storage locations** (`electron/vaults.ts`): `open-vault` takes only a listed, present path.
   Remove never touches the folder; **Rename is a label (`vaultLabels`), never the folder's
@@ -120,7 +122,3 @@ never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
   takes it back. `version-history.spec.ts`.
 - **A note renamed while the app was closed keeps its id** if it holds the text its history
   last kept. `version-store.spec.ts`, `history.test.ts`.
-
-## Tracing
-
-`BOOJY_TRACE=<log> node_modules/.bin/electron .` (built, app quit).

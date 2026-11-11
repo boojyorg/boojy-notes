@@ -63,6 +63,10 @@ vi.mock("@capacitor/app", () => ({
 }));
 const start = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/phone/phoneSync", () => ({
+  readBinding: async (files: { read(path: string): Promise<Uint8Array | null> }) => {
+    const bytes = await files.read("state/binding.json");
+    return bytes ? JSON.parse(new TextDecoder().decode(bytes)) : null;
+  },
   createPhoneSync: () => ({
     start: () => start(),
     localChanged() {},
@@ -251,6 +255,89 @@ describe("where a start keeps the notes", () => {
       expect(disk.written).toEqual([[WORK, JSON.stringify({ kind: "folder", folder: T2 })]]);
       // The first location's folder, had it one, is spared when the new one is kept.
       expect(reachable).toHaveBeenLastCalledWith(expect.anything(), T2, []);
+    });
+
+    it("asks a location added later for its folder alone, under its name", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: {},
+        files: { "state/locations.json": listed("work") },
+      });
+      await startOf(true);
+      expect(screens.askStorage).toHaveBeenCalledWith("Work", null, "Work");
+    });
+
+    describe("listed, opened and added from Home", () => {
+      type Rows = { id: string; name: string; open: boolean }[];
+      const api = () =>
+        (
+          window as unknown as {
+            boojyPhoneAPI: {
+              locations: {
+                list(): Promise<Rows>;
+                open(id: string, saved: () => Promise<unknown>): Promise<void>;
+                add(name: string, saved: () => Promise<unknown>): Promise<void>;
+              };
+            };
+          }
+        ).boojyPhoneAPI.locations;
+      const lists = () => disk.written.filter(([path]) => path === "state/locations.json");
+      const two = async (extra: Record<string, string> = {}) => {
+        Object.assign(disk, {
+          state: ["ids.json"],
+          choice: "app",
+          under: {},
+          files: { "state/locations.json": listed("main"), [WORK]: '{"kind":"app"}', ...extra },
+        });
+        await startOf(true);
+      };
+
+      // The first has no name of its own until it is renamed: it reads as Home's heading does.
+      it("names each one: its own name, else its Dropbox folder, else Phone", async () => {
+        await two();
+        expect(await api().list()).toEqual([
+          { id: "main", name: "Phone", open: true },
+          { id: "work", name: "Work", open: false },
+        ]);
+        await two({ "state/binding.json": JSON.stringify({ folder: "Personal" }) });
+        expect((await api().list())[0].name).toBe("Personal");
+        await two({ "state/binding.json": JSON.stringify({ folder: "" }) });
+        expect((await api().list())[0].name).toBe("Boojy Notes");
+      });
+
+      it("is one location, listed, on a phone that never added another", async () => {
+        Object.assign(disk, { state: ["ids.json"], choice: "app", under: {}, files: {} });
+        await startOf(true);
+        expect(await api().list()).toEqual([{ id: "main", name: "Phone", open: true }]);
+      });
+
+      it("opens another only once the edits waiting are saved, by writing which is open", async () => {
+        await two();
+        const saved = vi.fn(async () => {
+          expect(lists()).toEqual([]);
+        });
+        await api().open("work", saved);
+        expect(saved).toHaveBeenCalledOnce();
+        expect(lists()).toEqual([["state/locations.json", listed("work")]]);
+        expect(() => api().open("nowhere", saved)).toThrow(/No such/);
+      });
+
+      it("adds one under a new id and opens it, the rest of the list kept", async () => {
+        await two();
+        await api().add("  Private ", async () => {});
+        const { open, list } = JSON.parse(lists()[0][1]);
+        expect(list.slice(0, 2)).toEqual([{ id: "main" }, { id: "work", name: "Work" }]);
+        expect(list[2]).toEqual({ id: open, name: "Private" });
+        expect(open).toMatch(/^[a-z0-9]+$/);
+      });
+
+      it("refuses a name another location shows, writing nothing", async () => {
+        await two();
+        await expect(api().add("work", async () => {})).rejects.toThrow(/Another location/);
+        await expect(api().add("Phone", async () => {})).rejects.toThrow(/Another location/);
+        expect(lists()).toEqual([]);
+      });
     });
 
     it("opens the folder the open location chose, never another's", async () => {

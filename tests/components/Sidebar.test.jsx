@@ -149,6 +149,7 @@ function renderSidebar(overrides = {}) {
     trashFile: overrides.trashFile,
     recentlyDeleted: overrides.recentlyDeleted,
     sync: overrides.sync,
+    locations: overrides.locations,
   };
 
   const Component = overrides.Component ?? Sidebar;
@@ -1046,6 +1047,17 @@ describe("Sidebar on the phone", () => {
       expect(getByTestId("sync-status").parentElement.textContent).toBe("Work");
       expect(queryByText("Notes")).not.toBeInTheDocument();
       unmount();
+      // A storage location's own name comes before the Dropbox folder it syncs with.
+      const named = renderSidebar({
+        Component: PhoneSidebar,
+        sync: bound("Work"),
+        locations: [
+          { id: "main", name: "Private", open: true },
+          { id: "l1", name: "Other", open: false },
+        ],
+      });
+      expect(named.getByTestId("sync-status").parentElement.textContent).toBe("Private");
+      named.unmount();
       // The app folder itself, which the binding writes "".
       const root = renderSidebar({ Component: PhoneSidebar, sync: bound("") });
       expect(root.getByTestId("sync-status").parentElement.textContent).toBe("Boojy Notes");

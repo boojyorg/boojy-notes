@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   MAIN,
+  nameProblem,
+  newLocationId,
   prefixOf,
   readLocations,
   scopedFiles,
@@ -66,6 +68,21 @@ describe("the phone's storage locations", () => {
     );
     expect(await readLocations(root)).toEqual({ open: "ok1", list: [{ id: "ok1" }] });
     await expect(writeLocations(root, { open: "x/y", list: [{ id: "x/y" }] })).rejects.toThrow();
+  });
+});
+
+describe("a new location", () => {
+  it("gets an id that can be part of a path, never the first location's, never twice", () => {
+    const ids = Array.from({ length: 50 }, newLocationId);
+    for (const id of ids) expect(id).toMatch(/^[a-z0-9]+$/);
+    expect(ids).not.toContain(MAIN);
+    expect(new Set(ids).size).toBe(50);
+  });
+
+  it("needs a name, and one no other location shows", () => {
+    expect(nameProblem("  ", ["Phone"])).toBe("Give it a name.");
+    expect(nameProblem(" phone ", ["Phone"])).toBe("Another location has this name.");
+    expect(nameProblem("Work", ["Phone"])).toBeNull();
   });
 });
 

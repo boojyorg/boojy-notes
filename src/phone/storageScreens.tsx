@@ -18,10 +18,13 @@ function ask<T>(screen: (done: (answer: T) => void) => React.ReactNode): Promise
   });
 }
 
-/** First launch: the folder chosen, or null for the app's own storage. */
-export const askStorage = (folderName: string, granted: PickedFolder | null) =>
+/**
+ * First launch, or the first start of a storage location just added (by its
+ * name): the folder chosen, or null for the app's own storage.
+ */
+export const askStorage = (folderName: string, granted: PickedFolder | null, location?: string) =>
   ask<PickedFolder | null>((done) => (
-    <PhoneSetup folderName={folderName} granted={granted} onDone={done} />
+    <PhoneSetup folderName={folderName} granted={granted} location={location} onDone={done} />
   ));
 
 /** The chosen folder is out of reach: the folder chosen again. */
