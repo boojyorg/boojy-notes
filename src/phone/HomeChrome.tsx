@@ -102,9 +102,10 @@ const NEW_NOTE_SIDE = 20;
 export const NEW_NOTE_LIFT = 24;
 /**
  * The room the list keeps at its end on the phone, so its last row scrolls
- * clear of the New note button, which stands over the list's corner.
+ * clear of the New note button, which stands over the list's corner: it
+ * grows with the button's lift.
  */
-export const HOME_LIST_END = 60;
+export const HOME_LIST_END = NEW_NOTE_LIFT + 36;
 
 /**
  * Home's foot on the phone, as the desktop's: a line the width of the screen,

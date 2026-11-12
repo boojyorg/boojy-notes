@@ -92,6 +92,7 @@ export default function PhoneTweaker() {
 
   if (!open) {
     return (
+      // On the left: Home's New note button stands in the other corner.
       <button type="button" onClick={() => setOpen(true)} style={{ ...pill, bottom: 64 }}>
         Tweak
       </button>
@@ -144,7 +145,7 @@ export default function PhoneTweaker() {
 
 const pill = {
   position: "fixed",
-  right: 12,
+  left: 12,
   zIndex: 100000,
   padding: "6px 12px",
   borderRadius: 999,
