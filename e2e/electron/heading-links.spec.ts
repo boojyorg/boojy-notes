@@ -151,6 +151,29 @@ test("a heading link in another note: labelled, matched as Obsidian does, the se
   }
 });
 
+test("Back before the next frame still keeps the place the link went to", async () => {
+  const h = await launchApp(FILES);
+  try {
+    await openWriting(h, "Here");
+    await expect(link(h, "Target")).toBeVisible();
+    // A slow frame, as a busy machine has: the place kept "as you scroll" is
+    // kept on a frame, and Back can come before it.
+    await h.page.evaluate(() => {
+      const raf = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (cb) => window.setTimeout(() => raf(cb), 1500);
+    });
+    await link(h, "Target").click();
+    await h.page.keyboard.press(BACK);
+    await expect.poll(() => scrollTop(h.page)).toBeLessThan(20);
+    await h.page.keyboard.press(FORWARD);
+    await expect.poll(() => atTop(h.page, "Target")).toBe(true);
+
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("a heading link in the open note is a visit: Back and Forward step across it", async () => {
   const h = await launchApp(FILES);
   try {

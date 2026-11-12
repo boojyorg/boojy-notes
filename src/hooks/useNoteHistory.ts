@@ -21,6 +21,7 @@ export function useNoteHistory({
   current,
   open,
   restoreHere,
+  placeNow,
   exists,
   resetKey,
 }: {
@@ -29,6 +30,8 @@ export function useNoteHistory({
   open: (key: string) => void;
   /** A step between two visits of the note open (a heading link's): put its place back (null: the top). */
   restoreHere: (place: NotePlace | null) => void;
+  /** The place the page shows now, for the visit a step leaves (null: none to keep). */
+  placeNow: () => NotePlace | null;
   /** Whether a key still names a note or file (one gone is stepped over). */
   exists: (key: string) => boolean;
   resetKey: unknown;
@@ -44,6 +47,8 @@ export function useNoteHistory({
   // state (a scroll must not render the app), memory only like the list.
   const places = useRef(new Map<number, NotePlace>());
   const historyRef = useRef(history);
+  const currentRef = useRef(current);
+  currentRef.current = current;
   const move = useCallback((next: NoteHistory) => {
     historyRef.current = next;
     setHistory(next);
@@ -88,6 +93,15 @@ export function useNoteHistory({
       const history = historyRef.current;
       const i = historyTarget(history, dir, exists);
       if (i < 0) return;
+      // The place being left is taken now. It is otherwise kept on the frame
+      // after a scroll, and a key can come before that frame: the place a
+      // heading link went to was then never kept, and Forward found the top.
+      // Only while the page shows the visit the list is on (no step waiting,
+      // no note opening ahead of its visit).
+      if (stepping.current.length === 0 && history.ids[history.at] === currentRef.current) {
+        const here = placeNow();
+        if (here) places.current.set(history.visits[history.at], here);
+      }
       const place = places.current.get(history.visits[i]) ?? null;
       move({ ...history, at: i });
       // The same note: nothing opens, so nothing would take a restore or
@@ -100,7 +114,7 @@ export function useNoteHistory({
       restoring.current = { key: history.ids[i], place };
       open(history.ids[i]);
     },
-    [exists, open, restoreHere, move],
+    [exists, open, restoreHere, placeNow, move],
   );
 
   /**
