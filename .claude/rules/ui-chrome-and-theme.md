@@ -100,9 +100,9 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   never a transform (it would contain the `fixed` children). A menu inside it passes
   `overSettings` (else it stacks under the pane) and owns Escape; the scale keys are the one
   shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
-- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale()`).
-- **One zoom system**: the app's UI scale, drawn a size up on the phone so its default reads
-  100% (`drawnScale`); `main.js` resets Chromium's on `dom-ready`. A scale key answers with `UiScaleChip`.
+- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale`).
+- **One zoom system**: the app's UI scale, a size up on the phone (`drawnScale`); `main.js`
+  resets Chromium's on `dom-ready`. A scale key answers with `UiScaleChip`.
 - **First-run setup** (`SetupDialog`): every way out saves the choice and never shows again;
   nothing is written until the first keystroke. `first-run.spec.ts`.
 

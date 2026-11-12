@@ -10,7 +10,7 @@ import BoojyNotes from "./BoojyNotes";
 import { installTraceProbes } from "./utils/trace";
 import { installFocusRingGuard } from "./utils/focusRing";
 import { isPhone } from "./utils/platform";
-import { applyUiScale, initialUiScale } from "./utils/uiScale";
+import { applyUiScale, initialUiScale, rebasePhoneScale } from "./utils/uiScale";
 import { showStartupFailure } from "./phone/startupFailure";
 
 // The crash screen promises "your notes have been backed up to local
@@ -35,6 +35,7 @@ const PhoneTweaker = tweaking && isPhone ? lazy(() => import("../dev/PhoneTweake
 if (isPhone) document.documentElement.classList.add("is-phone");
 
 // Draw at the saved UI scale before the first paint, so nothing jumps.
+rebasePhoneScale();
 applyUiScale(initialUiScale());
 
 // Inject CSS Custom Highlight API styles for find-in-note

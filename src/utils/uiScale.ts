@@ -12,7 +12,7 @@ import { isPhone } from "./platform";
  * take it to the nearest preset on the side they point.
  */
 
-/** The smallest and largest the app may be drawn, custom values included. */
+/** The smallest and largest scale that may be chosen, custom values included. */
 export const SCALE_MIN = SCALE_OPTIONS[0];
 export const SCALE_MAX = SCALE_OPTIONS[SCALE_OPTIONS.length - 1];
 
@@ -24,36 +24,33 @@ const SCALE_KEY = "boojy-ui-scale";
 const PHONE_REBASED_KEY = "boojy-ui-scale-phone-rebased";
 
 /**
- * The percentage a chosen scale is drawn at. The phone draws every scale a
- * step up (`PHONE_UI_SCALE`), so the size it was designed at is its 100%.
- * Whatever does arithmetic on the drawn size (`zoom`, `--ui-scale`, a `vh`
- * divided by it) asks here; whatever shows or stores a scale uses the chosen one.
+ * The percentage a chosen scale is drawn at, a whole one. The phone draws
+ * every scale a step up (`PHONE_UI_SCALE`), so the size it was designed at is
+ * its 100%. Whatever does arithmetic on the drawn size (`zoom`, `--ui-scale`,
+ * a `vh` divided by it) asks here; whatever shows or stores a scale uses the
+ * chosen one.
  */
-export const drawnScale = (scale: number) => (isPhone ? (scale * PHONE_UI_SCALE) / 100 : scale);
+export const drawnScale = (scale: number) =>
+  isPhone ? Math.round((scale * PHONE_UI_SCALE) / 100) : scale;
 
 /**
  * A phone's scale saved while its numbers were the desktop's (its default
- * read 110%) becomes, once, the preset that draws nearest to what it drew, so
- * an update changes the figure and not the size.
+ * read 110%) becomes, once, the figure that draws what it drew, so an update
+ * changes the figure and not the size. Run before the first scale is read
+ * (`main.jsx`).
  */
-function rebasePhoneScale() {
+export function rebasePhoneScale() {
   if (!isPhone || localStorage.getItem(PHONE_REBASED_KEY)) return;
   const saved = Number(localStorage.getItem(SCALE_KEY));
   if (saved) {
-    const same = (saved * 100) / PHONE_UI_SCALE;
-    const nearest = SCALE_OPTIONS.reduce((a, b) =>
-      Math.abs(b - same) < Math.abs(a - same) ? b : a,
-    );
-    localStorage.setItem(SCALE_KEY, String(nearest));
+    localStorage.setItem(SCALE_KEY, String(clampScale((saved * 100) / PHONE_UI_SCALE)));
   }
   localStorage.setItem(PHONE_REBASED_KEY, "1");
 }
 
-/** The scale saved by the last session, else the default. */
+/** The scale saved by the last session, else the default (as for a value that is no number). */
 export function initialUiScale(): number {
-  rebasePhoneScale();
-  const saved = localStorage.getItem(SCALE_KEY);
-  return saved ? Number(saved) : SCALE_DEFAULT;
+  return Number(localStorage.getItem(SCALE_KEY)) || SCALE_DEFAULT;
 }
 
 /**
