@@ -919,7 +919,7 @@ describe("Sidebar on the phone", () => {
         expect(button.style.position).toBe("absolute");
         const scroller = container.querySelector(".sidebar-scroll");
         expect(scroller.getAttribute("style")).not.toContain(NAV_BAR_H);
-        expect(scroller.style.paddingBottom).toBe("56px");
+        expect(scroller.style.paddingBottom).toBe("60px");
         unmount();
       }
     }));
