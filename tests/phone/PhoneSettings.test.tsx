@@ -1,17 +1,25 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SettingsProvider } from "../../src/context/SettingsContext";
 import { ThemeProvider } from "../../src/context/ThemeContext";
-import PhoneSettings from "../../src/phone/PhoneSettings";
+import type { LocationRow } from "../../src/phone/locations";
+import PhoneSettings, { removePrompt } from "../../src/phone/PhoneSettings";
+import { settingsToReopen } from "../../src/phone/reopenSettings";
 import type { PhoneStorage } from "../../src/phone/usePhoneStorage";
 import type { PhoneSync } from "../../src/phone/useSyncStatus";
 import type { SyncStatus } from "../../src/sync/syncStatus";
 
 afterEach(cleanup);
 
-const OFF: SyncStatus = { state: "off", folder: null, lastSynced: null, problems: [] };
-const SYNCED: SyncStatus = { state: "synced", folder: "Personal", lastSynced: null, problems: [] };
+const OFF: SyncStatus = {
+  state: "off",
+  folder: null,
+  lastSynced: null,
+  problems: [],
+  progress: null,
+};
+const SYNCED: SyncStatus = { ...OFF, state: "synced", folder: "Personal" };
 const sync = (over: Partial<PhoneSync> = {}): PhoneSync => ({
   status: OFF,
   choosing: null,
@@ -21,88 +29,243 @@ const sync = (over: Partial<PhoneSync> = {}): PhoneSync => ({
   disconnect: vi.fn(async () => {}),
   ...over,
 });
-const NO_LOCATIONS = {
-  locations: [],
+/** The first location, open, in a folder; as the list was read at start (sync is live). */
+const MAIN: LocationRow = {
+  id: "main",
+  name: "Phone",
+  named: false,
+  open: true,
+  dropbox: null,
+  phone: "Documents/Boojy Notes",
+};
+const WORK: LocationRow = {
+  id: "w",
+  name: "Work",
+  named: true,
+  open: false,
+  dropbox: "Team",
+  phone: "Documents/Work",
+};
+const storageOf = (over: Partial<PhoneStorage> = {}): PhoneStorage => ({
+  notesFolder: "Documents/Boojy Notes",
+  moveToFolder: undefined,
+  locations: [MAIN],
   openLocation: vi.fn(async () => true),
   addLocation: vi.fn(async () => true),
-};
-const IN_APP: PhoneStorage = { notesFolder: null, moveToFolder: undefined, ...NO_LOCATIONS };
-const show = (s: PhoneSync | null, storage: PhoneStorage = IN_APP, onClose = vi.fn()) => {
+  renameLocation: vi.fn(async () => true),
+  removeLocation: vi.fn(async () => true),
+  ...over,
+});
+const show = (
+  s: PhoneSync | null,
+  storage: PhoneStorage = storageOf(),
+  { onClose = vi.fn(), confirm = vi.fn(async () => true) } = {},
+) => {
   render(
     <ThemeProvider>
       <SettingsProvider>
-        <PhoneSettings open sync={s} storage={storage} onClose={onClose} />
+        <PhoneSettings open sync={s} storage={storage} confirm={confirm} onClose={onClose} />
       </SettingsProvider>
     </ThemeProvider>,
   );
-  return onClose;
+  return { onClose, confirm };
 };
-const menuOf = (testId: string) => {
-  fireEvent.click(screen.getByTestId(testId));
+const menuOf = (id: string) => {
+  fireEvent.click(screen.getByTestId(`location-more-${id}`));
   return screen.getAllByRole("menuitem").map((el) => el.textContent);
 };
+const rowText = (id: string) => screen.getByTestId(`location-${id}`).textContent;
 
 describe("Settings on the phone", () => {
-  it("says the notes are inside the app, and offers to move them to a folder", () => {
-    const move = vi.fn(async () => {});
-    show(sync(), { ...IN_APP, moveToFolder: move });
-    expect(screen.getByTestId("settings-folder").textContent).toContain("Inside the app");
-    expect(screen.getByText(/removed if you uninstall/)).toBeTruthy();
-    expect(menuOf("settings-folder")).toEqual(["Move to a folder…"]);
-    fireEvent.click(screen.getByText("Move to a folder…"));
-    expect(move).toHaveBeenCalledOnce();
-  });
-
-  // Nothing can be done about a folder yet: a row that opened an empty menu would be a dead control.
-  it("names the folder the notes are in, as a row that is only read", () => {
-    show(sync(), { ...IN_APP, notesFolder: "Documents/Boojy Notes" });
-    const row = screen.getByTestId("settings-folder");
-    expect(row.textContent).toContain("Documents/Boojy Notes");
-    expect(row.tagName).toBe("DIV");
-  });
-
-  it("connects Dropbox when none is connected", () => {
-    const s = sync();
-    show(s);
-    expect(screen.getByTestId("settings-dropbox").textContent).toContain("Not connected");
-    expect(menuOf("settings-dropbox")).toEqual(["Connect Dropbox"]);
-    fireEvent.click(screen.getByText("Connect Dropbox"));
-    expect(s.connect).toHaveBeenCalledOnce();
-  });
-
-  it("names the Dropbox folder, its state under it, with Sync now and Disconnect", () => {
-    const s = sync({ status: SYNCED });
-    show(s);
-    // The state is said once, under the row.
-    expect(screen.getByTestId("settings-dropbox").textContent).toBe("Personal");
-    expect(screen.getByText(/Synced with Dropbox/)).toBeTruthy();
-    expect(menuOf("settings-dropbox")).toEqual(["Sync now", "Disconnect Dropbox"]);
-    fireEvent.click(screen.getByText("Disconnect Dropbox"));
-    expect(s.disconnect).toHaveBeenCalledOnce();
-  });
-
-  // The folder is one nobody chose a place for: the page says where a computer finds it.
-  it("says where the Dropbox folder is on a computer, only while connected", () => {
-    show(sync({ status: SYNCED }));
-    expect(
-      screen.getByText("On a computer: Boojy Notes › Personal, in your Dropbox's Apps folder."),
-    ).toBeTruthy();
-    cleanup();
-    show(sync());
+  // One list, as the desktop's: no section for the folder and another for Dropbox.
+  it("lists the storage locations, each with its name and where it is, the open one ticked", () => {
+    show(sync({ status: SYNCED }), storageOf({ locations: [MAIN, WORK] }));
+    expect(screen.getByText("Storage locations")).toBeTruthy();
+    // The open one follows sync as it is now: its Dropbox folder names it, and says where it is.
+    expect(rowText("main")).toBe("PersonalDropbox/Apps/Boojy Notes/Personal");
+    expect(rowText("w")).toBe("WorkDropbox/Apps/Boojy Notes/Team");
+    expect(screen.getByTestId("location-main").getAttribute("aria-label")).toMatch(/, open$/);
+    expect(screen.getByTestId("location-w").getAttribute("aria-label")).not.toMatch(/open/);
+    expect(screen.queryByText("Notes folder")).toBeNull();
     expect(screen.queryByText(/On a computer/)).toBeNull();
   });
 
-  it("calls the app folder itself Boojy Notes, and says so for a computer", () => {
+  // As on the desktop: the row is the way to it, and its ··· is what can be done to it.
+  it("opens a location on a press of its row; the open one is not there to press", () => {
+    const storage = storageOf({ locations: [MAIN, WORK] });
+    show(sync(), storage);
+    expect(screen.getByTestId("location-main").tagName).toBe("DIV");
+    expect(screen.getByTestId("location-main").getAttribute("aria-current")).toBe("true");
+    fireEvent.click(screen.getByTestId("location-w"));
+    expect(storage.openLocation).toHaveBeenCalledWith("w", expect.any(Promise));
+    // The app starts again in it, here in Settings: not on Home, a step from where it was asked.
+    expect(settingsToReopen()).toBe(true);
+    expect(settingsToReopen()).toBe(false);
+    expect(screen.queryByRole("menu")).toBeNull();
+    // The ··· opens the menu and opens nothing.
+    fireEvent.click(screen.getByRole("button", { name: "More for Work" }));
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(storage.openLocation).toHaveBeenCalledOnce();
+  });
+
+  // The app starts again on this page: with the tick moved at the press, nothing else changes.
+  it("moves the tick at the press, before the app has started again, and back if it can't", async () => {
+    let fail = () => {};
+    const openLocation = vi.fn(() => new Promise<boolean>((done) => (fail = () => done(false))));
+    show(sync(), storageOf({ locations: [MAIN, WORK], openLocation }));
+    const ticked = () =>
+      screen
+        .getByTestId("location-tick")
+        .closest("[data-testid^='location-']:not([data-testid='location-tick'])")
+        ?.getAttribute("data-testid");
+    expect(ticked()).toBe("location-main");
+    fireEvent.click(screen.getByTestId("location-w"));
+    expect(ticked()).toBe("location-w");
+    expect(screen.getAllByTestId("location-tick")).toHaveLength(1);
+    // The press lets go of its grey at once and fades, as any press does: held
+    // through the restart, the card stood grey until the new page and then snapped.
+    const card = (id: string) => screen.getByTestId(`location-${id}`).parentElement;
+    expect(card("w")?.hasAttribute("data-opening")).toBe(true);
+    expect(openLocation).toHaveBeenCalledWith("w", expect.any(Promise));
+    fail();
+    await waitFor(() => expect(ticked()).toBe("location-main"));
+    expect(card("w")?.hasAttribute("data-opening")).toBe(false);
+  });
+
+  it("doesn't ask a later start for Settings when the location could not be opened", async () => {
+    const storage = storageOf({ locations: [MAIN, WORK], openLocation: vi.fn(async () => false) });
+    show(sync(), storage);
+    fireEvent.click(screen.getByTestId("location-w"));
+    await waitFor(() => expect(storage.openLocation).toHaveBeenCalled());
+    await waitFor(() => expect(settingsToReopen()).toBe(false));
+  });
+
+  it("says where a location that doesn't sync is on the phone: its folder, or inside the app", () => {
+    show(sync(), storageOf({ locations: [MAIN, { ...WORK, dropbox: null, phone: null }] }));
+    expect(rowText("main")).toBe("PhoneDocuments/Boojy Notes");
+    expect(rowText("w")).toBe("WorkInside the app");
+  });
+
+  it("calls the app folder itself Boojy Notes, at its place in Dropbox", () => {
     show(sync({ status: { ...SYNCED, folder: "" } }));
-    expect(screen.getByTestId("settings-dropbox").textContent).toBe("Boojy Notes");
-    expect(
-      screen.getByText("On a computer: Boojy Notes, in your Dropbox's Apps folder."),
-    ).toBeTruthy();
+    expect(rowText("main")).toBe("Boojy NotesDropbox/Apps/Boojy Notes");
+  });
+
+  describe("the open location's menu", () => {
+    it("offers to sync it with Dropbox while it doesn't, then to rename it", () => {
+      const s = sync();
+      show(s);
+      expect(menuOf("main")).toEqual(["Sync with Dropbox…", "Rename…"]);
+      fireEvent.click(screen.getByText("Sync with Dropbox…"));
+      expect(s.connect).toHaveBeenCalledOnce();
+    });
+
+    it("syncs now or disconnects once it does, and says where its notes are on the phone", () => {
+      const s = sync({ status: SYNCED });
+      show(s);
+      expect(menuOf("main")).toEqual(["Sync now", "Disconnect Dropbox", "Rename…"]);
+      expect(screen.getByText("On this phone: Documents/Boojy Notes")).toBeTruthy();
+      fireEvent.click(screen.getByText("Disconnect Dropbox"));
+      expect(s.disconnect).toHaveBeenCalledOnce();
+    });
+
+    it("leads with Sign in again when Dropbox wants the person, and says why under the row", () => {
+      show(sync({ status: { ...SYNCED, state: "problem", problems: [{ kind: "signed-out" }] } }));
+      expect(screen.getByRole("alert").textContent).toMatch(/sign-in has expired/);
+      expect(menuOf("main")[0]).toBe("Sign in again");
+    });
+
+    // The cloud says synced: words are for what it can't say.
+    it("says nothing under the row while synced, and counts a long sync", () => {
+      show(sync({ status: SYNCED }));
+      expect(screen.queryByText(/Synced with Dropbox/)).toBeNull();
+      cleanup();
+      show(sync({ status: { ...SYNCED, state: "syncing", progress: { done: 3, total: 40 } } }));
+      expect(screen.getByRole("status").textContent).toBe("Syncing with Dropbox… 3 of 40 files");
+    });
+
+    it("moves notes kept inside the app to a folder, where the phone can", () => {
+      const moveToFolder = vi.fn(async () => {});
+      show(
+        sync(),
+        storageOf({ notesFolder: null, moveToFolder, locations: [{ ...MAIN, phone: null }] }),
+      );
+      expect(menuOf("main")).toEqual(["Sync with Dropbox…", "Rename…", "Move to a folder…"]);
+      fireEvent.click(screen.getByText("Move to a folder…"));
+      expect(moveToFolder).toHaveBeenCalledOnce();
+    });
+
+    it("has no sync to offer where the app has none", () => {
+      show(null);
+      expect(menuOf("main")).toEqual(["Rename…"]);
+    });
+  });
+
+  // Sync and a move need the location open; a removal needs it closed.
+  describe("a closed location's menu", () => {
+    it("renames it or removes it, and nothing else", () => {
+      show(sync(), storageOf({ locations: [MAIN, WORK] }));
+      expect(menuOf("w")).toEqual(["Rename…", "Remove from list…"]);
+    });
+
+    it("removes it only once asked, saying its folder and its Dropbox stay", async () => {
+      const storage = storageOf({ locations: [MAIN, WORK] });
+      const confirm = vi.fn(async () => false);
+      show(sync(), storage, { confirm });
+      menuOf("w");
+      fireEvent.click(screen.getByText("Remove from list…"));
+      await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+      expect(confirm.mock.calls[0][0]).toMatchObject({
+        message: "The folder and its notes stay in Documents/Work. Nothing in Dropbox changes.",
+        danger: false,
+      });
+      expect(storage.removeLocation).not.toHaveBeenCalled();
+      confirm.mockResolvedValueOnce(true);
+      menuOf("w");
+      fireEvent.click(screen.getByText("Remove from list…"));
+      await waitFor(() => expect(storage.removeLocation).toHaveBeenCalledWith("w"));
+    });
+
+    // Inside the app there is no folder to keep: the notes go with the location.
+    it("says a location kept inside the app loses its notes, in the danger colour", () => {
+      expect(removePrompt({ ...WORK, dropbox: null, phone: null })).toMatchObject({
+        message:
+          "Its notes are kept inside the app, so they will be deleted from this phone. This can't be undone.",
+        confirmLabel: "Remove and delete",
+        danger: true,
+      });
+      expect(removePrompt({ ...WORK, phone: null }).message).toMatch(/copies in Dropbox stay/);
+    });
+  });
+
+  describe("renaming a location", () => {
+    it("asks the name over the page, starting from the one it has, and keeps the page on a clash", async () => {
+      const storage = storageOf({ locations: [MAIN, WORK] });
+      show(sync(), storage);
+      menuOf("w");
+      fireEvent.click(screen.getByText("Rename…"));
+      const page = within(screen.getByRole("dialog", { name: "Rename location" }));
+      const field = page.getByLabelText("Name") as HTMLInputElement;
+      expect(field.value).toBe("Work");
+      fireEvent.change(field, { target: { value: "phone" } });
+      fireEvent.click(page.getByRole("button", { name: "Rename" }));
+      expect(page.getByRole("alert").textContent).toBe("Another location has this name.");
+      // Its own name is no clash.
+      fireEvent.change(field, { target: { value: "Journal" } });
+      fireEvent.click(page.getByRole("button", { name: "Rename" }));
+      await waitFor(() => expect(storage.renameLocation).toHaveBeenCalledWith("w", "Journal"));
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog", { name: "Rename location" })).toBeNull(),
+      );
+    });
   });
 
   describe("a connect asking which Dropbox folder", () => {
-    const asking = (answer = vi.fn()) => {
-      const onClose = show(sync({ choosing: { folders: ["Personal", "Work"], answer } }));
+    const asking = (answer = vi.fn(), locations = [MAIN]) => {
+      const { onClose } = show(
+        sync({ choosing: { folders: ["Personal", "Work"], answer } }),
+        storageOf({ locations }),
+      );
       return { answer, onClose };
     };
     const rows = () => screen.getAllByTestId("sync-folder-choice").map((el) => el.textContent);
@@ -114,6 +277,23 @@ describe("Settings on the phone", () => {
       expect(answer).toHaveBeenCalledWith("Work");
       fireEvent.click(screen.getByText("Everything in Boojy Notes"));
       expect(answer).toHaveBeenLastCalledWith("");
+    });
+
+    // Two locations over one Dropbox folder would each take the other's notes for its own.
+    it("shows, but never offers, a folder another location on this phone syncs with", () => {
+      const { answer } = asking(vi.fn(), [MAIN, { ...WORK, dropbox: "work" }]);
+      expect(rows()).toEqual([
+        "Everything in Boojy NotesUsed by another location",
+        "Personal",
+        "WorkUsed by another location",
+      ]);
+      fireEvent.click(screen.getAllByTestId("sync-folder-choice")[2]);
+      fireEvent.click(screen.getAllByTestId("sync-folder-choice")[0]);
+      expect(answer).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId("sync-folder-new"));
+      fireEvent.change(screen.getByLabelText("New folder's name"), { target: { value: "WORK" } });
+      fireEvent.click(screen.getByRole("button", { name: "Create" }));
+      expect(answer).not.toHaveBeenCalled();
     });
 
     it("takes a new folder's name, but none that is no single folder", () => {
@@ -144,69 +324,32 @@ describe("Settings on the phone", () => {
     });
   });
 
-  // A location is added rarely and switched often: Home's menu switches, Settings adds.
+  // The desktop's Add folder…: no page of the app's own, only Android's folder screen.
   describe("adding a storage location", () => {
-    const listed = () => {
-      const addLocation = vi.fn(async () => true);
-      const onClose = show(sync(), {
-        ...IN_APP,
-        locations: [{ id: "main", name: "Phone", named: false, open: true, cloud: false }],
-        addLocation,
-      });
-      return { addLocation, onClose };
-    };
-
-    it("asks its name over the page, and adds it", () => {
-      const { addLocation } = listed();
+    it("asks for nothing itself: the press goes straight to the folder", () => {
+      const storage = storageOf();
+      show(sync(), storage);
       fireEvent.click(screen.getByTestId("location-add"));
-      const page = within(screen.getByTestId("new-location"));
-      fireEvent.change(page.getByLabelText("Name"), { target: { value: "Phone" } });
-      fireEvent.click(page.getByRole("button", { name: "Add" }));
-      expect(page.getByRole("alert").textContent).toBe("Another location has this name.");
-      fireEvent.change(page.getByLabelText("Name"), { target: { value: "Private" } });
-      fireEvent.click(page.getByRole("button", { name: "Add" }));
-      expect(addLocation).toHaveBeenCalledWith("Private");
+      expect(storage.addLocation).toHaveBeenCalledOnce();
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
     });
 
-    it("goes back to Settings, not out of it, on Back", () => {
-      const { onClose } = listed();
-      fireEvent.click(screen.getByTestId("location-add"));
-      fireEvent.keyDown(document, { key: "Escape" });
-      expect(screen.queryByTestId("new-location")).toBeNull();
-      expect(onClose).not.toHaveBeenCalled();
-    });
-
-    it("is not offered where the app has no locations (a browser)", () => {
-      show(sync());
+    it("lists and offers nothing where the app has no locations (a browser)", () => {
+      show(sync(), storageOf({ locations: [] }));
       expect(screen.queryByTestId("location-add")).toBeNull();
+      expect(screen.queryByText("Storage locations")).toBeNull();
     });
-  });
-
-  it("leads with Sign in again when Dropbox wants the person", () => {
-    show(
-      sync({
-        status: { ...SYNCED, state: "problem", problems: [{ kind: "signed-out" }] },
-      }),
-    );
-    expect(menuOf("settings-dropbox")[0]).toBe("Sign in again");
   });
 
   it("goes back on its arrow and on Escape, but an open menu takes its own Escape", () => {
-    const onClose = show(sync());
+    const { onClose } = show(sync());
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.keyDown(document.body, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(2);
-    fireEvent.click(screen.getByTestId("settings-dropbox"));
+    fireEvent.click(screen.getByTestId("location-more-main"));
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(2);
-  });
-
-  // Where the notes are is true with or without sync: it once read "Inside the app" with none.
-  it("names the folder with no sync at all", () => {
-    show(null, { ...IN_APP, notesFolder: "Documents/Boojy Notes" });
-    expect(screen.getByTestId("settings-folder").textContent).toContain("Documents/Boojy Notes");
-    expect(screen.queryByTestId("settings-dropbox")).toBeNull();
   });
 
   // The phone has no keys for the interface size: Settings is the only way to it.
@@ -222,7 +365,13 @@ describe("Settings on the phone", () => {
     const Page = ({ open }: { open: boolean }) => (
       <ThemeProvider>
         <SettingsProvider>
-          <PhoneSettings open={open} sync={sync()} storage={IN_APP} onClose={() => {}} />
+          <PhoneSettings
+            open={open}
+            sync={sync()}
+            storage={storageOf()}
+            confirm={async () => true}
+            onClose={() => {}}
+          />
         </SettingsProvider>
       </ThemeProvider>
     );
@@ -245,7 +394,7 @@ describe("Settings on the phone", () => {
   // A closed menu leaves a copy of itself for a moment, still a `menu` by role:
   // Back then was no one's, and Android's Back put the app in the background.
   it("goes back on Escape while a closed menu's leaving copy is still there", () => {
-    const onClose = show(sync());
+    const { onClose } = show(sync());
     const ghost = document.createElement("div");
     ghost.setAttribute("role", "menu");
     ghost.className = "motion-ghost";
@@ -261,7 +410,13 @@ describe("Settings on the phone", () => {
     render(
       <ThemeProvider>
         <SettingsProvider>
-          <PhoneSettings open={false} sync={sync()} storage={IN_APP} onClose={() => {}} />
+          <PhoneSettings
+            open={false}
+            sync={sync()}
+            storage={storageOf()}
+            confirm={async () => true}
+            onClose={() => {}}
+          />
         </SettingsProvider>
       </ThemeProvider>,
     );

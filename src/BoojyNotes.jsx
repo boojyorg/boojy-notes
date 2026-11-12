@@ -60,6 +60,7 @@ import { caretLength, caretOffsetAt, getCaretOffset, placeCaret } from "./utils/
 import { binnedToast, deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useRecentlyDeleted } from "./hooks/useRecentlyDeleted";
 import { usePhoneStorage } from "./phone/usePhoneStorage";
+import { settingsPageToOpen } from "./phone/reopenSettings";
 import { useSyncStatus } from "./phone/useSyncStatus";
 import RecentlyDeletedMenu from "./components/RecentlyDeletedMenu";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
@@ -373,6 +374,8 @@ export default function BoojyNotes() {
   const sync = useSyncStatus({ showToast });
   // Where the phone keeps its notes, for its Settings page.
   const phoneStorage = usePhoneStorage({ showToast, flushAll });
+  // A start that opens on Settings has its page loaded already: no frame of Home first.
+  const [PhoneSettingsPage] = useState(() => settingsPageToOpen() ?? PhoneSettings);
   const [binOpen, setBinOpen] = useState(false);
   const recentlyDeleted = useRecentlyDeleted({
     notesDir,
@@ -1789,6 +1792,7 @@ export default function BoojyNotes() {
             onVaultMenuOpen={refreshVaults}
             sync={sync}
             locations={phoneStorage.locations}
+            loaded={!fsLoading}
             onOpenLocation={phoneStorage.openLocation}
             recentlyDeleted={
               recentlyDeleted.available
@@ -2028,10 +2032,11 @@ export default function BoojyNotes() {
 
       <React.Suspense fallback={null}>
         {isPhone ? (
-          <PhoneSettings
+          <PhoneSettingsPage
             open={settingsOpen}
             sync={sync}
             storage={phoneStorage}
+            confirm={requestConfirm}
             onClose={() => setSettingsOpen(false)}
           />
         ) : (

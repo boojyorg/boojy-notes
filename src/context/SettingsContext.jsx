@@ -1,11 +1,13 @@
 import { createContext, useState, useEffect, useContext, useMemo, useCallback } from "react";
+import { settingsPageToOpen } from "../phone/reopenSettings";
 import { isElectron } from "../utils/platform";
 import { applyUiScale, initialUiScale } from "../utils/uiScale";
 
 const SettingsContext = createContext(null);
 
 export function SettingsProvider({ children }) {
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // The phone starts in Settings after a storage location was opened from there.
+  const [settingsOpen, setSettingsOpen] = useState(() => settingsPageToOpen() !== null);
 
   // UI Scale state, driven by Settings and the Cmd+Plus/Minus/0 shortcuts.
   // It is the one size control; a stored `boojy-font-size` is never read.

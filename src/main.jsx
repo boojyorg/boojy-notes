@@ -50,8 +50,14 @@ window.addEventListener("unhandledrejection", (e) => console.error("[unhandled]"
 installTraceProbes();
 installFocusRingGuard();
 
-// The phone's vault and sign-in come before the app's first render.
-const ready = isPhone ? import("./phone/install").then((m) => m.installPhone()) : Promise.resolve();
+// The phone's vault and sign-in come before the app's first render. A start
+// that opens on Settings (a location switched there) doesn't wait for Home's notes.
+const ready = isPhone
+  ? Promise.all([
+      import("./phone/install"),
+      import("./phone/reopenSettings").then((m) => m.prepareSettingsToReopen()),
+    ]).then(([m, onSettings]) => m.installPhone({ home: !onSettings }))
+  : Promise.resolve();
 
 ready.then(
   () =>

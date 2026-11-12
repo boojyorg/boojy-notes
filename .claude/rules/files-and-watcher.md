@@ -14,10 +14,10 @@
   `FolderLost`, never empty or app storage; outside changes looked for (`checkOutside`).
   `phoneVaultFolder.test.ts`. **App storage moves to an empty one at a start**: copied
   whole, then chosen, then cleared. `moveToFolder.test.ts`.
-- **Phone storage locations**: the first in place, the rest in `locations/`, opened by
-  restart. `locations.test.ts`.
+- **Phone storage locations**: the first in place, others in `locations/`, opened by
+  restart, notes read ahead (`readAhead`); no shared folder. `locations.test.ts`.
 - **Phone sync is optional, the binding its connection**: no pass till accounts match; folder asked at connect. `phoneSync.test.ts`.
-- Desktop confirms only several files; one note goes at once, Undo in its toast.
+- Desktop confirms only several files; one note goes at once, with Undo.
 
 ## The watcher drops only an event it can trace to the app's own operation
 
@@ -58,7 +58,7 @@ identity. `external-rename.spec.ts`.
 - **`write-note` refuses a stale save** (bytes not the last seen: `{ stale: true, note }`);
   refusal and watcher both land in `takeOutsideVersion`.
 - **Once conflicted, the local version never goes over the outside path**: every flush writes
-  the copy until one succeeds (`copyInFlight`). No merging, by decision. `external-edit.spec.ts`.
+  the copy until one succeeds (`copyInFlight`). No merging. `external-edit.spec.ts`.
 
 ## A dirty mark is cleared only by a write of the version the note holds now
 
@@ -80,7 +80,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   switches there; in none it is edited in place (`outsideNotes.ts`), never indexed, kept in
   history or listed (`vaultNotes()`). `open-with.spec.ts`, `outside-notes.spec.ts`.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
-  folders and on window focus. `trash-file` refuses a note (notes go by id, `trash-note`).
+  folders and on window focus. `trash-file` refuses a note.
   `vault-switcher.spec.ts`.
 - **First run** (`settleSetupState`): a config or `Documents/Boojy/Notes` means an existing
   user; else the default folder waits for `complete-setup`. `vault-root.spec.ts`,

@@ -31,6 +31,19 @@ export function folderChosen(choice: string, folders: string[]) {
 /** The folder's name as Home and Settings show it. */
 export const syncFolderName = (folder: string) => folder || APP_FOLDER;
 
-/** Where the folder is inside a Dropbox's Apps folder, whose own name Dropbox translates. */
+/**
+ * Where the folder is in a Dropbox, as the desktop shows a location there.
+ * Dropbox names the Apps folder in the account's language and the app can't
+ * see which, so `Apps` is the usual name, not a promise.
+ */
 export const syncFolderPath = (folder: string) =>
-  folder ? `${APP_FOLDER} › ${folder}` : APP_FOLDER;
+  `Dropbox/Apps/${APP_FOLDER}${folder ? `/${folder}` : ""}`;
+
+/**
+ * Whether `folder` is one another storage location on this phone syncs with
+ * (`taken`): the same folder, or the app folder itself beside any folder in
+ * it. Two locations over one Dropbox folder would each read the other's
+ * notes as its own, and delete them.
+ */
+export const folderClash = (folder: string, taken: string[]) =>
+  taken.some((t) => t === "" || folder === "" || t.toLowerCase() === folder.toLowerCase());

@@ -7,25 +7,27 @@ import { nameProblem } from "./locations";
 import { PageHead, rowStyle } from "./pageParts";
 
 /**
- * A new storage location, over Settings: its name alone. Adding it
- * starts the app again in it, where its folder is asked as a first launch
- * asks (`PhoneSetup`): one way of choosing where notes are kept. Back (and
- * Escape) adds nothing.
+ * Another name for a storage location, over Settings: its name in the app
+ * alone, as the desktop's Rename is. Back (and Escape) changes nothing.
  */
-export default function NewLocation({
+export default function RenameLocation({
+  name: current,
   taken,
-  onAdd,
+  onRename,
   onClose,
 }: {
+  /** Its name now. */
+  name: string;
   /** The names the other locations show. */
   taken: string[];
-  onAdd: (name: string) => void;
+  onRename: (name: string) => void;
   onClose: () => void;
 }) {
   const { theme } = useTheme();
   const { TEXT, BG } = theme;
   const pageRef = useRef<HTMLFormElement>(null);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(current);
+  const title = "Rename location";
   // A problem is said once Add was tried, not while the name is still being typed.
   const [tried, setTried] = useState(false);
   useFocusTrap(pageRef as RefObject<HTMLElement>, true);
@@ -37,12 +39,12 @@ export default function NewLocation({
       ref={pageRef}
       role="dialog"
       aria-modal="true"
-      aria-label="New location"
-      data-testid="new-location"
+      aria-label={title}
+      data-testid="rename-location"
       onSubmit={(e) => {
         e.preventDefault();
         setTried(true);
-        if (!problem) onAdd(name.trim());
+        if (!problem) onRename(name.trim());
       }}
       style={{
         position: "fixed",
@@ -58,24 +60,24 @@ export default function NewLocation({
         lineHeight: "24px",
       }}
     >
-      <PageHead title="New location" onBack={onClose} />
+      <PageHead title={title} onBack={onClose} />
       <label
-        htmlFor="new-location-name"
+        htmlFor="location-name"
         style={{ margin: "0 2px 10px", fontSize: 14, fontWeight: 500, color: TEXT.muted }}
       >
         Name
       </label>
       <input
-        id="new-location-name"
+        id="location-name"
         value={name}
         onChange={(e) => setName(e.target.value)}
         aria-invalid={tried && problem !== null}
-        aria-describedby="new-location-note"
+        aria-describedby="location-name-note"
         autoComplete="off"
         style={{ ...rowStyle(theme), outlineOffset: 2 }}
       />
       <p
-        id="new-location-note"
+        id="location-name-note"
         role={tried && problem ? "alert" : undefined}
         style={{
           margin: "10px 2px 0",
@@ -84,8 +86,7 @@ export default function NewLocation({
           color: tried && problem ? theme.SEMANTIC.error : TEXT.muted,
         }}
       >
-        {(tried && problem) ||
-          "A separate set of notes, with its own folder. You choose the folder next."}
+        {(tried && problem) || "Its name in Boojy Notes. Its folder keeps its own name."}
       </p>
       <button
         type="submit"
@@ -96,7 +97,7 @@ export default function NewLocation({
           fontWeight: 600,
         }}
       >
-        Add
+        Rename
       </button>
     </form>
   );

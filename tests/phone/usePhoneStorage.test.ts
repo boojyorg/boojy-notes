@@ -44,8 +44,8 @@ describe("where the phone keeps its notes, for Settings", () => {
 
   describe("the storage locations", () => {
     const ROWS = [
-      { id: "main", name: "Phone", named: false, open: true, cloud: false },
-      { id: "work", name: "Work", named: true, open: false, cloud: true },
+      { id: "main", name: "Phone", named: false, open: true, dropbox: null, phone: null },
+      { id: "work", name: "Work", named: true, open: false, dropbox: "Team", phone: null },
     ];
     const withLocations = (over: Record<string, unknown> = {}) => {
       const locations = {
@@ -53,9 +53,7 @@ describe("where the phone keeps its notes, for Settings", () => {
         open: vi.fn(async (_id: string, saved: () => Promise<unknown>) => {
           await saved();
         }),
-        add: vi.fn(async (_name: string, saved: () => Promise<unknown>) => {
-          await saved();
-        }),
+        add: vi.fn(async () => "added"),
         ...over,
       };
       return { locations, ...hook({ locations }) };
@@ -68,15 +66,77 @@ describe("where the phone keeps its notes, for Settings", () => {
       expect(result.current.locations).toEqual(ROWS);
     });
 
-    it("writes the editor's waiting edits before another is opened or added", async () => {
+    // Read after the first frame, Home's heading said "Phone" and Settings had no list for a moment.
+    it("starts with the list the app's start read", () => {
+      const { result } = withLocations({ listed: ROWS });
+      expect(result.current.locations).toEqual(ROWS);
+    });
+
+    it("writes the editor's waiting edits before another is opened", async () => {
       const { result, locations, flushAll } = withLocations();
       await act(async () => {
         expect(await result.current.openLocation("work")).toBe(true);
-        expect(await result.current.addLocation("Private")).toBe(true);
       });
-      expect(locations.open).toHaveBeenCalledWith("work", expect.any(Function));
-      expect(locations.add).toHaveBeenCalledWith("Private", expect.any(Function));
-      expect(flushAll).toHaveBeenCalledTimes(2);
+      expect(locations.open).toHaveBeenCalledWith("work", expect.any(Function), undefined);
+      expect(flushAll).toHaveBeenCalledOnce();
+    });
+
+    // Settings' press fades out first: started again mid-press, the row stood grey until the new page.
+    it("hands on what the restart itself is to wait for", async () => {
+      const faded = Promise.resolve();
+      const { result, locations } = withLocations();
+      await act(async () => {
+        await result.current.openLocation("work", faded);
+      });
+      expect(locations.open).toHaveBeenCalledWith("work", expect.any(Function), faded);
+    });
+
+    // The open location stays open: the list is read again, and nothing starts again.
+    it("adds a folder as one, reads the list again, and says why a folder was not taken", async () => {
+      for (const [answer, said] of [
+        ["added", /^Location added$/],
+        ["cancelled", null],
+        ["in-use", /Another storage location/],
+        ["refused", /on this phone/],
+      ] as const) {
+        const { result, locations, showToast, flushAll } = withLocations({
+          add: vi.fn(async () => answer),
+        });
+        await act(async () => {});
+        await act(async () => {
+          await result.current.addLocation();
+        });
+        expect(locations.list).toHaveBeenCalledTimes(2);
+        expect(flushAll).not.toHaveBeenCalled();
+        if (said) expect(showToast.mock.calls[0][0]).toMatch(said);
+        else expect(showToast).not.toHaveBeenCalled();
+        cleanup();
+      }
+    });
+
+    // Neither starts the app again: the list is read afresh, so Home and Settings follow.
+    it("renames or removes one, then reads the list again", async () => {
+      const rename = vi.fn(async () => {});
+      const remove = vi.fn(async () => {
+        throw new Error("The open storage location can't be removed");
+      });
+      const { result, locations, showToast } = withLocations({ rename, remove });
+      await act(async () => {});
+      expect(locations.list).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        expect(await result.current.renameLocation("work", "Journal")).toBe(true);
+      });
+      expect(rename).toHaveBeenCalledWith("work", "Journal");
+      expect(locations.list).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        expect(await result.current.removeLocation("main")).toBe(false);
+      });
+      expect(showToast).toHaveBeenCalledWith(
+        "Couldn't remove it: The open storage location can't be removed",
+        "warning",
+        { key: "storage-location" },
+      );
+      expect(locations.list).toHaveBeenCalledTimes(3);
     });
 
     it("says why when it can't, and stays where it is", async () => {

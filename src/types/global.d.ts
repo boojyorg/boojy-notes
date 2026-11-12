@@ -247,9 +247,17 @@ declare global {
       sync: import("../phone/useSyncStatus").PhoneSyncAPI;
       /** The phone's storage locations (src/phone/locations.ts); opening or adding one starts the app again. */
       locations: {
+        /** The list as the start found it, for the first frame; `list` reads it as it is now. */
+        listed: import("../phone/locations").LocationRow[];
         list: () => Promise<import("../phone/locations").LocationRow[]>;
-        open: (id: string, saved: () => Promise<unknown>) => Promise<void>;
-        add: (name: string, saved: () => Promise<unknown>) => Promise<void>;
+        open: (
+          id: string,
+          saved: () => Promise<unknown>,
+          before?: Promise<unknown>,
+        ) => Promise<void>;
+        add: () => Promise<import("../phone/install").AddAnswer>;
+        rename: (id: string, name: string) => Promise<void>;
+        remove: (id: string) => Promise<void>;
       };
       /** The folder the notes are in, as a person reads it; null when they are inside the app. */
       notesFolder: string | null;

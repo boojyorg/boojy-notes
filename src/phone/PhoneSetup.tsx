@@ -25,6 +25,7 @@ import {
   type FolderAccessPlugin,
   folderLabel,
   type PickedFolder,
+  treesOverlap,
 } from "./folderFiles";
 
 /**
@@ -92,8 +93,8 @@ type NotTaken = "refused" | "taken";
 /**
  * Asks Android for a folder; null when the picker was left, `refused` for one
  * not on the phone, `taken` for one another storage location keeps its notes
- * in (`taken`, by tree): two locations over one folder would each sync and
- * delete the other's files. Its grant is the other location's, so it is kept.
+ * in, or one inside or around it (`taken`, by tree): two locations over the
+ * same files would each sync and delete the other's. Its grant is the other location's, so it is kept.
  */
 async function pickFolder(
   access: FolderAccessPlugin,
@@ -103,7 +104,8 @@ async function pickFolder(
   const got = await access.pick(initial ? { initial } : {});
   if (got.refused) return "refused";
   if (!got.picked || !got.tree || !got.root) return null;
-  return taken.includes(got.tree) ? "taken" : { tree: got.tree, root: got.root };
+  const tree = got.tree;
+  return taken.some((t) => treesOverlap(t, tree)) ? "taken" : { tree, root: got.root };
 }
 
 const WHY_NOT: Record<NotTaken, string> = {
@@ -130,23 +132,13 @@ const POINT_ICONS = [OpenNoteIcon, SyncOfflineIcon, SyncOffIcon];
 export function PhoneSetup({
   folderName,
   granted = null,
-  location,
   taken: inUse = [],
-  onCancel,
   onDone,
   access = FolderAccess,
 }: {
   folderName: string;
   /** The folders other storage locations keep their notes in: never this one's. */
   taken?: string[];
-  /** Back, for a location added later: it is not added after all. */
-  onCancel?: () => void;
-  /**
-   * A storage location added later, by name: only its folder is asked, under
-   * that name. Back leaves it unadded (`onCancel`), and the appearance is
-   * already chosen.
-   */
-  location?: string;
   /** A folder this install already holds (a setup cut short after its choice). */
   granted?: PickedFolder | null;
   onDone: (folder: PickedFolder | null) => void;
@@ -154,15 +146,15 @@ export function PhoneSetup({
 }) {
   const { theme, setThemeMode } = useTheme();
   const { TEXT } = theme;
-  const [page, setPage] = useState<1 | 2>(granted || location ? 2 : 1);
+  const [page, setPage] = useState<1 | 2>(granted ? 2 : 1);
   const [chosen, setChosen] = useState<PickedFolder | null>(granted);
   const [refused, setRefused] = useState<NotTaken | null>(null);
   const [offerApp, setOfferApp] = useState(false);
 
   // A fresh install starts on System, as the desktop's does.
   useEffect(() => {
-    if (!location) setThemeMode("auto");
-  }, [setThemeMode, location]);
+    setThemeMode("auto");
+  }, [setThemeMode]);
 
   // Android's Back: the first page from the second, out of the app from the first.
   useEffect(() => {
@@ -171,8 +163,7 @@ export function PhoneSetup({
     import("@capacitor/app").then(({ App }) => {
       if (gone) return;
       const handle = App.addListener("backButton", () => {
-        if (location) onCancel?.();
-        else if (page === 2) setPage(1);
+        if (page === 2) setPage(1);
         else App.minimizeApp();
       });
       remove = () => handle.then((h) => h.remove());
@@ -181,7 +172,7 @@ export function PhoneSetup({
       gone = true;
       remove?.();
     };
-  }, [page, location, onCancel]);
+  }, [page]);
 
   const taken = (got: PickedFolder | NotTaken | null) => {
     setRefused(typeof got === "string" ? got : null);
@@ -267,7 +258,7 @@ export function PhoneSetup({
         <button
           type="button"
           aria-label="Back"
-          onClick={() => (location ? onCancel?.() : setPage(1))}
+          onClick={() => setPage(1)}
           style={{
             width: 44,
             height: 44,
@@ -287,7 +278,7 @@ export function PhoneSetup({
       </div>
       <div style={{ flexGrow: 1 }} />
       <div style={{ display: "flex", flexDirection: "column" }}>
-        <h1 style={{ ...HEADING, marginBottom: 24 }}>{location ?? "Set up"}</h1>
+        <h1 style={{ ...HEADING, marginBottom: 24 }}>Set up</h1>
 
         {/* The folder: its name over a row that holds the path and changes it, and what it is under. */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
@@ -350,23 +341,21 @@ export function PhoneSetup({
           </p>
         )}
 
-        {!location && (
-          <div
-            style={{
-              marginTop: 28,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
-            <SectionTitle title={APPEARANCE_TITLE} />
-            {/* The pills carry a left pull for a left edge: undone, so they sit centred. */}
-            <div style={{ paddingLeft: 12 }}>
-              <ThemePills />
-            </div>
+        <div
+          style={{
+            marginTop: 28,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <SectionTitle title={APPEARANCE_TITLE} />
+          {/* The pills carry a left pull for a left edge: undone, so they sit centred. */}
+          <div style={{ paddingLeft: 12 }}>
+            <ThemePills />
           </div>
-        )}
+        </div>
 
         <SmallButton kind="strong" onClick={carryOn} style={TOUCH_BUTTON}>
           {withArrow("Continue")}

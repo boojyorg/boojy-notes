@@ -37,58 +37,25 @@ const showSetup = (plugin: FolderAccessPlugin) => {
   return onDone;
 };
 
-// A location added from Home starts the app again with no folder chosen yet.
-describe("a storage location added later", () => {
-  const onCancel = vi.fn();
-  const showAdded = (plugin: FolderAccessPlugin, taken: string[] = []) => {
+// Two storage locations over the same files would each sync, and delete, the other's.
+describe("a folder another storage location keeps its notes in", () => {
+  it("is refused at setup, with why, and the way on is still there", async () => {
+    const a = access([{ picked: true, ...DEFAULT }]);
     const onDone = vi.fn();
-    onCancel.mockClear();
     render(
       <ThemeProvider>
         <PhoneSetup
-          folderName="Work"
-          location="Work"
-          taken={taken}
-          onCancel={onCancel}
+          folderName="Boojy Notes"
+          taken={[DEFAULT.tree]}
           onDone={onDone}
-          access={plugin}
+          access={a.plugin}
         />
       </ThemeProvider>,
     );
-    return onDone;
-  };
-
-  it("is asked its folder alone, under its name: no welcome, no appearance", () => {
-    showAdded(access([]).plugin);
-    expect(screen.getByRole("heading", { name: "Work" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Welcome to Boojy Notes" })).toBeNull();
-    expect(screen.queryByText("Appearance")).toBeNull();
-    expect(screen.getByRole("button", { name: /Documents\/Work/ })).toBeTruthy();
-  });
-
-  // Added by mistake: there must be a way out that adds nothing.
-  it("is left unadded on Back", () => {
-    const onDone = showAdded(access([]).plugin);
-    tap("Back");
-    expect(onCancel).toHaveBeenCalledOnce();
-    expect(onDone).not.toHaveBeenCalled();
-  });
-
-  it("refuses the folder another location keeps its notes in, and says why", async () => {
-    const a = access([{ picked: true, ...DEFAULT }]);
-    const onDone = showAdded(a.plugin, [DEFAULT.tree]);
+    tap(/Get started/);
     tap(/Continue/);
     expect((await screen.findByRole("alert")).textContent).toMatch(/Another storage location/);
     expect(onDone).not.toHaveBeenCalled();
-  });
-
-  it("takes the folder Android grants, in a folder named after it", async () => {
-    const WORK = { tree: "content://tree/work", root: "primary:Documents/Work" };
-    const a = access([{ picked: true, ...WORK }]);
-    const onDone = showAdded(a.plugin);
-    tap(/Continue/);
-    await waitFor(() => expect(onDone).toHaveBeenCalledWith(WORK));
-    expect(a.ensureDefault).toHaveBeenCalledWith({ name: "Work" });
   });
 });
 

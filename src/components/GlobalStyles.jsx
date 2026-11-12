@@ -368,6 +368,18 @@ export default function GlobalStyles() {
           background-color: ${theme.BG.hover} !important;
           transition: none !important;
         }
+        /* A card of two controls (a storage location's row and its ···) is
+           one thing to the eye: a press on its row greys the whole card. */
+        html.is-phone .press-card:not([data-opening]):has(> .press-card-body:active) {
+          background-color: ${theme.BG.hover} !important;
+          transition: none !important;
+        }
+        /* It fades out as every press does. A press that starts the app again
+           (data-opening) lets go at once: the page stops drawing while it
+           restarts, and the grey would stand until the new page. */
+        html.is-phone .press-card {
+          transition: background-color var(--motion-enter) !important;
+        }
         /* A hold on a row is its menu: Android's long-press also selected the
            row's words, handles and all. A rename's field still selects. */
         html.is-phone :is(.sidebar-row, .sidebar-action-row, [role="treeitem"]) {

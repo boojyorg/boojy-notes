@@ -53,17 +53,24 @@ export function usePhoneStorage({
       }),
     [move, flushAll, showToast],
   );
-  const [locations, setLocations] = useState<LocationRow[]>([]);
-  useEffect(() => {
-    let gone = false;
-    api.locations
-      ?.list()
-      .then((rows) => !gone && setLocations(rows))
-      .catch((error) => console.warn("[locations]", error));
-    return () => {
-      gone = true;
-    };
+  // The list the start read, so the first frame names the open location and lists the rest.
+  const [locations, setLocations] = useState<LocationRow[]>(() => api.locations?.listed ?? []);
+  const mounted = useRef(true);
+  const relist = useCallback(async () => {
+    try {
+      const rows = await api.locations?.list();
+      if (rows && mounted.current) setLocations(rows);
+    } catch (error) {
+      console.warn("[locations]", error);
+    }
   }, [api]);
+  useEffect(() => {
+    mounted.current = true;
+    relist();
+    return () => {
+      mounted.current = false;
+    };
+  }, [relist]);
 
   const restart = useCallback(
     async (start: (saved: () => Promise<unknown>) => Promise<void> | undefined, failed: string) => {
@@ -80,12 +87,53 @@ export function usePhoneStorage({
     [flushAll, showToast],
   );
   const openLocation = useCallback(
-    (id: string) => restart((saved) => api.locations?.open(id, saved), "Couldn't switch"),
+    // `before` holds the restart itself, not the saving ahead of it: the press's fade, from Settings.
+    (id: string, before?: Promise<unknown>) =>
+      restart((saved) => api.locations?.open(id, saved, before), "Couldn't switch"),
     [api, restart],
   );
+
+  // Neither starts the app again: the list is read afresh, and Home follows.
+  const change = useCallback(
+    async (work: () => Promise<void> | undefined, failed: string) => {
+      try {
+        await work();
+        return true;
+      } catch (error) {
+        showToast(`${failed}: ${(error as Error)?.message ?? error}`, "warning", {
+          key: LOCATION_KEY,
+        });
+        return false;
+      } finally {
+        await relist();
+      }
+    },
+    [relist, showToast],
+  );
+  const renameLocation = useCallback(
+    (id: string, name: string) =>
+      change(() => api.locations?.rename(id, name), "Couldn't rename it"),
+    [api, change],
+  );
+  // Android's folder screen, then the folder is in the list: the open location stays open.
   const addLocation = useCallback(
-    (name: string) => restart((saved) => api.locations?.add(name, saved), "Couldn't add it"),
-    [api, restart],
+    () =>
+      change(async () => {
+        const answer = await api.locations?.add();
+        // A receipt, which also ends a notice about a folder that was not taken.
+        if (answer === "added") showToast("Location added", "done", { key: LOCATION_KEY });
+        if (answer === "in-use")
+          showToast("Another storage location keeps its notes in that folder.", "notice", {
+            key: LOCATION_KEY,
+          });
+        if (answer === "refused")
+          showToast("Choose a folder on this phone.", "notice", { key: LOCATION_KEY });
+      }, "Couldn't add it"),
+    [api, change, showToast],
+  );
+  const removeLocation = useCallback(
+    (id: string) => change(() => api.locations?.remove(id), "Couldn't remove it"),
+    [api, change],
   );
 
   return useMemo(
@@ -95,8 +143,10 @@ export function usePhoneStorage({
       locations,
       openLocation,
       addLocation,
+      renameLocation,
+      removeLocation,
     }),
-    [api, moveToFolder, locations, openLocation, addLocation],
+    [api, moveToFolder, locations, openLocation, addLocation, renameLocation, removeLocation],
   );
 }
 
