@@ -126,8 +126,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 - `NotePath`: folders (secondary, clickable) / name (primary, editable). A root note shows its
   name alone.
-- **The empty name's placeholder is CSS on the DOM**, never a class from debounced state; the
-  field keeps the placeholder's width while editing.
+- **The empty name's placeholder is CSS on the DOM**, never debounced state; its width holds
+  while editing, on `BG.hover` under the caret.
 - **Where it sits is CSS; what it shows is JavaScript.** Sticky band with `chromePathInset()`
   and `CHROME_PATH_RIGHT_INSET`; two flex spacers centre it on the pane when it fits, never
   over a control. What fits is measured by an invisible twin (`utils/pathCrumbs.ts`).

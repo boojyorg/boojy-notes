@@ -222,3 +222,67 @@ test("a click on the name still renames the file in place, folders untouched", a
     await h.close();
   }
 });
+
+/**
+ * A fresh note asks for its name: while the caret is in the unnamed field it
+ * stands on a neutral ground that hugs the word, the same distance either
+ * side of it, clear of a root note's glyph, and there in full the moment the
+ * caret lands (faded in, the box filled behind a ground already drawn around
+ * it). Named and left, it is the plain label again.
+ */
+test("an unnamed name under the caret stands on a ground that hugs it evenly, clear of the glyph", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    await h.openNote("Alpha");
+    await h.page.emulateMedia({ reducedMotion: "no-preference" });
+    await h.page.getByRole("button", { name: "New note", exact: true }).click();
+    const title = h.page.getByRole("textbox", { name: "Note title" });
+    await expect(title).toBeFocused();
+    const ground = () =>
+      h.page.evaluate(() => {
+        const el = document.querySelector("[data-title]") as HTMLElement;
+        const s = getComputedStyle(el);
+        const box = el.getBoundingClientRect();
+        // Each shadow reads `rgb(r, g, b) <x>px 0px 0px <spread>px`.
+        const shadows = [
+          ...s.boxShadow.matchAll(/(rgba?\([^)]*\)) (-?[\d.]+)px [\d.]+px [\d.]+px ([\d.]+)px/g),
+        ];
+        const reach = shadows.map((m) => ({ colour: m[1], x: Number(m[2]), spread: Number(m[3]) }));
+        const glyph = document
+          .querySelector('[data-testid="note-path-root"] svg')
+          ?.getBoundingClientRect();
+        return {
+          background: s.backgroundColor,
+          colours: reach.map((r) => r.colour),
+          left: box.left + Math.min(0, ...reach.map((r) => r.x - r.spread)),
+          right: box.right + Math.max(0, ...reach.map((r) => r.x + r.spread)),
+          wordLeft: box.left + Number.parseFloat(s.paddingLeft),
+          wordRight: box.right - Number.parseFloat(s.paddingRight),
+          glyphRight: glyph?.right ?? null,
+        };
+      });
+    // Read at once, with motion on: the ground does not fade in.
+    const g = await ground();
+    expect(g.background).not.toBe("rgba(0, 0, 0, 0)");
+    expect(g.colours).toEqual([g.background, g.background]);
+    expect(g.wordLeft - g.left).toBeCloseTo(10, 1);
+    // The field is the placeholder's width rounded up to a whole pixel.
+    expect(g.right - g.wordRight).toBeGreaterThanOrEqual(10 - SUBPIXEL);
+    expect(g.right - g.wordRight).toBeLessThanOrEqual(11 + SUBPIXEL);
+    expect(g.glyphRight, "root glyph").not.toBeNull();
+    expect(g.left - g.glyphRight!).toBeGreaterThanOrEqual(4);
+
+    await h.page.keyboard.type("Plan");
+    await h.page.keyboard.press("Enter");
+    await expect(title).not.toBeFocused();
+    await expect
+      .poll(async () => {
+        const after = await ground();
+        return [after.background, after.colours.length];
+      })
+      .toEqual(["rgba(0, 0, 0, 0)", 0]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
