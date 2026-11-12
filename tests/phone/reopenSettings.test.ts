@@ -26,13 +26,14 @@ describe("a start that comes back to Settings", () => {
   // Opened by an effect, or with its page still to load, Home showed for a moment first.
   it("has the page loaded before the app renders, and only on such a start", async () => {
     const plain = await load();
-    await plain.prepareSettingsToReopen();
+    expect(await plain.prepareSettingsToReopen()).toBe(false);
     expect(plain.settingsPageToOpen()).toBeNull();
 
     plain.reopenSettingsAfterRestart();
     vi.resetModules();
     const restarted = await load();
-    await restarted.prepareSettingsToReopen();
+    // It says so: such a start doesn't wait for Home's notes.
+    expect(await restarted.prepareSettingsToReopen()).toBe(true);
     expect(restarted.settingsPageToOpen()).toBe(Page);
     // The start after that one is an ordinary one.
     vi.resetModules();

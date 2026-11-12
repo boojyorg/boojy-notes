@@ -73,16 +73,9 @@ export function usePhoneStorage({
   }, [relist]);
 
   const restart = useCallback(
-    async (
-      start: (saved: () => Promise<unknown>) => Promise<void> | undefined,
-      failed: string,
-      first?: Promise<unknown>,
-    ) => {
+    async (start: (saved: () => Promise<unknown>) => Promise<void> | undefined, failed: string) => {
       try {
-        await start(async () => {
-          await flushAll();
-          await first;
-        });
+        await start(async () => flushAll());
         return true;
       } catch (error) {
         showToast(`${failed}: ${(error as Error)?.message ?? error}`, "warning", {
@@ -94,9 +87,9 @@ export function usePhoneStorage({
     [flushAll, showToast],
   );
   const openLocation = useCallback(
-    // `first` is waited for before the app starts again: the press's fade, from Settings.
-    (id: string, first?: Promise<unknown>) =>
-      restart((saved) => api.locations?.open(id, saved), "Couldn't switch", first),
+    // `before` holds the restart itself, not the saving ahead of it: the press's fade, from Settings.
+    (id: string, before?: Promise<unknown>) =>
+      restart((saved) => api.locations?.open(id, saved, before), "Couldn't switch"),
     [api, restart],
   );
 

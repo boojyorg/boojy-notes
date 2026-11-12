@@ -230,6 +230,17 @@ describe("the notes a start reads ahead", () => {
     expect(vaultApi.readAllNotes).toHaveBeenCalledOnce();
   });
 
+  // Switched from Settings, the app starts again on Settings: Home's notes are behind it.
+  it("doesn't wait for the notes at all on a start that opens on Settings", async () => {
+    Object.assign(vaultApi, { readAllNotes: vi.fn(() => new Promise(() => {})) });
+    vi.resetModules();
+    const { installPhone: install } = await import("../../src/phone/install");
+    const began = performance.now();
+    await install({ home: false });
+    expect(performance.now() - began).toBeLessThan(150);
+    expect(vaultApi.readAllNotes).toHaveBeenCalledOnce();
+  });
+
   it("starts the app though the read failed, and fails for the app's own ask", async () => {
     Object.assign(vaultApi, {
       readAllNotes: vi.fn(async () => Promise.reject(new Error("unreadable"))),
@@ -443,6 +454,31 @@ describe("where a start keeps the notes", () => {
         expect(saved).toHaveBeenCalledOnce();
         expect(lists()).toEqual([["state/locations.json", listed("work")]]);
         expect(() => api().open("nowhere", saved)).toThrow(/No such/);
+      });
+
+      // A press still fading holds the reload, not the saving and the writing ahead of it:
+      // waited for first, it was time added to every switch.
+      it("writes the list while a press fades, and starts again only once it has", async () => {
+        await two();
+        let fade = () => {};
+        const faded = new Promise<void>((done) => (fade = done));
+        let started = false;
+        const opening = (
+          api() as unknown as {
+            open(
+              id: string,
+              saved: () => Promise<unknown>,
+              before: Promise<unknown>,
+            ): Promise<void>;
+          }
+        )
+          .open("work", async () => {}, faded)
+          .then(() => (started = true));
+        await vi.waitFor(() => expect(lists()).toEqual([["state/locations.json", listed("work")]]));
+        expect(started).toBe(false);
+        fade();
+        await opening;
+        expect(started).toBe(true);
       });
 
       // The desktop's Add folder…: the picker, and the folder joins the list under its own name.

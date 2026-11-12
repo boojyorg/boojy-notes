@@ -197,16 +197,19 @@ function readAhead<T>(read: (() => Promise<T>) | undefined) {
  * Starts the app again in `next`'s open location: `saved` writes the editor's
  * waiting edits, then, with the vault at rest, the list is written and the
  * page reloaded. A sync pass cut off by it is one the next start repeats.
+ * `before` holds the reload alone (a press still fading), not the work before it.
  */
 async function startIn(
   root: FileOps,
   atRest: <T>(work: () => Promise<T>) => Promise<T>,
   next: Locations,
   saved: () => Promise<unknown>,
+  before?: Promise<unknown>,
 ) {
   await saved();
   await atRest(async () => {
     await writeLocations(root, next);
+    await before;
     location.reload();
   });
 }
@@ -255,9 +258,10 @@ async function moveToFolder(
  * for the open storage location (`locations.ts`): its vault answers the
  * editor's file calls (`getAPI()` returns it), and sync starts if a Dropbox
  * folder is connected; with none, the notes are the phone's alone until one
- * is connected from Settings.
+ * is connected from Settings. `home` is whether the first frame is Home: a
+ * start that opens on Settings doesn't wait for the notes behind it.
  */
-export async function installPhone() {
+export async function installPhone({ home = true }: { home?: boolean } = {}) {
   const root = capacitorFiles();
   // A save the app died in the middle of is finished or undone before anything reads.
   await root.recover("state");
@@ -316,9 +320,9 @@ export async function installPhone() {
       listed,
       list: async () => locationRows(locations, await keptOf(root, locations)),
       // Another location is another start: the app is built for one (`locations.ts`).
-      open: (id: string, saved: () => Promise<unknown>) => {
+      open: (id: string, saved: () => Promise<unknown>, before?: Promise<unknown>) => {
         if (!locations.list.some((l) => l.id === id)) throw new Error("No such storage location");
-        return startIn(root, vault.atRest, { ...locations, open: id }, saved);
+        return startIn(root, vault.atRest, { ...locations, open: id }, saved, before);
       },
       /**
        * Adds a folder as a location, as the desktop's Add folder… does:
@@ -394,7 +398,7 @@ export async function installPhone() {
         : undefined,
   };
   const read = Promise.all([notes.ready, folders.ready]);
-  const longEnough = new Promise((done) => setTimeout(done, NOTES_WAIT_MS));
+  const longEnough = new Promise((done) => setTimeout(done, home ? NOTES_WAIT_MS : 0));
   await Promise.all([sync.start(), Promise.race([read, longEnough])]);
   if (!folder) return;
   // Other apps write the folder too, and Android sends no word of it. A

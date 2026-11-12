@@ -77,30 +77,18 @@ describe("where the phone keeps its notes, for Settings", () => {
       await act(async () => {
         expect(await result.current.openLocation("work")).toBe(true);
       });
-      expect(locations.open).toHaveBeenCalledWith("work", expect.any(Function));
+      expect(locations.open).toHaveBeenCalledWith("work", expect.any(Function), undefined);
       expect(flushAll).toHaveBeenCalledOnce();
     });
 
     // Settings' press fades out first: started again mid-press, the row stood grey until the new page.
-    it("waits for what it is given before the app starts again", async () => {
-      const order: string[] = [];
-      let fade = () => {};
-      const faded = new Promise<void>((done) => (fade = done)).then(() => order.push("faded"));
-      const open = vi.fn(async (_id: string, saved: () => Promise<unknown>) => {
-        await saved();
-        order.push("restart");
-      });
-      const { result } = withLocations({ open });
-      let opened: Promise<boolean> | undefined;
+    it("hands on what the restart itself is to wait for", async () => {
+      const faded = Promise.resolve();
+      const { result, locations } = withLocations();
       await act(async () => {
-        opened = result.current.openLocation("work", faded);
+        await result.current.openLocation("work", faded);
       });
-      expect(order).toEqual([]);
-      fade();
-      await act(async () => {
-        await opened;
-      });
-      expect(order).toEqual(["faded", "restart"]);
+      expect(locations.open).toHaveBeenCalledWith("work", expect.any(Function), faded);
     });
 
     // The open location stays open: the list is read again, and nothing starts again.
