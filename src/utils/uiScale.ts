@@ -12,17 +12,45 @@ import { isPhone } from "./platform";
  * take it to the nearest preset on the side they point.
  */
 
-/** The smallest and largest the app may be drawn, custom values included. */
+/** The smallest and largest scale that may be chosen, custom values included. */
 export const SCALE_MIN = SCALE_OPTIONS[0];
 export const SCALE_MAX = SCALE_OPTIONS[SCALE_OPTIONS.length - 1];
 
 /** The scale the app opens at, and what Reset goes back to. */
 export const SCALE_DEFAULT = 100;
 
-/** The scale saved by the last session, else the device's default. */
+const SCALE_KEY = "boojy-ui-scale";
+/** Set once a phone's saved scale is on the phone's own footing (`rebasePhoneScale`). */
+const PHONE_REBASED_KEY = "boojy-ui-scale-phone-rebased";
+
+/**
+ * The percentage a chosen scale is drawn at, a whole one. The phone draws
+ * every scale a step up (`PHONE_UI_SCALE`), so the size it was designed at is
+ * its 100%. Whatever does arithmetic on the drawn size (`zoom`, `--ui-scale`,
+ * a `vh` divided by it) asks here; whatever shows or stores a scale uses the
+ * chosen one.
+ */
+export const drawnScale = (scale: number) =>
+  isPhone ? Math.round((scale * PHONE_UI_SCALE) / 100) : scale;
+
+/**
+ * A phone's scale saved while its numbers were the desktop's (its default
+ * read 110%) becomes, once, the figure that draws what it drew, so an update
+ * changes the figure and not the size. Run before the first scale is read
+ * (`main.jsx`).
+ */
+export function rebasePhoneScale() {
+  if (!isPhone || localStorage.getItem(PHONE_REBASED_KEY)) return;
+  const saved = Number(localStorage.getItem(SCALE_KEY));
+  if (saved) {
+    localStorage.setItem(SCALE_KEY, String(clampScale((saved * 100) / PHONE_UI_SCALE)));
+  }
+  localStorage.setItem(PHONE_REBASED_KEY, "1");
+}
+
+/** The scale saved by the last session, else the default (as for a value that is no number). */
 export function initialUiScale(): number {
-  const saved = localStorage.getItem("boojy-ui-scale");
-  return saved ? Number(saved) : isPhone ? PHONE_UI_SCALE : SCALE_DEFAULT;
+  return Number(localStorage.getItem(SCALE_KEY)) || SCALE_DEFAULT;
 }
 
 /**
@@ -31,10 +59,11 @@ export function initialUiScale(): number {
  * anything sized against the viewport divides by it (`atScale`).
  */
 export function applyUiScale(scale: number) {
+  const drawn = drawnScale(scale);
   const root = document.documentElement.style;
-  root.zoom = `${scale}%`;
-  root.setProperty("--ui-scale", String(scale / 100));
-  root.minHeight = scale !== 100 ? `${10000 / scale}vh` : "";
+  root.zoom = `${drawn}%`;
+  root.setProperty("--ui-scale", String(drawn / 100));
+  root.minHeight = drawn !== 100 ? `${10000 / drawn}vh` : "";
 }
 
 /** A whole percentage inside the range. */

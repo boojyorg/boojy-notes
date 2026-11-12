@@ -197,8 +197,9 @@ export const ROW_LABEL_LINE_HEIGHT = 1.2;
 // The Android app (src/phone/) draws the desktop's own grammar a size up and
 // one screen at a time: Home (the sidebar, full width) or the open note.
 
-/** The phone's starting interface size: the 15px body reads at 16.5, about
- *  Android's own body text. Still the one size control (Settings). */
+/** What the phone draws its 100% at, in the desktop's percentages: the 15px
+ *  body reads at 16.5, about Android's own body text. Every size the phone
+ *  offers is drawn this much up (`drawnScale`), so Settings reads 100%. */
 export const PHONE_UI_SCALE = 110;
 /**
  * A touch target in CSS px at that scale: 44 on screen, the smallest box a

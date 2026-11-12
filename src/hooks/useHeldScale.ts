@@ -1,5 +1,6 @@
 import { type CSSProperties, useLayoutEffect, useState } from "react";
 import { useSettings } from "../context/SettingsContext";
+import { drawnScale } from "../utils/uiScale";
 
 /**
  * The style that holds a Settings surface at the interface size it opened
@@ -24,6 +25,6 @@ export function useHeldScale(open: boolean): CSSProperties {
   }, [open]);
   return {
     zoom: openedAt === uiScale ? undefined : openedAt / uiScale,
-    "--ui-scale": openedAt / 100,
+    "--ui-scale": drawnScale(openedAt) / 100,
   } as CSSProperties;
 }
