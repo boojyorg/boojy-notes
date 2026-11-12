@@ -1490,6 +1490,7 @@ export default function BoojyNotes() {
       else setActiveNote(key);
     },
     restoreHere: (place) => headingNavRef.current?.applyPlace(place),
+    placeNow: () => headingNavRef.current?.place() ?? null,
     exists: (key) => {
       const rel = fileFromHistoryKey(key);
       return rel ? otherFiles.some((f) => f.path === rel) : !!noteDataRef.current[key];

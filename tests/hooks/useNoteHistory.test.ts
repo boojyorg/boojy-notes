@@ -11,7 +11,14 @@ afterEach(cleanup);
 
 const mount = (current: string | null, resetKey: unknown) =>
   renderHook(
-    (p) => useNoteHistory({ open: () => {}, restoreHere: () => {}, exists: () => true, ...p }),
+    (p) =>
+      useNoteHistory({
+        open: () => {},
+        restoreHere: () => {},
+        placeNow: () => null,
+        exists: () => true,
+        ...p,
+      }),
     {
       initialProps: { current, resetKey },
     },
@@ -34,12 +41,47 @@ describe("useNoteHistory", () => {
     expect(h.result.current.canBack).toBe(true);
   });
 
+  it("keeps the place a step leaves, though no scroll's frame has recorded it yet", () => {
+    const restoreHere = vi.fn();
+    const linkPlace = { atTop: true, anchor: null, caret: null };
+    const headingPlace = {
+      atTop: false,
+      anchor: { id: "h1", before: null, after: null, top: 0 },
+      caret: null,
+    };
+    let now = linkPlace;
+    const h = renderHook(
+      (p) =>
+        useNoteHistory({
+          open: () => {},
+          restoreHere,
+          placeNow: () => now,
+          exists: () => true,
+          ...p,
+        }),
+      { initialProps: { current: "a" as string | null, resetKey: "/v" } },
+    );
+    // A heading link followed, then Back at once: the page shows the heading,
+    // and nothing has recorded that for the new visit.
+    act(() => h.result.current.recordPlace("a", linkPlace));
+    act(() => h.result.current.jump("a"));
+    now = headingPlace;
+    act(() => h.result.current.back());
+    expect(restoreHere).toHaveBeenLastCalledWith(linkPlace);
+    now = linkPlace;
+    act(() => h.result.current.forward());
+    expect(restoreHere).toHaveBeenLastCalledWith(headingPlace);
+  });
+
   it("steps across a heading jump in the open note by putting the place back, opening nothing", () => {
     const open = vi.fn();
     const restoreHere = vi.fn();
-    const h = renderHook((p) => useNoteHistory({ open, restoreHere, exists: () => true, ...p }), {
-      initialProps: { current: "a" as string | null, resetKey: "/v" },
-    });
+    const h = renderHook(
+      (p) => useNoteHistory({ open, restoreHere, placeNow: () => null, exists: () => true, ...p }),
+      {
+        initialProps: { current: "a" as string | null, resetKey: "/v" },
+      },
+    );
     const linkPlace = { top: { id: "b1", top: 0 }, caret: null };
     act(() => h.result.current.recordPlace("a", linkPlace));
     act(() => h.result.current.jump("a"));
@@ -72,7 +114,14 @@ describe("steps taken faster than the page renders", () => {
   const walked = () => {
     const open = vi.fn();
     const h = renderHook(
-      (p) => useNoteHistory({ open, restoreHere: () => {}, exists: () => true, ...p }),
+      (p) =>
+        useNoteHistory({
+          open,
+          restoreHere: () => {},
+          placeNow: () => null,
+          exists: () => true,
+          ...p,
+        }),
       { initialProps: { current: "a" as string | null, resetKey: "/v" } },
     );
     const show = (current: string) => h.rerender({ current, resetKey: "/v" });
