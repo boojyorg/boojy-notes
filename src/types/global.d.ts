@@ -247,6 +247,8 @@ declare global {
       sync: import("../phone/useSyncStatus").PhoneSyncAPI;
       /** The phone's storage locations (src/phone/locations.ts); opening or adding one starts the app again. */
       locations: {
+        /** The list as the start found it, for the first frame; `list` reads it as it is now. */
+        listed: import("../phone/locations").LocationRow[];
         list: () => Promise<import("../phone/locations").LocationRow[]>;
         open: (id: string, saved: () => Promise<unknown>) => Promise<void>;
         add: () => Promise<import("../phone/install").AddAnswer>;

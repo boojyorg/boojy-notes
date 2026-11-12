@@ -108,6 +108,24 @@ describe("Settings on the phone", () => {
     expect(storage.openLocation).toHaveBeenCalledOnce();
   });
 
+  // The app starts again on this page: with the tick moved at the press, nothing else changes.
+  it("moves the tick at the press, before the app has started again, and back if it can't", async () => {
+    let fail = () => {};
+    const openLocation = vi.fn(() => new Promise<boolean>((done) => (fail = () => done(false))));
+    show(sync(), storageOf({ locations: [MAIN, WORK], openLocation }));
+    const ticked = () =>
+      screen
+        .getByTestId("location-tick")
+        .closest("[data-testid^='location-']:not([data-testid='location-tick'])")
+        ?.getAttribute("data-testid");
+    expect(ticked()).toBe("location-main");
+    fireEvent.click(screen.getByTestId("location-w"));
+    expect(ticked()).toBe("location-w");
+    expect(screen.getAllByTestId("location-tick")).toHaveLength(1);
+    fail();
+    await waitFor(() => expect(ticked()).toBe("location-main"));
+  });
+
   it("doesn't ask a later start for Settings when the location could not be opened", async () => {
     const storage = storageOf({ locations: [MAIN, WORK], openLocation: vi.fn(async () => false) });
     show(sync(), storage);

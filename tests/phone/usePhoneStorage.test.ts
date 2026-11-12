@@ -66,6 +66,12 @@ describe("where the phone keeps its notes, for Settings", () => {
       expect(result.current.locations).toEqual(ROWS);
     });
 
+    // Read after the first frame, Home's heading said "Phone" and Settings had no list for a moment.
+    it("starts with the list the app's start read", () => {
+      const { result } = withLocations({ listed: ROWS });
+      expect(result.current.locations).toEqual(ROWS);
+    });
+
     it("writes the editor's waiting edits before another is opened", async () => {
       const { result, locations, flushAll } = withLocations();
       await act(async () => {

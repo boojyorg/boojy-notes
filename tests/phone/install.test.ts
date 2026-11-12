@@ -14,12 +14,14 @@ const disk = vi.hoisted(() => ({
   files: {} as Record<string, string>,
   /** The directories `fileAddress` was asked for. */
   addressed: [] as string[],
+  /** Every file a start read, in order. */
+  reads: [] as string[],
 }));
 vi.mock("../../src/phone/files", () => ({
   capacitorFiles: () => ({
     recover: async () => {},
     read: async (path: string) =>
-      path === "state/storage.json" && disk.choice
+      disk.reads.push(path) && path === "state/storage.json" && disk.choice
         ? new TextEncoder().encode(JSON.stringify({ kind: disk.choice, ...disk.under }))
         : path in disk.files
           ? new TextEncoder().encode(disk.files[path])
@@ -39,10 +41,12 @@ vi.mock("../../src/phone/files", () => ({
   },
 }));
 const checkOutside = vi.hoisted(() => vi.fn(async () => {}));
+/** The vault's own calls, for a test that has the app read its notes. */
+const vaultApi = vi.hoisted(() => ({}) as Record<string, unknown>);
 vi.mock("../../src/phone/phoneVault", () => ({
   VAULT: "vault",
   createPhoneVault: () => ({
-    api: {},
+    api: vaultApi,
     store: {},
     checkOutside,
     atRest: (work: () => Promise<unknown>) => work(),
@@ -159,6 +163,82 @@ describe("the phone's start", () => {
   });
 });
 
+/**
+ * Home drew before its notes were read: "No notes yet" stood for a moment
+ * over a location that had some. They are read before the app renders, and
+ * the app's first question is answered with that read.
+ */
+describe("the notes a start reads ahead", () => {
+  type Listener = () => void;
+  const boot = async () => {
+    vi.resetModules();
+    await (await import("../../src/phone/install")).installPhone();
+    return (
+      window as unknown as {
+        boojyPhoneAPI: { readAllNotes(): Promise<unknown>; readFolders(): Promise<string[]> };
+      }
+    ).boojyPhoneAPI;
+  };
+  const reads = () => {
+    let n = 0;
+    const heard: Listener[] = [];
+    Object.assign(vaultApi, {
+      readAllNotes: vi.fn(async () => ({ read: ++n })),
+      readFolders: vi.fn(async () => [`Folder ${n}`]),
+      onFileChanged: (cb: Listener) => heard.push(cb),
+    });
+    return heard;
+  };
+  afterEach(() => {
+    for (const key of Object.keys(vaultApi)) delete vaultApi[key];
+  });
+
+  it("reads them before the app renders, and answers the first ask with that read alone", async () => {
+    reads();
+    const api = await boot();
+    expect(vaultApi.readAllNotes).toHaveBeenCalledOnce();
+    expect(vaultApi.readFolders).toHaveBeenCalledOnce();
+    expect(await api.readAllNotes()).toEqual({ read: 1 });
+    expect(await api.readFolders()).toEqual(["Folder 1"]);
+    expect(vaultApi.readAllNotes).toHaveBeenCalledOnce();
+    // Any later ask is a fresh read.
+    expect(await api.readAllNotes()).toEqual({ read: 2 });
+    expect(await api.readFolders()).toEqual(["Folder 2"]);
+  });
+
+  // Sync is running by then: what it brings before the app listens is in no earlier read.
+  it("reads afresh when a note changed before the app asked", async () => {
+    const heard = reads();
+    const api = await boot();
+    for (const changed of heard) changed();
+    expect(await api.readAllNotes()).toEqual({ read: 2 });
+    expect(vaultApi.readFolders).toHaveBeenCalledOnce();
+    expect(await api.readFolders()).toEqual(["Folder 2"]);
+  });
+
+  // A large vault takes seconds to read: the app shows meanwhile, and the notes follow.
+  it("doesn't hold the app's first frame for a read that takes long", async () => {
+    let finish = (_notes: unknown) => {};
+    Object.assign(vaultApi, {
+      readAllNotes: vi.fn(() => new Promise((done) => (finish = done))),
+      readFolders: vi.fn(async () => []),
+    });
+    const api = await boot();
+    const asked = api.readAllNotes();
+    finish({ late: true });
+    expect(await asked).toEqual({ late: true });
+    expect(vaultApi.readAllNotes).toHaveBeenCalledOnce();
+  });
+
+  it("starts the app though the read failed, and fails for the app's own ask", async () => {
+    Object.assign(vaultApi, {
+      readAllNotes: vi.fn(async () => Promise.reject(new Error("unreadable"))),
+    });
+    const api = await boot();
+    await expect(api.readAllNotes()).rejects.toThrow("unreadable");
+  });
+});
+
 describe("where a start keeps the notes", () => {
   /** A start on Android, or of the page in a browser, where there is no folder to pick. */
   const startOf = async (native: boolean) => {
@@ -172,6 +252,7 @@ describe("where a start keeps the notes", () => {
     checkOutside.mockClear();
     disk.written.length = 0;
     disk.addressed.length = 0;
+    disk.reads.length = 0;
     await (await import("../../src/phone/install")).installPhone();
     device.native = true;
   };
@@ -314,6 +395,17 @@ describe("where a start keeps the notes", () => {
         });
         await startOf(true);
       };
+
+      // Asked for after the first frame, the list was missing from it: Settings drew
+      // without its locations and Home's heading read "Phone", then both changed.
+      it("has the list ready when the app renders, each location's files read once", async () => {
+        await two({ "locations/work/state/binding.json": JSON.stringify({ folder: "Team" }) });
+        for (const file of [WORK, "locations/work/state/binding.json", "state/binding.json"])
+          expect(disk.reads.filter((path) => path === file)).toHaveLength(1);
+        const { listed: ready } = api() as unknown as { listed: Rows };
+        expect(ready[1]).toMatchObject({ name: "Work", open: false, dropbox: "Team" });
+        expect(ready).toEqual(await api().list());
+      });
 
       // The first has no name of its own until it is renamed: it reads as Home's heading does.
       it("names each one: its own name, else its Dropbox folder, else Phone", async () => {

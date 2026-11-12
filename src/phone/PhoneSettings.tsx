@@ -183,8 +183,11 @@ function Location({
   warn,
   items,
   onOpen,
+  ticked,
 }: {
   row: LocationRow;
+  /** The tick: on the open one, or on the one a press is opening. */
+  ticked: boolean;
   /** Opens it, for one that is not open: a press on the row, as on the desktop. */
   onOpen?: () => void;
   /** Sync's words, under the open one: only what the glyph can't say. */
@@ -242,8 +245,8 @@ function Location({
               {where}
             </span>
           </span>
-          {row.open && (
-            <span style={{ display: "flex", color: TEXT.primary }}>
+          {ticked && (
+            <span data-testid="location-tick" style={{ display: "flex", color: TEXT.primary }}>
               <CheckIcon size={18} />
             </span>
           )}
@@ -370,6 +373,7 @@ export default function PhoneSettings({
   useFocusTrap(pageRef as RefObject<HTMLElement>, open, "container");
   const choosing = sync?.choosing ?? null;
   const [renaming, setRenaming] = useState<LocationRow | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
   // A question standing over the page takes Back first.
   useModalEscape(open && !choosing && !renaming, onClose);
   // The page keeps the interface size it opened with: the − and + stay under the finger.
@@ -380,9 +384,13 @@ export default function PhoneSettings({
   const rows = liveRows(storage.locations, sync?.status.folder);
   const move = storage.moveToFolder;
   // Opened from here, the app starts again here: not on Home, a step away from where it was asked.
+  // The tick moves at the press: the app then starts again on this same page, so that is all that changes.
   const openFromHere = async (id: string) => {
     reopenSettingsAfterRestart();
-    if (!(await storage.openLocation(id))) reopenSettingsAfterRestart(false);
+    setOpening(id);
+    if (await storage.openLocation(id)) return;
+    reopenSettingsAfterRestart(false);
+    setOpening(null);
   };
   const rename = (row: LocationRow): MenuItem => ({
     label: "Rename…",
@@ -483,6 +491,7 @@ export default function PhoneSettings({
         <Location
           key={row.id}
           row={row}
+          ticked={opening === null ? row.open : row.id === opening}
           lines={row.open ? lines : []}
           warn={state === "problem"}
           items={row.open ? openItems(row) : closedItems(row)}

@@ -82,16 +82,29 @@ async function clearMoved(priv: FileOps, folder: PickedFolder) {
   }
 }
 
-/** The folders the other storage locations keep their notes in, or are moving them to. */
-async function foldersElsewhere(root: FileOps, { open, list }: Locations): Promise<string[]> {
-  const trees: string[] = [];
-  for (const { id } of list) {
-    if (id === open) continue;
-    const record = await readStorage(scopedFiles(root, prefixOf(id)));
-    for (const folder of [record?.folder, record?.moving]) if (folder) trees.push(folder.tree);
-  }
-  return trees;
+/** What a location's own files say of it: where its notes are, and the Dropbox folder it syncs with. */
+interface Kept {
+  id: string;
+  storage: Awaited<ReturnType<typeof readStorage>>;
+  binding: Awaited<ReturnType<typeof readBinding>>;
 }
+
+/** Every location's two records, each read once and all at the same time: a start waits on them. */
+const keptOf = (root: FileOps, { list }: Locations): Promise<Kept[]> =>
+  Promise.all(
+    list.map(async ({ id }) => {
+      const files = scopedFiles(root, prefixOf(id));
+      const [storage, binding] = await Promise.all([readStorage(files), readBinding(files)]);
+      return { id, storage, binding };
+    }),
+  );
+
+/** The folders the other storage locations keep their notes in, or are moving them to. */
+const foldersElsewhere = (kept: Kept[], open: string): string[] =>
+  kept
+    .filter(({ id }) => id !== open)
+    .flatMap(({ storage }) => [storage?.folder, storage?.moving])
+    .flatMap((folder) => (folder ? [folder.tree] : []));
 
 /**
  * The folder the open location keeps its notes in, or null for the app's own
@@ -137,22 +150,47 @@ async function notesFolder(priv: FileOps, others: string[]): Promise<PickedFolde
  * until it is renamed) is called what Home's heading calls it: the Dropbox
  * folder it syncs with, or "Phone".
  */
-async function locationRows(root: FileOps, { open, list }: Locations): Promise<LocationRow[]> {
-  return Promise.all(
-    list.map(async ({ id, name }) => {
-      const files = scopedFiles(root, prefixOf(id));
-      const bound = await readBinding(files);
-      const kept = (await readStorage(files))?.folder;
-      return {
-        id,
-        name: name ?? (bound ? syncFolderName(bound.folder) : "Phone"),
-        named: name !== undefined,
-        open: id === open,
-        dropbox: bound ? bound.folder : null,
-        phone: kept ? folderLabel(kept) : null,
-      };
-    }),
-  );
+const locationRows = ({ open, list }: Locations, kept: Kept[]): LocationRow[] =>
+  list.map(({ id, name }) => {
+    const { storage, binding } = kept.find((k) => k.id === id) ?? { storage: null, binding: null };
+    return {
+      id,
+      name: name ?? (binding ? syncFolderName(binding.folder) : "Phone"),
+      named: name !== undefined,
+      open: id === open,
+      dropbox: binding ? binding.folder : null,
+      phone: storage?.folder ? folderLabel(storage.folder) : null,
+    };
+  });
+
+/**
+ * How long a start waits for the notes before it draws without them: a small
+ * vault's Home is whole on its first frame, a large one's shows and then fills.
+ */
+const NOTES_WAIT_MS = 250;
+
+/**
+ * A read made before the app renders, kept for the first to ask: Home then
+ * draws its notes on its first frame, not an empty list and then the notes.
+ * Every later call reads afresh; a read that failed fails for its asker.
+ * `drop` forgets it: something changed before anyone was listening.
+ */
+function readAhead<T>(read: (() => Promise<T>) | undefined) {
+  let first = read?.() ?? null;
+  return {
+    ready: Promise.resolve(first).then(
+      () => {},
+      () => {},
+    ),
+    read: () => {
+      const answer = first ?? (read as () => Promise<T>)();
+      first = null;
+      return answer;
+    },
+    drop: () => {
+      first = null;
+    },
+  };
 }
 
 /**
@@ -229,7 +267,8 @@ export async function installPhone() {
   // Everything from here on is the open location's: its own state, vault and bin.
   const priv = scopedFiles(root, prefix);
   if (prefix) await priv.recover("state");
-  const others = await foldersElsewhere(root, locations);
+  const kept = await keptOf(root, locations);
+  const others = foldersElsewhere(kept, locations.open);
   const folder = await notesFolder(priv, others);
   // With a folder, the vault is the folder's and the rest stays private.
   const files: FileOps = folder ? routedFiles(priv, folderFiles(folder, priv), VAULT) : priv;
@@ -237,14 +276,28 @@ export async function installPhone() {
   let sync: ReturnType<typeof createPhoneSync> | null = null;
   const vault = createPhoneVault(files, { onLocalChange: () => sync?.localChanged() });
   // The Dropbox folders the other locations sync with are theirs alone.
-  const taken = (await locationRows(root, locations))
-    .filter((l) => !l.open && l.dropbox !== null)
-    .map((l) => l.dropbox as string);
+  // The list as this start found it, for the first frame; the open one's folder as just settled.
+  const listed = locationRows(locations, kept).map((l) =>
+    l.open ? { ...l, phone: folder ? folderLabel(folder) : null } : l,
+  );
+  const taken = listed.filter((l) => !l.open && l.dropbox !== null).map((l) => l.dropbox as string);
   sync = createPhoneSync(files, vault.store, { taken });
+  // The notes and the folders, read while sync starts.
+  const notes = readAhead(vault.api.readAllNotes);
+  const folders = readAhead(vault.api.readFolders);
+  // A change sync makes before the app is listening is in neither: both are then read afresh.
+  const { onFileChanged, onFileMoved, onFileDeleted, onFoldersChanged } = vault.api;
+  for (const on of [onFileChanged, onFileMoved, onFileDeleted, onFoldersChanged])
+    on?.(() => {
+      notes.drop();
+      folders.drop();
+    });
   // The vault's file calls, the menu bar's command channel (the bar above the
   // keyboard sends on it), the feel of a hold, and sync for Home's folder row.
   (window as unknown as { boojyPhoneAPI: unknown }).boojyPhoneAPI = {
     ...vault.api,
+    readAllNotes: notes.read,
+    readFolders: folders.read,
     attachmentAddress: folder
       ? folderAddress(folder, Capacitor.convertFileSrc)
       : await fileAddress(prefix + VAULT),
@@ -260,7 +313,8 @@ export async function installPhone() {
       disconnect: sync.disconnect,
     },
     locations: {
-      list: () => locationRows(root, locations),
+      listed,
+      list: async () => locationRows(locations, await keptOf(root, locations)),
       // Another location is another start: the app is built for one (`locations.ts`).
       open: (id: string, saved: () => Promise<unknown>) => {
         if (!locations.list.some((l) => l.id === id)) throw new Error("No such storage location");
@@ -279,7 +333,7 @@ export async function installPhone() {
         const picked = { tree: got.tree, root: got.root };
         // No two locations share files: not the same folder, nor one inside another.
         const held = [
-          ...(await foldersElsewhere(root, locations)),
+          ...foldersElsewhere(await keptOf(root, locations), locations.open),
           ...(folder ? [folder.tree] : []),
         ];
         if (held.some((tree) => treesOverlap(tree, picked.tree))) {
@@ -288,7 +342,7 @@ export async function installPhone() {
           return "in-use";
         }
         const id = newLocationId();
-        const taken = (await locationRows(root, locations)).map((l) => l.name);
+        const taken = locationRows(locations, await keptOf(root, locations)).map((l) => l.name);
         const name = freeName(folderLabel(picked).split("/").pop() || "Notes", taken);
         // A list that couldn't be read stays unwritten (`writeLocations` refuses it).
         const next = { ...locations, list: [...locations.list, { id, name }] };
@@ -300,7 +354,7 @@ export async function installPhone() {
       },
       /** A name in the app alone: its folder, and its Dropbox folder, keep theirs. */
       rename: async (id: string, name: string) => {
-        const rows = await locationRows(root, locations);
+        const rows = locationRows(locations, await keptOf(root, locations));
         const problem = nameProblem(
           name,
           rows.filter((l) => l.id !== id).map((l) => l.name),
@@ -339,7 +393,9 @@ export async function installPhone() {
         ? (saved: () => Promise<unknown>) => moveToFolder(priv, vault.atRest, saved, others)
         : undefined,
   };
-  await sync.start();
+  const read = Promise.all([notes.ready, folders.ready]);
+  const longEnough = new Promise((done) => setTimeout(done, NOTES_WAIT_MS));
+  await Promise.all([sync.start(), Promise.race([read, longEnough])]);
   if (!folder) return;
   // Other apps write the folder too, and Android sends no word of it. A
   // folder gone while the app runs is asked for again by a fresh start.

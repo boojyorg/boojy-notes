@@ -483,6 +483,7 @@ const Sidebar = memo(function Sidebar({
   // The phone: sync's state, after the folder's name (useSyncStatus).
   sync = null,
   locations = [],
+  loaded = true,
   onOpenLocation,
 }) {
   const { sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
@@ -1394,8 +1395,10 @@ const Sidebar = memo(function Sidebar({
               {renderAttachments()}
             </div>
           ) : (
-            // The phone's Home is the whole screen: an empty one says so, or it reads as not loaded.
-            isPhone && (
+            // The phone's Home is the whole screen: an empty one says so, or it reads as not
+            // loaded; one still being read says nothing, since its notes are about to show.
+            isPhone &&
+            loaded && (
               <p
                 style={{
                   margin: 0,

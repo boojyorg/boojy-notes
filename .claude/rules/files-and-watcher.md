@@ -15,7 +15,7 @@
   `phoneVaultFolder.test.ts`. **App storage moves to an empty one at a start**: copied
   whole, then chosen, then cleared. `moveToFolder.test.ts`.
 - **Phone storage locations**: the first in place, others in `locations/`, opened by
-  restart; no shared folder. `locations.test.ts`.
+  restart, notes read ahead (`readAhead`); no shared folder. `locations.test.ts`.
 - **Phone sync is optional, the binding its connection**: no pass till accounts match; folder asked at connect. `phoneSync.test.ts`.
 - Desktop confirms only several files; one note goes at once, with Undo.
 
@@ -80,7 +80,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   switches there; in none it is edited in place (`outsideNotes.ts`), never indexed, kept in
   history or listed (`vaultNotes()`). `open-with.spec.ts`, `outside-notes.spec.ts`.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
-  folders and on window focus. `trash-file` refuses a note (notes go by id, `trash-note`).
+  folders and on window focus. `trash-file` refuses a note.
   `vault-switcher.spec.ts`.
 - **First run** (`settleSetupState`): a config or `Documents/Boojy/Notes` means an existing
   user; else the default folder waits for `complete-setup`. `vault-root.spec.ts`,

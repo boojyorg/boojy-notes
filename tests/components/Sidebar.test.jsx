@@ -143,6 +143,7 @@ function renderSidebar(overrides = {}) {
     notesDir: overrides.notesDir ?? "/v/University",
     vaults: overrides.vaults ?? [],
     otherFiles: overrides.otherFiles ?? [],
+    loaded: overrides.loaded,
     onSwitchVault: overrides.onSwitchVault,
     onManageVaults: overrides.onManageVaults,
     onOpenFile: overrides.onOpenFile,
@@ -953,6 +954,10 @@ describe("Sidebar on the phone", () => {
         sortedRootNotes: ["a"],
       });
       expect(one.queryByText("No notes yet")).not.toBeInTheDocument();
+      one.unmount();
+      // Not while the notes are still being read: it stood for a moment over a location that had some.
+      const reading = renderSidebar({ Component: PhoneSidebar, loaded: false });
+      expect(reading.queryByText("No notes yet")).not.toBeInTheDocument();
     }));
 
   it("shows the notes edited last as cards, newest first, each a way to its note", () =>

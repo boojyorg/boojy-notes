@@ -69,7 +69,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - Leave the `resolveInitialActiveNote()` migration read path.
 - The wordmark opens Settings. No About, Help or Recently Deleted.
 - **The header ··· is the active note's menu** (a row's ··· is its first group and Delete).
-  Both end with words and when edited (`editedLabel`), always one line.
+  Both end with words and when edited (`editedLabel`), one line.
   While the Markdown view is on, a lit `</>` stands left of the ···; the path band reserves its
   room.
 - **The menu bar is every command with its shortcut** (`electron/appMenu.ts`). **An item does
@@ -140,7 +140,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 - `PathTreeMenu` shows the crumb's parent's contents with the path to the open note expanded
   (`crumbScope`); `…` shows the root. A root note's path carries a folder glyph to
-  click. Click only, never hover.
+  click. Click, never hover.
 - Tree keys on a document listener; **a press outside closes and is not swallowed** (no backdrop).
 - **Rows drag with the sidebar's drag** (`useSidebarDrag`); the head row (`data-drop-scope`) is
   the drop "up into this folder". Only folder rows and the head row are targets.
@@ -223,6 +223,6 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   a held slide following (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.
 - **Home there**: N, Search, cog, no ··· menu; the name opens `VaultMenu`, sync's state
   after. **New note is the one teal surface.** **Cards: the notes edited last**
-  (`recentCards.ts`), at any sort. **Settings: a page of locations** (`PhoneSettings`).
+  (`recentCards.ts`), at any sort. **Settings: locations, ticked at the press** (`PhoneSettings`).
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`). **A line is at
   most `rhythm.measure` ems**, centred under the name; margins go first, then gutters.

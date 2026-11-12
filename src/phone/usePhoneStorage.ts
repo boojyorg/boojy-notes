@@ -53,7 +53,8 @@ export function usePhoneStorage({
       }),
     [move, flushAll, showToast],
   );
-  const [locations, setLocations] = useState<LocationRow[]>([]);
+  // The list the start read, so the first frame names the open location and lists the rest.
+  const [locations, setLocations] = useState<LocationRow[]>(() => api.locations?.listed ?? []);
   const mounted = useRef(true);
   const relist = useCallback(async () => {
     try {
