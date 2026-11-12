@@ -21,6 +21,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useHeldScale } from "../hooks/useHeldScale";
 import { useModalEscape } from "../hooks/useModalEscape";
 import { useTheme } from "../hooks/useTheme";
+import { currentEnterMs } from "../tokens/motion";
 import { NAV_BAR_H, STATUS_BAR_H } from "../utils/uiScale";
 import { type LocationRow, liveRows, whereOf } from "./locations";
 import RenameLocation from "./RenameLocation";
@@ -184,7 +185,10 @@ function Location({
   items,
   onOpen,
   ticked,
+  opening,
 }: {
+  /** A press is opening a location: no card stays shaded through the restart. */
+  opening: boolean;
   row: LocationRow;
   /** The tick: on the open one, or on the one a press is opening. */
   ticked: boolean;
@@ -205,7 +209,11 @@ function Location({
   return (
     <div style={{ marginBottom: 10 }}>
       {/* The desktop's row: a press on it opens that location; its ··· is what can be done to it. */}
-      <div className="press-card" style={{ ...rowStyle(theme), padding: 0, gap: 0 }}>
+      <div
+        className="press-card"
+        data-opening={opening || undefined}
+        style={{ ...rowStyle(theme), padding: 0, gap: 0 }}
+      >
         <Body
           {...(onOpen
             ? { type: "button", className: "press-card-body", onClick: onOpen }
@@ -388,7 +396,9 @@ export default function PhoneSettings({
   const openFromHere = async (id: string) => {
     reopenSettingsAfterRestart();
     setOpening(id);
-    if (await storage.openLocation(id)) return;
+    // The press fades out first, as any press does: the restart would hold it grey.
+    const faded = new Promise((done) => setTimeout(done, currentEnterMs()));
+    if (await storage.openLocation(id, faded)) return;
     reopenSettingsAfterRestart(false);
     setOpening(null);
   };
@@ -492,6 +502,7 @@ export default function PhoneSettings({
           key={row.id}
           row={row}
           ticked={opening === null ? row.open : row.id === opening}
+          opening={opening !== null}
           lines={row.open ? lines : []}
           warn={state === "problem"}
           items={row.open ? openItems(row) : closedItems(row)}

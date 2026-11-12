@@ -97,7 +97,7 @@ describe("Settings on the phone", () => {
     expect(screen.getByTestId("location-main").tagName).toBe("DIV");
     expect(screen.getByTestId("location-main").getAttribute("aria-current")).toBe("true");
     fireEvent.click(screen.getByTestId("location-w"));
-    expect(storage.openLocation).toHaveBeenCalledWith("w");
+    expect(storage.openLocation).toHaveBeenCalledWith("w", expect.any(Promise));
     // The app starts again in it, here in Settings: not on Home, a step from where it was asked.
     expect(settingsToReopen()).toBe(true);
     expect(settingsToReopen()).toBe(false);
@@ -122,8 +122,14 @@ describe("Settings on the phone", () => {
     fireEvent.click(screen.getByTestId("location-w"));
     expect(ticked()).toBe("location-w");
     expect(screen.getAllByTestId("location-tick")).toHaveLength(1);
+    // The press lets go of its grey at once and fades, as any press does: held
+    // through the restart, the card stood grey until the new page and then snapped.
+    const card = (id: string) => screen.getByTestId(`location-${id}`).parentElement;
+    expect(card("w")?.hasAttribute("data-opening")).toBe(true);
+    expect(openLocation).toHaveBeenCalledWith("w", expect.any(Promise));
     fail();
     await waitFor(() => expect(ticked()).toBe("location-main"));
+    expect(card("w")?.hasAttribute("data-opening")).toBe(false);
   });
 
   it("doesn't ask a later start for Settings when the location could not be opened", async () => {

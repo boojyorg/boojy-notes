@@ -81,6 +81,28 @@ describe("where the phone keeps its notes, for Settings", () => {
       expect(flushAll).toHaveBeenCalledOnce();
     });
 
+    // Settings' press fades out first: started again mid-press, the row stood grey until the new page.
+    it("waits for what it is given before the app starts again", async () => {
+      const order: string[] = [];
+      let fade = () => {};
+      const faded = new Promise<void>((done) => (fade = done)).then(() => order.push("faded"));
+      const open = vi.fn(async (_id: string, saved: () => Promise<unknown>) => {
+        await saved();
+        order.push("restart");
+      });
+      const { result } = withLocations({ open });
+      let opened: Promise<boolean> | undefined;
+      await act(async () => {
+        opened = result.current.openLocation("work", faded);
+      });
+      expect(order).toEqual([]);
+      fade();
+      await act(async () => {
+        await opened;
+      });
+      expect(order).toEqual(["faded", "restart"]);
+    });
+
     // The open location stays open: the list is read again, and nothing starts again.
     it("adds a folder as one, reads the list again, and says why a folder was not taken", async () => {
       for (const [answer, said] of [
