@@ -6,14 +6,7 @@ import {
   tagPillCss,
   tagPillGround,
 } from "../styles/tagPill";
-import {
-  CHROME_BTN,
-  LABEL_PAD_X,
-  MENU_PAD,
-  SCROLLBAR_W,
-  TOUCH,
-  UNNAMED_NAME_W,
-} from "../constants/layout";
+import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W, TOUCH } from "../constants/layout";
 import { CHROME_TOP } from "./EditorChrome";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
@@ -1523,16 +1516,20 @@ ${tagPillCss(theme)}
         }
         /* An unnamed note asking for its name (the same marker: the caret is
            in a field the placeholder has shown in): a neutral ground a step
-           stronger than a rename's, a little taller than the line (a shadow,
-           so nothing moves) and wider than the word, with the placeholder
-           less faint. Desktop only: the phone's name wraps in its header. */
+           stronger than a rename's, hugging the word with the same 10px
+           either side of it and 3px above and below, and the placeholder less
+           faint. Drawn as shadows, so nothing in the row moves; a root
+           note's glyph steps clear of it. Desktop only: the phone's name
+           wraps in its header. */
         html:not(.is-phone) [data-title][data-placeholder-floor] {
-          min-width: calc(max(var(--title-placeholder-width, 0px), ${UNNAMED_NAME_W}px) + ${2 * LABEL_PAD_X}px);
           background: ${theme.BG.hover} !important;
-          box-shadow: 0 0 0 3px ${theme.BG.hover};
+          box-shadow: ${LABEL_PAD_X - 10 + 3}px 0 0 3px ${theme.BG.hover}, ${10 - LABEL_PAD_X - 3}px 0 0 3px ${theme.BG.hover};
         }
         html:not(.is-phone) [data-title][data-placeholder-floor]::before {
           opacity: 0.6;
+        }
+        html:not(.is-phone) [data-testid="note-path-root"] + span:has([data-title][data-placeholder-floor]) {
+          margin-left: 6px;
         }
       `}</style>
   );
