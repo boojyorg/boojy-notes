@@ -1514,6 +1514,26 @@ ${tagPillCss(theme)}
           padding: inherit;
           pointer-events: none;
         }
+        /* An unnamed note asking for its name (the same marker: the caret is
+           in a field the placeholder has shown in): a neutral ground a step
+           stronger than a rename's, hugging the word with the same 10px
+           either side of it and 3px above and below, and the placeholder less
+           faint. Drawn as shadows, so nothing in the row moves; a root
+           note's glyph steps clear of it. Desktop only: the phone's name
+           wraps in its header. */
+        html:not(.is-phone) [data-title][data-placeholder-floor] {
+          background: ${theme.BG.hover} !important;
+          /* It arrives whole: faded in, the box filled behind a shadow
+             already there, a white word in a grey ring for a moment. */
+          transition: none !important;
+          box-shadow: ${LABEL_PAD_X - 10 + 3}px 0 0 3px ${theme.BG.hover}, ${10 - LABEL_PAD_X - 3}px 0 0 3px ${theme.BG.hover};
+        }
+        html:not(.is-phone) [data-title][data-placeholder-floor]::before {
+          opacity: 0.6;
+        }
+        html:not(.is-phone) [data-testid="note-path-root"] + span:has([data-title][data-placeholder-floor]) {
+          margin-left: 6px;
+        }
       `}</style>
   );
 }
