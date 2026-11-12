@@ -85,6 +85,11 @@ if (live) {
       { stdio: "inherit", env },
     );
     server.once("exit", (code) => process.exit(code ?? 0));
+    // The server goes when this command does, however it is ended: a Ctrl-C
+    // reaches both, a signal sent to this process alone does not.
+    process.once("exit", () => server.kill());
+    for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"])
+      process.once(signal, () => process.exit(0));
     for (let tries = 0; !(await serverUp()); tries++) {
       if (tries > 100) throw new Error(`The dev server did not answer on port ${LIVE_PORT}.`);
       await new Promise((r) => setTimeout(r, 200));
