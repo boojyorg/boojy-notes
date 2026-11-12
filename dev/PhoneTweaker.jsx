@@ -11,14 +11,17 @@
 import { useEffect, useState } from "react";
 import { PATH_FONT } from "../src/components/NotePath";
 import { PHONE_LABEL_SIZE, PHONE_ROW_H } from "../src/constants/layout";
+import { HOME_LIST_END, NEW_NOTE_LIFT } from "../src/phone/HomeChrome";
 import { DEFAULT_RHYTHM, setRhythm } from "../src/tokens/rhythm";
+import { NAV_BAR_H } from "../src/utils/uiScale";
 
 const LS_KEY = "boojy-dev-phone-sizes";
 
-/** The phone's values in the code: Home's from layout.js, the note's from rhythm.ts and NotePath. */
+/** The phone's values in the code: Home's from layout.js and HomeChrome, the note's from rhythm.ts and NotePath. */
 const NOW = {
   homeText: PHONE_LABEL_SIZE,
   homeRow: PHONE_ROW_H,
+  newNoteLift: NEW_NOTE_LIFT,
   bodySize: DEFAULT_RHYTHM.bodySize,
   lineHeight: DEFAULT_RHYTHM.lineHeight,
   nameSize: PATH_FONT.fontSize,
@@ -36,6 +39,7 @@ const PRESETS = [
 const CONTROLS = [
   { key: "homeText", label: "Home: name size", min: 13, max: 19, step: 0.5, unit: "px" },
   { key: "homeRow", label: "Home: row height", min: 36, max: 52, step: 1, unit: "px" },
+  { key: "newNoteLift", label: "Home: New note lift", min: 8, max: 36, step: 1, unit: "px" },
   { key: "bodySize", label: "Note: text size", min: 14, max: 19, step: 0.5, unit: "px" },
   { key: "lineHeight", label: "Note: line spacing", min: 1.3, max: 1.8, step: 0.05, unit: "×" },
   { key: "nameSize", label: "Note: name in header", min: 13, max: 19, step: 0.5, unit: "px" },
@@ -68,6 +72,13 @@ export default function PhoneTweaker() {
         font-size: ${values.homeText}px !important;
         height: ${values.homeRow}px !important;
         min-height: ${values.homeRow}px !important;
+      }
+      /* The button's height above the foot; the list's end keeps the same room over it. */
+      html.is-phone [data-testid="home-new-note"] {
+        bottom: calc(${values.newNoteLift}px + ${NAV_BAR_H}) !important;
+      }
+      html.is-phone .sidebar-scroll {
+        padding-bottom: ${HOME_LIST_END + values.newNoteLift - NEW_NOTE_LIFT}px !important;
       }
       html.is-phone [data-title] { font-size: ${values.nameSize}px !important; }
     `;

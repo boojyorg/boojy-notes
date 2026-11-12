@@ -92,13 +92,16 @@ export function HomeTop({
   );
 }
 
-/** How far the New note button stands above the bottom of the screen's usable part. */
-const NEW_NOTE_LIFT = 12;
+/**
+ * How far the New note button stands above the bottom of the screen's usable
+ * part: its distance from the side, so the corner it sits in is square.
+ */
+export const NEW_NOTE_LIFT = 20;
 /**
  * The room the list keeps at its end on the phone, so its last row scrolls
  * clear of the New note button, which stands over the list's corner.
  */
-export const HOME_LIST_END = 48;
+export const HOME_LIST_END = 56;
 
 /**
  * Home's foot on the phone, as the desktop's: a line the width of the screen,
@@ -130,7 +133,7 @@ export function HomeFoot({ onNewNote, children }: { onNewNote: () => void; child
         style={{
           ...PLAIN,
           position: "absolute",
-          right: 20,
+          right: NEW_NOTE_LIFT,
           bottom: `calc(${NEW_NOTE_LIFT}px + ${NAV_BAR_H})`,
           width: NEW_NOTE_SIZE,
           height: NEW_NOTE_SIZE,
