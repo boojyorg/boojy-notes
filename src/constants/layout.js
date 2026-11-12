@@ -23,6 +23,9 @@ export const WINDOW_STRIP_H = 32;
  *  negative margin so the path centres on the letters. Shared with the
  *  stylesheet, which sizes the empty field to its placeholder plus this. */
 export const LABEL_PAD_X = 5;
+/** The room an unnamed note's name field holds while the caret is in it: wider
+ *  than the word `Untitled`, so it reads as a field to type in, not a word. */
+export const UNNAMED_NAME_W = 120;
 /** Between buttons of one group, and between the two groups. A group reads as
  *  a group only if the step out of it is bigger than the step within it. */
 export const BTN_GAP = 2;
