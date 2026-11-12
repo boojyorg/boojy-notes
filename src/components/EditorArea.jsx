@@ -1752,7 +1752,10 @@ const EditorArea = memo(
           // min-width is the stylesheet's: 0, or the placeholder's
           // width while the field is empty (GlobalStyles, [data-title]).
           flex: "1 1 auto",
-          transition: "background var(--motion-fast), color var(--motion-fast)",
+          // The shadow is the unnamed field's ground beyond its box
+          // (GlobalStyles): it leaves on the background's clock.
+          transition:
+            "background var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast)",
         }}
       />
     ) : null;

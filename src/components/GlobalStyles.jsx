@@ -1523,6 +1523,9 @@ ${tagPillCss(theme)}
            wraps in its header. */
         html:not(.is-phone) [data-title][data-placeholder-floor] {
           background: ${theme.BG.hover} !important;
+          /* It arrives whole: faded in, the box filled behind a shadow
+             already there, a white word in a grey ring for a moment. */
+          transition: none !important;
           box-shadow: ${LABEL_PAD_X - 10 + 3}px 0 0 3px ${theme.BG.hover}, ${10 - LABEL_PAD_X - 3}px 0 0 3px ${theme.BG.hover};
         }
         html:not(.is-phone) [data-title][data-placeholder-floor]::before {
