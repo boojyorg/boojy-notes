@@ -8,13 +8,19 @@ const CHOICE = "state/storage.json";
 const decoder = new TextDecoder();
 
 /**
- * What `state/storage.json` holds: the choice, and a move from the app's
- * storage into a folder that is under way. `moving` is the folder being
- * copied into (the notes are still the app's); `clearing` says the folder is
- * now where they are and the app's own copies are being removed.
+ * What `state/storage.json` holds: the choice, the folder chosen, and a move
+ * from the app's storage into a folder that is under way. `moving` is the
+ * folder being copied into (the notes are still the app's); `clearing` says
+ * the folder is now where they are and the app's own copies are being removed.
  */
 export interface StorageRecord {
   kind: StorageChoice;
+  /**
+   * The folder chosen, so each storage location knows its own among
+   * Android's grants. Missing in a record from before it was kept: the
+   * grant no other location holds is then this one's (`install.ts`).
+   */
+  folder?: PickedFolder;
   moving?: PickedFolder;
   clearing?: true;
 }
@@ -24,11 +30,17 @@ export async function readStorage(priv: FileOps): Promise<StorageRecord | null> 
   const bytes = await priv.read(CHOICE);
   if (!bytes) return null;
   try {
-    const { kind, moving, clearing } = JSON.parse(decoder.decode(bytes)) ?? {};
+    const { kind, folder, moving, clearing } = JSON.parse(decoder.decode(bytes)) ?? {};
     if (kind !== "app" && kind !== "folder") return null;
+    const picked = (f: PickedFolder | undefined) =>
+      typeof f?.tree === "string" && typeof f?.root === "string"
+        ? { tree: f.tree, root: f.root }
+        : null;
     const record: StorageRecord = { kind };
-    if (kind === "app" && typeof moving?.tree === "string" && typeof moving?.root === "string")
-      record.moving = { tree: moving.tree, root: moving.root };
+    const kept = kind === "folder" ? picked(folder) : null;
+    if (kept) record.folder = kept;
+    const to = kind === "app" ? picked(moving) : null;
+    if (to) record.moving = to;
     if (kind === "folder" && clearing === true) record.clearing = true;
     return record;
   } catch {
@@ -36,14 +48,14 @@ export async function readStorage(priv: FileOps): Promise<StorageRecord | null> 
   }
 }
 
-/** The choice made at first launch; null before one was made. Which folder is Android's grant. */
+/** The choice made at first launch; null before one was made. */
 export const readChoice = async (priv: FileOps): Promise<StorageChoice | null> =>
   (await readStorage(priv))?.kind ?? null;
 
 export const writeChoice = (
   priv: FileOps,
   kind: StorageChoice,
-  under: Pick<StorageRecord, "moving" | "clearing"> = {},
+  under: Pick<StorageRecord, "folder" | "moving" | "clearing"> = {},
 ) => priv.write(CHOICE, new TextEncoder().encode(JSON.stringify({ kind, ...under })));
 
 /**

@@ -7,9 +7,11 @@ import {
   folderAddress,
   folderFiles,
   folderLabel,
+  folderReached,
   type PickedFolder,
   reachableFolder,
 } from "./folderFiles";
+import { type Locations, prefixOf, readLocations, scopedFiles } from "./locations";
 import { createPhoneSync } from "./phoneSync";
 import { createPhoneVault, VAULT } from "./phoneVault";
 import { holdFelt } from "./haptics";
@@ -31,14 +33,18 @@ const FOLDER_NAME =
  * point, the next start carries on from the record. A move that fails leaves
  * the notes in the app's storage, and says so.
  */
-async function finishMove(priv: FileOps, to: PickedFolder): Promise<PickedFolder | null> {
+async function finishMove(
+  priv: FileOps,
+  to: PickedFolder,
+  others: string[],
+): Promise<PickedFolder | null> {
   const screen = showMoving();
   const folder = folderFiles(to, priv);
   try {
     // A copy the app died in the middle of is written whole first.
     await folder.recover("");
     await copyNotes(priv, VAULT, folder, screen.progress);
-    await writeChoice(priv, "folder", { clearing: true });
+    await writeChoice(priv, "folder", { folder: to, clearing: true });
   } catch (error) {
     console.warn("[folder] move failed:", error);
     await writeChoice(priv, "app");
@@ -48,7 +54,7 @@ async function finishMove(priv: FileOps, to: PickedFolder): Promise<PickedFolder
     return null;
   }
   await clearMoved(priv, to);
-  await reachableFolder(FolderAccess, to);
+  await reachableFolder(FolderAccess, to, others);
   screen.close();
   return to;
 }
@@ -57,40 +63,59 @@ async function finishMove(priv: FileOps, to: PickedFolder): Promise<PickedFolder
 async function clearMoved(priv: FileOps, folder: PickedFolder) {
   try {
     await clearCopied(priv, VAULT, folderFiles(folder, priv));
-    await writeChoice(priv, "folder");
+    await writeChoice(priv, "folder", { folder });
   } catch (error) {
     console.warn("[folder] clearing the app's copies failed:", error);
   }
 }
 
+/** The folders the other storage locations keep their notes in, or are moving them to. */
+async function foldersElsewhere(root: FileOps, { open, list }: Locations): Promise<string[]> {
+  const trees: string[] = [];
+  for (const { id } of list) {
+    if (id === open) continue;
+    const record = await readStorage(scopedFiles(root, prefixOf(id)));
+    for (const folder of [record?.folder, record?.moving]) if (folder) trees.push(folder.tree);
+  }
+  return trees;
+}
+
 /**
- * The folder this install keeps its notes in, or null for the app's own
+ * The folder the open location keeps its notes in, or null for the app's own
  * storage: asked at a fresh install's first launch, and asked again when a
  * chosen folder can no longer be reached (`storageChoice.ts` has the rules).
+ * `others` are the other locations' folders: theirs, never this one's.
  */
-async function notesFolder(priv: FileOps): Promise<PickedFolder | null> {
+async function notesFolder(priv: FileOps, others: string[]): Promise<PickedFolder | null> {
   const record = await readStorage(priv);
-  if (record?.moving) return finishMove(priv, record.moving);
+  if (record?.moving) return finishMove(priv, record.moving, others);
   const choice = record?.kind ?? null;
   const used = choice === null && (await hasBeenUsed(priv));
   // Only Android has folders to pick: the page in a browser (`pnpm dev:phone`) never asks.
   const canAsk = Capacitor.isNativePlatform();
   // An install that was never offered a folder never asks Android about one.
-  const granted = choice === "folder" || (!used && canAsk) ? await reachableFolder() : null;
+  // A folder chosen before the choice kept it is the grant no other location holds.
+  const granted =
+    choice === "folder" || (!used && canAsk)
+      ? record?.folder
+        ? await folderReached(record.folder)
+        : await reachableFolder(FolderAccess, undefined, others)
+      : null;
   const start = startFor({ choice, folder: granted, used, canAsk });
   if (start === "app") return null;
   if (start === "folder" || start === "lost") {
     let folder = granted;
     if (!folder) {
       folder = await askFolderAgain();
-      await reachableFolder(FolderAccess, folder);
+      await reachableFolder(FolderAccess, folder, others);
     }
     if (record?.clearing) await clearMoved(priv, folder);
+    else if (record?.folder?.tree !== folder.tree) await writeChoice(priv, "folder", { folder });
     return folder;
   }
   const picked = await askStorage(FOLDER_NAME, granted);
-  await writeChoice(priv, picked ? "folder" : "app");
-  if (picked) await reachableFolder(FolderAccess, picked);
+  await writeChoice(priv, picked ? "folder" : "app", picked ? { folder: picked } : {});
+  if (picked) await reachableFolder(FolderAccess, picked, others);
   return picked;
 }
 
@@ -128,16 +153,22 @@ async function moveToFolder(
 }
 
 /**
- * Runs before the app renders, on the phone only (main.jsx). The vault
- * answers the editor's file calls (`getAPI()` returns it), and sync starts
- * if a Dropbox folder is connected; with none, the notes are the phone's
- * alone until one is connected from Settings.
+ * Runs before the app renders, on the phone only (main.jsx). The app is built
+ * for the open storage location (`locations.ts`): its vault answers the
+ * editor's file calls (`getAPI()` returns it), and sync starts if a Dropbox
+ * folder is connected; with none, the notes are the phone's alone until one
+ * is connected from Settings.
  */
 export async function installPhone() {
-  const priv = capacitorFiles();
+  const root = capacitorFiles();
   // A save the app died in the middle of is finished or undone before anything reads.
-  await priv.recover("state");
-  const folder = await notesFolder(priv);
+  await root.recover("state");
+  const locations = await readLocations(root);
+  const prefix = prefixOf(locations.open);
+  // Everything from here on is the open location's: its own state, vault and bin.
+  const priv = scopedFiles(root, prefix);
+  if (prefix) await priv.recover("state");
+  const folder = await notesFolder(priv, await foldersElsewhere(root, locations));
   // With a folder, the vault is the folder's and the rest stays private.
   const files: FileOps = folder ? routedFiles(priv, folderFiles(folder, priv), VAULT) : priv;
   await files.recover("vault");
@@ -150,7 +181,7 @@ export async function installPhone() {
     ...vault.api,
     attachmentAddress: folder
       ? folderAddress(folder, Capacitor.convertFileSrc)
-      : await fileAddress(VAULT),
+      : await fileAddress(prefix + VAULT),
     onMenuCommand: onCommand,
     holdFelt,
     selectWordAt,
@@ -176,7 +207,7 @@ export async function installPhone() {
   // folder gone while the app runs is asked for again by a fresh start.
   const watch = watchOutside({
     check: vault.checkOutside,
-    stillThere: async () => (await reachableFolder()) !== null,
+    stillThere: async () => (await folderReached(folder)) !== null,
     lost: () => location.reload(),
   });
   watch.active(true, false);

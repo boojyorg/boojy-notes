@@ -384,19 +384,31 @@ export function folderFiles(
  * grant across restarts and updates and drops it on uninstall; a folder
  * moved, renamed or removed since keeps its grant and answers as missing.
  * `keep` is the folder just chosen: every other grant is given back, so a
- * second choice never leaves two to pick between.
+ * second choice never leaves two to pick between. `spare` are the folders
+ * other storage locations hold: never found, and never given back.
  */
 export async function reachableFolder(
   access: FolderAccessPlugin = FolderAccess,
   keep?: PickedFolder,
+  spare: string[] = [],
 ): Promise<PickedFolder | null> {
   let found: PickedFolder | null = null;
   for (const folder of (await access.persisted()).trees) {
+    if (spare.includes(folder.tree)) continue;
     if (keep ? folder.tree === keep.tree : !found && (await reaches(access, folder)))
       found = folder;
     else if (keep) await access.release({ tree: folder.tree });
   }
   return found;
+}
+
+/** `folder` if Android still grants it and it is where it was; null when lost. */
+export async function folderReached(
+  folder: PickedFolder,
+  access: FolderAccessPlugin = FolderAccess,
+): Promise<PickedFolder | null> {
+  const granted = (await access.persisted()).trees.some((t) => t.tree === folder.tree);
+  return granted && (await reaches(access, folder)) ? folder : null;
 }
 
 async function reaches(access: FolderAccessPlugin, { tree, root }: PickedFolder) {

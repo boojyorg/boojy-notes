@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 /** The app's private storage as a start finds it: `state/`'s files, and the storage choice. */
 const disk = vi.hoisted(() => ({
@@ -10,6 +10,10 @@ const disk = vi.hoisted(() => ({
   /** What a move under way adds to the choice's file. */
   under: {} as Record<string, unknown>,
   written: [] as [string, string][],
+  /** Any other file a start reads: the list of storage locations, another location's choice. */
+  files: {} as Record<string, string>,
+  /** The directories `fileAddress` was asked for. */
+  addressed: [] as string[],
 }));
 vi.mock("../../src/phone/files", () => ({
   capacitorFiles: () => ({
@@ -17,14 +21,19 @@ vi.mock("../../src/phone/files", () => ({
     read: async (path: string) =>
       path === "state/storage.json" && disk.choice
         ? new TextEncoder().encode(JSON.stringify({ kind: disk.choice, ...disk.under }))
-        : null,
+        : path in disk.files
+          ? new TextEncoder().encode(disk.files[path])
+          : null,
     list: async (dir: string) =>
       dir === "state" ? disk.state.map((name) => ({ name, kind: "file", mtime: 0, size: 1 })) : [],
     write: async (path: string, bytes: Uint8Array) => {
       disk.written.push([path, new TextDecoder().decode(bytes)]);
     },
   }),
-  fileAddress: async () => (rel: string) => `https://localhost/_capacitor_file_/vault/${rel}`,
+  fileAddress: async (dir: string) => {
+    disk.addressed.push(dir);
+    return (rel: string) => `https://localhost/_capacitor_file_/${dir}/${rel}`;
+  },
 }));
 const checkOutside = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/phone/phoneVault", () => ({
@@ -82,6 +91,10 @@ vi.mock("../../src/phone/storageScreens", () => screens);
 const reachable = vi.hoisted(() =>
   vi.fn(async () => null as { tree: string; root: string } | null),
 );
+/** Whether Android still reaches a folder the choice names: by default it does. */
+const reached = vi.hoisted(() =>
+  vi.fn(async (folder: { tree: string; root: string }) => folder as typeof folder | null),
+);
 vi.mock("../../src/phone/folderFiles", () => ({
   FolderAccess: {
     ensureDefault: async () => ({ made: true, initial: "initial" }),
@@ -92,6 +105,7 @@ vi.mock("../../src/phone/folderFiles", () => ({
     },
   },
   reachableFolder: reachable,
+  folderReached: reached,
   folderFiles: () => ({ recover: async () => {} }),
   folderAddress: () => (rel: string) => rel,
   folderLabel: ({ root }: { root: string }) => root.slice(root.indexOf(":") + 1),
@@ -142,12 +156,14 @@ describe("where a start keeps the notes", () => {
     screens.askStorage.mockClear();
     screens.askFolderAgain.mockClear();
     reachable.mockClear();
+    reached.mockClear();
     checkOutside.mockClear();
     disk.written.length = 0;
+    disk.addressed.length = 0;
     await (await import("../../src/phone/install")).installPhone();
     device.native = true;
   };
-  const fresh = () => Object.assign(disk, { state: [], choice: null, under: {} });
+  const fresh = () => Object.assign(disk, { state: [], choice: null, under: {}, files: {} });
 
   it("asks a fresh install once, and keeps the answer", async () => {
     fresh();
@@ -158,9 +174,13 @@ describe("where a start keeps the notes", () => {
 
   it("keeps a folder picked at first launch as the choice", async () => {
     fresh();
-    screens.askStorage.mockResolvedValueOnce({ tree: "t", root: "primary:Documents/Boojy Notes" });
+    const picked = { tree: "t", root: "primary:Documents/Boojy Notes" };
+    screens.askStorage.mockResolvedValueOnce(picked);
     await startOf(true);
-    expect(disk.written).toContainEqual(["state/storage.json", '{"kind":"folder"}']);
+    expect(disk.written).toContainEqual([
+      "state/storage.json",
+      JSON.stringify({ kind: "folder", folder: picked }),
+    ]);
   });
 
   // Their notes are in the app's storage: a welcome screen would be a question about notes they already have.
@@ -184,7 +204,109 @@ describe("where a start keeps the notes", () => {
     await startOf(false);
     expect(screens.askFolderAgain).toHaveBeenCalledOnce();
     expect(screens.askStorage).not.toHaveBeenCalled();
-    expect(disk.written).toEqual([]);
+    // The folder chosen again is the choice's from now on; it is never the app's storage.
+    expect(disk.written).toEqual([
+      [
+        "state/storage.json",
+        JSON.stringify({
+          kind: "folder",
+          folder: { tree: "again", root: "primary:Documents/Again" },
+        }),
+      ],
+    ]);
+  });
+
+  describe("with more than one storage location", () => {
+    const T1 = { tree: "t1", root: "primary:Documents/Personal" };
+    const T2 = { tree: "t2", root: "primary:Documents/Work" };
+    const listed = (open: string) =>
+      JSON.stringify({ open, list: [{ id: "main" }, { id: "work", name: "Work" }] });
+    const WORK = "locations/work/state/storage.json";
+    afterEach(() => {
+      disk.files = {};
+    });
+
+    it("builds the app for the open one: its own choice, its own vault, the first's untouched", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: {},
+        files: { "state/locations.json": listed("work"), [WORK]: '{"kind":"app"}' },
+      });
+      await startOf(true);
+      expect(screens.askStorage).not.toHaveBeenCalled();
+      expect(disk.addressed).toEqual(["locations/work/vault"]);
+      expect(disk.written).toEqual([]);
+    });
+
+    it("asks a new location where to keep its notes, and keeps the answer in its own state", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: {},
+        files: { "state/locations.json": listed("work") },
+      });
+      screens.askStorage.mockResolvedValueOnce(T2);
+      await startOf(true);
+      expect(disk.written).toEqual([[WORK, JSON.stringify({ kind: "folder", folder: T2 })]]);
+      // The first location's folder, had it one, is spared when the new one is kept.
+      expect(reachable).toHaveBeenLastCalledWith(expect.anything(), T2, []);
+    });
+
+    it("opens the folder the open location chose, never another's", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "folder",
+        under: { folder: T1 },
+        files: {
+          "state/locations.json": listed("main"),
+          [WORK]: JSON.stringify({ kind: "folder", folder: T2 }),
+        },
+      });
+      await startOf(true);
+      expect(reached).toHaveBeenCalledWith(T1);
+      expect(reachable).not.toHaveBeenCalled();
+      expect(disk.written).toEqual([]);
+    });
+
+    // A choice from before the folder was kept: Android's grant was the only record of it.
+    it("takes the grant no other location holds for a folder chosen before it was kept", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "folder",
+        under: {},
+        files: {
+          "state/locations.json": listed("main"),
+          [WORK]: JSON.stringify({ kind: "folder", folder: T2 }),
+        },
+      });
+      reachable.mockResolvedValueOnce(T1);
+      await startOf(true);
+      expect(reachable).toHaveBeenCalledWith(expect.anything(), undefined, ["t2"]);
+      expect(disk.written).toEqual([
+        ["state/storage.json", JSON.stringify({ kind: "folder", folder: T1 })],
+      ]);
+    });
+
+    it("asks for the open location's folder again when it is out of reach, sparing the others'", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "folder",
+        under: { folder: T1 },
+        files: {
+          "state/locations.json": listed("main"),
+          [WORK]: JSON.stringify({ kind: "folder", folder: T2 }),
+        },
+      });
+      reached.mockResolvedValueOnce(null);
+      await startOf(true);
+      expect(screens.askFolderAgain).toHaveBeenCalledOnce();
+      expect(reachable).toHaveBeenCalledWith(
+        expect.anything(),
+        { tree: "again", root: "primary:Documents/Again" },
+        ["t2"],
+      );
+    });
   });
 
   it("looks for other apps' changes when the app comes back to the front, with a folder", async () => {
@@ -217,9 +339,12 @@ describe("where a start keeps the notes", () => {
         order.push(`clear after ${storage().at(-1)?.[1]}`);
       });
       await startOf(true);
-      expect(order).toEqual(["copy, 0 written", 'clear after {"kind":"folder","clearing":true}']);
-      expect(storage().at(-1)?.[1]).toBe('{"kind":"folder"}');
-      expect(reachable).toHaveBeenCalledWith(expect.anything(), TO);
+      expect(order).toEqual([
+        "copy, 0 written",
+        `clear after ${JSON.stringify({ kind: "folder", folder: TO, clearing: true })}`,
+      ]);
+      expect(storage().at(-1)?.[1]).toBe(JSON.stringify({ kind: "folder", folder: TO }));
+      expect(reachable).toHaveBeenCalledWith(expect.anything(), TO, []);
       expect(screens.sayNotMoved).not.toHaveBeenCalled();
       // The app is in the folder: other apps' changes are looked for.
       expect(device.stateChange).not.toBeNull();
@@ -247,7 +372,9 @@ describe("where a start keeps the notes", () => {
       await startOf(true);
       expect(move.copyNotes).not.toHaveBeenCalled();
       expect(move.clearCopied).toHaveBeenCalledOnce();
-      expect(storage()).toEqual([["state/storage.json", '{"kind":"folder"}']]);
+      expect(storage()).toEqual([
+        ["state/storage.json", JSON.stringify({ kind: "folder", folder: TO })],
+      ]);
     });
 
     // The folder is where the notes are from the flip on, whatever the clearing does.
