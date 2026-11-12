@@ -77,7 +77,7 @@ import { FOOTNOTE_REF_CLASS } from "./utils/footnotes";
 import { linkTargetIn } from "./utils/embedTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isPhone, isWeb, keyBarInWeb } from "./utils/platform";
-import { NAV_BAR_H, STATUS_BAR_H } from "./utils/uiScale";
+import { NAV_BAR_H, STATUS_BAR_H, drawnScale } from "./utils/uiScale";
 import { usePhoneScreens } from "./phone/usePhoneScreens";
 import { useDeletedReturn } from "./phone/useDeletedReturn";
 import PhoneKeyBar from "./components/PhoneKeyBar";
@@ -1643,7 +1643,7 @@ export default function BoojyNotes() {
       className="theme-fade"
       style={{
         width: "100%",
-        height: `${10000 / uiScale}vh`,
+        height: `${10000 / drawnScale(uiScale)}vh`,
         // The phone's app starts below Android's status bar, which stands on
         // the ground of the screen shown: Home's, or the note's sheet.
         ...(isPhone && { boxSizing: "border-box", paddingTop: STATUS_BAR_H }),
