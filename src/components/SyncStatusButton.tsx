@@ -71,6 +71,30 @@ export function syncAction(sync: PhoneSync): MenuItem | null {
 
 export const SYNC_GLYPH = GLYPH;
 
+/** Sync's state in words, at the head of a menu. */
+export function SyncWords({ lines }: { lines: string[] }) {
+  const { theme } = useTheme();
+  return (
+    <div
+      style={{
+        padding: "8px 10px",
+        fontSize: 14,
+        lineHeight: 1.45,
+        color: theme.TEXT.primary,
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      {lines.map((line) => (
+        <p key={line} style={{ margin: 0 }}>
+          {line}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Home's heading on the phone: the list's name, then sync's state as a glyph
  * (none with no Dropbox), in the warning colour while something needs the
@@ -83,11 +107,17 @@ export default function SyncStatusButton({
   name,
   sync,
   onOpenSettings,
+  onOpen,
+  expanded = false,
 }: {
   /** The list's name ("Personal", or "Phone" with no Dropbox), which the button says first. */
   name: string;
   sync: PhoneSync;
   onOpenSettings: () => void;
+  /** The storage-location menu's, where there is one: the tap opens that, as the desktop's name does. */
+  onOpen?: (anchor: MenuAnchor) => void;
+  /** Whether that menu is open. */
+  expanded?: boolean;
 }) {
   const { theme } = useTheme();
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
@@ -125,10 +155,10 @@ export default function SyncStatusButton({
         type="button"
         aria-label={`${name}. Sync: ${NAME[state]}`}
         aria-haspopup="menu"
-        aria-expanded={anchor !== null}
+        aria-expanded={onOpen ? expanded : anchor !== null}
         data-testid="sync-status"
         data-state={state}
-        onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())}
+        onClick={(e) => (onOpen ?? setAnchor)(e.currentTarget.getBoundingClientRect())}
         style={{
           height: TOUCH,
           maxWidth: "100%",
@@ -176,25 +206,7 @@ export default function SyncStatusButton({
           onClose={close}
           maxWidth={300}
           items={items}
-          header={
-            <div
-              style={{
-                padding: "8px 10px",
-                fontSize: 14,
-                lineHeight: 1.45,
-                color: theme.TEXT.primary,
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-              }}
-            >
-              {lines.map((line) => (
-                <p key={line} style={{ margin: 0 }}>
-                  {line}
-                </p>
-              ))}
-            </div>
-          }
+          header={<SyncWords lines={lines} />}
         />
       )}
     </>

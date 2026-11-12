@@ -63,6 +63,10 @@ vi.mock("@capacitor/app", () => ({
 }));
 const start = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/phone/phoneSync", () => ({
+  readBinding: async (files: { read(path: string): Promise<Uint8Array | null> }) => {
+    const bytes = await files.read("state/binding.json");
+    return bytes ? JSON.parse(new TextDecoder().decode(bytes)) : null;
+  },
   createPhoneSync: () => ({
     start: () => start(),
     localChanged() {},
@@ -71,7 +75,8 @@ vi.mock("../../src/phone/phoneSync", () => ({
 }));
 vi.mock("../../src/phone/commands", () => ({ onCommand: () => () => {} }));
 const screens = vi.hoisted(() => ({
-  askStorage: vi.fn(async () => null as { tree: string; root: string } | null),
+  CANCELLED: "cancelled",
+  askStorage: vi.fn(async () => null as { tree: string; root: string } | null | "cancelled"),
   askFolderAgain: vi.fn(async () => ({ tree: "again", root: "primary:Documents/Again" })),
   showMoving: vi.fn(() => ({ progress() {}, close() {} })),
   sayNotMoved: vi.fn(async (_reason: string) => {}),
@@ -253,6 +258,146 @@ describe("where a start keeps the notes", () => {
       expect(reachable).toHaveBeenLastCalledWith(expect.anything(), T2, []);
     });
 
+    it("asks a location added later for its folder alone, under its name", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: {},
+        files: { "state/locations.json": listed("work") },
+      });
+      await startOf(true);
+      expect(screens.askStorage).toHaveBeenCalledWith("Work", null, "Work", []);
+    });
+
+    // Added by mistake: Back at its folder page leaves it unadded, and the first opens again.
+    it("drops a location backed out of before its folder was chosen, and opens the first", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: {},
+        files: { "state/locations.json": listed("work") },
+      });
+      screens.askStorage.mockResolvedValueOnce("cancelled");
+      vi.resetModules();
+      disk.written.length = 0;
+      // The start never finishes: the page is reloaded into the first location.
+      const start = (await import("../../src/phone/install")).installPhone();
+      await vi.waitFor(() => expect(disk.written).toHaveLength(1));
+      expect(disk.written[0]).toEqual([
+        "state/locations.json",
+        JSON.stringify({ open: "main", list: [{ id: "main" }] }),
+      ]);
+      expect(await Promise.race([start.then(() => "started"), Promise.resolve("held")])).toBe(
+        "held",
+      );
+    });
+
+    // Two locations over one folder would each sync, and delete, the other's files.
+    it("tells the folder screens which folders the other locations hold", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: null,
+        under: {},
+        files: {
+          "state/locations.json": listed("main"),
+          [WORK]: JSON.stringify({ kind: "folder", folder: T2 }),
+        },
+      });
+      disk.state = [];
+      await startOf(true);
+      expect(screens.askStorage).toHaveBeenCalledWith("Boojy Notes", null, undefined, ["t2"]);
+    });
+
+    describe("listed, opened and added from Home", () => {
+      type Rows = { id: string; name: string; named: boolean; open: boolean; cloud: boolean }[];
+      const api = () =>
+        (
+          window as unknown as {
+            boojyPhoneAPI: {
+              locations: {
+                list(): Promise<Rows>;
+                open(id: string, saved: () => Promise<unknown>): Promise<void>;
+                add(name: string, saved: () => Promise<unknown>): Promise<void>;
+              };
+            };
+          }
+        ).boojyPhoneAPI.locations;
+      const lists = () => disk.written.filter(([path]) => path === "state/locations.json");
+      const two = async (extra: Record<string, string> = {}) => {
+        Object.assign(disk, {
+          state: ["ids.json"],
+          choice: "app",
+          under: {},
+          files: { "state/locations.json": listed("main"), [WORK]: '{"kind":"app"}', ...extra },
+        });
+        await startOf(true);
+      };
+
+      // The first has no name of its own until it is renamed: it reads as Home's heading does.
+      it("names each one: its own name, else its Dropbox folder, else Phone", async () => {
+        await two();
+        expect(await api().list()).toEqual([
+          { id: "main", name: "Phone", named: false, open: true, cloud: false },
+          { id: "work", name: "Work", named: true, open: false, cloud: false },
+        ]);
+        await two({ "state/binding.json": JSON.stringify({ folder: "Personal" }) });
+        expect((await api().list())[0]).toMatchObject({ name: "Personal", cloud: true });
+        await two({ "state/binding.json": JSON.stringify({ folder: "" }) });
+        expect((await api().list())[0].name).toBe("Boojy Notes");
+        // One with a name of its own that syncs keeps the name, and is a cloud.
+        await two({ "locations/work/state/binding.json": JSON.stringify({ folder: "Team" }) });
+        expect((await api().list())[1]).toMatchObject({ name: "Work", cloud: true });
+      });
+
+      it("is one location, listed, on a phone that never added another", async () => {
+        Object.assign(disk, { state: ["ids.json"], choice: "app", under: {}, files: {} });
+        await startOf(true);
+        expect(await api().list()).toEqual([
+          { id: "main", name: "Phone", named: false, open: true, cloud: false },
+        ]);
+      });
+
+      it("opens another only once the edits waiting are saved, by writing which is open", async () => {
+        await two();
+        const saved = vi.fn(async () => {
+          expect(lists()).toEqual([]);
+        });
+        await api().open("work", saved);
+        expect(saved).toHaveBeenCalledOnce();
+        expect(lists()).toEqual([["state/locations.json", listed("work")]]);
+        expect(() => api().open("nowhere", saved)).toThrow(/No such/);
+      });
+
+      it("adds one under a new id and opens it, the rest of the list kept", async () => {
+        await two();
+        await api().add("  Private ", async () => {});
+        const { open, list } = JSON.parse(lists()[0][1]);
+        expect(list.slice(0, 2)).toEqual([{ id: "main" }, { id: "work", name: "Work" }]);
+        expect(list[2]).toEqual({ id: open, name: "Private" });
+        expect(open).toMatch(/^[a-z0-9]+$/);
+      });
+
+      // A list that couldn't be read opens the first location alone: written back, the rest are lost.
+      it("adds and opens nothing while the list can't be read", async () => {
+        Object.assign(disk, {
+          state: ["ids.json"],
+          choice: "app",
+          under: {},
+          files: { "state/locations.json": "{" },
+        });
+        await startOf(true);
+        await expect(api().add("Private", async () => {})).rejects.toThrow(/couldn't be read/);
+        expect(lists()).toEqual([]);
+      });
+
+      it("refuses a name another location shows, writing nothing", async () => {
+        await two();
+        await expect(api().add("work", async () => {})).rejects.toThrow(/Another location/);
+        await expect(api().add("Phone", async () => {})).rejects.toThrow(/Another location/);
+        expect(lists()).toEqual([]);
+      });
+    });
+
     it("opens the folder the open location chose, never another's", async () => {
       Object.assign(disk, {
         state: ["ids.json"],
@@ -431,6 +576,29 @@ describe("where a start keeps the notes", () => {
       expect(await moveToFolder(saved)).toBe("not-empty");
       expect(released).toEqual(["to"]);
       expect(saved).not.toHaveBeenCalled();
+      expect(storage()).toEqual([]);
+    });
+
+    // Its grant is the other location's: given back, that location would lose its notes folder.
+    it("refuses another location's folder, and keeps its grant", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: {},
+        files: {
+          "state/locations.json": JSON.stringify({
+            open: "main",
+            list: [{ id: "main" }, { id: "w" }],
+          }),
+          "locations/w/state/storage.json": JSON.stringify({ kind: "folder", folder: TO }),
+        },
+      });
+      await startOf(true);
+      disk.files = {};
+      released.length = 0;
+      Object.assign(picker, { answer: { picked: true, ...TO }, holds: ["Diary.md"] });
+      expect(await (offered() as Move)(async () => {})).toBe("in-use");
+      expect(released).toEqual([]);
       expect(storage()).toEqual([]);
     });
 

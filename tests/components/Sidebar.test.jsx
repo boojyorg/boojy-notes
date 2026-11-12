@@ -149,6 +149,8 @@ function renderSidebar(overrides = {}) {
     trashFile: overrides.trashFile,
     recentlyDeleted: overrides.recentlyDeleted,
     sync: overrides.sync,
+    locations: overrides.locations,
+    onOpenLocation: overrides.onOpenLocation,
   };
 
   const Component = overrides.Component ?? Sidebar;
@@ -1046,6 +1048,25 @@ describe("Sidebar on the phone", () => {
       expect(getByTestId("sync-status").parentElement.textContent).toBe("Work");
       expect(queryByText("Notes")).not.toBeInTheDocument();
       unmount();
+      // A storage location's own name comes before the Dropbox folder it syncs with.
+      const named = renderSidebar({
+        Component: PhoneSidebar,
+        sync: bound("Work"),
+        locations: [
+          { id: "main", name: "Private", named: true, open: true, cloud: false },
+          { id: "l1", name: "Other", named: true, open: false, cloud: true },
+        ],
+      });
+      expect(named.getByTestId("sync-status").parentElement.textContent).toBe("Private");
+      named.unmount();
+      // One with no name of its own follows sync as it is now, not as the list was read.
+      const unnamed = renderSidebar({
+        Component: PhoneSidebar,
+        sync: bound("Work"),
+        locations: [{ id: "main", name: "Phone", named: false, open: true, cloud: false }],
+      });
+      expect(unnamed.getByTestId("sync-status").parentElement.textContent).toBe("Work");
+      unnamed.unmount();
       // The app folder itself, which the binding writes "".
       const root = renderSidebar({ Component: PhoneSidebar, sync: bound("") });
       expect(root.getByTestId("sync-status").parentElement.textContent).toBe("Boojy Notes");
@@ -1057,6 +1078,63 @@ describe("Sidebar on the phone", () => {
       vi.resetModules();
     }
   });
+
+  // The desktop's own menu: the same rows, glyphs and tick, less the file toggles.
+  it("opens the desktop's storage-location menu from the name: switch, and manage in Settings", () =>
+    onPhone(async (PhoneSidebar) => {
+      const onOpenLocation = vi.fn();
+      const status = (state, problems = []) => ({
+        state,
+        folder: "Work",
+        lastSynced: null,
+        problems,
+        progress: null,
+      });
+      const locations = [
+        { id: "main", name: "Work", named: true, open: true, cloud: true },
+        { id: "l1", name: "Private", named: true, open: false, cloud: false },
+      ];
+      const view = renderSidebar({
+        Component: PhoneSidebar,
+        sync: { status: status("synced"), syncNow: vi.fn(), signInAgain: vi.fn() },
+        locations,
+        onOpenLocation,
+      });
+      expect(view.getByTestId("sync-status").getAttribute("aria-expanded")).toBe("false");
+      fireEvent.click(view.getByTestId("sync-status"));
+      expect(view.getByTestId("sync-status").getAttribute("aria-expanded")).toBe("true");
+      const rows = view.getAllByRole("menuitemradio");
+      expect(rows.map((el) => el.textContent)).toEqual(["Work", "Private"]);
+      expect(rows.map((el) => el.getAttribute("aria-checked"))).toEqual(["true", "false"]);
+      expect(view.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
+        "Manage storage locations…",
+      ]);
+      expect(view.queryByText("Show other files")).not.toBeInTheDocument();
+      // Synced: the cloud says so, and the menu says nothing about sync.
+      expect(view.queryByText(/Synced with Dropbox/)).not.toBeInTheDocument();
+      fireEvent.click(view.getByText("Private"));
+      expect(onOpenLocation).toHaveBeenCalledWith("l1");
+      fireEvent.click(view.getByTestId("sync-status"));
+      fireEvent.click(view.getByText("Manage storage locations…"));
+      expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
+      view.unmount();
+
+      // Sync needing the person is said there, with the one thing to do.
+      const signInAgain = vi.fn();
+      const trouble = renderSidebar({
+        Component: PhoneSidebar,
+        sync: {
+          status: status("problem", [{ kind: "signed-out" }]),
+          syncNow: vi.fn(),
+          signInAgain,
+        },
+        locations,
+      });
+      fireEvent.click(trouble.getByTestId("sync-status"));
+      expect(trouble.getByText(/sign-in has expired/)).toBeInTheDocument();
+      fireEvent.click(trouble.getByText("Sign in again"));
+      expect(signInAgain).toHaveBeenCalledOnce();
+    }));
 
   it("shows sync's state after the folder's name, and says it in words on a tap", async () => {
     const sync = {

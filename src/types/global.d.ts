@@ -245,6 +245,12 @@ declare global {
       attachmentAddress: (rel: string) => string;
       /** Sync's state and Dropbox's connection, for Home's folder row (src/phone/useSyncStatus.ts). */
       sync: import("../phone/useSyncStatus").PhoneSyncAPI;
+      /** The phone's storage locations (src/phone/locations.ts); opening or adding one starts the app again. */
+      locations: {
+        list: () => Promise<import("../phone/locations").LocationRow[]>;
+        open: (id: string, saved: () => Promise<unknown>) => Promise<void>;
+        add: (name: string, saved: () => Promise<unknown>) => Promise<void>;
+      };
       /** The folder the notes are in, as a person reads it; null when they are inside the app. */
       notesFolder: string | null;
       /** Moves notes kept in the app's storage into a picked folder; absent when they are in one. */

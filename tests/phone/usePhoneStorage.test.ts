@@ -42,10 +42,65 @@ describe("where the phone keeps its notes, for Settings", () => {
     expect(showToast).not.toHaveBeenCalled();
   });
 
+  describe("the storage locations", () => {
+    const ROWS = [
+      { id: "main", name: "Phone", named: false, open: true, cloud: false },
+      { id: "work", name: "Work", named: true, open: false, cloud: true },
+    ];
+    const withLocations = (over: Record<string, unknown> = {}) => {
+      const locations = {
+        list: vi.fn(async () => ROWS),
+        open: vi.fn(async (_id: string, saved: () => Promise<unknown>) => {
+          await saved();
+        }),
+        add: vi.fn(async (_name: string, saved: () => Promise<unknown>) => {
+          await saved();
+        }),
+        ...over,
+      };
+      return { locations, ...hook({ locations }) };
+    };
+
+    it("are listed once, and none where the app has none (a browser)", async () => {
+      expect(hook({}).result.current.locations).toEqual([]);
+      const { result } = withLocations();
+      await act(async () => {});
+      expect(result.current.locations).toEqual(ROWS);
+    });
+
+    it("writes the editor's waiting edits before another is opened or added", async () => {
+      const { result, locations, flushAll } = withLocations();
+      await act(async () => {
+        expect(await result.current.openLocation("work")).toBe(true);
+        expect(await result.current.addLocation("Private")).toBe(true);
+      });
+      expect(locations.open).toHaveBeenCalledWith("work", expect.any(Function));
+      expect(locations.add).toHaveBeenCalledWith("Private", expect.any(Function));
+      expect(flushAll).toHaveBeenCalledTimes(2);
+    });
+
+    it("says why when it can't, and stays where it is", async () => {
+      const { result, showToast } = withLocations({
+        open: vi.fn(async () => {
+          throw new Error("A note is still being saved. Try again in a moment.");
+        }),
+      });
+      await act(async () => {
+        expect(await result.current.openLocation("work")).toBe(false);
+      });
+      expect(showToast).toHaveBeenCalledWith(
+        "Couldn't switch: A note is still being saved. Try again in a moment.",
+        "warning",
+        { key: "storage-location" },
+      );
+    });
+  });
+
   it("says why a folder was not taken, and nothing when the picker was left", async () => {
     for (const [answer, said] of [
       ["not-empty", /Choose an empty folder/],
       ["refused", /on this phone/],
+      ["in-use", /Another storage location/],
       ["cancelled", null],
     ] as const) {
       const { result, showToast, flushAll } = hook({ moveToFolder: vi.fn(async () => answer) });

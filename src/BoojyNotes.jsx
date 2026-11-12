@@ -1788,6 +1788,8 @@ export default function BoojyNotes() {
             vaultMenuRequest={vaultMenuRequest}
             onVaultMenuOpen={refreshVaults}
             sync={sync}
+            locations={phoneStorage.locations}
+            onOpenLocation={phoneStorage.openLocation}
             recentlyDeleted={
               recentlyDeleted.available
                 ? {

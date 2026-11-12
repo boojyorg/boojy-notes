@@ -1,4 +1,5 @@
 import type { FileOps } from "./files";
+import { syncFolderName } from "./syncFolder";
 
 /**
  * The phone's storage locations: each a set of notes with its own vault,
@@ -22,6 +23,11 @@ export interface Locations {
   /** The location the app opens. */
   open: string;
   list: Location[];
+  /**
+   * The list was there and could not be read, so this is the first location
+   * alone, to open by: never written back, which would drop the others.
+   */
+  damaged?: true;
 }
 
 /** The first location: the storage's own top level. */
@@ -30,15 +36,61 @@ const LIST = "state/locations.json";
 /** An id is part of a path: letters and digits only. */
 const ID = /^[a-z0-9]+$/;
 const alone = (): Locations => ({ open: MAIN, list: [{ id: MAIN }] });
+const unread = (): Locations => ({ ...alone(), damaged: true });
+
+/** A new location's id: random, never its name, which can change and can be another's later. */
+export function newLocationId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return `l${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Why `name` can't be a new location's, or null: it needs one, and one no other row shows. */
+export function nameProblem(name: string, taken: string[]): string | null {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return "Give it a name.";
+  return taken.some((t) => t.trim().toLowerCase() === wanted)
+    ? "Another location has this name."
+    : null;
+}
+
+/** A location as Home and Settings list it. */
+export interface LocationRow {
+  id: string;
+  name: string;
+  /** It was given a name; without one it follows the Dropbox folder it syncs with. */
+  named: boolean;
+  open: boolean;
+  /** It syncs with Dropbox: drawn as a cloud, as the desktop draws a folder in a sync service. */
+  cloud: boolean;
+}
+
+/**
+ * The rows with the open one as sync has it now (`folder`: its Dropbox
+ * folder, null with none, undefined where sync isn't known): its cloud, and
+ * its name when it has none of its own. A connect or disconnect then shows at
+ * once; a closed location's can't change while it is closed.
+ */
+export function liveRows(rows: LocationRow[], folder: string | null | undefined): LocationRow[] {
+  if (folder === undefined) return rows;
+  return rows.map((row) =>
+    row.open
+      ? {
+          ...row,
+          cloud: folder !== null,
+          name: row.named ? row.name : folder === null ? "Phone" : syncFolderName(folder),
+        }
+      : row,
+  );
+}
 
 /** Where a location keeps its files in the phone's storage: "" for the first. */
 export const prefixOf = (id: string) => (id === MAIN ? "" : `locations/${id}/`);
 
 /**
  * The list as kept; the first location alone before one was written, or when
- * it can't be read: the app then opens the notes it always had, and another
- * location's files stay where they are. An open location that is not listed
- * is the first listed.
+ * it can't be read (`damaged`): the app then opens the notes it always had,
+ * and another location's files stay where they are. An open location that is
+ * not listed is the first listed.
  */
 export async function readLocations(root: FileOps): Promise<Locations> {
   try {
@@ -54,18 +106,23 @@ export async function readLocations(root: FileOps): Promise<Locations> {
         typeof entry.name === "string" ? { id: entry.id, name: entry.name } : { id: entry.id },
       );
     }
-    if (!list.length) return alone();
+    if (!list.length) return unread();
     return { open: seen.has(kept.open) ? kept.open : list[0].id, list };
   } catch {
-    return alone();
+    return unread();
   }
 }
 
-export async function writeLocations(root: FileOps, locations: Locations) {
-  for (const { id } of locations.list) {
+export async function writeLocations(root: FileOps, { open, list, damaged }: Locations) {
+  if (damaged) {
+    throw new Error(
+      "The list of storage locations couldn't be read. Restart the app and try again.",
+    );
+  }
+  for (const { id } of list) {
     if (!ID.test(id)) throw new Error(`"${id}" can't name a storage location`);
   }
-  await root.write(LIST, new TextEncoder().encode(JSON.stringify(locations)));
+  await root.write(LIST, new TextEncoder().encode(JSON.stringify({ open, list })));
 }
 
 /**

@@ -18,14 +18,34 @@ function ask<T>(screen: (done: (answer: T) => void) => React.ReactNode): Promise
   });
 }
 
-/** First launch: the folder chosen, or null for the app's own storage. */
-export const askStorage = (folderName: string, granted: PickedFolder | null) =>
-  ask<PickedFolder | null>((done) => (
-    <PhoneSetup folderName={folderName} granted={granted} onDone={done} />
+/** A location added later was backed out of at its folder: it is not added after all. */
+export const CANCELLED = "cancelled";
+
+/**
+ * First launch, or the first start of a storage location just added (by its
+ * name): the folder chosen, null for the app's own storage, or `CANCELLED`
+ * for an added location backed out of. `taken` are other locations' folders.
+ */
+export const askStorage = (
+  folderName: string,
+  granted: PickedFolder | null,
+  location?: string,
+  taken: string[] = [],
+) =>
+  ask<PickedFolder | null | typeof CANCELLED>((done) => (
+    <PhoneSetup
+      folderName={folderName}
+      granted={granted}
+      location={location}
+      taken={taken}
+      onCancel={() => done(CANCELLED)}
+      onDone={done}
+    />
   ));
 
-/** The chosen folder is out of reach: the folder chosen again. */
-export const askFolderAgain = () => ask<PickedFolder>((done) => <FolderLost onDone={done} />);
+/** The chosen folder is out of reach: the folder chosen again, never another location's. */
+export const askFolderAgain = (taken: string[] = []) =>
+  ask<PickedFolder>((done) => <FolderLost taken={taken} onDone={done} />);
 
 /** A move to a folder under way: its count, until `close`. */
 export function showMoving() {

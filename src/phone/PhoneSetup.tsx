@@ -87,15 +87,29 @@ const Title = ({ children }: { children: React.ReactNode }) => (
   </h1>
 );
 
-/** Asks Android for a folder; null when the picker was left, `refused` for one not on the phone. */
+type NotTaken = "refused" | "taken";
+
+/**
+ * Asks Android for a folder; null when the picker was left, `refused` for one
+ * not on the phone, `taken` for one another storage location keeps its notes
+ * in (`taken`, by tree): two locations over one folder would each sync and
+ * delete the other's files. Its grant is the other location's, so it is kept.
+ */
 async function pickFolder(
   access: FolderAccessPlugin,
   initial?: string,
-): Promise<PickedFolder | "refused" | null> {
+  taken: string[] = [],
+): Promise<PickedFolder | NotTaken | null> {
   const got = await access.pick(initial ? { initial } : {});
   if (got.refused) return "refused";
-  return got.picked && got.tree && got.root ? { tree: got.tree, root: got.root } : null;
+  if (!got.picked || !got.tree || !got.root) return null;
+  return taken.includes(got.tree) ? "taken" : { tree: got.tree, root: got.root };
 }
+
+const WHY_NOT: Record<NotTaken, string> = {
+  refused: "Choose a folder on this phone.",
+  taken: "Another storage location keeps its notes there. Choose a different folder.",
+};
 
 /** A glyph for each of `SETUP_POINTS`, in their order: a file, no connection, a cloud. */
 const POINT_ICONS = [OpenNoteIcon, SyncOfflineIcon, SyncOffIcon];
@@ -116,10 +130,23 @@ const POINT_ICONS = [OpenNoteIcon, SyncOfflineIcon, SyncOffIcon];
 export function PhoneSetup({
   folderName,
   granted = null,
+  location,
+  taken: inUse = [],
+  onCancel,
   onDone,
   access = FolderAccess,
 }: {
   folderName: string;
+  /** The folders other storage locations keep their notes in: never this one's. */
+  taken?: string[];
+  /** Back, for a location added later: it is not added after all. */
+  onCancel?: () => void;
+  /**
+   * A storage location added later, by name: only its folder is asked, under
+   * that name. Back leaves it unadded (`onCancel`), and the appearance is
+   * already chosen.
+   */
+  location?: string;
   /** A folder this install already holds (a setup cut short after its choice). */
   granted?: PickedFolder | null;
   onDone: (folder: PickedFolder | null) => void;
@@ -127,15 +154,15 @@ export function PhoneSetup({
 }) {
   const { theme, setThemeMode } = useTheme();
   const { TEXT } = theme;
-  const [page, setPage] = useState<1 | 2>(granted ? 2 : 1);
+  const [page, setPage] = useState<1 | 2>(granted || location ? 2 : 1);
   const [chosen, setChosen] = useState<PickedFolder | null>(granted);
-  const [refused, setRefused] = useState(false);
+  const [refused, setRefused] = useState<NotTaken | null>(null);
   const [offerApp, setOfferApp] = useState(false);
 
   // A fresh install starts on System, as the desktop's does.
   useEffect(() => {
-    setThemeMode("auto");
-  }, [setThemeMode]);
+    if (!location) setThemeMode("auto");
+  }, [setThemeMode, location]);
 
   // Android's Back: the first page from the second, out of the app from the first.
   useEffect(() => {
@@ -144,7 +171,8 @@ export function PhoneSetup({
     import("@capacitor/app").then(({ App }) => {
       if (gone) return;
       const handle = App.addListener("backButton", () => {
-        if (page === 2) setPage(1);
+        if (location) onCancel?.();
+        else if (page === 2) setPage(1);
         else App.minimizeApp();
       });
       remove = () => handle.then((h) => h.remove());
@@ -153,16 +181,16 @@ export function PhoneSetup({
       gone = true;
       remove?.();
     };
-  }, [page]);
+  }, [page, location, onCancel]);
 
-  const taken = (got: PickedFolder | "refused" | null) => {
-    setRefused(got === "refused");
-    if (got && got !== "refused") return got;
+  const taken = (got: PickedFolder | NotTaken | null) => {
+    setRefused(typeof got === "string" ? got : null);
+    if (got && typeof got !== "string") return got;
     setOfferApp(true);
     return null;
   };
   const choose = async () => {
-    const got = taken(await pickFolder(access));
+    const got = taken(await pickFolder(access, undefined, inUse));
     if (got) setChosen(got);
   };
   const folderPath = chosen ? folderLabel(chosen) : `Documents/${folderName}`;
@@ -170,7 +198,7 @@ export function PhoneSetup({
     if (chosen) return onDone(chosen);
     // Made first, so Android's screen opens inside it.
     const { initial } = await access.ensureDefault({ name: folderName });
-    const got = taken(await pickFolder(access, initial));
+    const got = taken(await pickFolder(access, initial, inUse));
     if (got) onDone(got);
   };
 
@@ -239,7 +267,7 @@ export function PhoneSetup({
         <button
           type="button"
           aria-label="Back"
-          onClick={() => setPage(1)}
+          onClick={() => (location ? onCancel?.() : setPage(1))}
           style={{
             width: 44,
             height: 44,
@@ -259,7 +287,7 @@ export function PhoneSetup({
       </div>
       <div style={{ flexGrow: 1 }} />
       <div style={{ display: "flex", flexDirection: "column" }}>
-        <h1 style={{ ...HEADING, marginBottom: 24 }}>Set up</h1>
+        <h1 style={{ ...HEADING, marginBottom: 24 }}>{location ?? "Set up"}</h1>
 
         {/* The folder: its name over a row that holds the path and changes it, and what it is under. */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
@@ -318,25 +346,27 @@ export function PhoneSetup({
               color: theme.SEMANTIC.error,
             }}
           >
-            Choose a folder on this phone.
+            {WHY_NOT[refused]}
           </p>
         )}
 
-        <div
-          style={{
-            marginTop: 28,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <SectionTitle title={APPEARANCE_TITLE} />
-          {/* The pills carry a left pull for a left edge: undone, so they sit centred. */}
-          <div style={{ paddingLeft: 12 }}>
-            <ThemePills />
+        {!location && (
+          <div
+            style={{
+              marginTop: 28,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <SectionTitle title={APPEARANCE_TITLE} />
+            {/* The pills carry a left pull for a left edge: undone, so they sit centred. */}
+            <div style={{ paddingLeft: 12 }}>
+              <ThemePills />
+            </div>
           </div>
-        </div>
+        )}
 
         <SmallButton kind="strong" onClick={carryOn} style={TOUCH_BUTTON}>
           {withArrow("Continue")}
@@ -374,18 +404,21 @@ export function PhoneSetup({
  * would read as every note being gone.
  */
 export function FolderLost({
+  taken = [],
   onDone,
   access = FolderAccess,
 }: {
+  /** The folders other storage locations keep their notes in. */
+  taken?: string[];
   onDone: (folder: PickedFolder) => void;
   access?: FolderAccessPlugin;
 }) {
   const { theme } = useTheme();
-  const [refused, setRefused] = useState(false);
+  const [refused, setRefused] = useState<NotTaken | null>(null);
   const again = async () => {
-    const got = await pickFolder(access);
-    setRefused(got === "refused");
-    if (got && got !== "refused") onDone(got);
+    const got = await pickFolder(access, undefined, taken);
+    setRefused(typeof got === "string" ? got : null);
+    if (got && typeof got !== "string") onDone(got);
   };
   return (
     <Page>
@@ -396,7 +429,7 @@ export function FolderLost({
       </p>
       {refused && (
         <p role="alert" style={{ margin: "12px 0 0", fontSize: 14, color: theme.SEMANTIC.error }}>
-          Choose a folder on this phone.
+          {WHY_NOT[refused]}
         </p>
       )}
       <SmallButton kind="strong" onClick={again} style={TOUCH_BUTTON}>

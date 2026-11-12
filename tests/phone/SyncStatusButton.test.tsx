@@ -54,6 +54,21 @@ describe("a long sync", () => {
   });
 });
 
+// Where the phone has storage locations, the name opens their menu, as the desktop's does.
+describe("the heading with a menu of its own to open", () => {
+  it("hands the tap over, and opens no menu itself", () => {
+    const onOpen = vi.fn();
+    render(
+      <ThemeProvider>
+        <SyncStatusButton name="Phone" sync={sync()} onOpenSettings={vi.fn()} onOpen={onOpen} />
+      </ThemeProvider>,
+    );
+    fireEvent.click(screen.getByTestId("sync-status"));
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+});
+
 // Connecting, disconnecting and moving the notes are Settings': one way to each.
 describe("sync's menu on Home", () => {
   it("with no Dropbox, says so and leads to Settings alone", () => {
