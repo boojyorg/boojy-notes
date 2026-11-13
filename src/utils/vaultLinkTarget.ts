@@ -16,26 +16,69 @@
  * (`Note.md "A title"`, `Notes (2024)`) is tried whole first and then without it.
  */
 export function vaultLinkTargets(dest: string, fromFolder: string | null): string[] | null {
+  const read = vaultLinkForms(dest);
+  if (!read) return null;
+  const targets = read.forms.flatMap((form) => {
+    if (!form.path) return form.subpath ? [form.subpath] : [];
+    const { fromNote, fromRoot } = vaultPathsOf(form.path, fromFolder);
+    return [fromNote, fromRoot].filter((p): p is string => !!p).map((p) => `${p}${form.subpath}`);
+  });
+  return [...new Set(targets)];
+}
+
+/** One reading of a destination: its path, and everything written after it. */
+export interface VaultLinkForm {
+  /** The path as written, percent-escapes and all. */
+  rawPath: string;
+  /** The path decoded. Empty for `#Heading` alone. */
+  path: string;
+  /** The heading, block or page decoded, with its `#`; "" for none. */
+  subpath: string;
+  /** What follows the path as written: its `#…` and, in the untitled reading, its title. */
+  tail: string;
+}
+
+/**
+ * The readings of a destination that is not an address (null for one that
+ * is): whole first, then without what looks like a title. `bracketed` says it
+ * was written `<…>`.
+ */
+export function vaultLinkForms(
+  dest: string,
+): { forms: VaultLinkForm[]; bracketed: boolean } | null {
   let address = dest.trim();
-  if (address.startsWith("<") && address.endsWith(">")) address = address.slice(1, -1);
+  const bracketed = address.startsWith("<") && address.endsWith(">");
+  if (bracketed) address = address.slice(1, -1);
   // A scheme is followed by its address at once; `Re: plan.md` is a name.
   if (!address || /^[a-z][a-z0-9+.-]+:(?=\S)/i.test(address) || address.startsWith("//")) {
     return null;
   }
-  const untitled = address.replace(/\s+(?:"[^"]*"|'[^']*'|\([^)]*\))$/, "");
-  const targets = [address, untitled].flatMap((a) => pathsOf(a, fromFolder));
-  return [...new Set(targets)];
+  const title = address.match(/\s+(?:"[^"]*"|'[^']*'|\([^)]*\))$/)?.[0] ?? "";
+  const form = (text: string, after: string): VaultLinkForm => {
+    const hash = text.indexOf("#");
+    const rawPath = hash === -1 ? text : text.slice(0, hash);
+    const rawSub = hash === -1 ? "" : text.slice(hash);
+    return {
+      rawPath,
+      path: decode(rawPath),
+      subpath: rawSub ? `#${decode(rawSub.slice(1))}` : "",
+      tail: `${rawSub}${after}`,
+    };
+  };
+  const forms = [form(address, "")];
+  if (title) forms.push(form(address.slice(0, -title.length), title));
+  return { forms, bracketed };
 }
 
-function pathsOf(address: string, fromFolder: string | null): string[] {
-  const hash = address.indexOf("#");
-  const path = decode(hash === -1 ? address : address.slice(0, hash));
-  const subpath = hash === -1 ? "" : `#${decode(address.slice(hash + 1))}`;
-  // `#Heading` alone names a heading of the note the link sits in.
-  if (!path) return subpath ? [subpath] : [];
-  const fromRoot = normalise(path.replace(/^\/+/, ""));
-  const fromNote = path.startsWith("/") ? null : normalise(`${fromFolder ?? ""}/${path}`);
-  return [fromNote, fromRoot].filter((p): p is string => !!p).map((p) => `${p}${subpath}`);
+/** Where a decoded path points: from the folder of the note it sits in, and from the vault's root. */
+export function vaultPathsOf(
+  path: string,
+  fromFolder: string | null,
+): { fromNote: string | null; fromRoot: string | null } {
+  return {
+    fromNote: path.startsWith("/") ? null : normalise(`${fromFolder ?? ""}/${path}`),
+    fromRoot: normalise(path.replace(/^\/+/, "")),
+  };
 }
 
 function decode(text: string): string {

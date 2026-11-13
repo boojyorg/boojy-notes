@@ -600,7 +600,12 @@ function tidy(): void {
 // ─── IPC ───
 
 /** The reasons the renderer may give for a safety save. */
-const MARK_REASONS = new Set(["Before Replace All", "Before restore", "Before moving footnotes"]);
+const MARK_REASONS = new Set([
+  "Before Replace All",
+  "Before restore",
+  "Before moving footnotes",
+  "Before link update",
+]);
 
 const isId = (x: unknown): x is string => typeof x === "string" && NOTE_ID.test(x);
 

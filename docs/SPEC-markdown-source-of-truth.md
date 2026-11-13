@@ -275,6 +275,35 @@ Enforcement: `tests/utils/preservation.test.js` runs a corpus of deliberately aw
 (`tests/fixtures/preservation/`) through the real load→save path. Known failures are marked in
 the suite, never omitted; the suite is the honest record of how far the promise currently holds.
 
+**The one carve-out: links follow a rename or a move made in the app.** Renaming or moving a
+note, or renaming or moving a folder, rewrites other notes, which nothing else in the app does.
+It is held to the narrowest form of the promise:
+
+- Only a link changes, and only one that would otherwise stop meaning the note it meant
+  (`utils/linkRewrite.ts`): its target or destination, never its alias, its `#heading` or
+  `^block`, an embed's `!`, a Markdown link's text, title or style (`%20`, `<…>`, `./`, a
+  leading `/`). A link that still means the same note is left as written. (A lined-up table
+  re-pads the column a longer link widens, as it does for any edit of a cell.)
+- Read as a click reads it: `[[Note]]`, `[[Folder/Note#Heading|alias]]`, `![[Note]]` and a
+  Markdown link whose destination is a path. Never inside a code span, a code or maths block, a
+  formula or a `%%` comment; never a link to a file; never frontmatter.
+- A wikilink is rewritten to the shortest target that names the note and no other
+  (`linkTargetFor`). Nothing is written that does not read back as that note, so a link that
+  cannot be spelled (a root note sharing its name with one in a folder) is left as it was.
+- Only for a change the app itself wrote, once the name has settled, never for a rename made in
+  Finder, by another app, by sync, on the phone or while the app was closed. A note kept online
+  or not readable as text is never read for links, and is counted in the notice.
+- Each rewritten note keeps the text its file held first as a version (`Before link update`);
+  one whose version could not be kept is not rewritten. The rewrite goes through the ordinary
+  save, so a file that changed outside is kept as a conflicted copy, never overwritten. It is
+  not an undo entry: renaming back moves the links back. A rewritten note's own undo entries
+  go, as an outside edit's do, since each holds the note with its old links.
+- A new note has no name to follow from until its first name has settled, so the half-typed
+  names its file passes through never capture a link that was waiting for a note of that name.
+  A name that a link cannot hold (`Notes [2024]` in a wikilink) is never written into one.
+
+Proven by `links-follow-rename.spec.ts` and `linkRewrite.test.ts`.
+
 On Obsidian: Boojy Notes does **not** promise vault feature parity. The promise is narrower
 and stronger: it can work directly with the Markdown files in an Obsidian vault without damaging
 syntax it doesn't understand. Plugins, Canvas, `.obsidian` config and the rest of the workspace

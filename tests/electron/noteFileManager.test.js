@@ -405,6 +405,50 @@ describe("write-note — the returned title is the basename on disk", () => {
     expect(fs.readdirSync(notesDir)).toEqual(["Pasta"]);
   });
 
+  it("still says where the file was when the write after the rename failed and was retried", () => {
+    writeNote(note("n-fail", "Old", null, "before"));
+    // The note's own text fails to land; the index, saved after the rename, does not.
+    const writeSync = fs.writeSync;
+    const spy = vi.spyOn(fs, "writeSync").mockImplementation((fd, data, ...rest) => {
+      if (Buffer.from(data).toString("utf-8") === "after") {
+        throw new Error("ENOSPC: no space left on device");
+      }
+      return writeSync(fd, data, ...rest);
+    });
+    expect(() => writeNote(note("n-fail", "New", null, "after"))).toThrow("ENOSPC");
+    spy.mockRestore();
+    // The file is renamed already; the retry renames nothing.
+    expect(fs.readdirSync(notesDir).filter((f) => f.endsWith(".md"))).toEqual(["New.md"]);
+    const retried = writeNote(note("n-fail", "New", null, "after"));
+    expect(retried.renamedFrom).toEqual({ title: "Old", folder: null });
+    expect(fs.readFileSync(path.join(notesDir, "New.md"), "utf-8")).toBe("after");
+    // Said once.
+    expect(writeNote(note("n-fail", "New", null, "after again")).renamedFrom).toBeUndefined();
+  });
+
+  it("says a note's first write is its first, and no later one", () => {
+    expect(writeNote(note("n-new", "Fresh", null, "text")).created).toBe(true);
+    expect(writeNote(note("n-new", "Fresh", null, "more")).created).toBeUndefined();
+    expect(writeNote(note("n-new", "Renamed", null, "more")).created).toBeUndefined();
+  });
+
+  it("says where the file was when the write renamed or moved it, and only then", () => {
+    expect(writeNote(note("n-from", "Old", null, "text")).renamedFrom).toBeUndefined();
+    expect(writeNote(note("n-from", "Old", null, "edited")).renamedFrom).toBeUndefined();
+    expect(writeNote(note("n-from", "New", null, "edited")).renamedFrom).toEqual({
+      title: "Old",
+      folder: null,
+    });
+    expect(writeNote(note("n-from", "New", "Work/Deep", "edited")).renamedFrom).toEqual({
+      title: "New",
+      folder: null,
+    });
+    expect(writeNote(note("n-from", "Newer", "Work", "edited")).renamedFrom).toEqual({
+      title: "New",
+      folder: "Work/Deep",
+    });
+  });
+
   it("still writes the new text when a rename comes with an edit", () => {
     writeNote(note("n-ren2", "Old", null, "before"));
 

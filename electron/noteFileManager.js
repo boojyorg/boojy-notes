@@ -748,6 +748,30 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     });
   });
 
+  // Where a note's file was before a rename the app made, until a write
+  // answers with it (`renamedFrom`): the links that named it there follow
+  // (utils/linkRewrite). Kept across a write that failed after its rename, or
+  // the retry, which renames nothing, would answer without it and the links
+  // would stay behind for good. The first place wins: a second rename before
+  // any answer is still a rename away from where the links point.
+  const renamedFromPending = new Map();
+  function rememberRenamedFrom(id, fromPath, notesDir) {
+    if (renamedFromPending.has(id)) return;
+    const dir = path.relative(notesDir, path.dirname(fromPath));
+    renamedFromPending.set(id, {
+      title: path.basename(fromPath, ".md"),
+      folder: dir ? dir.split(path.sep).join("/") : null,
+    });
+  }
+  function takeRenamedFrom(id, result) {
+    const from = renamedFromPending.get(id);
+    if (from) {
+      result.renamedFrom = from;
+      renamedFromPending.delete(id);
+    }
+    return result;
+  }
+
   /** `diskBody`: the file's text when a download has just read it. */
   function writeNote(written, diskBody) {
     const notesDir = getNotesDir();
@@ -847,7 +871,8 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // so the volume records the new casing. The watcher reports the move as an
     // unlink of the old name (claimed here) and an add of the new (the
     // write's own echo). The directory it leaves stays, however empty.
-    const renaming = existingPath && existingPath !== finalPath && fs.existsSync(existingPath);
+    const hadFile = !!existingPath && fs.existsSync(existingPath);
+    const renaming = hadFile && existingPath !== finalPath;
     if (renaming) {
       watcher.claimUnlink(existingPath);
       try {
@@ -861,6 +886,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
         path.join(path.dirname(finalPath), realBasename(finalPath)),
       );
       saveIndex(notesDir);
+      rememberRenamedFrom(note.id, existingPath, notesDir);
     }
 
     // Serialize — just markdown body, no frontmatter; restore the file's
@@ -897,6 +923,9 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
       `${bodyMd.length}b`,
     );
     const result = { filePath: realPath, title: path.basename(realPath, ".md") };
+    // The first write of a note: it has had no name before this one.
+    if (!hadFile) result.created = true;
+    takeRenamedFrom(note.id, result);
     // The downloaded text goes back with the answer, so the note stops being offloaded.
     if (note.offloaded) result.downloaded = { ...note, offloaded: undefined };
     return result;
@@ -925,6 +954,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
         watcher.releaseUnlinkClaim(existingPath);
         throw error;
       }
+      rememberRenamedFrom(note.id, existingPath, notesDir);
       trace("M", "unreadable note moved", path.relative(notesDir, finalPath));
       try {
         watcher.claimWrite(finalPath, fs.readFileSync(finalPath, "utf-8"));
@@ -935,7 +965,10 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     const realPath = path.join(path.dirname(finalPath), realBasename(finalPath));
     _idIndex[note.id] = path.relative(notesDir, realPath);
     saveIndex(notesDir);
-    return { filePath: realPath, title: path.basename(realPath, ".md") };
+    return takeRenamedFrom(note.id, {
+      filePath: realPath,
+      title: path.basename(realPath, ".md"),
+    });
   }
 
   // Recently Deleted: the notes the app sent to the Trash in the last 30 days,

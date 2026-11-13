@@ -12,9 +12,10 @@ import { isElectron, isPhone } from "../utils/platform";
  * trap the user in the app).
  *
  * `flushAll` is useFileSystem's: it writes what the keystroke ref holds, not
- * React state, which lags during typing.
+ * React state, which lags during typing. `settleOnClose` runs after it on a
+ * close only, and resolves true when it left more to write.
  */
-export function useQuitFlush(flushAll) {
+export function useQuitFlush(flushAll, settleOnClose) {
   useEffect(() => {
     if (!isPhone) return;
     const onHidden = () => {
@@ -31,6 +32,9 @@ export function useQuitFlush(flushAll) {
     const unsubClose = window.electronAPI.onAppWillClose(async () => {
       try {
         await flushAll();
+        // What only settles once everything is written (links following a
+        // name still under the caret), and then the notes that changed.
+        if (await settleOnClose?.()) await flushAll();
       } catch (err) {
         console.error("useQuitFlush: flush before close failed", err);
       } finally {
@@ -52,5 +56,5 @@ export function useQuitFlush(flushAll) {
       unsubClose();
       window.removeEventListener("blur", onBlur);
     };
-  }, [flushAll]);
+  }, [flushAll, settleOnClose]);
 }
