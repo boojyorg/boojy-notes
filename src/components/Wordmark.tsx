@@ -5,9 +5,10 @@ import wordmarkDark from "/assets/boojy-notes-wordmark-dark.png";
 /**
  * The Notes wordmark, drawn in the theme's ink.
  *
- * The artwork is two colours: the cyan N, which is the same in both themes, and
- * "otes" in the theme's `TEXT.primary`. One asset per theme is generated from
- * the black master (`assets/boojy-notes-wordmark.png`) by `dev/wordmarks.sh`;
+ * The artwork is two parts: the teal N, which is the same in both themes (the
+ * app icon's, `assets/boojy-notes-n.svg`), and "otes" in the theme's
+ * `TEXT.primary`. One asset per theme is generated from the N and the black
+ * master (`assets/boojy-notes-wordmark.png`) by `dev/wordmarks.sh`;
  * the master itself is never drawn (in Dark its "otes" would be near-black).
  * The asset is chosen by theme rather than filtered in CSS because an
  * `invert()` would also turn the N into its complement.
