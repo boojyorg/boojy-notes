@@ -36,8 +36,12 @@ test("Shift+Enter is a line break inside the paragraph, on disk and after a repa
     expect(await editorText(h.page)).toBe("Alpha. one\ntwo\n");
 
     // Typing at the end of the second line lands there, not before the break.
-    // The click lands on the first line; ArrowDown moves within the block.
-    await h.page.locator("[data-block-id]").first().click();
+    // The click lands on the first line (near the block's top: its middle is
+    // the boundary between the two lines); ArrowDown moves within the block.
+    await h.page
+      .locator("[data-block-id]")
+      .first()
+      .click({ position: { x: 8, y: 6 } });
     await h.page.keyboard.press("ArrowDown");
     await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.type("!");

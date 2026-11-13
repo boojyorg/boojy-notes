@@ -286,3 +286,52 @@ test("an unnamed name under the caret stands on a ground that hugs it evenly, cl
     await h.close();
   }
 });
+
+/**
+ * The note's first line shares a middle with the sidebar's New note row,
+ * whatever block opens the note: a heading grows about that line instead of
+ * reaching up from a shared baseline, so the grip centred on the first line
+ * stands in one place for every note.
+ */
+test("the first line's middle is level with New note's, for a paragraph, a heading and a to-do", async () => {
+  const h = await launchApp({
+    "Para.md": "Plain first line.\n",
+    "Head.md": "# Heading first\n",
+    "Sub.md": "### Smaller heading first\n",
+    "Todo.md": "- [ ] To-do first\n",
+  });
+  try {
+    const middles = () =>
+      h.page.evaluate(() => {
+        const row = [...document.querySelectorAll("button")]
+          .find((b) => b.textContent?.trim() === "New note")!
+          .getBoundingClientRect();
+        const block = document.querySelector("[data-block-id]")!;
+        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+        let text = walker.nextNode();
+        while (text && !text.textContent?.trim()) text = walker.nextNode();
+        const range = document.createRange();
+        range.selectNodeContents(text!);
+        // The glyphs' box is centred in its line, so its middle is the line's.
+        const line = range.getClientRects()[0];
+        return { row: row.top + row.height / 2, line: line.top + line.height / 2 };
+      });
+    const firsts = {
+      Para: "Plain first line.",
+      Head: "Heading first",
+      Sub: "Smaller heading first",
+      Todo: "To-do first",
+    };
+    for (const [name, text] of Object.entries(firsts)) {
+      await h.openNote(name);
+      // The note measured is the one just opened, not the one before it.
+      await expect(h.page.locator("[data-block-id]").first()).toContainText(text);
+      const { row, line } = await middles();
+      // Within a pixel: the column's padding and a face's glyph box each
+      // round to the device, by up to half a pixel. Baselines sat 1.6 to 3.2 off.
+      expect(Math.abs(line - row), name).toBeLessThanOrEqual(1);
+    }
+  } finally {
+    await h.close();
+  }
+});

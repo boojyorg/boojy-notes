@@ -140,11 +140,12 @@ export const ROW_INSET = 4;
 /** Folder-row glyph box on the spine (16px list tier). */
 export const SPINE_ICON = 16;
 /**
- * Each level of nesting steps the row's contents this far right. It is the
- * name's own offset from its glyph, never a number of its own: a child's
- * contents, glyph or text, then start exactly under its parent's name.
+ * Each level of nesting steps the row's contents this far right: a little
+ * less than the name's own offset from its glyph (TEXT_COL − SPINE), so a
+ * child starts just left of its parent's name and a deep tree keeps its
+ * names' room.
  */
-export const TREE_INDENT = TEXT_COL - SPINE;
+export const TREE_INDENT = 18;
 /** Tree rows are this tall, with a 2px rhythm gap. */
 export const TREE_ROW_H = 28;
 export const TREE_ROW_GAP = 2;
@@ -164,18 +165,13 @@ export const MENU_ROW_RADIUS = MENU_RADIUS - MENU_PAD;
 export const ACTION_ROW_H = 32;
 /**
  * Air under the chrome row before the first row of a column — the sidebar's
- * New note row, and with it the note's first line, which is measured from this
- * (`COLUMN_TOP` in `EditorArea`). The first block makes its own baseline
- * correction; none belongs here.
+ * New note row, and with it the note's first line, whose middle is set level
+ * with that row's (`columnTop` in `EditorArea`). Check a heading-first and a
+ * paragraph-first note before moving it: a first heading reaches up from here.
  */
-export const COLUMN_HEAD_GAP = 21;
-/**
- * How far the note's first baseline sits *below* New note's. The two were
- * level, and beside a 28px heading the 14px label read as sitting high: the
- * eye weighs the heading's mass, not its baseline. Check a heading-first and a
- * paragraph-first note before moving it.
- */
-export const FIRST_LINE_BELOW_ROW = 2;
+export const COLUMN_HEAD_GAP = 13;
+/** The phone's note has no New note row beside it and keeps its own air. */
+export const PHONE_COLUMN_HEAD_GAP = 23;
 /**
  * Between the New note row and the Notes row. Tighter than the air above them,
  * so the action and the list's name read as one head to the column rather than
@@ -185,10 +181,8 @@ export const FIRST_LINE_BELOW_ROW = 2;
 export const NOTES_ROW_GAP = 5;
 /**
  * The New note row's label. Its line height is stated rather than left to the
- * browser's `normal`, because the note's first line is set on this label's
- * baseline and that sum should be readable from the app's own numbers
- * (`baselineInRow`, `COLUMN_TOP`). The label is centred in the row, so the
- * value only moves the baseline, by a tenth of a pixel against `normal`.
+ * browser's `normal`; the label is centred in the row, and the note's first
+ * line is set on that row's middle (`columnTop` in `EditorArea`).
  */
 export const ROW_LABEL_SIZE = 14;
 export const ROW_LABEL_LINE_HEIGHT = 1.2;

@@ -111,6 +111,7 @@ import {
   ROW_INSET,
   SIDEBAR_TREE_INSET,
   SPINE,
+  SPINE_ICON,
   TEXT_COL,
   TREE_INDENT,
 } from "../../src/constants/layout.js";
@@ -773,9 +774,10 @@ describe("Sidebar", () => {
     expect(root.style.paddingLeft).toBe(`${spine - ROW_INSET}px`);
     expect(root.style.paddingLeft).toBe(folder.style.paddingLeft);
     expect(nested.style.paddingLeft).toBe(`${spine + TREE_INDENT - ROW_INSET}px`);
-    // The step is the name's own offset from its glyph, so a folder's note
-    // starts exactly under the folder's name.
-    expect(TREE_INDENT).toBe(TEXT_COL - SPINE);
+    // The step is a little less than the name's own offset from its glyph,
+    // so a folder's note starts past the folder's glyph and before its name.
+    expect(TREE_INDENT).toBeGreaterThan(SPINE_ICON);
+    expect(TREE_INDENT).toBeLessThan(TEXT_COL - SPINE);
   });
 });
 

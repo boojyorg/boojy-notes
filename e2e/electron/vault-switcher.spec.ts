@@ -165,7 +165,15 @@ test("other files show beside the notes; attachments only when asked; both toggl
   });
   try {
     const tree = h.page.getByRole("tree");
-    await expect(tree.getByRole("treeitem", { name: "reading-list.pdf" })).toBeVisible();
+    const fileRow = tree.getByRole("treeitem", { name: "reading-list.pdf" });
+    await expect(fileRow).toBeVisible();
+    // Its name without a glyph, and its type as a tag at the row's right edge.
+    await expect(fileRow).toHaveText("reading-listpdf");
+    await expect(fileRow.locator("svg")).toHaveCount(0);
+    const tag = fileRow.locator("[data-file-type]");
+    await expect(tag).toHaveCSS("text-transform", "uppercase");
+    const [rowBox, tagBox] = [await fileRow.boundingBox(), await tag.boundingBox()];
+    expect(rowBox!.x + rowBox!.width - (tagBox!.x + tagBox!.width)).toBeLessThan(12);
     await expect(h.page.getByTestId("attachments-row")).toHaveCount(0);
 
     await h.page.getByTestId("vault-label").click();

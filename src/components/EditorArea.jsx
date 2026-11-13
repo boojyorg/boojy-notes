@@ -4,10 +4,8 @@ import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
 import {
   ACTION_ROW_H,
   COLUMN_HEAD_GAP,
-  FIRST_LINE_BELOW_ROW,
+  PHONE_COLUMN_HEAD_GAP,
   LABEL_PAD_X,
-  ROW_LABEL_LINE_HEIGHT,
-  ROW_LABEL_SIZE,
   SCROLLBAR_W,
 } from "../constants/layout";
 import { Z } from "../constants/zIndex";
@@ -62,7 +60,6 @@ import { openBlock } from "../utils/blockOpen";
 import { openMathSource } from "../utils/mathOpen";
 import { drawInlineMath } from "../utils/inlineMath";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
-import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
 import { capturePlace, resolveAnchor, resolveCaret } from "../utils/notePlace";
 import { tintElement, tintRanges } from "../utils/searchHighlight";
@@ -128,26 +125,25 @@ const HOLD_IN_WEB =
 /**
  * The column's own top padding on the desktop, under the chrome row.
  *
- * **The note's first line and the sidebar's New note row share a baseline.**
+ * **The note's first line and the sidebar's New note row share a middle.**
  * The two columns start level — the sidebar's header and the path band are the
- * same height — so the row's label is the line the note's first line is set on:
- * the air above the row, plus the label's baseline inside it, less the note
- * body's own baseline inside its first line.
+ * same height — so the padding is the air above the row plus half the row,
+ * less half the body's own line.
  *
  * The padding is one number for every note, whatever block opens it. A heading
- * does not push its first line down to make room for itself; it reaches *up*
- * from this baseline, through a lift it works out from its own type
- * (`EditableBlock`). So the line you read first never moves — not between
- * notes, and not when `# ` turns the first paragraph into a heading.
+ * does not push its first line down to make room for itself; it grows equally
+ * up and down about this line, through a lift it works out from its own type
+ * (`EditableBlock`). So the first line's middle, and the grip centred on it,
+ * never moves: not between notes, and not when `# ` turns the first paragraph
+ * into a heading.
  *
- * Not tops, not centres: a baseline is the line the eye reads two words as
- * sharing.
+ * Middles, not baselines: beside a 28px heading a 14px label on the same
+ * baseline reads as sitting high, because the eye weighs the heading's mass.
  */
 const columnTop = (rhythm) =>
-  COLUMN_HEAD_GAP +
-  baselineInRow(ACTION_ROW_H, ROW_LABEL_SIZE, ROW_LABEL_LINE_HEIGHT) -
-  baselineFromTop(rhythm.bodySize, rhythm.lineHeight) +
-  FIRST_LINE_BELOW_ROW;
+  (isPhone ? PHONE_COLUMN_HEAD_GAP : COLUMN_HEAD_GAP) +
+  ACTION_ROW_H / 2 -
+  (rhythm.bodySize * rhythm.lineHeight) / 2;
 
 /*
  * The writing column is fluid, because the window is.

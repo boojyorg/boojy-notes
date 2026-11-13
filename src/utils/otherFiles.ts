@@ -37,6 +37,19 @@ export function splitExtension(name: string): { stem: string; ext: string } {
   return { stem: name.slice(0, dot), ext: name.slice(dot) };
 }
 
+/**
+ * A file's name as its row shows it: the name, and its type as a tag. Only a
+ * short run of letters and digits with a letter in it is a type, so
+ * `Meeting 3.11 with Sam`, `v1.2/README` and `report.` keep their whole name.
+ */
+export function nameAndType(name: string): { shown: string; type: string } {
+  const { stem, ext } = splitExtension(name);
+  const type = ext.slice(1);
+  return /^[a-z0-9]{1,10}$/i.test(type) && /[a-z]/i.test(type)
+    ? { shown: stem, type }
+    : { shown: name, type: "" };
+}
+
 export function otherFileKind(name: string): OtherFileKind {
   const { ext } = splitExtension(name);
   return KINDS[ext.slice(1).toLowerCase()] ?? "file";
