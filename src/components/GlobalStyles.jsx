@@ -371,13 +371,19 @@ export default function GlobalStyles() {
           background-color: ${theme.BG.hover} !important;
           transition: none !important;
         }
-        /* Home's N answers a press in its own teal, livelier while the finger
-           is down and fading back after: the brand is not a grey button. */
+        /* Home's N answers a press in its own teal, a touch livelier while the
+           finger is down and fading back after: the brand is not a grey
+           button, and the answer is felt more than seen. */
         html.is-phone .home-mark img { transition: filter var(--motion-settle); }
         html.is-phone .home-mark:active img {
-          filter: saturate(1.5) brightness(1.06);
+          filter: saturate(1.2) brightness(1.02);
           transition: none;
         }
+        /* Home's list keeps a pull past its end to itself. Without this a drag
+           that starts at the top (or the bottom) is handed to the page, which
+           cannot scroll, so Android's stretch showed only when a scroll ran
+           into the end and never on a pull from rest. */
+        html.is-phone .sidebar-scroll { overscroll-behavior-y: contain; }
         /* A card of two controls (a storage location's row and its ···) is
            one thing to the eye: a press on its row greys the whole card. */
         html.is-phone .press-card:not([data-opening]):has(> .press-card-body:active) {
