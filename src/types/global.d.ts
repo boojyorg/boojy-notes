@@ -82,10 +82,15 @@ declare global {
        * nothing written, when the file changed since the app last read or
        * wrote it: `stale` carries the disk version as an outside change.
        */
-      writeNote: (
-        note: Note,
-      ) => Promise<
-        | { filePath: string; title: string; stale?: undefined; downloaded?: Note }
+      writeNote: (note: Note) => Promise<
+        | {
+            filePath: string;
+            title: string;
+            stale?: undefined;
+            downloaded?: Note;
+            /** The name and folder the file had, when this write renamed or moved it. */
+            renamedFrom?: { title: string; folder: string | null };
+          }
         | { stale: true; note: Note }
       >;
       /** An offloaded note's text, downloaded; null when it could not be. */

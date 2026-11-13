@@ -298,6 +298,8 @@ export interface LinksFollowed {
   notes: Record<string, Note>;
   /** How many links were rewritten, over all of them. */
   links: number;
+  /** How many in each of `notes`. */
+  perNote: Record<string, number>;
   /** Notes that could not be read for links: online only, or not text. */
   skipped: number;
 }
@@ -310,7 +312,7 @@ export interface LinksFollowed {
 export function linksFollow(beforeData: NoteData, afterData: NoteData): LinksFollowed {
   const before = worldOf(beforeData);
   const after = worldOf(afterData);
-  const result: LinksFollowed = { notes: {}, links: 0, skipped: 0 };
+  const result: LinksFollowed = { notes: {}, links: 0, perNote: {}, skipped: 0 };
   for (const [id, note] of Object.entries(after.notes)) {
     const was = before.notes[id];
     if (!was || note._draft) continue;
@@ -323,12 +325,16 @@ export function linksFollow(beforeData: NoteData, afterData: NoteData): LinksFol
     const follow = (text: string) =>
       followInText(text, was.folder ?? null, note.folder ?? null, before, after, result);
     let changed = false;
+    const linksBefore = result.links;
     const next = blocks.map((block) => {
       const b = followInBlock(block, follow);
       if (b !== block) changed = true;
       return b;
     });
-    if (changed) result.notes[id] = { ...note, content: { ...note.content, blocks: next } };
+    if (changed) {
+      result.notes[id] = { ...note, content: { ...note.content, blocks: next } };
+      result.perNote[id] = result.links - linksBefore;
+    }
   }
   return result;
 }

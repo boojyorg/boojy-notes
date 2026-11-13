@@ -548,6 +548,13 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
             }
             if (typeof written?.title === "string" && written.title !== note.title)
               editorLinksRef.current?.onTitleResolved?.(noteId, note, written.title);
+            // The write renamed or moved the file: the links that named it
+            // there follow once the name has settled (useLinksFollow).
+            if (written?.renamedFrom)
+              editorLinksRef.current?.onNoteRenamed?.(noteId, written.renamedFrom, {
+                title: written.title,
+                folder: note.folder ?? null,
+              });
           } catch (err) {
             console.error("useFileSystem: write failed", noteId, err);
             if (!reportedWriteFailures.current.has(noteId)) {
@@ -618,6 +625,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
           console.error("useFileSystem: after-flush work failed", err);
         }
       }
+      editorLinksRef.current?.onNamesWritten?.();
       return saved;
       // Deps deliberately not exhaustive: onError is not stable
     },

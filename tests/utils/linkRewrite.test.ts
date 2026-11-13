@@ -126,7 +126,7 @@ describe("linksFollow: a rename", () => {
       "[[Plan]] [[Missing]] [[paper.pdf]] [[#Top]] [t](#Top) [w](https://x.y/Beta.md)\n";
     const before = vault({ Alpha: alpha, "A/Plan": "1\n", "B/Plan": "2\n", Beta: "B.\n" });
     const after = placed(placed(before, "A/Plan", { title: "Scheme" }), "Beta", { title: "Delta" });
-    expect(linksFollow(before, after)).toEqual({ notes: {}, links: 0, skipped: 0 });
+    expect(linksFollow(before, after)).toEqual({ notes: {}, links: 0, perNote: {}, skipped: 0 });
   });
 });
 
@@ -215,7 +215,12 @@ describe("linksFollow: what it does not read", () => {
     before.Cloud = { ...before.Cloud, offloaded: true };
     before.Bin = { ...before.Bin, unreadable: "encoding" };
     before.New = { ...before.New, _draft: true };
-    expect(linksFollow(before, before)).toEqual({ notes: {}, links: 0, skipped: 2 });
+    expect(linksFollow(before, before)).toEqual({
+      notes: {},
+      links: 0,
+      perNote: {},
+      skipped: 2,
+    });
     const { md, skipped } = followed(before, placed(before, "Beta", { title: "Delta" }));
     expect(Object.keys(md)).toEqual(["Alpha"]);
     expect(skipped).toBe(2);

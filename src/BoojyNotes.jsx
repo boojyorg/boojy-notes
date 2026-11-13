@@ -56,6 +56,7 @@ import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats, wordsIn } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
+import { useLinksFollow } from "./hooks/useLinksFollow";
 import { caretLength, caretOffsetAt, getCaretOffset, placeCaret } from "./utils/domHelpers";
 import { binnedToast, deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useRecentlyDeleted } from "./hooks/useRecentlyDeleted";
@@ -224,6 +225,22 @@ export default function BoojyNotes() {
     adoptNoteData,
   });
 
+  // Links follow a rename or a move the app wrote, once the name has settled:
+  // after the write, and when the caret leaves the name field.
+  const { onNoteRenamed, settle: settleLinks } = useLinksFollow({
+    noteDataRef,
+    adoptNoteData,
+    unflushedNotes,
+    activeNoteRef,
+    titleRef,
+    syncGeneration,
+    showToast,
+  });
+  const settleNames = useCallback(() => {
+    settleTitle();
+    settleLinks();
+  }, [settleTitle, settleLinks]);
+
   // The open note's file was deleted outside the app (useFileSystem). Handled
   // below, once Recently Deleted is wired up and the editor has moved off it.
   const [deletedOutside, setDeletedOutside] = useState(null);
@@ -339,6 +356,8 @@ export default function BoojyNotes() {
     onOutsideNoteGone,
     onNotesEdited: markEdited,
     onTitleResolved,
+    onNoteRenamed,
+    onNamesWritten: settleLinks,
     remapNoteFolders,
   });
   useQuitFlush(flushAll);
@@ -1876,7 +1895,7 @@ export default function BoojyNotes() {
                   noteHistory={noteHistory}
                   noteHistoryRef={noteHistoryRef}
                   headingNavRef={headingNavRef}
-                  onTitleBlur={settleTitle}
+                  onTitleBlur={settleNames}
                   pastVersion={versionHistory.state.past}
                   deletedNote={deletedPreview}
                   onTypeIntoDeleted={() => {

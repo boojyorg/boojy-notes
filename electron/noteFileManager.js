@@ -848,7 +848,14 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // unlink of the old name (claimed here) and an add of the new (the
     // write's own echo). The directory it leaves stays, however empty.
     const renaming = existingPath && existingPath !== finalPath && fs.existsSync(existingPath);
+    // Where the file was, for the links that named it there (utils/linkRewrite).
+    let renamedFrom = null;
     if (renaming) {
+      const fromDir = path.relative(notesDir, path.dirname(existingPath));
+      renamedFrom = {
+        title: path.basename(existingPath, ".md"),
+        folder: fromDir ? fromDir.split(path.sep).join("/") : null,
+      };
       watcher.claimUnlink(existingPath);
       try {
         renameWithRetry(existingPath, finalPath);
@@ -897,6 +904,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
       `${bodyMd.length}b`,
     );
     const result = { filePath: realPath, title: path.basename(realPath, ".md") };
+    if (renamedFrom) result.renamedFrom = renamedFrom;
     // The downloaded text goes back with the answer, so the note stops being offloaded.
     if (note.offloaded) result.downloaded = { ...note, offloaded: undefined };
     return result;
