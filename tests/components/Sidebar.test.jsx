@@ -932,7 +932,11 @@ describe("Sidebar on the phone", () => {
       const createFolder = vi.fn();
       const view = renderSidebar({ Component: PhoneSidebar, onOpenSearch, createFolder });
       expect(view.queryByTestId("wordmark-settings-button")).not.toBeInTheDocument();
+      // The N leads nowhere: a tap takes the list back to its top.
+      const list = view.container.querySelector(".sidebar-scroll");
+      list.scrollTop = 300;
       fireEvent.click(view.getByTestId("home-mark"));
+      expect(list.scrollTop).toBe(0);
       expect(settingsState.setSettingsOpen).not.toHaveBeenCalled();
       fireEvent.click(view.getByTestId("home-search"));
       expect(onOpenSearch).toHaveBeenCalledTimes(1);

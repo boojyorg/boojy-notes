@@ -51,7 +51,7 @@ import RenameField from "./RenameField";
 import Collapsible, { IndentGuide } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
 import Wordmark from "./Wordmark";
-import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
+import { PANEL_FADE_MS, PANEL_MS, panelTransition, prefersReducedMotion } from "../tokens/motion";
 import {
   ACTION_RADIUS,
   ACTION_ROW_H,
@@ -1100,7 +1100,8 @@ const Sidebar = memo(function Sidebar({
   // are in Home's menu (HomeMenu), so the cards stand right under the top row.
   const listHead = (
     <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
-      <div style={{ height: isPhone ? 2 : COLUMN_HEAD_GAP }} />
+      {/* On the phone the cards stand a little clear of the top row's field. */}
+      <div style={{ height: isPhone ? 8 : COLUMN_HEAD_GAP }} />
       {!isPhone && (
         <>
           <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />
@@ -1228,6 +1229,12 @@ const Sidebar = memo(function Sidebar({
         {isPhone ? (
           // The phone's one row: the N, the Search field and the ··· (HomeChrome).
           <HomeTop
+            onTop={() => {
+              const list = sidebarScrollRef.current;
+              if (!list) return;
+              if (prefersReducedMotion() || !list.scrollTo) list.scrollTop = 0;
+              else list.scrollTo({ top: 0, behavior: "smooth" });
+            }}
             onSearch={onOpenSearch}
             onMenu={setHomeMenu}
             menuOpen={homeMenu !== null}

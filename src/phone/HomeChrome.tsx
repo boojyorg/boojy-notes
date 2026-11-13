@@ -12,20 +12,35 @@ export const NEW_NOTE_SIZE = 72;
 /** The N's height in the top row. */
 const MARK_H = 28;
 
+/** The air on either side of the Search field: to the N, and to the ···'s dots. */
+const FIELD_GAP = 16;
+/** The grey the ··· stands on while its menu is open: the desktop's icon-button square. */
+const MORE_HELD = 32;
+/**
+ * How far the ···'s dots stand inside their touch target, less 2px so the held
+ * square keeps clear of the field: an 18px glyph, centred, its dots 3px inside it.
+ */
+const MORE_INSET = (TOUCH - 18) / 2 + 3 - 2;
+
 const PLAIN = { border: "none", background: "transparent", padding: 0, font: "inherit" } as const;
 
 /**
- * Home's one top row on the phone: the N (the brand, and nothing to press), a
- * field that opens Search, and the ··· whose menu holds everything else
- * (`HomeMenu`): one way to each thing. The ··· carries a dot only while sync
- * needs the person; synced, syncing or offline it says nothing.
+ * Home's one top row on the phone: the N (the brand; a tap takes the list
+ * back to its top, and leads nowhere), a field that opens Search, and the ···
+ * whose menu holds everything else (`HomeMenu`): one way to each thing. The
+ * ··· is on the row's grey while its menu is open, and carries a dot only
+ * while sync needs the person; synced, syncing or offline it says nothing.
+ * The field stands as far from the N as from the ···'s dots, which sit
+ * inside a touch target wider than they are.
  */
 export function HomeTop({
+  onTop,
   onSearch,
   onMenu,
   menuOpen,
   syncTrouble,
 }: {
+  onTop: () => void;
   onSearch: () => void;
   onMenu: (anchor: MenuAnchor) => void;
   menuOpen: boolean;
@@ -34,14 +49,24 @@ export function HomeTop({
   const { theme } = useTheme();
   const { TEXT, BG } = theme;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, flexGrow: 1, minWidth: 0 }}>
+    <div style={{ display: "flex", alignItems: "center", flexGrow: 1, minWidth: 0 }}>
       {/* A mark beside the field, not a block as tall as it: the field is the row's height. */}
-      <span
+      <button
+        type="button"
         data-testid="home-mark"
-        style={{ height: TOUCH, display: "flex", alignItems: "center", flexShrink: 0 }}
+        aria-label="Back to top"
+        onClick={onTop}
+        style={{
+          ...PLAIN,
+          height: TOUCH,
+          display: "flex",
+          alignItems: "center",
+          flexShrink: 0,
+          marginRight: FIELD_GAP,
+        }}
       >
         <Wordmark height={MARK_H} markOnly />
-      </span>
+      </button>
       <button
         type="button"
         data-testid="home-search"
@@ -78,6 +103,7 @@ export function HomeTop({
           position: "relative",
           width: TOUCH,
           height: TOUCH,
+          marginLeft: FIELD_GAP - MORE_INSET,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -86,7 +112,22 @@ export function HomeTop({
           color: TEXT.secondary,
         }}
       >
-        <MoreHorizontalIcon />
+        {/* Held while its menu is open, on a square smaller than the touch target:
+            the target touches the field, and two greys side by side read as one. */}
+        <span
+          data-testid="home-more-held"
+          style={{
+            width: MORE_HELD,
+            height: MORE_HELD,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 8,
+            background: menuOpen ? BG.hover : "transparent",
+          }}
+        >
+          <MoreHorizontalIcon />
+        </span>
         {syncTrouble && (
           <span
             data-testid="home-sync-dot"
@@ -98,8 +139,8 @@ export function HomeTop({
               height: 8,
               borderRadius: "50%",
               background: theme.SEMANTIC.warning,
-              // A ring of the ground, so the dot reads apart from the glyph under it.
-              boxShadow: `0 0 0 2px ${BG.standard}`,
+              // A ring of the ground it is on, so the dot reads apart from the glyph under it.
+              boxShadow: `0 0 0 2px ${menuOpen ? BG.hover : BG.standard}`,
             }}
           />
         )}
