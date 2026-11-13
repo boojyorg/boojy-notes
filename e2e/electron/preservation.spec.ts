@@ -144,3 +144,41 @@ test("empty list items and headings open as themselves, and one left behind come
     await h.close();
   }
 });
+
+/**
+ * Emphasis written with underscores (`_italic_`, `__bold__`: what Obsidian's
+ * and most editors' shortcuts write) is drawn as emphasis, and an edit in or
+ * beside it leaves the underscores in the file. Shown literally, a note
+ * brought from elsewhere read as full of stray underscores.
+ */
+test("underscore emphasis is drawn, and an edit, a save and a restart keep its underscores", async () => {
+  const source = "An _italic_ and a __bold__ word, snake_case_name too.\n";
+  const h = await launchApp({ "Under.md": source });
+  try {
+    await h.openNote("Under");
+    const block = h.page.locator("[data-block-id]").first();
+    await expect(block).toHaveText("An italic and a bold word, snake_case_name too.");
+    await expect(block.locator("em")).toHaveText("italic");
+    await expect(block.locator("strong")).toHaveText("bold");
+
+    // An edit beside the emphasis, then one inside it.
+    await block.click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.type(" Edited");
+    await waitForFile(h.vault.file("Under.md"), (t) => t.includes("Edited"));
+    await block.locator("em").dblclick();
+    await h.page.keyboard.type("slanted");
+    await waitForFile(h.vault.file("Under.md"), (t) => t.includes("slanted"));
+    await sleep(SETTLE_MS);
+    const edited = "An _slanted_ and a __bold__ word, snake_case_name too. Edited\n";
+    expect(h.vault.read("Under.md")).toBe(edited);
+
+    await h.restart();
+    await h.openNote("Under");
+    await expect(h.page.locator("[data-block-id] em")).toHaveText("slanted");
+    expect(h.vault.read("Under.md")).toBe(edited);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

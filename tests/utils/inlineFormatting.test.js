@@ -778,3 +778,68 @@ describe("settleTypedSpaces: a non-breaking space Chromium typed is the space it
     expect(settleTypedSpaces("plain", "x y")).toBe("plain");
   });
 });
+
+describe("underscore emphasis keeps its spelling", () => {
+  const roundTrip = (md) => htmlToInlineMarkdown(inlineMarkdownToHtml(md));
+
+  it("draws `_x_`, `__x__` and `___x___` as emphasis, marked as the file's underscores", () => {
+    expect(inlineMarkdownToHtml("_a_")).toBe('<em data-md="_">a</em>');
+    expect(inlineMarkdownToHtml("__a__")).toBe('<strong data-md="_">a</strong>');
+    expect(inlineMarkdownToHtml("___a___")).toBe(
+      '<strong data-md="_"><em data-md="_">a</em></strong>',
+    );
+    expect(inlineMarkdownToHtml("_a __b__ c_")).toBe(
+      '<em data-md="_">a <strong data-md="_">b</strong> c</em>',
+    );
+  });
+
+  it("leaves an underscore inside a word, beside a space, in an address or in code as text", () => {
+    for (const md of ["snake_case_name", "_a_b", "é_a_", "_ a_", "a_ _b", "`_a_`", "$a_1 + b_2$"]) {
+      expect(inlineMarkdownToHtml(md)).not.toContain("<em");
+      expect(roundTrip(md)).toBe(md);
+    }
+    const url = inlineMarkdownToHtml("https://x.y/_a_/ and [[my_note_x]] and [t](u_v_.md)");
+    expect(url).not.toContain("<em");
+    expect(url).toContain('href="https://x.y/_a_/"');
+  });
+
+  it("never wraps half of another element", () => {
+    expect(inlineMarkdownToHtml("**a _b** c_")).toBe("<strong>a _b</strong> c_");
+  });
+
+  it("reads each form back as written, beside the star forms", () => {
+    for (const md of [
+      "_a_",
+      "__a__",
+      "___a___",
+      "x _a_ and __b__ y",
+      "_a **b** c_",
+      "*a* and _b_",
+      "_a_\n_b_",
+      "\\_a\\_ _b_",
+      "__init__.py",
+    ]) {
+      expect(roundTrip(md)).toBe(md);
+    }
+  });
+
+  it("writes stars once an edit leaves the underscores unable to say it", () => {
+    // A letter typed against the element: `_a_b` is no emphasis, `*a*b` is.
+    expect(htmlToInlineMarkdown('<em data-md="_">a</em>b')).toBe("*a*b");
+    expect(htmlToInlineMarkdown('b<strong data-md="_">a</strong>')).toBe("b**a**");
+    // A space or an underscore at the text's own edge.
+    expect(htmlToInlineMarkdown('<em data-md="_">a </em>')).toBe("*a *");
+    expect(htmlToInlineMarkdown('<em data-md="_">a_</em>')).toBe("*a_*");
+    // Punctuation and a line's edge leave it as written.
+    expect(htmlToInlineMarkdown('(<em data-md="_">a</em>).')).toBe("(_a_).");
+  });
+
+  it("keeps the mark through a copy or a split, and counts the words without the markers", () => {
+    expect(sanitizeInlineHtml('<i data-md="_">a</i> <b data-md="_">b</b>')).toBe(
+      '<em data-md="_">a</em> <strong data-md="_">b</strong>',
+    );
+    expect(stripMarkdownFormatting("_a_ __b__ snake_case_ https://x.y/_c_/")).toBe(
+      "a b snake_case_ https://x.y/_c_/",
+    );
+  });
+});

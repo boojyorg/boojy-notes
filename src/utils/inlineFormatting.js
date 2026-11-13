@@ -121,6 +121,40 @@ const MD_LINK_RE = new RegExp(String.raw`\[([^\]]+)\]\((${LINK_DEST})\)`, "g");
 
 /** A bare URL in prose: `http(s)://` and everything up to whitespace or `<`. */
 const BARE_URL_RE = /https?:\/\/[^\s<]+/g;
+
+/**
+ * Underscore emphasis, by CommonMark's rule: `_x_`, `__x__` and `___x___`
+ * open and close only at a word's edge (`snake_case_` and `_a_b` are text) and
+ * never against a space. A bare URL is matched first and left whole, so an
+ * address keeps its underscores.
+ */
+const UNDERSCORE_RE =
+  /(https?:\/\/[^\s<]+)|(?<![\p{L}\p{N}_])(_{1,3})(?=[^\s_])(.+?)(?<=[^\s_])\2(?![\p{L}\p{N}_])/gu;
+/** An element written with underscores carries this, so the read-back writes them again. */
+const UNDERSCORE_ATTR = ' data-md="_"';
+const UNDERSCORE_HTML = {
+  1: [`<em${UNDERSCORE_ATTR}>`, "</em>"],
+  2: [`<strong${UNDERSCORE_ATTR}>`, "</strong>"],
+  3: [`<strong${UNDERSCORE_ATTR}><em${UNDERSCORE_ATTR}>`, "</em></strong>"],
+};
+/** Whether every tag `html` opens it also closes, in order: emphasis around half an element would misnest. */
+function tagsBalance(html) {
+  const open = [];
+  for (const [, close, name] of html.matchAll(/<(\/?)([a-z]+)\b[^>]*>/g)) {
+    if (name === "br") continue;
+    if (!close) open.push(name);
+    else if (open.pop() !== name) return false;
+  }
+  return open.length === 0;
+}
+/** `html` with its underscore emphasis drawn, the emphasis inside it too (`_a __b__ c_`). */
+function underscoreEmphasis(html) {
+  return html.replace(UNDERSCORE_RE, (m, url, marks, inner) => {
+    if (url !== undefined || !tagsBalance(inner)) return m;
+    const [open, close] = UNDERSCORE_HTML[marks.length];
+    return `${open}${underscoreEmphasis(inner)}${close}`;
+  });
+}
 /** Punctuation that more often closes the sentence than belongs to the address. */
 const URL_TRAILING = ".,;:!?]'\"}>";
 
@@ -345,6 +379,11 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // 7. Highlight (==text==)
   s = s.replace(/==(.+?)==/g, "<mark>$1</mark>");
 
+  // 7b. Underscore emphasis (`_text_`, `__text__`), after the passes above so
+  // it wraps whole elements or none; each element is marked so the read-back
+  // keeps the file's underscores.
+  s = underscoreEmphasis(s);
+
   // 8. Wikilinks [[Target]] or [[Target|Display]]. Broken means the *note* the
   // target names is not in the vault: `[[Beta#Intro]]` names Beta, and
   // `[[Work/Gamma]]` the Gamma in Work and no other (utils/wikilinkTarget, the
@@ -522,8 +561,14 @@ export function nodeToMarkdown(child, before = "") {
   const tag = child.nodeName;
   const inner = walkNode(child);
 
-  if (tag === "STRONG" || tag === "B") return inner ? `**${inner}**` : "";
-  if (tag === "EM" || tag === "I") return inner ? `*${inner}*` : "";
+  if (tag === "STRONG" || tag === "B") {
+    if (!inner) return "";
+    return writesUnderscores(child, inner) ? `__${inner}__` : `**${inner}**`;
+  }
+  if (tag === "EM" || tag === "I") {
+    if (!inner) return "";
+    return writesUnderscores(child, inner) ? `_${inner}_` : `*${inner}*`;
+  }
   // A code span is literal: its text, in the spelling the file gave it.
   if (tag === "CODE") return codeElementMarkdown(child);
   if (tag === "DEL" || tag === "S") return inner ? `~~${inner}~~` : "";
@@ -574,6 +619,37 @@ export function nodeToMarkdown(child, before = "") {
   }
   // Unknown element — recurse children, strip the tag
   return inner;
+}
+
+/**
+ * The character beside an inline element, on the side `step` names, through
+ * the edges of the inline elements that hold it: "" at the block's edge.
+ */
+function charBeside(el, step) {
+  for (let n = el; n && INLINE_TAGS.has(n.nodeName); n = n.parentNode) {
+    for (let sib = n[step]; sib; sib = sib[step]) {
+      if (sib.nodeName === "BR") return "\n";
+      const text = (sib.textContent || "").replace(CARET_ANCHOR_RE, "");
+      if (text) return step === "previousSibling" ? text[text.length - 1] : text[0];
+    }
+  }
+  return "";
+}
+
+/**
+ * Whether an element the file wrote with underscores can still be: its text
+ * must not begin or end with a space or an underscore of its own, nor the
+ * element touch a letter, digit or underscore outside it (CommonMark's rule; there the stars say what the
+ * underscores no longer can).
+ */
+function writesUnderscores(el, inner) {
+  if (el.getAttribute("data-md") !== "_") return false;
+  if (/^\s|\s$/.test(inner)) return false;
+  // A text edge that is itself an underscore would join the markers.
+  const edge = (n, at) => n?.nodeType === Node.TEXT_NODE && n.textContent.at(at) === "_";
+  if (edge(el.firstChild, 0) || edge(el.lastChild, -1)) return false;
+  const word = /[\p{L}\p{N}_]/u;
+  return !word.test(charBeside(el, "previousSibling")) && !word.test(charBeside(el, "nextSibling"));
 }
 
 /** The inline elements a block's text is made of; a `<br>` in them may still end the block. */
@@ -691,6 +767,10 @@ function sanitizeInto(target, sourceNode, inAnchor) {
         if (tag === "CODE" && child.hasAttribute("data-md")) {
           el.setAttribute("data-md", child.getAttribute("data-md"));
         }
+        // Emphasis the file wrote with underscores keeps saying so.
+        if ((newTag === "STRONG" || newTag === "EM") && child.getAttribute("data-md") === "_") {
+          el.setAttribute("data-md", "_");
+        }
 
         // Copy class + data attrs for SPAN (wikilinks, tags, link icons)
         if (tag === "SPAN") {
@@ -768,6 +848,8 @@ export function stripMarkdownFormatting(md) {
   s = s.replace(/~~(.+?)~~/g, "$1");
   // Remove highlight (==text== → text)
   s = s.replace(/==(.+?)==/g, "$1");
+  // Remove underscore emphasis (_text_, __text__ → text), a URL's own left alone
+  s = s.replace(UNDERSCORE_RE, (m, url, _marks, inner) => (url !== undefined ? m : inner));
   return s
     .replace(ESC_TOKEN_RE, (_, i) => escapes[Number(i)])
     .replace(CODE_TOKEN_RE, (_, i) => codes[Number(i)]);
