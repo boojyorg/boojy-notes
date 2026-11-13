@@ -19,7 +19,7 @@ else sit in Fix now.
 The tiers, kept apart. **Requirements** are what a stage waits for. **Candidates** are
 optional; each is judged on its own and may be declined. **Future** is everything after 1.0,
 recorded so a preference and its open question are not lost. Last reviewed: 2026-11-09, the
-v0.22.0 release pass; the 1.0 scope pass was 2026-10-24 (a read-only audit of v0.18.0, an
+v0.22.0 release pass (what is wanted before 1.0 was revised on 2026-11-13); the 1.0 scope pass was 2026-10-24 (a read-only audit of v0.18.0, an
 independent review and a Codex review). Items
 marked *review §n* come from the whole-app review of 2026-09-07.
 
@@ -226,6 +226,35 @@ Public Beta, plus:
 - **A second supported sync route**, desktop to mobile (Open decisions). Sync on the web is
   separately scoped (Future), not part of 1.0.
 
+**Wanted before 1.0** (Tyr, 2026-11-13; the test for each was "would I use it?"):
+
+- **A second window, writeable.** A note open beside another, both edited, wanted for daily
+  use. Still one note per window, never tabs. Two windows on different notes each save their
+  own and hear of the other's renames, moves and new notes; the same note in both is where
+  edits collide, so the question to settle first is whether a note is editable in one window
+  at a time (read-only in the other, or moved to it). Needs its own plan: note state has one
+  owner today, in one window.
+- **Word export**, after PDF: the `docx` library handles headings, lists, tables and pictures,
+  but "looks right in Word" is a long tail, so it is judged against a real document. Not
+  wanted: export as a web page.
+- **Quick capture and a `boojy-notes://` link.** Wanted (Tyr, 2026-09-24): a global shortcut
+  from anywhere on the Mac makes an ordinary new note, the same creation as Cmd+N (no inbox, no
+  quick-note type). A `boojy-notes://new?title=…&text=…` scheme is the one door for it, a
+  bookmarklet, the Shortcuts app and Raycast, and later a web clipper (Future). Initial focus,
+  location and the moment an empty note becomes a file are undecided for every entry point. Not
+  accepted: deriving the title from the first line.
+- **Compare two versions** in Version History: what changed between a version and now, or
+  between two, additions and removals marked. It also serves a conflicted copy and the version
+  kept before a link update.
+- **Rename a tag everywhere**: as links follow a rename, a version of each note first and one
+  notice with the count. Narrower than replacing across every note, which stays declined.
+- **Language support**: the interface in at least a few languages. The text is pulled out of
+  the components early, since every feature adds to it; which languages is undecided.
+- **A migrated folder is checked, quietly.** The first time a storage location is opened the
+  app looks for what will not show as intended (links naming nothing or several notes,
+  attachments nothing uses, Markdown drawn as text) and says nothing unless it finds some; then
+  one notice with the details. No screen of its own.
+
 ## Candidates
 
 Optional. Each is considered on its own, judged by daily-drive friction, and may be declined;
@@ -264,12 +293,7 @@ none blocks a stage.
 - **Other files in the tree, the rest**: Rename and Move to… on the row (once links follow
   renames), and a drag into a note that writes a link. A Finder change reaches the tree on
   window focus; watching them only if that proves slow.
-- **Quick capture and a `boojy-notes://` link.** Wanted (Tyr, 2026-09-24): a global shortcut
-  from anywhere on the Mac makes an ordinary new note, the same creation as Cmd+N (no inbox, no
-  quick-note type). A `boojy-notes://new?title=…&text=…` scheme is the one door for it, a
-  bookmarklet, the Shortcuts app and Raycast, and later a web clipper (Future). Initial focus,
-  location and the moment an empty note becomes a file are undecided for every entry point. Not
-  accepted: deriving the title from the first line.
+
 - **Custom shortcuts**, once the defaults are good (2026-09-30).
 - **Find in note, as good as a code editor's.** Cmd+F finds and replaces (it opens as it was
   last left; Edit → Find ▸ since the menu bar); Tyr asked for it without knowing it was there
@@ -500,9 +524,6 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   follow the route Obsidian's Importer proves (images, scans, PDFs, note links; locked notes
   unlocked first): evidence of feasibility, not a decision to reuse it. Good formatted paste
   helps with a few notes. Attachments, dates and formatting need tested policies.
-- **Word export**, after PDF (2026-09-30): the `docx`
-  library handles headings, lists, tables and pictures, but "looks right in Word" is a long
-  tail, so it waits for a real document to judge it against.
 - **A web clipper**, "save to Boojy Notes" from a page, through the `boojy-notes://` link
   (Candidates). Meanwhile Obsidian's clipper can save into the same vault. What it keeps is undecided: the link and the selected text, or the whole
   article as Markdown with its pictures.
@@ -527,8 +548,10 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   a reset to the default. Catalogue undecided (a first set from Lucide is one option). Kept in
   the vault file favourites use; never renames a directory or adds emoji to its name. Not
   approved: per-note icons, and text or background colour inside notes (no portable Markdown).
-- **Open a note in a new window**: only if the in-place viewer with Back and Forward is not
-  enough (2026-09-30). Still one note per window, never tabs.
+- **Not before 1.0** (Tyr, 2026-11-13: not used, so not built yet): citations from a `.bib`
+  file; a view of every unticked to-do; scheduled backups of the whole folder; restoring a
+  folder to a date; mentions of a note's name that are not links; editing an embedded note in
+  place; sync between devices with no cloud.
 - **Block links, the rest** (`[[Note#^block]]` is followed, `![[Note#^id]]` drawn): the link
   picker offering a note's headings and blocks and writing an ID for one, as Obsidian's
   `[[Note#^` does; the same names offered while an embed's `![[…]]` is edited. A folder-path
