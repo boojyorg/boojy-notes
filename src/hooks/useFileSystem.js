@@ -158,6 +158,9 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // Trash moves. Removing a folder's directory waits on this, so it can only
   // happen after the notes inside it have left.
   const afterFlushCallbacks = useRef([]);
+  // Work to run once the render of a change taken from disk has been seen by
+  // the dirty scan (a folder's rename: the links that follow it are edits).
+  const afterExternalUpdate = useRef([]);
   const afterNextFlush = useCallback((fn) => {
     afterFlushCallbacks.current.push(fn);
   }, []);
@@ -241,6 +244,9 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       isExternalUpdate.current = false;
       externalIds.current.clear();
       prevNoteData.current = noteData;
+      // Work that changes notes must wait for this render: in the same one,
+      // its changes would be taken for the disk's and never written.
+      for (const run of afterExternalUpdate.current.splice(0)) run();
       return;
     }
 
@@ -1014,16 +1020,33 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         await flushAll();
         const { path: finalPath } = await getAPI().renameFolder(oldPath, newPath);
         const remap = remapFolderPath(oldPath, finalPath);
-        const affected = Object.values(noteDataRef.current).some(
-          (n) => n.folder && remap(n.folder) !== n.folder,
+        const moved = Object.entries(noteDataRef.current).filter(
+          ([, n]) => n.folder && remap(n.folder) !== n.folder,
         );
+        const affected = moved.length > 0;
+        // The links that spelled the old path follow (useLinksFollow), once
+        // the notes hold their new folders.
+        const links = editorLinksRef.current;
+        for (const [id, n] of moved) {
+          links.onNoteRenamed?.(
+            id,
+            { title: n.title ?? "", folder: n.folder },
+            { title: n.title ?? "", folder: remap(n.folder) },
+          );
+        }
+        const follow = () => links.onNamesWritten?.();
         if (affected) {
           // Not a local edit: the next state change must not mark anything
           // dirty. If the history ref already agreed (nothing to change), no
           // render is coming to consume the flag; clear it or the next real
           // edit would be mistaken for an external one and never reach disk.
           isExternalUpdate.current = true;
-          if (!editorLinksRef.current.remapNoteFolders(remap)) isExternalUpdate.current = false;
+          if (editorLinksRef.current.remapNoteFolders(remap)) {
+            afterExternalUpdate.current.push(follow);
+          } else {
+            isExternalUpdate.current = false;
+            follow();
+          }
         }
         setCustomFolders((prev) => prev.map(remap));
         return finalPath;

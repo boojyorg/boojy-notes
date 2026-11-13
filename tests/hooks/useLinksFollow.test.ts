@@ -113,6 +113,23 @@ describe("useLinksFollow", () => {
     expect(textOf(h.noteDataRef.current, "a")).toBe("see [[Gamma]]");
   });
 
+  it("on the app's close, takes a name still under the caret as settled, and says it left more to write", async () => {
+    const h = renamed();
+    h.activeNoteRef.current = "b";
+    h.field.focus();
+    h.result.current.onNoteRenamed("b", from, to);
+    let more = true;
+    await act(async () => {
+      more = await h.result.current.settle();
+    });
+    expect(more).toBe(false);
+    await act(async () => {
+      more = await h.result.current.settle({ final: true });
+    });
+    expect(more).toBe(true);
+    expect(textOf(h.noteDataRef.current, "a")).toBe("see [[Gamma]]");
+  });
+
   it("bumps the paint signal only when the open note is one it rewrote", async () => {
     const h = renamed();
     h.activeNoteRef.current = "a";

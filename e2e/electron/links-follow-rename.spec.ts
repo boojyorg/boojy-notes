@@ -125,3 +125,54 @@ test("moving a note carries the links that spelled its path, and the open note i
     await h.close();
   }
 });
+
+test("renaming a folder carries every link that spelled its path, in one go", async () => {
+  const index =
+    "[[Uni/Notes]], [n](Uni/Notes.md) and [[Uni/Deep/Essay#Intro|essay]]; [[Notes]] by name.\n";
+  const h = await launchApp({
+    "Index.md": index,
+    "Uni/Notes.md": "[e](Deep/Essay.md) and [[Uni/Deep/Essay]]\n",
+    "Uni/Deep/Essay.md": "# Intro\n\nEssay.\n",
+  });
+  try {
+    await expandAllFolders(h.page);
+    await h.openNote("Index");
+    await renameRow(h.page, "Uni", "Study");
+    // A path that named the folder is the shortest clear name now; a link by
+    // name alone never needed the path and is left as written.
+    const followed =
+      "[[Notes]], [n](Study/Notes.md) and [[Essay#Intro|essay]]; [[Notes]] by name.\n";
+    await waitForFile(h.vault.file("Index.md"), (t) => t === followed);
+    // Inside the folder: the relative link still reaches its neighbour as
+    // written; the one that spelled the old path follows.
+    await waitForFile(
+      h.vault.file("Study/Notes.md"),
+      (t) => t === "[e](Deep/Essay.md) and [[Essay]]\n",
+    );
+    await expect(h.page.getByText("Updated 4 links in 2 notes.")).toBeVisible();
+    await expect(h.page.locator("[data-block-id] .wikilink-broken")).toHaveCount(0);
+
+    await sleep(SETTLE_MS);
+    expect(h.vault.list().sort()).toEqual(["Index.md", "Study/Deep/Essay.md", "Study/Notes.md"]);
+    expect(h.vault.read("Study/Deep/Essay.md")).toBe("# Intro\n\nEssay.\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a name typed and the app closed with the caret still in the name field: the links follow first", async () => {
+  const h = await launchApp({ "Alpha.md": "[[Beta]]\n", "Beta.md": "Beta body.\n" });
+  try {
+    await h.openNote("Beta");
+    await h.page.getByRole("textbox", { name: "Note title" }).click();
+    await h.page.keyboard.press("ControlOrMeta+a");
+    await h.page.keyboard.type("Gamma");
+    await h.restart();
+    expect(h.vault.list().sort()).toEqual(["Alpha.md", "Gamma.md"]);
+    expect(h.vault.read("Alpha.md")).toBe("[[Gamma]]\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

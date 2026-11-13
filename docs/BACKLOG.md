@@ -136,12 +136,9 @@ the test its rule names when it is built.
 
 **Connected notes** (one link index)
 
-- **Links follow an in-app rename or move.** Once the name settles, `[[…]]`, `![[…]]` and
-  `[x](Note.md)` links resolving to the note are rewritten in readable notes, with the name the
-  write chose, `#subpath` and alias kept, the shortest clear target (`linkTargetFor`). A version
-  first, one toast with the count; not undoable, like a move. Renames outside the app, on the
-  phone or while closed are reported, never rewritten; offloaded and unreadable notes are
-  skipped and counted. The spec's preservation promise gains the carve-out.
+- **An outside rename is reported.** Links follow a rename or move made in the app (the spec's
+  carve-out); one made outside it, on the phone or while closed leaves them, and should say how
+  many links now name nothing. Links in frontmatter properties do not follow yet.
 - **A quiet backlinks section** at the foot of the note.
 
 **Organisation**
@@ -406,10 +403,6 @@ now and `tests/utils/knownRewrites.js`.
 - [ ] **A crashed renderer burns the quit handshake's 2 s cap** — the flush listener now removes
   itself and a destroyed window is checked, so nothing accumulates on rapid Cmd+W then Cmd+Q;
   what is left is that a renderer that has already died still holds the quit for the cap.
-- [ ] **Wikilink rename does not update referrers** — rename `Beta` to `Gamma` and `[[Beta]]`
-  elsewhere stays as written and draws dashed. The rename is a new file plus an unlink, so
-  Obsidian's own link update never runs either. A folder rename breaks every `[[Folder/…]]`
-  link under it. Fixed by Public Beta's "links follow an in-app rename or move".
 - [ ] **A symlinked folder inside the vault** (review §2.9): unchecked since the one recursive
   watch (`treeWatcher.ts`) replaced chokidar. Check whether its notes are listed and watched
   (Public Beta).

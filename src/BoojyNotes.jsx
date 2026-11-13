@@ -236,6 +236,7 @@ export default function BoojyNotes() {
     syncGeneration,
     showToast,
   });
+  const settleLinksOnClose = useCallback(() => settleLinks({ final: true }), [settleLinks]);
   const settleNames = useCallback(() => {
     settleTitle();
     settleLinks();
@@ -360,7 +361,7 @@ export default function BoojyNotes() {
     onNamesWritten: settleLinks,
     remapNoteFolders,
   });
-  useQuitFlush(flushAll);
+  useQuitFlush(flushAll, settleLinksOnClose);
   useUpdateReadyToast({ showToast, flushAll });
   const savePoint = useSavePoint({
     activeNote,

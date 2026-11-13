@@ -93,73 +93,92 @@ export function useLinksFollow({
   }, []);
 
   const settled = useCallback(
-    (id: string) => {
+    (id: string, final: boolean) => {
       const note = noteDataRef.current[id];
       const to = written.current.get(id);
       if (!note || !to) return false;
       if (unflushedNotes.current.has(id)) return false;
       if ((note.title ?? "") !== to.title || (note.folder ?? null) !== to.folder) return false;
+      // The app is closing: the name under the caret is the name it has.
+      if (final) return true;
       const field = titleRef.current;
       return !(id === activeNoteRef.current && field && document.activeElement === field);
     },
     [noteDataRef, unflushedNotes, activeNoteRef, titleRef],
   );
 
-  const settle = useCallback(async () => {
-    if (following.current) return;
-    const from = new Map<string, Place>();
-    for (const [id, place] of origins.current) {
-      if (!noteDataRef.current[id]) {
+  /**
+   * Follow every rename that has settled. `final` (the app is closing) takes
+   * a name still under the caret as settled. Resolves whether any note was
+   * rewritten, so the caller knows there is something more to write.
+   */
+  const settle = useCallback(
+    async ({ final = false } = {}): Promise<boolean> => {
+      if (following.current) return false;
+      // No history to keep a version in (the phone, the web build): nothing is
+      // followed, and nothing is said.
+      if (!historyAPI()) {
+        origins.current.clear();
+        written.current.clear();
+        return false;
+      }
+      const from = new Map<string, Place>();
+      for (const [id, place] of origins.current) {
+        if (!noteDataRef.current[id]) {
+          origins.current.delete(id);
+          written.current.delete(id);
+        } else if (settled(id, final)) from.set(id, place);
+      }
+      if (from.size === 0) return false;
+      for (const id of from.keys()) {
         origins.current.delete(id);
         written.current.delete(id);
-      } else if (settled(id)) from.set(id, place);
-    }
-    if (from.size === 0) return;
-    for (const id of from.keys()) {
-      origins.current.delete(id);
-      written.current.delete(id);
-    }
-
-    following.current = true;
-    try {
-      const found = linksFollow(before(noteDataRef.current, from), noteDataRef.current);
-      const ids = Object.keys(found.notes);
-      // A version of each first: the text its file holds now. History turned
-      // off for a note is the user's choice; any other refusal leaves the note.
-      const api = historyAPI();
-      const kept = new Set<string>();
-      await Promise.all(
-        ids.map(async (id) => {
-          const result = await api
-            ?.mark(id, LINKS_FOLLOW_REASON)
-            .catch((): MarkResult => ({ ok: false, reason: "failed" }));
-          if (result && (result.ok || result.reason === "off")) kept.add(id);
-        }),
-      );
-      // Read again now the versions are kept: a keystroke may have landed.
-      const now = noteDataRef.current;
-      const again = linksFollow(before(now, from), now);
-      const changed = Object.keys(again.notes).filter((id) => kept.has(id));
-      let links = 0;
-      if (changed.length > 0) {
-        for (const id of changed) links += again.perNote[id];
-        // The open note's blocks are painted from state only on a signal.
-        if (changed.includes(activeNoteRef.current ?? "")) syncGeneration.current++;
-        adoptNoteData((prev) => {
-          const next = { ...prev };
-          for (const id of changed) {
-            // Only over the text the links were read in.
-            if (prev[id]?.content?.blocks === now[id]?.content?.blocks) next[id] = again.notes[id];
-          }
-          return next;
-        });
       }
-      const message = linksFollowedMessage(links, changed.length, again.skipped);
-      if (message) showToast?.(message, links > 0 ? "done" : "notice");
-    } finally {
-      following.current = false;
-    }
-  }, [noteDataRef, adoptNoteData, activeNoteRef, syncGeneration, showToast, settled]);
+
+      following.current = true;
+      try {
+        const found = linksFollow(before(noteDataRef.current, from), noteDataRef.current);
+        const ids = Object.keys(found.notes);
+        // A version of each first: the text its file holds now. History turned
+        // off for a note is the user's choice; any other refusal leaves the note.
+        const api = historyAPI();
+        const kept = new Set<string>();
+        await Promise.all(
+          ids.map(async (id) => {
+            const result = await api
+              ?.mark(id, LINKS_FOLLOW_REASON)
+              .catch((): MarkResult => ({ ok: false, reason: "failed" }));
+            if (result && (result.ok || result.reason === "off")) kept.add(id);
+          }),
+        );
+        // Read again now the versions are kept: a keystroke may have landed.
+        const now = noteDataRef.current;
+        const again = linksFollow(before(now, from), now);
+        const changed = Object.keys(again.notes).filter((id) => kept.has(id));
+        let links = 0;
+        if (changed.length > 0) {
+          for (const id of changed) links += again.perNote[id];
+          // The open note's blocks are painted from state only on a signal.
+          if (changed.includes(activeNoteRef.current ?? "")) syncGeneration.current++;
+          adoptNoteData((prev) => {
+            const next = { ...prev };
+            for (const id of changed) {
+              // Only over the text the links were read in.
+              if (prev[id]?.content?.blocks === now[id]?.content?.blocks)
+                next[id] = again.notes[id];
+            }
+            return next;
+          });
+        }
+        const message = linksFollowedMessage(links, changed.length, again.skipped);
+        if (message) showToast?.(message, links > 0 ? "done" : "notice");
+        return changed.length > 0;
+      } finally {
+        following.current = false;
+      }
+    },
+    [noteDataRef, adoptNoteData, activeNoteRef, syncGeneration, showToast, settled],
+  );
 
   return { onNoteRenamed, settle };
 }
