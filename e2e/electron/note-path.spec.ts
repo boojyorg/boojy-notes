@@ -316,8 +316,16 @@ test("the first line's middle is level with New note's, for a paragraph, a headi
         const line = range.getClientRects()[0];
         return { row: row.top + row.height / 2, line: line.top + line.height / 2 };
       });
-    for (const name of ["Para", "Head", "Sub", "Todo"]) {
+    const firsts = {
+      Para: "Plain first line.",
+      Head: "Heading first",
+      Sub: "Smaller heading first",
+      Todo: "To-do first",
+    };
+    for (const [name, text] of Object.entries(firsts)) {
       await h.openNote(name);
+      // The note measured is the one just opened, not the one before it.
+      await expect(h.page.locator("[data-block-id]").first()).toContainText(text);
       const { row, line } = await middles();
       expect(Math.abs(line - row), name).toBeLessThan(0.75);
     }

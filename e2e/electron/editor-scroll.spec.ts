@@ -2,7 +2,7 @@
  * A note opens at its top (2026-09-20). The editor's scroller is shared
  * between notes and the path band is sticky inside it, so a scroll left by
  * the previous note put the next note's first line under the band, off the
- * New note baseline. The scroll is the real scroller's, so it is proven here.
+ * New note row's line. The scroll is the real scroller's, so it is proven here.
  */
 import { expect, test } from "@playwright/test";
 import { launchApp } from "./harness";

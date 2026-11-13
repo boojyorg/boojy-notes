@@ -13,7 +13,7 @@ import {
   folderKey,
   fileKey,
 } from "../utils/treeNav";
-import { attachmentLabel, groupOtherFiles, splitExtension } from "../utils/otherFiles";
+import { attachmentLabel, groupOtherFiles, nameAndType } from "../utils/otherFiles";
 import { useVaultView } from "../hooks/useVaultView";
 import { focusNote } from "../utils/domHelpers";
 import { useSettings } from "../context/SettingsContext";
@@ -372,7 +372,7 @@ function SidebarNewNote({ onClick, TEXT }) {
         color: TEXT.secondary,
         fontFamily: "inherit",
         fontSize: ROW_NAME_SIZE,
-        // Stated, not `normal`: the note's first line is set on this baseline.
+        // Stated, not `normal`, so the label's box is the app's own number.
         lineHeight: ROW_LABEL_LINE_HEIGHT,
         textAlign: "left",
       }}
@@ -1023,7 +1023,7 @@ const Sidebar = memo(function Sidebar({
   // (an attachment renamed would break the notes that embed it, since a
   // rename rewrites no links).
   const renderFile = (path, depth, label = baseName(path)) => {
-    const { stem, ext } = splitExtension(label);
+    const { shown: name, type } = nameAndType(label);
     const menuOpen = ctxMenuFileId === path;
     const shown = openFilePath === path;
     return (
@@ -1046,11 +1046,11 @@ const Sidebar = memo(function Sidebar({
         <span
           style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
         >
-          {ext ? stem : label}
+          {name}
         </span>
-        {ext && (
+        {type && (
           <span data-file-type style={{ ...FILE_TYPE_TAG, color: TEXT.muted }}>
-            {ext.slice(1)}
+            {type}
           </span>
         )}
       </button>

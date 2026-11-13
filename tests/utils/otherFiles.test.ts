@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   attachmentLabel,
   groupOtherFiles,
+  nameAndType,
   otherFileKind,
   splitExtension,
 } from "../../src/utils/otherFiles";
@@ -57,6 +58,26 @@ describe("splitExtension", () => {
     expect(splitExtension("report.final.pdf")).toEqual({ stem: "report.final", ext: ".pdf" });
     expect(splitExtension("Makefile")).toEqual({ stem: "Makefile", ext: "" });
     expect(splitExtension(".env")).toEqual({ stem: ".env", ext: "" });
+  });
+});
+
+describe("nameAndType", () => {
+  it("splits a real extension off as the row's type", () => {
+    expect(nameAndType("report.final.pdf")).toEqual({ shown: "report.final", type: "pdf" });
+    expect(nameAndType("song.MP3")).toEqual({ shown: "song", type: "MP3" });
+    expect(nameAndType("a/b.png")).toEqual({ shown: "a/b", type: "png" });
+  });
+
+  it("keeps the whole name when what follows the last dot is not a type", () => {
+    for (const name of [
+      "Meeting 3.11 with Sam",
+      "v1.2/README",
+      "report.",
+      "Version 3.11",
+      "README",
+    ]) {
+      expect(nameAndType(name)).toEqual({ shown: name, type: "" });
+    }
   });
 });
 
