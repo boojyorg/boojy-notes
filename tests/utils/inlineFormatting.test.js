@@ -834,12 +834,48 @@ describe("underscore emphasis keeps its spelling", () => {
     expect(htmlToInlineMarkdown('(<em data-md="_">a</em>).')).toBe("(_a_).");
   });
 
+  it("judges by the Markdown beside the markers, not by what is drawn there", () => {
+    // Each is valid as written, so a read-back changes no byte of it.
+    for (const md of [
+      "_a_**b**",
+      "**b**_a_",
+      "word**_x_**",
+      "a==_x_==",
+      "_x_[[Note]]",
+      "_x_[link](https://example.com)",
+      "_x_$y$",
+      "~~_x_~~",
+      "__a _x_ b__",
+      "_a `x_` b_",
+    ]) {
+      expect(roundTrip(md)).toBe(md);
+    }
+  });
+
+  it("writes stars where an edit left underscores that would be read another way", () => {
+    // A nested element left at one edge of its parent: `__a _x___` is no emphasis,
+    // so the inner one takes the stars.
+    expect(htmlToInlineMarkdown('<strong data-md="_">a <em data-md="_">x</em></strong>')).toBe(
+      "__a *x*__",
+    );
+    expect(htmlToInlineMarkdown('<strong data-md="_"><em data-md="_">x</em> b</strong>')).toBe(
+      "__*x* b__",
+    );
+    // An underscore typed inside would close the emphasis early.
+    expect(htmlToInlineMarkdown('<em data-md="_">see my_ file</em>')).toBe("*see my_ file*");
+    // Two underscore elements touching would join their markers.
+    expect(htmlToInlineMarkdown('<em data-md="_">a</em><em data-md="_">b</em>')).toBe("*a**b*");
+  });
+
   it("keeps the mark through a copy or a split, and counts the words without the markers", () => {
     expect(sanitizeInlineHtml('<i data-md="_">a</i> <b data-md="_">b</b>')).toBe(
       '<em data-md="_">a</em> <strong data-md="_">b</strong>',
     );
     expect(stripMarkdownFormatting("_a_ __b__ snake_case_ https://x.y/_c_/")).toBe(
       "a b snake_case_ https://x.y/_c_/",
+    );
+    expect(stripMarkdownFormatting("_a __b__ c_ and [[_drafts_]] and $a_1 + b_2$")).toBe(
+      "a b c and _drafts_ and $a_1 + b_2$",
     );
   });
 });

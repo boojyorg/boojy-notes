@@ -122,7 +122,7 @@ through state.**
 - **A backslash escape is its symbol alone, sealed**: one caret character, read back with its
   backslash; as written in code, addresses and wikilinks. `escapes.spec.ts`.
 - Bare URLs autolink in prose only; `<url>` is text. **`LINK_DEST` is the one reading of a link
-  destination**; one inside the vault opens there (`vaultLinkTargets`).
+  destination**; a vault path opens there. `link-resolution.spec.ts`.
 
 ## Typed inline formatting converts on the closing marker
 
@@ -133,8 +133,6 @@ through state.**
   `typed-formatting.spec.ts`.
 - **A code span is literal** (`codeSpans.js`): nothing in it is drawn; untouched it keeps its
   spelling (`data-md`), edited only what changed; only ⌘E acts in one. `literal-code.spec.ts`.
-  **`_x_` and `__x__` keep their underscores**, stars only where those cannot say it
-  (`writesUnderscores`).
   **So are a `%%` comment and an inline footnote, muted** (`literalRuns`), no format acting; the grey
   follows the markers (`repaintComments`). `comments.spec.ts`, `footnotes.spec.ts`.
 - **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the next letters

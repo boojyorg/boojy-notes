@@ -10,7 +10,7 @@ describe("vaultLinkTargets", () => {
       "",
       " ",
     ]) {
-      expect(vaultLinkTargets(dest, "Uni")).toEqual([]);
+      expect(vaultLinkTargets(dest, "Uni")).toBeNull();
     }
   });
 
@@ -44,8 +44,20 @@ describe("vaultLinkTargets", () => {
     expect(vaultLinkTargets("#Intro", "Uni")).toEqual(["#Intro"]);
   });
 
-  it("leaves a link's title and angle brackets out of the address", () => {
-    expect(vaultLinkTargets('Note.md "A title"', null)).toEqual(["Note.md"]);
+  it("tries a destination that ends like a title whole first, then without it", () => {
+    expect(vaultLinkTargets('Note.md "A title"', null)).toEqual(['Note.md "A title"', "Note.md"]);
+    expect(vaultLinkTargets("Meeting notes (2024)", null)).toEqual([
+      "Meeting notes (2024)",
+      "Meeting notes",
+    ]);
     expect(vaultLinkTargets("<My Note.md>", null)).toEqual(["My Note.md"]);
+  });
+
+  it("takes a name with a colon and a space as a name, not a scheme", () => {
+    expect(vaultLinkTargets("Re: plan.md", null)).toEqual(["Re: plan.md"]);
+  });
+
+  it("names nothing, as a path and not as an address, when it only climbs out of the vault", () => {
+    expect(vaultLinkTargets("../Shared/Note.md", null)).toEqual([]);
   });
 });

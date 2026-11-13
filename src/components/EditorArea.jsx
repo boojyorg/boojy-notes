@@ -1998,7 +1998,7 @@ const EditorArea = memo(
                         const url = anchor.getAttribute("href") || anchor.getAttribute("data-url");
                         // A destination inside the vault opens there; an
                         // address is the system browser's.
-                        if (url && !onVaultLinkClick?.(url)) {
+                        if (url && !onVaultLinkClick?.(url, anchor)) {
                           const api = getAPI();
                           if (api?.openExternal) {
                             api.openExternal(url);

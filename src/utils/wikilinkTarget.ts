@@ -86,6 +86,19 @@ export function unresolvedWikilinkMessage({ name, folder }: WikilinkTarget): str
   return `No note named "${name}"${where}. Links to a heading, block or folder path don't create notes.`;
 }
 
+/**
+ * The one note at exactly this path: the name in the folder the path gives,
+ * the vault's root when it gives none. A wikilink's bare name is found
+ * anywhere (`wikilinkStatus`); a path names one place.
+ */
+export function noteAtPath({ name, folder }: WikilinkTarget, noteData: NoteData): string | null {
+  const want = `${folder ?? ""}/${name}`.toLowerCase();
+  const ids = Object.entries(vaultNotes(noteData))
+    .filter(([, n]) => !n._draft && `${n.folder ?? ""}/${n.title ?? ""}`.toLowerCase() === want)
+    .map(([id]) => id);
+  return ids.length === 1 ? ids[0] : null;
+}
+
 // ── The unified link picker ─────────────────────────────────────────────
 
 /** Every note a target could name: one for a clean link, several for a namesake, none for a missing one. */

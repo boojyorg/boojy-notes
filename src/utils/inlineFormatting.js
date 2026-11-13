@@ -128,8 +128,8 @@ const BARE_URL_RE = /https?:\/\/[^\s<]+/g;
  * never against a space. A bare URL is matched first and left whole, so an
  * address keeps its underscores.
  */
-const UNDERSCORE_RE =
-  /(https?:\/\/[^\s<]+)|(?<![\p{L}\p{N}_])(_{1,3})(?=[^\s_])(.+?)(?<=[^\s_])\2(?![\p{L}\p{N}_])/gu;
+const UNDERSCORE_SRC = String.raw`(?<![\p{L}\p{N}_])(_{1,3})(?=[^\s_])(.+?)(?<=[^\s_])\2(?![\p{L}\p{N}_])`;
+const UNDERSCORE_RE = new RegExp(String.raw`(https?:\/\/[^\s<]+)|${UNDERSCORE_SRC}`, "gu");
 /** An element written with underscores carries this, so the read-back writes them again. */
 const UNDERSCORE_ATTR = ' data-md="_"';
 const UNDERSCORE_HTML = {
@@ -147,6 +147,18 @@ function tagsBalance(html) {
   }
   return open.length === 0;
 }
+/** A wikilink's target, a formula or a bare URL (left whole), or underscore emphasis. */
+const UNDERSCORE_IN_TEXT_RE = new RegExp(
+  String.raw`(\[\[[^\]|]*|(?<![\\$])\$(?=[^\s$])[^$\n]+?\$|https?:\/\/[^\s<]+)|${UNDERSCORE_SRC}`,
+  "gu",
+);
+/** `md` without its underscore emphasis markers, the emphasis inside emphasis too. */
+function stripUnderscores(md) {
+  return md.replace(UNDERSCORE_IN_TEXT_RE, (m, whole, _marks, inner) =>
+    whole !== undefined ? m : stripUnderscores(inner),
+  );
+}
+
 /** `html` with its underscore emphasis drawn, the emphasis inside it too (`_a __b__ c_`). */
 function underscoreEmphasis(html) {
   return html.replace(UNDERSCORE_RE, (m, url, marks, inner) => {
@@ -621,35 +633,99 @@ export function nodeToMarkdown(child, before = "") {
   return inner;
 }
 
+const isEmphasisTag = (tag) => tag === "STRONG" || tag === "B" || tag === "EM" || tag === "I";
+
 /**
- * The character beside an inline element, on the side `step` names, through
- * the edges of the inline elements that hold it: "" at the block's edge.
+ * The Markdown character an inline node will put at its near edge: its last
+ * when `last`, else its first. "" for a node that writes nothing. Emphasis
+ * answers by its mark alone (never by asking how it will be written, which
+ * would ask its neighbour back).
  */
-function charBeside(el, step) {
-  for (let n = el; n && INLINE_TAGS.has(n.nodeName); n = n.parentNode) {
-    for (let sib = n[step]; sib; sib = sib[step]) {
-      if (sib.nodeName === "BR") return "\n";
-      const text = (sib.textContent || "").replace(CARET_ANCHOR_RE, "");
-      if (text) return step === "previousSibling" ? text[text.length - 1] : text[0];
-    }
+function edgeChar(node, last) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node.textContent || "";
+    return text ? text.at(last ? -1 : 0) : "";
   }
-  return "";
+  if (node.nodeType !== Node.ELEMENT_NODE) return "";
+  const tag = node.nodeName;
+  if (tag === "BR") return "\n";
+  const cls = node.classList;
+  if (cls.contains("external-link-icon")) return "";
+  const text = (node.textContent || "").replace(CARET_ANCHOR_RE, "");
+  if (!text) return "";
+  if (isEmphasisTag(tag)) return node.getAttribute("data-md") === "_" ? "_" : "*";
+  if (tag === "DEL" || tag === "S") return "~";
+  if (tag === "MARK") return "=";
+  if (tag === "CODE") return "`";
+  if (tag === "A" && !cls.contains("bare-url")) return last ? ")" : "[";
+  if (cls.contains("wikilink")) return last ? "]" : "[";
+  if (cls.contains(INLINE_MATH_CLASS)) return "$";
+  if (cls.contains(ESCAPE_CLASS)) return "\\";
+  return text.at(last ? -1 : 0);
+}
+
+/** Whether `el` is all its parent holds, a caret's scaffolding aside. */
+const isSoleChild = (el) =>
+  [...el.parentNode.childNodes].every(
+    (n) => n === el || !(n.textContent || "").replace(CARET_ANCHOR_RE, ""),
+  );
+
+/**
+ * The Markdown character that will sit against an inline element's marker,
+ * before it (`prev`) or after: a sibling's edge, or the marker of the element
+ * that holds it. "" at the block's edge.
+ */
+function charBeside(el, prev) {
+  for (let n = el; ; n = n.parentNode) {
+    for (
+      let sib = prev ? n.previousSibling : n.nextSibling;
+      sib;
+      sib = prev ? sib.previousSibling : sib.nextSibling
+    ) {
+      const ch = edgeChar(sib, prev);
+      if (ch) return ch;
+    }
+    const parent = n.parentNode;
+    if (parent?.nodeType !== Node.ELEMENT_NODE || !INLINE_TAGS.has(parent.nodeName)) return "";
+    const tag = parent.nodeName;
+    if (isEmphasisTag(tag)) {
+      if (parent.getAttribute("data-md") !== "_") return "*";
+      // `___x___`: an element that is all its underscore parent holds reads
+      // on past it; at one edge only, the two runs of underscores would join.
+      if (!isSoleChild(n)) return "_";
+    } else if (tag === "DEL" || tag === "S") return "~";
+    else if (tag === "MARK") return "=";
+    else if (tag === "A") return prev ? "[" : "]";
+    else if (parent.classList.contains("wikilink")) return prev ? "|" : "]";
+  }
+}
+
+/** Whether `md` is drawn as exactly one underscore element of `tag`. */
+function drawsAsOne(md, tag) {
+  const probe = document.createElement("template");
+  probe.innerHTML = inlineMarkdownToHtml(md);
+  const nodes = [...probe.content.childNodes];
+  while (nodes.at(-1)?.nodeName === "BR") nodes.pop();
+  return (
+    nodes.length === 1 && nodes[0].nodeName === tag && nodes[0].getAttribute?.("data-md") === "_"
+  );
 }
 
 /**
- * Whether an element the file wrote with underscores can still be: its text
- * must not begin or end with a space or an underscore of its own, nor the
- * element touch a letter, digit or underscore outside it (CommonMark's rule; there the stars say what the
- * underscores no longer can).
+ * Whether an element the file wrote with underscores can still be. Two
+ * things must hold, as CommonMark reads them: no letter, digit or underscore
+ * will sit against its markers from outside, and its own text between
+ * underscores is still drawn as this one element (an edge space, or an
+ * underscore typed inside, ends that). Where either fails the stars say what
+ * the underscores no longer can.
  */
 function writesUnderscores(el, inner) {
   if (el.getAttribute("data-md") !== "_") return false;
-  if (/^\s|\s$/.test(inner)) return false;
-  // A text edge that is itself an underscore would join the markers.
-  const edge = (n, at) => n?.nodeType === Node.TEXT_NODE && n.textContent.at(at) === "_";
-  if (edge(el.firstChild, 0) || edge(el.lastChild, -1)) return false;
   const word = /[\p{L}\p{N}_]/u;
-  return !word.test(charBeside(el, "previousSibling")) && !word.test(charBeside(el, "nextSibling"));
+  if (word.test(charBeside(el, true)) || word.test(charBeside(el, false))) return false;
+  const strong = el.nodeName === "STRONG" || el.nodeName === "B";
+  const marker = strong ? "__" : "_";
+  return drawsAsOne(`${marker}${inner}${marker}`, strong ? "STRONG" : "EM");
 }
 
 /** The inline elements a block's text is made of; a `<br>` in them may still end the block. */
@@ -833,6 +909,9 @@ export function stripMarkdownFormatting(md) {
     escapes.push(ch);
     return `\x00ESC${escapes.length - 1}\x00`;
   });
+  // Remove underscore emphasis (_text_, __text__ → text) while a wikilink's
+  // target and a formula are still whole: their underscores are their own.
+  s = stripUnderscores(s);
   // Remove wikilinks: [[target|display]] → display, [[target]] → target
   s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2");
   s = s.replace(/\[\[([^\]]+)\]\]/g, "$1");
@@ -848,8 +927,6 @@ export function stripMarkdownFormatting(md) {
   s = s.replace(/~~(.+?)~~/g, "$1");
   // Remove highlight (==text== → text)
   s = s.replace(/==(.+?)==/g, "$1");
-  // Remove underscore emphasis (_text_, __text__ → text), a URL's own left alone
-  s = s.replace(UNDERSCORE_RE, (m, url, _marks, inner) => (url !== undefined ? m : inner));
   return s
     .replace(ESC_TOKEN_RE, (_, i) => escapes[Number(i)])
     .replace(CODE_TOKEN_RE, (_, i) => codes[Number(i)]);

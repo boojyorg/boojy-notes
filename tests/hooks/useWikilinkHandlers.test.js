@@ -154,6 +154,56 @@ describe("useWikilinkHandlers", () => {
       expect(openNote).toHaveBeenCalledTimes(3); // Gamma is the open note
     });
 
+    it("a path names one place: a namesake elsewhere is neither opened nor in the way", () => {
+      const base = setup();
+      const noteData = {
+        ...base.noteData,
+        r: { title: "Plan", content: { blocks: [] } },
+        a: { title: "Plan", folder: "Archive", content: { blocks: [] } },
+        o: { title: "Only", folder: "Archive/Old", content: { blocks: [] } },
+      };
+      const { result, openNote, showToast } = setup({
+        noteData,
+        noteDataRef: { current: noteData },
+        activeNote: "n3",
+      });
+      // Both the root and Archive hold a Plan: from Work, the path names the root's.
+      expect(result.current.handleVaultLinkClick("Plan.md")).toBe(true);
+      expect(openNote).toHaveBeenLastCalledWith("r");
+      // A path with a folder is never found by its name somewhere else.
+      expect(result.current.handleVaultLinkClick("Elsewhere/Only.md")).toBe(true);
+      expect(openNote).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenLastCalledWith('No note or file at "Elsewhere/Only.md".', "info");
+      // A bare name at neither place names the one note called that, as a wikilink does.
+      expect(result.current.handleVaultLinkClick("Only.md")).toBe(true);
+      expect(openNote).toHaveBeenLastCalledWith("o");
+    });
+
+    it("a link inside an embed is read from the embedded note's folder", () => {
+      const base = setup();
+      const noteData = {
+        ...base.noteData,
+        p: { title: "Plan", folder: "Work", content: { blocks: [] } },
+        q: { title: "Plan", folder: "Home", content: { blocks: [] } },
+      };
+      const { result, openNote } = setup({
+        noteData,
+        noteDataRef: { current: noteData },
+        activeNote: "n2",
+      });
+      const embed = document.createElement("div");
+      embed.setAttribute("data-embed-source", "Work/Gamma");
+      const anchor = embed.appendChild(document.createElement("a"));
+      expect(result.current.handleVaultLinkClick("Plan.md", anchor)).toBe(true);
+      expect(openNote).toHaveBeenLastCalledWith("p");
+    });
+
+    it("a path that only climbs out of the vault is said, never handed to the browser", () => {
+      const { result, showToast } = setup({ activeNote: "n2" });
+      expect(result.current.handleVaultLinkClick("../Shared/Note.md")).toBe(true);
+      expect(showToast).toHaveBeenCalledWith('No note or file at "../Shared/Note.md".', "info");
+    });
+
     it("opens a file the path names in the note's place", () => {
       const showFile = vi.fn();
       const { result, openNote } = setup({
