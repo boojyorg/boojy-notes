@@ -42,8 +42,8 @@ import {
 import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
-import SyncStatusButton, { SyncWords, syncAction, syncLines } from "./SyncStatusButton";
 import { HOME_LIST_END, HomeFoot, HomeTop } from "../phone/HomeChrome";
+import HomeMenu from "../phone/HomeMenu";
 import RecentCards from "../phone/RecentCards";
 import { liveRows } from "../phone/locations";
 import { syncFolderName } from "../phone/syncFolder";
@@ -222,11 +222,10 @@ const SECTION_HEADER_LEFT = TREE_SPINE;
 /** The header's 16px glyphs share a right edge with the chrome row's 18px ones:
  *  HEADER_RIGHT_INSET (12) + the chrome glyph's 7px inset − this row's 8px. */
 const SECTION_HEADER_RIGHT = 5;
-/** Header controls share the chrome row's 32px hit box and 18px nav glyph
- *  (a touch target on the phone, where they show at rest). */
-const SECTION_BTN = isPhone ? TOUCH : 32;
-/** The row's glyphs: on the phone the cog's size, as they are its equals there. */
-const SECTION_GLYPH = isPhone ? 18 : 16;
+/** Header controls share the chrome row's 32px hit box. Desktop only: the
+ *  phone has no such row (its New folder and Sort are HomeMenu's). */
+const SECTION_BTN = 32;
+const SECTION_GLYPH = 16;
 const SECTION_CONTENT_GAP = 2;
 // Header controls (New folder, Sort) are hidden at rest and revealed, muted,
 // while the pointer is on the Notes row or a keyboard focus is in it, lifting
@@ -487,11 +486,10 @@ const Sidebar = memo(function Sidebar({
   onVaultMenuOpen,
   // Desktop: the pinned Recently Deleted row. { open, onToggle }
   recentlyDeleted,
-  // The phone: sync's state, after the folder's name (useSyncStatus).
+  // The phone: sync's state, said in Home's menu (useSyncStatus).
   sync = null,
   locations = [],
   loaded = true,
-  onOpenLocation,
 }) {
   const { sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
   // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
@@ -535,28 +533,15 @@ const Sidebar = memo(function Sidebar({
     setVaultMenuState(next);
   };
   const closeVaultMenu = () => setVaultMenu(null);
-  // The phone's locations, as the desktop's menu takes its own.
-  // The open one as sync has it now: a connect or disconnect shows at once.
+  // The phone's locations, the open one as sync has it now: a connect or
+  // disconnect shows at once.
   const liveLocations = useMemo(
     () => liveRows(locations, sync?.status.folder),
     [locations, sync?.status.folder],
   );
-  const phoneVaults = useMemo(
-    () =>
-      liveLocations.map((l) => ({
-        path: l.id,
-        name: l.name,
-        current: l.open,
-        exists: true,
-        cloud: l.dropbox !== null,
-      })),
-    [liveLocations],
-  );
+  // The phone's Home menu, under the ··· of its top row: its anchor while open.
+  const [homeMenu, setHomeMenu] = useState(null);
   const syncTrouble = isPhone && sync?.status.state === "problem";
-  const syncFirst = useMemo(
-    () => (syncTrouble ? [syncAction(sync)].filter(Boolean) : undefined),
-    [syncTrouble, sync],
-  );
   const [vaultView, setVaultView] = useVaultView(notesDir || "web");
   // The phone's open storage location: its own name, or until it has one the
   // Dropbox folder it syncs with, or "Phone".
@@ -1109,63 +1094,51 @@ const Sidebar = memo(function Sidebar({
     row?.scrollIntoView({ block: "nearest" });
   }, [newNotes, sidebarScrollRef]);
 
-  // The list's head: New note (desktop) and the list's name with its controls,
-  // above the scroller. On the phone the name heads Home: the Recent cards
-  // and the list both stand under it.
-  // The list's head stands above the list's scroller: it never scrolls, so the
-  // scrollbar spans the list alone, from under it down to Recently Deleted.
+  // The list's head, above the scroller, so the scrollbar spans the list
+  // alone: New note and the list's name with its controls. The phone has none:
+  // New note is the teal button at the foot, and the name, New folder and Sort
+  // are in Home's menu (HomeMenu), so the cards stand right under the top row.
   const listHead = (
     <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
-      {/* On the phone the list's name belongs to the row above it: close under it. */}
       <div style={{ height: isPhone ? 2 : COLUMN_HEAD_GAP }} />
-      {/* On the phone New note is the teal button at the foot: one way in. */}
-      {!isPhone && <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />}
-      <SectionHeader
-        label={
-          vaults.length > 0 ? (
-            <VaultLabel
-              name={vaultName}
-              open={vaultMenu !== null}
-              onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
-            />
-          ) : sync ? (
-            <SyncStatusButton
-              name={vaultName}
-              sync={sync}
-              onOpenSettings={() => setSettingsOpen(true)}
-              // With locations to list, the name opens the desktop's menu of them.
-              onOpen={
-                locations.length > 0
-                  ? (anchor) => setVaultMenu({ anchor, fromKeyboard: false })
-                  : undefined
-              }
-              expanded={vaultMenu !== null}
-            />
-          ) : (
-            vaultName
-          )
-        }
-        TEXT={TEXT}
-        dropRoot
-        menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
-      >
-        <SectionAction
-          onClick={() => createFolder(null)}
-          label="New folder"
-          shortcut={SHORTCUTS.newFolder}
-        >
-          <NewFolderIcon size={SECTION_GLYPH} />
-        </SectionAction>
-        <SectionAction
-          onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
-          label="Sort"
-          aria-haspopup="menu"
-          aria-expanded={sortMenuAnchor !== null}
-          active={sortMenuAnchor !== null}
-        >
-          <SortIcon size={SECTION_GLYPH} />
-        </SectionAction>
-      </SectionHeader>
+      {!isPhone && (
+        <>
+          <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />
+          <SectionHeader
+            label={
+              vaults.length > 0 ? (
+                <VaultLabel
+                  name={vaultName}
+                  open={vaultMenu !== null}
+                  onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
+                />
+              ) : (
+                vaultName
+              )
+            }
+            TEXT={TEXT}
+            dropRoot
+            menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
+          >
+            <SectionAction
+              onClick={() => createFolder(null)}
+              label="New folder"
+              shortcut={SHORTCUTS.newFolder}
+            >
+              <NewFolderIcon size={SECTION_GLYPH} />
+            </SectionAction>
+            <SectionAction
+              onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
+              label="Sort"
+              aria-haspopup="menu"
+              aria-expanded={sortMenuAnchor !== null}
+              active={sortMenuAnchor !== null}
+            >
+              <SortIcon size={SECTION_GLYPH} />
+            </SectionAction>
+          </SectionHeader>
+        </>
+      )}
     </div>
   );
 
@@ -1253,8 +1226,13 @@ const Sidebar = memo(function Sidebar({
         }}
       >
         {isPhone ? (
-          // The phone's one row: the N, the Search field and the cog (HomeChrome).
-          <HomeTop onSettings={() => setSettingsOpen(true)} onSearch={onOpenSearch} />
+          // The phone's one row: the N, the Search field and the ··· (HomeChrome).
+          <HomeTop
+            onSearch={onOpenSearch}
+            onMenu={setHomeMenu}
+            menuOpen={homeMenu !== null}
+            syncTrouble={syncTrouble}
+          />
         ) : (
           <>
             <button
@@ -1349,7 +1327,7 @@ const Sidebar = memo(function Sidebar({
             padding: isPhone ? `0 0 ${HOME_LIST_END}px` : "0 0 2px",
           }}
         >
-          {/* The phone: the notes edited last, under the list's name and over the list. */}
+          {/* The phone: the notes edited last, under the top row and over the list. */}
           {isPhone && (
             <RecentCards
               noteData={noteData}
@@ -1371,17 +1349,24 @@ const Sidebar = memo(function Sidebar({
             <VaultMenu
               anchor={vaultMenu.anchor}
               fromKeyboard={vaultMenu.fromKeyboard}
-              vaults={isPhone ? phoneVaults : vaults}
+              vaults={vaults}
               view={vaultView}
               setView={setVaultView}
-              onSwitch={(path) => (isPhone ? onOpenLocation?.(path) : onSwitchVault?.(path))}
-              onManage={() => (isPhone ? setSettingsOpen(true) : onManageVaults?.())}
+              onSwitch={(path) => onSwitchVault?.(path)}
+              onManage={() => onManageVaults?.()}
               onClose={closeVaultMenu}
-              // The phone lists no files but notes; and says sync's state in words only
-              // when it needs the person, with the one thing to do about it.
-              fileToggles={!isPhone}
-              header={syncTrouble ? <SyncWords lines={syncLines(sync.status)} /> : undefined}
-              first={syncFirst}
+            />
+          )}
+          {homeMenu && (
+            <HomeMenu
+              anchor={homeMenu}
+              name={vaultName}
+              sync={sync}
+              sortMode={sortMode}
+              setSortMode={setSortMode}
+              onNewFolder={() => createFolder(null)}
+              onSettings={() => setSettingsOpen(true)}
+              onClose={() => setHomeMenu(null)}
             />
           )}
           {sortMenuAnchor && (

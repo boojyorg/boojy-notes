@@ -21,7 +21,8 @@ interface SortMenuProps {
   onClose: () => void;
 }
 
-const MODES = [
+/** The two orders, as a menu draws them: this menu on the desktop, Home's on the phone. */
+export const SORT_MODES = [
   { label: "Most recent", mode: SORT_RECENT, icon: <ClockIcon /> },
   { label: "Alphabetical", mode: SORT_ALPHA, icon: <SortAlphaIcon /> },
 ];
@@ -36,7 +37,7 @@ export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: Sor
       minWidth={200}
       checkTestId="sort-check"
       onClose={onClose}
-      items={MODES.map(({ label, mode, icon }) => ({
+      items={SORT_MODES.map(({ label, mode, icon }) => ({
         label,
         icon,
         role: "menuitemradio",

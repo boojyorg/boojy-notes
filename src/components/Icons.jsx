@@ -102,6 +102,7 @@ import {
   Plus as LuPlus,
   Presentation as LuPresentation,
   Redo2 as LuRedo2,
+  RefreshCw as LuRefreshCw,
   Repeat2 as LuRepeat2,
   RotateCcw as LuRotateCcw,
   Scissors as LuScissors,
@@ -201,6 +202,8 @@ export const SyncedIcon = navIcon(LuCloudCheck);
 export const SyncingIcon = navIcon(LuCloudSync);
 export const SyncOfflineIcon = navIcon(LuCloudOff);
 export const SyncProblemIcon = navIcon(LuCloudAlert);
+// Sync now, in Home's menu on the phone: it turns while a pass runs (.sync-turning).
+export const RefreshIcon = navIcon(LuRefreshCw);
 /** Show in Finder, for a vault or a file. */
 export const RevealIcon = navIcon(LuFolderSearch);
 /** Switch to: one storage location for another. */

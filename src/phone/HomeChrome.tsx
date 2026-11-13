@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { NewNoteIcon, SearchIcon, SettingsIcon } from "../components/Icons";
+import { MoreHorizontalIcon, NewNoteIcon, SearchIcon } from "../components/Icons";
+import type { MenuAnchor } from "../components/Menu";
 import Wordmark from "../components/Wordmark";
 import { TOUCH } from "../constants/layout";
 import { useTheme } from "../hooks/useTheme";
@@ -14,37 +15,33 @@ const MARK_H = 28;
 const PLAIN = { border: "none", background: "transparent", padding: 0, font: "inherit" } as const;
 
 /**
- * Home's one top row on the phone: the N (the brand; it opens Settings as
- * the desktop's wordmark does), a field that opens Search, and the cog for
- * Settings. No menu: everything on Home is in sight and does one thing.
+ * Home's one top row on the phone: the N (the brand, and nothing to press), a
+ * field that opens Search, and the ··· whose menu holds everything else
+ * (`HomeMenu`): one way to each thing. The ··· carries a dot only while sync
+ * needs the person; synced, syncing or offline it says nothing.
  */
 export function HomeTop({
-  onSettings,
   onSearch,
+  onMenu,
+  menuOpen,
+  syncTrouble,
 }: {
-  onSettings: () => void;
   onSearch: () => void;
+  onMenu: (anchor: MenuAnchor) => void;
+  menuOpen: boolean;
+  syncTrouble: boolean;
 }) {
   const { theme } = useTheme();
   const { TEXT, BG } = theme;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, flexGrow: 1, minWidth: 0 }}>
-      <button
-        type="button"
-        data-testid="wordmark-settings-button"
-        aria-label="Notes — open Settings"
-        onClick={onSettings}
-        style={{
-          ...PLAIN,
-          height: TOUCH,
-          display: "flex",
-          alignItems: "center",
-          flexShrink: 0,
-        }}
+      {/* A mark beside the field, not a block as tall as it: the field is the row's height. */}
+      <span
+        data-testid="home-mark"
+        style={{ height: TOUCH, display: "flex", alignItems: "center", flexShrink: 0 }}
       >
-        {/* A mark beside the field, not a block as tall as it: the field is the row's height. */}
         <Wordmark height={MARK_H} markOnly />
-      </button>
+      </span>
       <button
         type="button"
         data-testid="home-search"
@@ -71,11 +68,14 @@ export function HomeTop({
       </button>
       <button
         type="button"
-        data-testid="home-settings"
-        aria-label="Settings"
-        onClick={onSettings}
+        data-testid="home-more"
+        aria-label={syncTrouble ? "More. Sync needs attention" : "More"}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        onClick={(e) => onMenu(e.currentTarget.getBoundingClientRect())}
         style={{
           ...PLAIN,
+          position: "relative",
           width: TOUCH,
           height: TOUCH,
           display: "flex",
@@ -86,7 +86,23 @@ export function HomeTop({
           color: TEXT.secondary,
         }}
       >
-        <SettingsIcon size={18} />
+        <MoreHorizontalIcon />
+        {syncTrouble && (
+          <span
+            data-testid="home-sync-dot"
+            style={{
+              position: "absolute",
+              top: 9,
+              right: 7,
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: theme.SEMANTIC.warning,
+              // A ring of the ground, so the dot reads apart from the glyph under it.
+              boxShadow: `0 0 0 2px ${BG.standard}`,
+            }}
+          />
+        )}
       </button>
     </div>
   );

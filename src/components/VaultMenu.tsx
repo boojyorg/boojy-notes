@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 import type { VaultView } from "../utils/otherFiles";
 import { AttachmentsIcon, OtherFileIcon, SettingsIcon, VaultIcon } from "./Icons";
 import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
@@ -34,14 +34,7 @@ interface VaultMenuProps {
   onClose: () => void;
   /** Opened by ⌘O: the open vault's row starts active, as a keyboard menu's first row does. */
   fromKeyboard?: boolean;
-  /** False where the tree shows notes alone (the phone lists no other files). */
-  fileToggles?: boolean;
-  /** Words above the rows, and rows before the locations: the phone's sync when it needs the person. */
-  header?: ReactNode;
-  first?: MenuItem[];
 }
-
-const NONE: MenuItem[] = [];
 
 export default function VaultMenu({
   anchor,
@@ -52,22 +45,11 @@ export default function VaultMenu({
   onManage,
   onClose,
   fromKeyboard = false,
-  fileToggles = true,
-  header,
-  first = NONE,
 }: VaultMenuProps) {
   const items = useMemo<MenuItem[]>(
     () => [
-      ...first.map((item) => ({
-        ...item,
-        action: () => {
-          onClose();
-          item.action?.();
-        },
-      })),
       ...vaults.map(
-        (v, i): MenuItem => ({
-          rule: i === 0 && first.length > 0,
+        (v): MenuItem => ({
           testId: `vault-menu-vault:${v.path}`,
           label: v.name,
           role: "menuitemradio",
@@ -81,27 +63,23 @@ export default function VaultMenu({
           },
         }),
       ),
-      ...(fileToggles
-        ? [
-            {
-              testId: "vault-menu-otherFiles",
-              label: "Show other files",
-              role: "menuitemcheckbox" as const,
-              icon: <OtherFileIcon />,
-              checked: view.otherFiles,
-              rule: true,
-              action: () => setView({ ...view, otherFiles: !view.otherFiles }),
-            },
-            {
-              testId: "vault-menu-attachments",
-              label: "Show attachments",
-              role: "menuitemcheckbox" as const,
-              icon: <AttachmentsIcon />,
-              checked: view.attachments,
-              action: () => setView({ ...view, attachments: !view.attachments }),
-            },
-          ]
-        : []),
+      {
+        testId: "vault-menu-otherFiles",
+        label: "Show other files",
+        role: "menuitemcheckbox",
+        icon: <OtherFileIcon />,
+        checked: view.otherFiles,
+        rule: true,
+        action: () => setView({ ...view, otherFiles: !view.otherFiles }),
+      },
+      {
+        testId: "vault-menu-attachments",
+        label: "Show attachments",
+        role: "menuitemcheckbox",
+        icon: <AttachmentsIcon />,
+        checked: view.attachments,
+        action: () => setView({ ...view, attachments: !view.attachments }),
+      },
       {
         testId: "vault-menu-manage",
         label: "Manage storage locations…",
@@ -114,7 +92,7 @@ export default function VaultMenu({
         },
       },
     ],
-    [vaults, view, setView, onSwitch, onManage, onClose, fileToggles, first],
+    [vaults, view, setView, onSwitch, onManage, onClose],
   );
 
   return (
@@ -129,8 +107,7 @@ export default function VaultMenu({
       // menu's first row does.
       initialActive={
         fromKeyboard
-          ? first.length +
-            Math.max(
+          ? Math.max(
               0,
               vaults.findIndex((v) => v.current),
             )
@@ -138,7 +115,6 @@ export default function VaultMenu({
       }
       testId="vault-menu"
       onClose={onClose}
-      header={header}
       items={items}
     />
   );

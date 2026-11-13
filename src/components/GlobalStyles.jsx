@@ -69,6 +69,9 @@ export default function GlobalStyles() {
         @keyframes motion-pop-out { to { opacity: 0; scale: 0.97; } }
         @keyframes motion-rise-out { to { opacity: 0; translate: 0 5px; } }
         @keyframes motion-fade-out { to { opacity: 0; } }
+        /* Sync at work (the phone's Home menu): the arrows turn; still under reduced motion, below. */
+        @keyframes sync-turn { to { rotate: 360deg; } }
+        .sync-turning { animation: sync-turn 1s linear infinite; }
         .motion-pop {
           transform-origin: var(--motion-origin, top left);
           animation: motion-pop-in var(--motion-enter) var(--ease-enter) backwards;
