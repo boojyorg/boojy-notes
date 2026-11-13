@@ -166,7 +166,14 @@ test("underscore emphasis is drawn, and an edit, a save and a restart keep its u
     await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.type(" Edited");
     await waitForFile(h.vault.file("Under.md"), (t) => t.includes("Edited"));
-    await block.locator("em").dblclick();
+    // The word alone: a double-click takes the space after it too on Windows.
+    await block.locator("em").evaluate((em) => {
+      const range = document.createRange();
+      range.selectNodeContents(em);
+      const selection = window.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
     await h.page.keyboard.type("slanted");
     await waitForFile(h.vault.file("Under.md"), (t) => t.includes("slanted"));
     await sleep(SETTLE_MS);
