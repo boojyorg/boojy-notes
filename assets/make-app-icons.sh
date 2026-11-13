@@ -43,10 +43,10 @@ art "$SQUARE" 1.03 512 ../store/play/icon-512.png
 
 # Android: an adaptive icon, the tile colour behind the N alone. The launcher
 # cuts the 108dp canvas to its own shape and may zoom it; only a 66dp circle is
-# sure to show, and the N (39dp tall) sits well inside it. The older launchers'
+# sure to show, and the N (43dp tall) sits well inside it. The older launchers'
 # square and round icons are the same two layers cut as a Pixel draws them
 # (the middle 72dp).
-art "" 0.55 1080 "$TMP/foreground.png"
+art "" 0.605 1080 "$TMP/foreground.png"
 magick -size 1080x1080 "xc:$TILE" "$TMP/foreground.png" -composite \
   -gravity center -crop 720x720+0+0 +repage "$TMP/visible.png"
 magick "$TMP/visible.png" \( +clone -alpha extract -fill black -colorize 100 \
