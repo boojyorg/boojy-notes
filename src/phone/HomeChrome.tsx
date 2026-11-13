@@ -108,7 +108,8 @@ export function HomeTop({
           flexShrink: 0,
           borderRadius: 6,
           background: menuOpen ? BG.hover : "transparent",
-          color: menuOpen ? TEXT.primary : TEXT.secondary,
+          // The note's ··· and every chrome button: muted at rest, full ink while held.
+          color: menuOpen ? TEXT.primary : TEXT.muted,
         }}
       >
         <MoreHorizontalIcon />

@@ -374,9 +374,9 @@ export default function GlobalStyles() {
         /* Home's N answers a press in its own teal, a touch livelier while the
            finger is down and fading back after: the brand is not a grey
            button, and the answer is felt more than seen. */
-        html.is-phone .home-mark img { transition: filter var(--motion-settle); }
+        html.is-phone .home-mark img { transition: filter 320ms ease-out; }
         html.is-phone .home-mark:active img {
-          filter: saturate(1.2) brightness(1.02);
+          filter: saturate(1.35) brightness(1.04);
           transition: none;
         }
         /* Home's list keeps a pull past its end to itself. Without this a drag
