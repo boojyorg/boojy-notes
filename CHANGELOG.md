@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+- **New app icon** — The icon is now the teal N by itself on its light tile, softly shaded, so it reads at a glance in the Dock, on the taskbar and on the phone's home screen, where the word "Notes" had become too small to read. The N in the sidebar's "Notes" and on the phone's Home has the same shading.
+
 ## v0.22.0 — 2026-11-09
 
 ### Improvements

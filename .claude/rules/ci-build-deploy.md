@@ -93,9 +93,9 @@ Rule + one reason. Incidents and measurements are in git; command details in
   `build:electron` empties `dist-electron/` first. `files` takes only
   the two app icons from `assets/`.
 - **The app icons are generated, never hand-edited**: `assets/make-app-icons.sh`, from the
-  full-bleed source. macOS on Apple's grid (full-bleed is too large in the Dock); Windows and
-  Linux fill the canvas, wordmark enlarged (the Mac margin reads smaller on a taskbar).
-  Android: the wordmark in the 66dp safe circle on the tile colour, also the launch screen.
+  N (`assets/boojy-notes-n.svg`, its only drawing). macOS on Apple's grid (full-bleed is too
+  large in the Dock); Windows and Linux fill the canvas. Android: the N in the 66dp safe
+  circle on the tile colour, also the launch screen.
 - **Daily-driver build**: `pnpm build:electron` on master, quit the running app (its quit flush
   saves edits), replace `/Applications/Boojy Notes.app`, check `codesign --verify --deep
   --strict` and the version in Settings. Rebuild at coherent checkpoints, not per PR.

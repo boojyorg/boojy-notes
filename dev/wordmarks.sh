@@ -1,12 +1,17 @@
 #!/bin/sh
-# Regenerates one theme's wordmark from the master PNG: its teal becomes MARK,
-# its black the theme's TEXT.primary (constants/themes.js). Run for both themes
-# whenever either colour changes; the app never shows the master.
-#   dev/wordmarks.sh light "#8FC1C6" "#14110F"
-#   dev/wordmarks.sh dark  "#8FC1C6" "#E7E6E5"
+# Regenerates one theme's wordmark: "otes" from the master PNG in the theme's
+# TEXT.primary (constants/themes.js), and the N from assets/boojy-notes-n.svg
+# in the master N's place (171 wide, from the top-left corner). Run for both
+# themes whenever the ink or the N changes; the app never shows the master.
+# Needs rsvg-convert (librsvg) and magick.
+#   dev/wordmarks.sh light "#14110F"
+#   dev/wordmarks.sh dark  "#E7E6E5"
 set -eu
-theme=$1 mark=$2 ink=$3
+theme=$1 ink=$2
 out=${OUT_DIR:-assets}
-magick assets/boojy-notes-wordmark.png \( +clone -alpha extract \) \
-  \( -clone 0 -alpha off -fuzz 12% -fill "$mark" -opaque "#A4CACE" +fuzz -fill "$ink" -opaque black \) \
-  -delete 0 +swap -alpha off -compose CopyOpacity -composite "$out/boojy-notes-wordmark-$theme.png"
+tmp=$(mktemp -d)
+trap 'rm -r "$tmp"' EXIT
+rsvg-convert -w 171 assets/boojy-notes-n.svg -o "$tmp/n.png"
+magick assets/boojy-notes-wordmark.png -fill "$ink" -colorize 100 \
+  \( -size 185x226 xc:none \) -compose Copy -composite \
+  "$tmp/n.png" -compose Over -composite "$out/boojy-notes-wordmark-$theme.png"
