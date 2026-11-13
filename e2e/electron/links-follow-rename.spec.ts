@@ -13,6 +13,7 @@
  */
 import { expect, test } from "@playwright/test";
 import {
+  END_OF_LINE,
   SETTLE_MS,
   editorTitle,
   expandAllFolders,
@@ -183,7 +184,7 @@ test("undo in a note whose links moved never brings the old links back", async (
     await h.openNote("Alpha");
     const block = h.page.locator("[data-block-id]").first();
     await block.click();
-    await h.page.keyboard.press("ControlOrMeta+ArrowRight");
+    await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.type(" More");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t === "See [[Beta]]. More\n");
 
