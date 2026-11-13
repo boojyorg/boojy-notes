@@ -76,7 +76,11 @@ describe("useLinksFollow", () => {
     expect(mark).toHaveBeenCalledWith("a", LINKS_FOLLOW_REASON);
     expect(textOf(h.noteDataRef.current, "a")).toBe("see [[Gamma]]");
     expect(h.adoptNoteData).toHaveBeenCalledTimes(1);
-    expect(h.showToast).toHaveBeenCalledWith("Updated 1 link in 1 note.", "done");
+    // The rewritten note's undo entries hold its old links: they go.
+    expect(h.adoptNoteData.mock.calls[0][1]).toEqual({ forget: ["a"] });
+    expect(h.showToast).toHaveBeenCalledWith("Updated 1 link in 1 note.", "done", {
+      key: "links-follow",
+    });
 
     // Followed once: a later flush finds nothing left to do.
     await act(() => h.result.current.settle());
@@ -130,6 +134,77 @@ describe("useLinksFollow", () => {
     expect(textOf(h.noteDataRef.current, "a")).toBe("see [[Gamma]]");
   });
 
+  it("a new note has no name to follow from until its first name settles", async () => {
+    // `[[Project]]` names no note. A new one is typed as far as `Project`
+    // (written under that name at the pause), then on to `Project Plan`.
+    const h = setup({ a: note("a", "Alpha", "see [[Project]]"), n: note("n", "Project Plan", "") });
+    const half = { title: "Project", folder: null };
+    const full = { title: "Project Plan", folder: null };
+    h.result.current.onNoteWritten("n", half, { created: true });
+    h.result.current.onNoteWritten("n", full, { from: half });
+    await act(() => h.result.current.settle());
+    expect(textOf(h.noteDataRef.current, "a")).toBe("see [[Project]]");
+    expect(h.adoptNoteData).not.toHaveBeenCalled();
+
+    // Settled under its first name, it is a note like any other: a later rename is followed.
+    h.noteDataRef.current = {
+      ...h.noteDataRef.current,
+      a: note("a", "Alpha", "see [[Project Plan]]"),
+      n: note("n", "Scheme", ""),
+    };
+    h.result.current.onNoteWritten("n", { title: "Scheme", folder: null }, { from: full });
+    await act(() => h.result.current.settle());
+    expect(textOf(h.noteDataRef.current, "a")).toBe("see [[Scheme]]");
+  });
+
+  it("a rename made outside before the app's own has settled takes its origin with it", async () => {
+    const h = renamed();
+    h.activeNoteRef.current = "b";
+    h.field.focus();
+    h.result.current.onNoteRenamed("b", from, to);
+    await act(() => h.result.current.settle());
+    // Finder renames it on; the app's rename is overtaken and is never followed,
+    h.result.current.onOutsideMove("b");
+    h.field.blur();
+    await act(() => h.result.current.settle());
+    expect(h.adoptNoteData).not.toHaveBeenCalled();
+    // nor is its stale origin the place a later rename is followed from.
+    h.noteDataRef.current = {
+      a: note("a", "Alpha", "see [[Beta]] and [[Carol]]"),
+      b: note("b", "Dora", "body"),
+    };
+    h.result.current.onNoteRenamed(
+      "b",
+      { title: "Carol", folder: null },
+      { title: "Dora", folder: null },
+    );
+    await act(() => h.result.current.settle());
+    expect(textOf(h.noteDataRef.current, "a")).toBe("see [[Beta]] and [[Dora]]");
+  });
+
+  it("a settle asked for while one is running waits for it, and a closing one reports its rewrite", async () => {
+    const h = renamed();
+    let release: (r: { ok: true }) => void = () => {};
+    mark.mockImplementationOnce(() => new Promise((resolve) => (release = resolve)) as never);
+    h.result.current.onNoteRenamed("b", from, to);
+    // The flush's own settle is waiting on the version when the app closes.
+    const first = h.result.current.settle();
+    const closing = h.result.current.settle({ final: true });
+    let done = false;
+    closing.then(() => (done = true));
+    await Promise.resolve();
+    expect(done).toBe(false);
+    release({ ok: true });
+    let more = false;
+    await act(async () => {
+      await first;
+      more = await closing;
+    });
+    // Nothing was left for the closing settle itself, but there is more to write.
+    expect(more).toBe(true);
+    expect(textOf(h.noteDataRef.current, "a")).toBe("see [[Gamma]]");
+  });
+
   it("bumps the paint signal only when the open note is one it rewrote", async () => {
     const h = renamed();
     h.activeNoteRef.current = "a";
@@ -159,7 +234,9 @@ describe("useLinksFollow", () => {
     await act(() => h.result.current.settle());
     expect(textOf(h.noteDataRef.current, "a")).toBe("[[Beta]]");
     expect(textOf(h.noteDataRef.current, "c")).toBe("[[Gamma]]");
-    expect(h.showToast).toHaveBeenCalledWith("Updated 1 link in 1 note.", "done");
+    expect(h.showToast).toHaveBeenCalledWith("Updated 1 link in 1 note.", "done", {
+      key: "links-follow",
+    });
     mark.mockImplementation(async () => ({ ok: true }) as const);
   });
 
@@ -170,6 +247,23 @@ describe("useLinksFollow", () => {
     await act(() => h.result.current.settle());
     expect(h.adoptNoteData).not.toHaveBeenCalled();
     expect(h.showToast).not.toHaveBeenCalled();
+  });
+
+  it("what could not be read is said in a toast that fades and replaces the last one", async () => {
+    const data = {
+      a: note("a", "Alpha", "no links"),
+      b: note("b", "Gamma", "body"),
+      c: note("c", "Cloud", ""),
+    };
+    data.c = { ...data.c, offloaded: true };
+    const h = setup(data);
+    h.result.current.onNoteRenamed("b", from, to);
+    await act(() => h.result.current.settle());
+    expect(h.showToast).toHaveBeenCalledWith(
+      "Links: 1 note kept online or not readable was not checked.",
+      "done",
+      { key: "links-follow" },
+    );
   });
 
   it("says nothing when no link named the note, and forgets a note that is gone", async () => {

@@ -141,7 +141,19 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   // itself instead of bouncing between the requested name and the one the
   // file got. The note becomes dirty like any change and is written once
   // more under its own name, which is then already its path.
-  const adoptNoteData = (updater) => applyCommit(updater, false);
+  // `forget`: notes whose text this changes (the links that followed a
+  // rename). Their undo entries are snapshots of the note with the old text;
+  // stepping back to one would put it back and write it, so they go, as an
+  // outside edit's do.
+  const adoptNoteData = (updater, { forget } = {}) => {
+    if (forget?.length) {
+      const gone = new Set(forget);
+      undoStack.current = undoStack.current.filter((e) => !gone.has(e.noteId));
+      redoStack.current = redoStack.current.filter((e) => !gone.has(e.noteId));
+      syncAvailability();
+    }
+    applyCommit(updater, false);
+  };
 
   // A folder rename or move on disk changes where notes live without any of
   // them being edited. The `folder` field follows in the live data; undo

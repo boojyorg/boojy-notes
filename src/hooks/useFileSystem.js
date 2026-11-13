@@ -554,13 +554,15 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
             }
             if (typeof written?.title === "string" && written.title !== note.title)
               editorLinksRef.current?.onTitleResolved?.(noteId, note, written.title);
-            // The write renamed or moved the file: the links that named it
-            // there follow once the name has settled (useLinksFollow).
-            if (written?.renamedFrom)
-              editorLinksRef.current?.onNoteRenamed?.(noteId, written.renamedFrom, {
-                title: written.title,
-                folder: note.folder ?? null,
-              });
+            // The note's first write, or one that renamed or moved its file:
+            // the links that named it there follow once the name has settled
+            // (useLinksFollow).
+            if (written?.renamedFrom || written?.created)
+              editorLinksRef.current?.onNoteWritten?.(
+                noteId,
+                { title: written.title, folder: note.folder ?? null },
+                { from: written.renamedFrom, created: written.created },
+              );
           } catch (err) {
             console.error("useFileSystem: write failed", noteId, err);
             if (!reportedWriteFailures.current.has(noteId)) {
@@ -782,6 +784,9 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
           // back (a rewrite is a new file to a sync client, and the next
           // outside edit would meet "pending edits" and make a copy).
           if (!pending) links.unflushedNotes?.current.delete(id);
+          // A rename of the app's not yet followed is overtaken: the name is
+          // the outside one now, and links never follow that.
+          links.onOutsideMove?.(id);
           taken();
           ensureFolder(external.folder);
         })

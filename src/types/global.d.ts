@@ -90,6 +90,8 @@ declare global {
             downloaded?: Note;
             /** The name and folder the file had, when this write renamed or moved it. */
             renamedFrom?: { title: string; folder: string | null };
+            /** The note's first write: it had no file before. */
+            created?: true;
           }
         | { stale: true; note: Note }
       >;

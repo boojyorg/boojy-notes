@@ -176,3 +176,53 @@ test("a name typed and the app closed with the caret still in the name field: th
     await h.close();
   }
 });
+
+test("undo in a note whose links moved never brings the old links back", async () => {
+  const h = await launchApp({ "Alpha.md": "See [[Beta]].\n", "Beta.md": "Beta body.\n" });
+  try {
+    await h.openNote("Alpha");
+    const block = h.page.locator("[data-block-id]").first();
+    await block.click();
+    await h.page.keyboard.press("ControlOrMeta+ArrowRight");
+    await h.page.keyboard.type(" More");
+    await waitForFile(h.vault.file("Alpha.md"), (t) => t === "See [[Beta]]. More\n");
+
+    await renameRow(h.page, "Beta", "Gamma");
+    await waitForFile(h.vault.file("Alpha.md"), (t) => t === "See [[Gamma]]. More\n");
+
+    // The typing is an undo entry of Alpha holding `[[Beta]]`: it went with
+    // the rewrite. (The rename opened the renamed note; undo there would undo
+    // the rename, and the links would rightly follow back.)
+    await h.openNote("Alpha");
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.keyboard.press("ControlOrMeta+z");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("See [[Gamma]]. More\n");
+    await expect(h.page.locator("[data-block-id] .wikilink-broken")).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a new note typed through a name that links were waiting for does not capture them", async () => {
+  const h = await launchApp({ "Alpha.md": "A note to write: [[Project]].\n" });
+  try {
+    await h.openNote("Alpha");
+    await h.page.getByRole("button", { name: "New note", exact: true }).click();
+    const title = h.page.getByRole("textbox", { name: "Note title" });
+    await expect(title).toBeFocused();
+    await h.page.keyboard.type("Project");
+    // The pause writes the file under its half-typed name.
+    await waitForFile(h.vault.file("Project.md"), () => true);
+    await h.page.keyboard.type(" Plan");
+    await h.page.keyboard.press("Enter");
+    await waitForFile(h.vault.file("Project Plan.md"), () => true);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("A note to write: [[Project]].\n");
+    await expect(h.page.getByText(/Updated \d+ link/)).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

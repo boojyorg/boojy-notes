@@ -203,6 +203,25 @@ describe("linksFollow: a namesake", () => {
   });
 });
 
+describe("linksFollow: a name a link cannot hold", () => {
+  it("leaves the link as it was where the new name would be read as something else", () => {
+    const alpha = "[[Beta]] and [[Beta|b]] and [m](Beta.md) and [a](<Beta.md>)\n";
+    const before = vault({ Alpha: alpha, Beta: "B.\n" });
+    // `[[Notes [2024]]]` would be read as `Notes [2024` and a stray bracket.
+    const brackets = followed(before, placed(before, "Beta", { title: "Notes [2024]" }));
+    expect(brackets.md.Alpha).toBe(
+      "[[Beta]] and [[Beta|b]] and [m](Notes [2024].md) and [a](<Notes [2024].md>)\n",
+    );
+    expect(brackets.links).toBe(2);
+    // An unclosed parenthesis is escaped in a plain destination; in `<…>` it
+    // would end the link early, so that one stays.
+    const paren = followed(before, placed(before, "Beta", { title: "Half (done" }));
+    expect(paren.md.Alpha).toBe(
+      "[[Half (done]] and [[Half (done|b]] and [m](Half %28done.md) and [a](<Beta.md>)\n",
+    );
+  });
+});
+
 describe("linksFollow: what it does not read", () => {
   it("counts a note it cannot read, ignores a draft, and changes nothing when nothing moved", () => {
     const before = vault({

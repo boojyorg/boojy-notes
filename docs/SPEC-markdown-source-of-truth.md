@@ -296,7 +296,11 @@ It is held to the narrowest form of the promise:
 - Each rewritten note keeps the text its file held first as a version (`Before link update`);
   one whose version could not be kept is not rewritten. The rewrite goes through the ordinary
   save, so a file that changed outside is kept as a conflicted copy, never overwritten. It is
-  not an undo entry: renaming back moves the links back.
+  not an undo entry: renaming back moves the links back. A rewritten note's own undo entries
+  go, as an outside edit's do, since each holds the note with its old links.
+- A new note has no name to follow from until its first name has settled, so the half-typed
+  names its file passes through never capture a link that was waiting for a note of that name.
+  A name that a link cannot hold (`Notes [2024]` in a wikilink) is never written into one.
 
 Proven by `links-follow-rename.spec.ts` and `linkRewrite.test.ts`.
 

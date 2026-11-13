@@ -93,8 +93,6 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - A name the app makes is sanitised; a name the disk holds is kept (`Why?.md` stays).
   `disk-names.spec.ts`.
 - A note's own file is never its own collision (`ensureUniqueFilePath(target, ownPath)`).
-- **Links follow a rename or move the app wrote, once the name settles** (`renamedFrom`,
-  `useLinksFollow`), never an outside one. `links-follow-rename.spec.ts`.
 - **The name field is the user's while focused**: answers are adopted on blur (`settleTitle`).
   `title-is-filename.spec.ts`.
 - A save keeps the mode, on macOS xattrs and birthtime (`cp -p`); a symlink is written
@@ -116,7 +114,7 @@ never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 - **A version is the file's text, taken where it is written or read** (`history.ts`), never the editor's state: a restore can only bring
   back what the file was. Kept outside the vault (`userData/history/`).
 - **What makes one**: a session's end, a note's text before its first edit, and before a large
-  delete, an outside change, Replace All, a restore, a link update or moving footnotes; `⌘S` a save point. Nothing
+  delete, an outside change, Replace All, a restore or moving footnotes; `⌘S` a save point. Nothing
   unchanged is kept twice.
 - **Save points are kept for good; Autosaves over a month thin to a day's last.**
 - **The list is the ··· menu in place** (`VersionHistoryList`); a chosen version shows

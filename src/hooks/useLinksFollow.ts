@@ -18,17 +18,19 @@ interface Place {
   folder: string | null;
 }
 type NoteDataUpdater = (prev: NoteData) => NoteData;
+type ToastOptions = { key?: string };
 
 interface LinksFollowDeps {
   noteDataRef: MutableRefObject<NoteData>;
-  adoptNoteData: (updater: NoteDataUpdater) => void;
+  /** useHistory's: `forget` drops those notes' undo entries. */
+  adoptNoteData: (updater: NoteDataUpdater, options?: { forget?: string[] }) => void;
   /** Notes whose keystrokes have not reached a write yet (useHistory). */
   unflushedNotes: MutableRefObject<Set<string>>;
   activeNoteRef: MutableRefObject<string | null>;
   /** The open note's name field: a name still under the caret has not settled. */
   titleRef: RefObject<HTMLElement | null>;
   syncGeneration: MutableRefObject<number>;
-  showToast?: (message: string, kind?: string) => void;
+  showToast?: (message: string, kind?: string, options?: ToastOptions) => void;
 }
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
@@ -53,24 +55,34 @@ function before(now: NoteData, from: Map<string, Place>): NoteData {
   return was;
 }
 
+/** One toast for the links, whatever it says: a newer one takes the older's place. */
+const TOAST_KEY = "links-follow";
+
 /**
  * Links follow a rename or a move made in the app (utils/linkRewrite).
  *
  * The write that renames a note's file says where the file was
  * (`renamedFrom`, write-note), so only a change the app itself wrote is ever
  * followed: a rename in Finder, by a sync client or while the app was closed
- * arrives as an outside change and names no origin here.
+ * arrives as an outside change and names no origin here, and one that lands
+ * on a note with a rename not yet followed takes that origin with it.
  *
  * A name is followed once, when it has **settled**: the file holds the name
  * the note has, nothing of the note is waiting to be written, and the caret
  * has left the name field. A name typed with pauses renames the file at each
- * pause; the links move once, from the first name to the last.
+ * pause; the links move once, from the last settled name to this one. A new
+ * note has no settled name until its first one settles, so the half-typed
+ * names its file passes through on the way are never a name links followed
+ * from: a `[[Project]]` that names no note is not captured by a new note
+ * typed as far as `Project` on its way to `Project Plan`.
  *
  * The rewritten notes are a change of record (`adoptNoteData`): written by
  * the ordinary flush, which refuses a file that changed outside, and not an
- * undo entry, since Cmd+Z in one note must not rewrite others. Each keeps the
- * text its file held first, as a version (`history-mark`); one whose version
- * could not be kept is left as it is.
+ * undo entry, since Cmd+Z in one note must not rewrite others. Their own undo
+ * entries go: each is the note with its old links, and stepping back to one
+ * would put those back. Each note keeps the text its file held first, as a
+ * version (`history-mark`); one whose version could not be kept is left as
+ * it is.
  */
 export function useLinksFollow({
   noteDataRef,
@@ -83,14 +95,37 @@ export function useLinksFollow({
 }: LinksFollowDeps) {
   /** Where each renamed note was before its first rename not yet followed. */
   const origins = useRef(new Map<string, Place>());
-  /** The name and folder each of those notes was last written under. */
+  /** The name and folder each note being watched was last written under. */
   const written = useRef(new Map<string, Place>());
-  const following = useRef(false);
+  /** Notes first written since their name last settled: no name to follow from. */
+  const newborn = useRef(new Set<string>());
+  /** The settles asked for, one after another: none is dropped, none overlaps. */
+  const queue = useRef<Promise<boolean>>(Promise.resolve(false));
 
-  const onNoteRenamed = useCallback((id: string, from: Place, to: Place) => {
-    if (!origins.current.has(id)) origins.current.set(id, from);
-    written.current.set(id, to);
+  const forget = useCallback((id: string) => {
+    origins.current.delete(id);
+    written.current.delete(id);
+    newborn.current.delete(id);
   }, []);
+
+  /** A write of the app's: the note's first, or one that renamed or moved its file. */
+  const onNoteWritten = useCallback(
+    (id: string, to: Place, { from, created }: { from?: Place; created?: boolean }) => {
+      if (created) newborn.current.add(id);
+      if (!created && !from) return;
+      if (from && !newborn.current.has(id) && !origins.current.has(id)) {
+        origins.current.set(id, from);
+      }
+      written.current.set(id, to);
+    },
+    [],
+  );
+
+  /** The folder's notes moved with it, by one rename of the directory. */
+  const onNoteRenamed = useCallback(
+    (id: string, from: Place, to: Place) => onNoteWritten(id, to, { from }),
+    [onNoteWritten],
+  );
 
   const settled = useCallback(
     (id: string, final: boolean) => {
@@ -107,78 +142,99 @@ export function useLinksFollow({
     [noteDataRef, unflushedNotes, activeNoteRef, titleRef],
   );
 
-  /**
-   * Follow every rename that has settled. `final` (the app is closing) takes
-   * a name still under the caret as settled. Resolves whether any note was
-   * rewritten, so the caller knows there is something more to write.
-   */
-  const settle = useCallback(
-    async ({ final = false } = {}): Promise<boolean> => {
-      if (following.current) return false;
+  const follow = useCallback(
+    async (final: boolean): Promise<boolean> => {
       // No history to keep a version in (the phone, the web build): nothing is
       // followed, and nothing is said.
       if (!historyAPI()) {
         origins.current.clear();
         written.current.clear();
+        newborn.current.clear();
         return false;
       }
       const from = new Map<string, Place>();
-      for (const [id, place] of origins.current) {
-        if (!noteDataRef.current[id]) {
-          origins.current.delete(id);
-          written.current.delete(id);
-        } else if (settled(id, final)) from.set(id, place);
+      for (const id of new Set([...origins.current.keys(), ...newborn.current])) {
+        if (!noteDataRef.current[id]) forget(id);
+        else if (settled(id, final)) {
+          const place = origins.current.get(id);
+          if (place) from.set(id, place);
+          // A new note's first name has settled: it has one to follow from now.
+          forget(id);
+        }
       }
       if (from.size === 0) return false;
-      for (const id of from.keys()) {
-        origins.current.delete(id);
-        written.current.delete(id);
-      }
 
-      following.current = true;
-      try {
-        const found = linksFollow(before(noteDataRef.current, from), noteDataRef.current);
-        const ids = Object.keys(found.notes);
-        // A version of each first: the text its file holds now. History turned
-        // off for a note is the user's choice; any other refusal leaves the note.
-        const api = historyAPI();
-        const kept = new Set<string>();
-        await Promise.all(
-          ids.map(async (id) => {
-            const result = await api
-              ?.mark(id, LINKS_FOLLOW_REASON)
-              .catch((): MarkResult => ({ ok: false, reason: "failed" }));
-            if (result && (result.ok || result.reason === "off")) kept.add(id);
-          }),
-        );
-        // Read again now the versions are kept: a keystroke may have landed.
-        const now = noteDataRef.current;
-        const again = linksFollow(before(now, from), now);
-        const changed = Object.keys(again.notes).filter((id) => kept.has(id));
-        let links = 0;
-        if (changed.length > 0) {
-          for (const id of changed) links += again.perNote[id];
-          // The open note's blocks are painted from state only on a signal.
-          if (changed.includes(activeNoteRef.current ?? "")) syncGeneration.current++;
-          adoptNoteData((prev) => {
+      const basis = noteDataRef.current;
+      const found = linksFollow(before(basis, from), basis);
+      const ids = Object.keys(found.notes);
+      // A version of each first: the text its file holds now. History turned
+      // off for a note is the user's choice; any other refusal leaves the note.
+      const api = historyAPI();
+      const kept = new Set<string>();
+      await Promise.all(
+        ids.map(async (id) => {
+          const result = await api
+            ?.mark(id, LINKS_FOLLOW_REASON)
+            .catch((): MarkResult => ({ ok: false, reason: "failed" }));
+          if (result && (result.ok || result.reason === "off")) kept.add(id);
+        }),
+      );
+      // Read again only if a keystroke landed while the versions were kept.
+      const now = noteDataRef.current;
+      const again = now === basis ? found : linksFollow(before(now, from), now);
+      const changed = Object.keys(again.notes).filter((id) => kept.has(id));
+      let links = 0;
+      if (changed.length > 0) {
+        for (const id of changed) links += again.perNote[id];
+        // The open note's blocks are painted from state only on a signal.
+        if (changed.includes(activeNoteRef.current ?? "")) syncGeneration.current++;
+        adoptNoteData(
+          (prev) => {
             const next = { ...prev };
             for (const id of changed) {
               // Only over the text the links were read in.
-              if (prev[id]?.content?.blocks === now[id]?.content?.blocks)
+              if (prev[id]?.content?.blocks === now[id]?.content?.blocks) {
                 next[id] = again.notes[id];
+              }
             }
             return next;
-          });
-        }
-        const message = linksFollowedMessage(links, changed.length, again.skipped);
-        if (message) showToast?.(message, links > 0 ? "done" : "notice");
-        return changed.length > 0;
-      } finally {
-        following.current = false;
+          },
+          { forget: changed },
+        );
       }
+      const message = linksFollowedMessage(links, changed.length, again.skipped);
+      // It fades: a rename with nothing to say about it should not need closing.
+      if (message) showToast?.(message, "done", { key: TOAST_KEY });
+      return changed.length > 0;
     },
-    [noteDataRef, adoptNoteData, activeNoteRef, syncGeneration, showToast, settled],
+    [noteDataRef, adoptNoteData, activeNoteRef, syncGeneration, showToast, settled, forget],
   );
 
-  return { onNoteRenamed, settle };
+  /**
+   * Follow every rename that has settled. `final` (the app is closing) takes
+   * a name still under the caret as settled. Resolves whether a note was
+   * rewritten by this settle or by one still running when it was asked for,
+   * so a caller about to close knows there is something more to write.
+   */
+  const settle = useCallback(
+    ({ final = false } = {}): Promise<boolean> => {
+      const earlier = queue.current;
+      // After the one before it, whatever became of that.
+      const own = earlier.then(
+        () => follow(final),
+        () => follow(final),
+      );
+      queue.current = own.catch((err) => {
+        console.error("useLinksFollow: a link update failed", err);
+        return false;
+      });
+      const mine = Promise.all([earlier.catch(() => false), queue.current]).then(
+        ([before, now]) => before || now,
+      );
+      return mine;
+    },
+    [follow],
+  );
+
+  return { onNoteWritten, onNoteRenamed, onOutsideMove: forget, settle };
 }

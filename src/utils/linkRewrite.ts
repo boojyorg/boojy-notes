@@ -79,6 +79,8 @@ interface PathHit {
   id: string;
   form: VaultLinkForm;
   reach: Reach;
+  /** Written `<…>`, as the reading of the destination found it. */
+  bracketed: boolean;
 }
 
 /** The note a Markdown link's destination names, read from `fromFolder`, as a click reads it. */
@@ -90,15 +92,15 @@ function pathNote(dest: string, fromFolder: string | null, world: World): PathHi
     if (!form.path) return null;
     const { fromNote, fromRoot } = vaultPathsOf(form.path, fromFolder);
     const near = fromNote ? noteAt(fromNote, world) : null;
-    if (near) return { id: near, form, reach: "note" };
+    if (near) return { id: near, form, reach: "note", bracketed: read.bracketed };
     const far = fromRoot ? noteAt(fromRoot, world) : null;
-    if (far) return { id: far, form, reach: "root" };
+    if (far) return { id: far, form, reach: "root", bracketed: read.bracketed };
   }
   for (const form of read.forms) {
     const { fromRoot } = vaultPathsOf(form.path, null);
     if (!fromRoot || fromRoot.includes("/")) continue;
     const named = wikiNote(fromRoot, world);
-    if (named) return { id: named, form, reach: "name" };
+    if (named) return { id: named, form, reach: "name", bracketed: read.bracketed };
   }
   return null;
 }
@@ -156,6 +158,19 @@ function findLinks(text: string): Found[] {
 
 // ── Writing a link that names the note again ────────────────────────────────
 
+/**
+ * Whether `link`, written out, is found again as one link of that kind
+ * holding exactly `value`. A name can hold what a link's own syntax is made
+ * of (`Notes [2024]`, a `|`, an unclosed parenthesis), and written into one it
+ * would be read as something else, or as no link at all.
+ */
+function readsAs(link: string, kind: Found["kind"], value: string): boolean {
+  const found = findLinks(link);
+  if (found.length !== 1 || found[0].kind !== kind) return false;
+  const one = found[0];
+  return (one.kind === "wiki" ? one.target : one.dest) === value;
+}
+
 /** A wikilink target for `id` as it now is, its `#heading` kept as written. */
 function wikiTargetFor(target: string, id: string, after: World): string {
   const hash = target.indexOf("#");
@@ -187,8 +202,8 @@ function writePath(path: string, escaped: boolean, bracketed: boolean): string {
 }
 
 /** A destination for `hit.id` as it now is, in the style the link was written in. */
-function destFor(dest: string, hit: PathHit, fromFolder: string | null, after: World): string {
-  const { form, reach } = hit;
+function destFor(hit: PathHit, fromFolder: string | null, after: World): string {
+  const { form, reach, bracketed } = hit;
   const note = after.notes[hit.id];
   const place = placeOf(note);
   let path: string;
@@ -199,7 +214,6 @@ function destFor(dest: string, hit: PathHit, fromFolder: string | null, after: W
     path = form.path.startsWith("./") && !rel.startsWith("../") ? `./${rel}` : rel;
   }
   if (/\.md$/i.test(form.path)) path += ".md";
-  const bracketed = dest.trim().startsWith("<");
   const written = writePath(path, form.rawPath !== form.path, bracketed) + form.tail;
   return bracketed ? `<${written}>` : written;
 }
@@ -228,17 +242,24 @@ function followInText(
       if (id && after.notes[id] && wikiNote(link.target, after) !== id) {
         const target = wikiTargetFor(link.target, id, after);
         // Written only if it reads back as that note: never a guess.
-        if (wikiNote(target, after) === id) next = target;
+        if (readsAs(`[[${target}]]`, "wiki", target) && wikiNote(target, after) === id) {
+          next = target;
+        }
       }
     } else {
       const hit = pathNote(link.dest, fromBefore, before);
       if (hit && after.notes[hit.id] && pathNote(link.dest, fromAfter, after)?.id !== hit.id) {
-        let dest = destFor(link.dest, hit, fromAfter, after);
+        let dest = destFor(hit, fromAfter, after);
         if (pathNote(dest, fromAfter, after)?.id !== hit.id) {
           // A name another note now shares: its one place, from the root.
-          dest = destFor(link.dest, { ...hit, reach: "root" }, fromAfter, after);
+          dest = destFor({ ...hit, reach: "root" }, fromAfter, after);
         }
-        if (pathNote(dest, fromAfter, after)?.id === hit.id) next = dest;
+        if (
+          readsAs(`[x](${dest})`, "path", dest) &&
+          pathNote(dest, fromAfter, after)?.id === hit.id
+        ) {
+          next = dest;
+        }
       }
     }
     if (next === null || next === text.slice(link.start, link.end)) continue;

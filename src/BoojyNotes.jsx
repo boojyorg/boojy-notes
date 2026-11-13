@@ -227,7 +227,12 @@ export default function BoojyNotes() {
 
   // Links follow a rename or a move the app wrote, once the name has settled:
   // after the write, and when the caret leaves the name field.
-  const { onNoteRenamed, settle: settleLinks } = useLinksFollow({
+  const {
+    onNoteWritten,
+    onNoteRenamed,
+    onOutsideMove,
+    settle: settleLinks,
+  } = useLinksFollow({
     noteDataRef,
     adoptNoteData,
     unflushedNotes,
@@ -357,7 +362,9 @@ export default function BoojyNotes() {
     onOutsideNoteGone,
     onNotesEdited: markEdited,
     onTitleResolved,
+    onNoteWritten,
     onNoteRenamed,
+    onOutsideMove,
     onNamesWritten: settleLinks,
     remapNoteFolders,
   });
