@@ -11,6 +11,9 @@ trap 'rm -r "$TMP"' EXIT
 # The N's own drawing (its gradient and path), lifted out of its file so that
 # file stays the only place the shape is drawn. Its coordinates are a 1024 canvas.
 MARK=$(sed -e 's/<svg[^>]*>//' -e 's/<\/svg>//' boojy-notes-n.svg)
+case "$MARK" in
+  *"<svg"* | *"<?xml"* | "") echo "boojy-notes-n.svg must stay one line: <svg ...>drawing</svg>" >&2; exit 1 ;;
+esac
 
 # art <tile> <scale> <px> <out>: the N on a 1024 canvas over <tile> (SVG, may be
 # empty), at <scale> of its drawn size, with its soft shadow. It sits half a

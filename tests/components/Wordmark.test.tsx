@@ -11,7 +11,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 import Wordmark from "../../src/components/Wordmark";
 
 /**
- * The wordmark is two colours, the cyan N and "otes" in the theme's ink, so
+ * The wordmark is two parts, the teal N and "otes" in the theme's ink, so
  * each theme draws its own asset. Before this the black Light asset was drawn
  * in Dark too, where "otes" was near-black on the dark ground (review H11).
  */

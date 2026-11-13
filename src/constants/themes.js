@@ -1,6 +1,7 @@
 // The one teal. Marks and fills — the checkbox, the quote bar, drop markers,
-// focus rings, the selection band, switches, the wordmark's N — are
-// the same colour in both themes: the misty brand teal (#A4CACE, hue 186) two
+// focus rings, the selection band, switches — are
+// the same colour in both themes (the wordmark's N is a gradient about it,
+// drawn in assets/boojy-notes-n.svg): the misty brand teal (#A4CACE, hue 186) two
 // steps deeper (more saturated reads blue). 2.0:1 on white, 9:1 on the dark
 // sheet. What sits on it is white in both themes: 2:1, a soft tick by design,
 // never body text. Accent *as ink* cannot be one colour — nothing passes 4.5:1
