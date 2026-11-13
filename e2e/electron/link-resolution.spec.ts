@@ -18,7 +18,15 @@
  * says so and the link's bytes stay as written.
  */
 import { expect, test } from "@playwright/test";
-import { SETTLE_MS, editorTitle, launchApp, sleep, waitForFile, type AppHandle } from "./harness";
+import {
+  SETTLE_MS,
+  editorTitle,
+  expandAllFolders,
+  launchApp,
+  sleep,
+  waitForFile,
+  type AppHandle,
+} from "./harness";
 
 const link = (h: AppHandle, text: string) =>
   h.page
@@ -149,6 +157,56 @@ test("a heading or path target whose note is missing asks by the note's name; a 
     await sleep(SETTLE_MS);
     expect(h.vault.list()).toEqual(["Alpha.md", "Gamma.md"]);
     expect(h.vault.read("Alpha.md")).toBe("See [[Beta#Intro]], [[Work/Gamma]] and [[#Intro]].\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+/**
+ * A Markdown link whose destination is a path in the vault
+ * (`[text](Folder/Note.md)`, the link most Markdown apps write for a note)
+ * opens that note, by the path from the folder of the note it sits in and
+ * then from the vault's root. It used to be handed to the system browser,
+ * which refuses anything but http(s), so a click did nothing.
+ */
+test("a relative Markdown link opens the note or file its path names, and writes nothing", async () => {
+  const alpha =
+    "See [here](Gamma.md), [up](../Beta.md#Intro), [spaced](My%20Plan.md) and [gone](Nowhere.md).\n";
+  const h = await launchApp({
+    "Beta.md": "Top.\n\n# Intro\n\nBeta body.\n",
+    "Work/Alpha.md": alpha,
+    "Work/Gamma.md": "Gamma in Work.\n",
+    "Gamma.md": "Gamma at the root.\n",
+    "My Plan.md": "The plan.\n",
+  });
+  try {
+    await expandAllFolders(h.page);
+    const follow = async (text: string) => {
+      await h.openNote("Alpha");
+      await h.page.locator("[data-block-id] a", { hasText: text }).click();
+    };
+    // Two notes are called Gamma: the link sits in Work, so it names Work's.
+    await follow("here");
+    await expect.poll(() => editorTitle(h.page)).toBe("Gamma");
+    await expect(h.page.locator("[data-block-id]").first()).toHaveText("Gamma in Work.");
+
+    await follow("up");
+    await expect.poll(() => editorTitle(h.page)).toBe("Beta");
+    await follow("spaced");
+    await expect.poll(() => editorTitle(h.page)).toBe("My Plan");
+
+    // A path that names nothing says so and creates nothing.
+    await follow("gone");
+    await expect(h.page.getByText('No note or file at "Work/Nowhere.md"')).toHaveCount(0);
+    await expect(h.page.getByText('No note or file at "Nowhere.md".')).toBeVisible();
+    expect(await editorTitle(h.page)).toBe("Alpha");
+
+    await sleep(SETTLE_MS);
+    expect(h.vault.list().sort()).toEqual(
+      ["Beta.md", "Gamma.md", "My Plan.md", "Work/Alpha.md", "Work/Gamma.md"].sort(),
+    );
+    expect(h.vault.read("Work/Alpha.md")).toBe(alpha);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

@@ -79,7 +79,8 @@ through state.**
 
 ## Backspace sheds the kind before it merges
 
-- Backspace at the start of a heading, list item, quote, task or footnote makes it a paragraph (`DEMOTES_TO_PARAGRAPH`); an indented item outdents first; only a paragraph merges.
+- Backspace at the start of a kind in `DEMOTES_TO_PARAGRAPH` makes it a paragraph; an indented
+  item outdents first; only a paragraph merges.
   Enter at the start of a titled heading opens a paragraph above.
 - **Caret positions count visible characters** (`caretLength`), not Markdown. A split
   on a soft break's edge spends the break. `enter-backspace.spec.ts`.
@@ -121,7 +122,7 @@ through state.**
 - **A backslash escape is its symbol alone, sealed**: one caret character, read back with its
   backslash; as written in code, addresses and wikilinks. `escapes.spec.ts`.
 - Bare URLs autolink in prose only; `<url>` is text. **`LINK_DEST` is the one reading of a link
-  destination.**
+  destination**; one inside the vault opens there (`vaultLinkTargets`).
 
 ## Typed inline formatting converts on the closing marker
 
@@ -132,13 +133,15 @@ through state.**
   `typed-formatting.spec.ts`.
 - **A code span is literal** (`codeSpans.js`): nothing in it is drawn; untouched it keeps its
   spelling (`data-md`), edited only what changed; only ⌘E acts in one. `literal-code.spec.ts`.
+  **`_x_` and `__x__` keep their underscores**, stars only where those cannot say it
+  (`writesUnderscores`).
   **So are a `%%` comment and an inline footnote, muted** (`literalRuns`), no format acting; the grey
   follows the markers (`repaintComments`). `comments.spec.ts`, `footnotes.spec.ts`.
 - **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the next letters
   take the caret's formatting, never a deleted run's; overtyping keeps its style.
   `typing-style.spec.ts`.
 - **Block triggers wait for their space, and Enter does what the space does**
-  (`blockTriggers.ts`): a marker may carry an argument (a fence's language). **A line
+  (`blockTriggers.ts`): a marker may carry an argument. **A line
   kind's marker typed before a one-line paragraph's text converts it too**; Cmd+Z gives the
   literal back. `marker-on-text.spec.ts`.
 

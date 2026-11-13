@@ -11,6 +11,7 @@ import { blockSubpath, findBlockTarget } from "../utils/blockTarget";
 import { findHeadingSection, headingSegments } from "../utils/headingTarget";
 import { editBlocks } from "../utils/editBlocks";
 import { fileForTarget } from "../utils/fileView";
+import { vaultLinkTargets } from "../utils/vaultLinkTarget";
 import { baseName } from "../utils/vaultPath";
 import { vaultNotes } from "../utils/vaultNotes";
 
@@ -164,6 +165,35 @@ export function useWikilinkHandlers({
     [noteDataRef, showToast, openLinkFixerRef, openFileInPlace, activeNote, followNoteLink],
   );
 
+  // A Markdown link whose destination names something in the vault
+  // (`[text](Folder/Note.md#Heading)`, a file, `#Heading`): the note or file
+  // is opened as a wikilink's would be, by its path from the note's folder or
+  // from the vault's root, never by guessing. False for an address, which is
+  // the system browser's.
+  const handleVaultLinkClick = useCallback(
+    (dest) => {
+      const notes = noteDataRef.current;
+      const targets = vaultLinkTargets(dest, notes[activeNote]?.folder ?? null);
+      if (!targets.length) return false;
+      for (const target of targets) {
+        if (openFileInPlace(target)) return true;
+        const parsed = parseWikilinkTarget(target);
+        if (!parsed.name) {
+          if (activeNote && notes[activeNote]) followNoteLink(activeNote, parsed.subpath);
+          return true;
+        }
+        const status = wikilinkStatus(target, notes);
+        if (status.kind === "note") {
+          followNoteLink(status.id, parsed.subpath);
+          return true;
+        }
+      }
+      showToast?.(`No note or file at "${targets.at(-1).split("#")[0]}".`, "info");
+      return true;
+    },
+    [noteDataRef, activeNote, openFileInPlace, followNoteLink, showToast],
+  );
+
   // Wikilink autocomplete select handler
   const handleWikilinkSelect = useCallback(
     (title) => {
@@ -207,6 +237,7 @@ export function useWikilinkHandlers({
   return {
     noteTitleSet,
     handleWikilinkClick,
+    handleVaultLinkClick,
     handleWikilinkSelect,
     openFileInPlace,
   };

@@ -121,6 +121,60 @@ describe("useWikilinkHandlers", () => {
     ]);
   });
 
+  describe("a Markdown link into the vault", () => {
+    const inWork = () => {
+      const base = setup();
+      const noteData = {
+        ...base.noteData,
+        n4: { title: "Delta", folder: "Work", content: { blocks: [] } },
+        n5: { title: "Delta", folder: "Home", content: { blocks: [] } },
+      };
+      return setup({ noteData, noteDataRef: { current: noteData }, activeNote: "n3" });
+    };
+
+    it("leaves an address to the browser", () => {
+      const { result, openNote, showToast } = inWork();
+      expect(result.current.handleVaultLinkClick("https://example.com/Beta.md")).toBe(false);
+      expect(result.current.handleVaultLinkClick("mailto:a@b.c")).toBe(false);
+      expect(openNote).not.toHaveBeenCalled();
+      expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it("opens the note at the path from the note's own folder first, then from the root", () => {
+      const { result, openNote } = inWork();
+      // Two notes are called Delta; the link sits in Work, so it names Work's.
+      expect(result.current.handleVaultLinkClick("Delta.md")).toBe(true);
+      expect(openNote).toHaveBeenLastCalledWith("n4");
+      expect(result.current.handleVaultLinkClick("../Home/Delta.md")).toBe(true);
+      expect(openNote).toHaveBeenLastCalledWith("n5");
+      // Not in Work: found from the vault's root, percent-escapes decoded.
+      expect(result.current.handleVaultLinkClick("Beta.md")).toBe(true);
+      expect(openNote).toHaveBeenLastCalledWith("n2");
+      expect(result.current.handleVaultLinkClick("/Work/Gam%6Da.md")).toBe(true);
+      expect(openNote).toHaveBeenCalledTimes(3); // Gamma is the open note
+    });
+
+    it("opens a file the path names in the note's place", () => {
+      const showFile = vi.fn();
+      const { result, openNote } = setup({
+        activeNote: "n3",
+        showFile,
+        otherFiles: [{ path: "Work/paper.pdf", attachment: false }],
+      });
+      expect(result.current.handleVaultLinkClick("paper.pdf#page=4")).toBe(true);
+      expect(showFile).toHaveBeenCalledWith("Work/paper.pdf", 4);
+      expect(openNote).not.toHaveBeenCalled();
+    });
+
+    it("says so when the path names nothing, and creates nothing", () => {
+      const { result, openNote, createNote, showToast } = inWork();
+      expect(result.current.handleVaultLinkClick("Missing/Nowhere.md#Top")).toBe(true);
+      expect(openNote).not.toHaveBeenCalled();
+      expect(createNote).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith('No note or file at "Missing/Nowhere.md".', "info");
+    });
+  });
+
   describe("a heading link", () => {
     const guide = {
       title: "Guide",

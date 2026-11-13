@@ -177,8 +177,15 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   numeric label; nothing else in the file moves or is renumbered.
 - `![[Note]]`, `![[Note#Heading]]` and `![[#^id]]` draw what the same link reaches, read-only;
   only the embed's own `![[…]]` is edited here, and it is written as typed.
-- Typing `_italic_` or `__bold__` is committed in the star form the renderer speaks; an imported
-  underscore form is left as written and shown literal.
+- `_italic_`, `__bold__` and `___both___` are drawn as emphasis by CommonMark's rule (at a
+  word's edge, never inside a word, a code span, a formula or an address) and keep their
+  underscores through an edit. The stars are written only where an edit leaves the underscores
+  unable to say it: a letter typed against the emphasis, or its text ending in a space or an
+  underscore. Typing `_italic_` or `__bold__` is still committed in the star form.
+- `[text](Folder/Note.md#Heading)`, a Markdown link whose destination is a path, opens the note
+  or file at that path: from the folder of the note it sits in, then from the vault's root,
+  percent-escapes decoded. It never guesses by name across folders and never creates a note; a
+  path that names nothing is said. A destination with a scheme goes to the system browser.
 - Copy writes the app's spelling of the copied blocks (`-` bullets, canonical numbering and
   indentation), never the file's bytes; the file itself is untouched.
 

@@ -193,6 +193,7 @@ const EditorArea = memo(
     activeNote,
     editorFadeIn,
     onWikilinkClick,
+    onVaultLinkClick,
     onFileOpenInPlace,
     onTagClick,
     toolbarState,
@@ -1995,7 +1996,9 @@ const EditorArea = memo(
                       if (anchor) {
                         e.preventDefault();
                         const url = anchor.getAttribute("href") || anchor.getAttribute("data-url");
-                        if (url) {
+                        // A destination inside the vault opens there; an
+                        // address is the system browser's.
+                        if (url && !onVaultLinkClick?.(url)) {
                           const api = getAPI();
                           if (api?.openExternal) {
                             api.openExternal(url);
@@ -2305,9 +2308,11 @@ const EditorArea = memo(
                 }}
                 onOpenLink={() => {
                   if (linkCtxMenu.linkType === "external") {
-                    const api = getAPI();
-                    if (api?.openExternal) api.openExternal(linkCtxMenu.url);
-                    else window.open(linkCtxMenu.url, "_blank");
+                    if (!onVaultLinkClick?.(linkCtxMenu.url)) {
+                      const api = getAPI();
+                      if (api?.openExternal) api.openExternal(linkCtxMenu.url);
+                      else window.open(linkCtxMenu.url, "_blank");
+                    }
                   } else {
                     if (onWikilinkClick) onWikilinkClick(linkCtxMenu.url);
                   }

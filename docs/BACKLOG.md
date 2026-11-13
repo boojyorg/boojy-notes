@@ -123,9 +123,8 @@ the test its rule names when it is built.
 
 **Compatibility**
 
-- **Relative `.md` links open the note; link titles leave the address; code spans, `_`/`__`
-  emphasis and the other divider forms draw as they mean**, each keeping its spelling (Markdown
-  compatibility, below).
+- **Link titles leave the address; code spans and the other divider forms draw as they
+  mean**, each keeping its spelling (Markdown compatibility, below).
 - **The Obsidian extensions, explicitly.** Drawn and edited: wikilinks and aliases,
   `[[Note#Heading]]` and `#^block-id` (drawn quietly), note embeds (drawn read-only, a heading's section or a block), embeds with a size (`#page=`: a file card that opens that page), callouts,
   `==highlight==`, `#tags`, frontmatter (as properties), maths, Mermaid, `%%comments%%` within a
@@ -356,11 +355,9 @@ bytes the app understands are safe and the rest is preserved, but a rename leave
 references (Public Beta).
 
 - **Links.** A link title joins the address (`[a](b "t")` → `href="b "t""`); reference-style
-  links show as text; a relative `.md` link does nothing when clicked.
+  links show as text.
 - **Code.** Formatting inside a code span draws as emphasis; a multi-backtick span splits;
   indented code is a paragraph.
-- **Imported `_italic_` and `__bold__`** show literally (typing them converts to the star
-  form). Drawing them must not make the first edit rewrite their markers.
 - **Dividers.** Only exactly `---` is one: `***`, `___` and `-----` are text, and `* * *` reads
   as a bullet holding an empty emphasis.
 - **Delimiters interleaved** (`**a==b**c==`, an escaped one beside live ones) pair differently
