@@ -3,7 +3,7 @@
  * Always use these constants instead of hardcoded numbers.
  *
  * Scale overview (low → high):
- *   BASE → ELEMENT_OVERLAY → BLOCK_HANDLE → PATH_ROW → SIDEBAR_DIVIDER → FIND_BAR
+ *   BASE → ELEMENT_OVERLAY → BLOCK_HANDLE → PATH_ROW → SIDEBAR_DIVIDER → PATH_ROW_OPEN → FIND_BAR
  *   → TOOLBAR → WIKILINK_MENU → MENU_BACKDROP
  *   → DROPDOWN → CONTEXT_BACKDROP → CONTEXT_MENU → SETTINGS → SETTINGS_MENU → LIGHTBOX
  *   → OVERLAY
@@ -25,6 +25,10 @@ export const Z = {
   /** The sidebar's divider: its grab area reaches into the editor's margin,
    *  over the path band beside it. */
   SIDEBAR_DIVIDER: 9,
+  /** The path band while its folder popup is open. The popup lives in the
+   *  band's layer, and in a narrow window it lies over the divider, whose
+   *  grab area would otherwise take a press on the rows beneath it. */
+  PATH_ROW_OPEN: 10,
   FIND_BAR: 50,
   TOOLBAR: 100,
   WIKILINK_MENU: 110,
