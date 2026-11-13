@@ -358,7 +358,7 @@ export default function NotePath({
       style={{
         position: "sticky",
         top: 0,
-        zIndex: menu ? Z.PATH_ROW_OPEN : Z.PATH_ROW,
+        zIndex: Z.PATH_ROW,
         flexShrink: 0,
         // The phone lets a long name take a second line (below), so the row
         // grows with it there; the desktop's is one control high.
