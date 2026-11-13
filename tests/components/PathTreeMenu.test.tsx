@@ -70,7 +70,8 @@ function mount(props: Partial<Parameters<typeof PathTreeMenu>[0]> = {}) {
       {...props}
     />,
   );
-  return { ...utils, onOpen, onClose };
+  // The popup is portalled to the document, so that is where its rows are.
+  return { ...utils, container: document.body, onOpen, onClose };
 }
 
 /** Every row's text in order, folders marked by their expansion state. */
@@ -330,7 +331,7 @@ describe("PathTreeMenu as the Move to… picker", () => {
         pick={{ label: "Move “Todd's Note” to", current: "University/Archive", onPick, ...pick }}
       />,
     );
-    return { ...utils, onPick, onClose };
+    return { ...utils, container: document.body, onPick, onClose };
   }
 
   it("is folders only, the root first, the current folder open and ticked, no note rows", () => {

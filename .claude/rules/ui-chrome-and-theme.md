@@ -131,8 +131,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **Where it sits is CSS; what it shows is JavaScript.** Sticky band with `chromePathInset()`
   and `CHROME_PATH_RIGHT_INSET`; two flex spacers centre it on the pane when it fits, never
   over a control. What fits is measured by an invisible twin (`utils/pathCrumbs.ts`).
-- **The note's first line sits on the New note row's baseline, for every block type.** The
-  column padding is one number (`COLUMN_TOP`, `utils/typeBaseline.ts`); a first block reaches up
+- **The note's first line shares the New note row's middle, for every block type**, so its
+  grip holds still. The column padding is one number (`columnTop`); a first block grows about it
   (`firstBlockLift`) rather than pushing the line down. A note opens scrolled to the
   top, but Back/Forward return to the visit's place (`notePlace.ts`, per visit: top block, the caret only if on screen; a Markdown-view note opens at the top). `note-path.spec.ts`, `editor-scroll.spec.ts`, `note-history.spec.ts`.
 
@@ -160,9 +160,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **The row shows the storage location's name** (its folder's, or a label; code: vault). It
   and ⌘O open `VaultMenu`, a switcher; Settings manages. **Both A–Z (`vaultEntries`).** A
   Settings row's menu leaves out what cannot work. `vault-switcher.spec.ts`.
-- **A file that is not a note** follows its folder's notes, extension muted; menu Open in
-  Default App, Show in Finder, Delete; never
-  renamed or dragged. The attachment store is the root's last row.
+- **A file that is not a note** follows its folder's notes, type tagged right; menu Open in
+  Default App, Show in Finder, Delete; never renamed or dragged. The attachment store is the root's last row.
 - The wordmark is generated per theme (`dev/wordmarks.sh`), never the master PNG.
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
   note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` stays

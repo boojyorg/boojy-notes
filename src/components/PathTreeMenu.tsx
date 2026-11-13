@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
@@ -523,7 +524,9 @@ export default function PathTreeMenu({
     whiteSpace: "nowrap",
   };
 
-  return (
+  // Portalled, as every menu is: inside the path band it would stack in the
+  // band's layer, under the sidebar's divider it lies over in a narrow window.
+  return createPortal(
     <>
       <div
         className="motion-pop"
@@ -627,6 +630,7 @@ export default function PathTreeMenu({
           )}
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

@@ -6,7 +6,6 @@ import { getCaretOffset, placeCaret, caretLength, showSpaceBeforeCaret } from ".
 import { trace } from "../utils/trace";
 import { latestBlock } from "../hooks/useOwnedField";
 import { useEmptyMark } from "../hooks/useEmptyMark";
-import { baselineFromTop } from "../utils/typeBaseline";
 import { imageDisplayWidth, imageNoWidthFields, imageWidthFields } from "../utils/imageSize";
 import { isElectron, isPhone } from "../utils/platform";
 import CodeBlock from "./CodeBlock";
@@ -49,19 +48,19 @@ export const INDENT_PX = 24;
 export const LIST_MARKER_W = CHECKBOX_SIZE;
 const LIST_TEXT_GAP = INDENT_PX - LIST_MARKER_W;
 
-/** Padding a row carries above its own first line, which sits between the
- *  block's top edge and its baseline like leading does. */
+/** Padding a row carries above its own first line. */
 const ROW_PAD_TOP = { bullet: 2, numbered: 2, checkbox: 2.5 };
 
 /**
- * How far a block that opens a note reaches up from the note's first baseline.
+ * How far a block that opens a note is moved so its first line keeps the
+ * note's first middle.
  *
- * The note's first line is set on the sidebar's New note row and the column's
- * padding is one number for every note (`COLUMN_TOP` in EditorArea), so a block
- * that opens a note does not push that line down to make room for itself: it
- * takes the difference between the body's first baseline and its own. Negative
- * for a heading bigger than the body — it reaches up — positive for H6, whose
- * line is tighter than the body's, and zero for a paragraph.
+ * The note's first line is set on the middle of the sidebar's New note row
+ * and the column's padding is one number for every note (`columnTop` in
+ * EditorArea), so a block that opens a note does not push that line down to
+ * make room for itself: it takes half the difference between the body's line
+ * and its own. Negative for a heading taller than the body's line (it grows
+ * up as much as down), positive for one tighter, and zero for a paragraph.
  */
 function firstBlockLift(type, r) {
   const heading = isHeadingType(type) ? headingStyle(type, r) : null;
@@ -71,11 +70,7 @@ function firstBlockLift(type, r) {
     : type === "checkbox"
       ? CHECKBOX_LINE_HEIGHT
       : r.lineHeight;
-  return (
-    baselineFromTop(r.bodySize, r.lineHeight) -
-    (ROW_PAD_TOP[type] ?? 0) -
-    baselineFromTop(size, lineHeight)
-  );
+  return (r.bodySize * r.lineHeight) / 2 - (ROW_PAD_TOP[type] ?? 0) - (size * lineHeight) / 2;
 }
 
 /**
@@ -565,8 +560,8 @@ const EditableBlock = memo(
             contain: "content",
             position: "relative",
             ...style,
-            // A heading that opens a note reaches up to the note's first
-            // baseline rather than pushing it down, and its top margin — the
+            // A heading that opens a note keeps the note's first middle
+            // rather than pushing it down, and its top margin — the
             // air between it and a block above, of which it has none — goes
             // with it. Every other heading keeps its rhythm.
             ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
@@ -596,7 +591,7 @@ const EditableBlock = memo(
           fontSize: rhythm.bodySize,
           lineHeight: rhythm.lineHeight,
           paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
-          // Reaches up to the note's first baseline when it opens the note.
+          // Keeps the note's first middle when it opens the note.
           ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
           ...style,
         }}
