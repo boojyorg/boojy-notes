@@ -1826,7 +1826,6 @@ export default function BoojyNotes() {
             sync={sync}
             locations={phoneStorage.locations}
             loaded={!fsLoading}
-            onOpenLocation={phoneStorage.openLocation}
             recentlyDeleted={
               recentlyDeleted.available
                 ? {

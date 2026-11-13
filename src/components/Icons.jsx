@@ -45,7 +45,6 @@ import {
   Clock as LuClock,
   Cloud as LuCloud,
   CloudAlert as LuCloudAlert,
-  CloudCheck as LuCloudCheck,
   CloudDownload as LuCloudDownload,
   CloudOff as LuCloudOff,
   CloudSync as LuCloudSync,
@@ -102,6 +101,7 @@ import {
   Plus as LuPlus,
   Presentation as LuPresentation,
   Redo2 as LuRedo2,
+  RefreshCw as LuRefreshCw,
   Repeat2 as LuRepeat2,
   RotateCcw as LuRotateCcw,
   Scissors as LuScissors,
@@ -197,10 +197,11 @@ export const OffloadedIcon = navIcon(LuCloudDownload);
 export const UnreadableIcon = navIcon(LuFileExclamationPoint);
 /** The phone's sync, after its folder's name on Home: no Dropbox, then its four states. */
 export const SyncOffIcon = navIcon(LuCloud);
-export const SyncedIcon = navIcon(LuCloudCheck);
 export const SyncingIcon = navIcon(LuCloudSync);
 export const SyncOfflineIcon = navIcon(LuCloudOff);
 export const SyncProblemIcon = navIcon(LuCloudAlert);
+// Sync now, in Home's menu on the phone: it turns while a pass runs (.sync-turning).
+export const RefreshIcon = navIcon(LuRefreshCw);
 /** Show in Finder, for a vault or a file. */
 export const RevealIcon = navIcon(LuFolderSearch);
 /** Switch to: one storage location for another. */

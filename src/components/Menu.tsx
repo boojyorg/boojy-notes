@@ -49,8 +49,10 @@ export interface MenuItem {
   icon?: ReactNode;
   /** Muted text on the right: the item's key, or a short why it is disabled. */
   hint?: string;
-  /** A muted line under the label: a longer why it is disabled, kept whole. */
+  /** A muted line under the label: a longer why it is disabled, or the row's state, kept whole. */
   detail?: string;
+  /** A glyph at the row's right, muted: the row's state, never a second control. */
+  trailing?: ReactNode;
   /** A row that deletes: ordinary ink at rest, the danger ink while lit (by
    *  the pointer or the keys), its glyph with it. Every Delete and Remove
    *  carries it, undoable or not; a delete that can't be taken back also asks
@@ -413,6 +415,14 @@ export default function Menu({
                 </span>
               )}
             </span>
+            {item.trailing && (
+              <span
+                aria-hidden="true"
+                style={{ display: "flex", flexShrink: 0, color: TEXT.muted }}
+              >
+                {item.trailing}
+              </span>
+            )}
             {item.hint && !isPhone && (
               <span
                 style={{

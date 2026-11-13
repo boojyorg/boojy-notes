@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";
 
 // jsdom does not implement scrollIntoView — stub it globally.
 Element.prototype.scrollIntoView = vi.fn();
@@ -152,7 +152,6 @@ function renderSidebar(overrides = {}) {
     recentlyDeleted: overrides.recentlyDeleted,
     sync: overrides.sync,
     locations: overrides.locations,
-    onOpenLocation: overrides.onOpenLocation,
   };
 
   const Component = overrides.Component ?? Sidebar;
@@ -926,22 +925,38 @@ describe("Sidebar on the phone", () => {
       }
     }));
 
-  // No menu on Home: every control is in sight and does one thing.
-  it("has one top row: the N, the Search field and the cog; New folder and Sort on the list's row", () =>
+  // One menu on Home, under the ···: the N is the brand, and leads nowhere.
+  it("has one top row: the N, the Search field and the ···, whose menu holds New folder, Sort and Settings", () =>
     onPhone(async (PhoneSidebar) => {
       const onOpenSearch = vi.fn();
       const createFolder = vi.fn();
       const view = renderSidebar({ Component: PhoneSidebar, onOpenSearch, createFolder });
-      fireEvent.click(view.getByTestId("wordmark-settings-button"));
-      fireEvent.click(view.getByTestId("home-settings"));
-      expect(settingsState.setSettingsOpen).toHaveBeenCalledTimes(2);
+      expect(view.queryByTestId("wordmark-settings-button")).not.toBeInTheDocument();
+      // The N leads nowhere: a tap takes the list back to its top.
+      const list = view.container.querySelector(".sidebar-scroll");
+      list.scrollTop = 300;
+      fireEvent.click(view.getByTestId("home-mark"));
+      await waitFor(() => expect(list.scrollTop).toBe(0));
+      expect(settingsState.setSettingsOpen).not.toHaveBeenCalled();
       fireEvent.click(view.getByTestId("home-search"));
       expect(onOpenSearch).toHaveBeenCalledTimes(1);
-      expect(view.queryByTestId("home-more")).not.toBeInTheDocument();
-      fireEvent.click(view.getByLabelText("New folder"));
+      // The list has no row of its own: its name, New folder and Sort are the menu's.
+      expect(view.queryByLabelText("New folder")).not.toBeInTheDocument();
+      expect(view.queryByLabelText("Sort")).not.toBeInTheDocument();
+      const more = view.getByTestId("home-more");
+      expect(more.getAttribute("aria-expanded")).toBe("false");
+      fireEvent.click(more);
+      expect(more.getAttribute("aria-expanded")).toBe("true");
+      expect(view.getAllByRole("menuitemradio").map((el) => el.textContent)).toEqual([
+        "Most recent",
+        "Alphabetical",
+      ]);
+      fireEvent.click(view.getByTestId("home-new-folder"));
       expect(createFolder).toHaveBeenCalledWith(null);
-      fireEvent.click(view.getByLabelText("Sort"));
-      expect(view.getByRole("menu", { name: "Sort notes" })).toBeInTheDocument();
+      expect(view.queryByRole("menu")).not.toBeInTheDocument();
+      fireEvent.click(more);
+      fireEvent.click(view.getByTestId("home-open-settings"));
+      expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
     }));
 
   // A new phone's Home was a blank page: nothing said the app had loaded.
@@ -1031,15 +1046,10 @@ describe("Sidebar on the phone", () => {
       expect(createNote).toHaveBeenCalledWith(null);
     }));
 
-  // The row read `Notes` on the phone, not the Dropbox folder it syncs.
-  it("names the vault row after the Dropbox folder it syncs, or the phone with none", async () => {
-    vi.resetModules();
-    vi.doMock("../../src/utils/platform", async (actual) => ({
-      ...(await actual()),
-      isPhone: true,
-    }));
-    try {
-      const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
+  // The menu's first words are where the notes are: the location's own name,
+  // else the Dropbox folder it syncs with, else the phone.
+  it("names the open storage location in the menu: its own name, the Dropbox folder, or the phone", () =>
+    onPhone(async (PhoneSidebar) => {
       const bound = (folder) => ({
         status: {
           state: folder === null ? "off" : "synced",
@@ -1047,51 +1057,46 @@ describe("Sidebar on the phone", () => {
           lastSynced: null,
           problems: [],
         },
+        syncNow: vi.fn(),
       });
-      const { getByTestId, queryByText, unmount } = renderSidebar({
-        Component: PhoneSidebar,
-        sync: bound("Work"),
-      });
-      expect(getByTestId("sync-status").parentElement.textContent).toBe("Work");
-      expect(queryByText("Notes")).not.toBeInTheDocument();
-      unmount();
+      /** The menu's first words, with or without Dropbox. */
+      const named = (overrides) => {
+        const view = renderSidebar({ Component: PhoneSidebar, ...overrides });
+        fireEvent.click(view.getByTestId("home-more"));
+        const words = (view.queryByTestId("home-sync") ?? view.getByTestId("home-location"))
+          .textContent;
+        expect(view.queryByText("Notes")).not.toBeInTheDocument();
+        view.unmount();
+        return words;
+      };
+      expect(named({ sync: bound("Work") })).toBe("WorkSynced");
       // A storage location's own name comes before the Dropbox folder it syncs with.
-      const named = renderSidebar({
-        Component: PhoneSidebar,
-        sync: bound("Work"),
-        locations: [
-          { id: "main", name: "Private", named: true, open: true, dropbox: null, phone: null },
-          { id: "l1", name: "Other", named: true, open: false, dropbox: "Team", phone: null },
-        ],
-      });
-      expect(named.getByTestId("sync-status").parentElement.textContent).toBe("Private");
-      named.unmount();
+      expect(
+        named({
+          sync: bound("Work"),
+          locations: [
+            { id: "main", name: "Private", named: true, open: true, dropbox: null, phone: null },
+            { id: "l1", name: "Other", named: true, open: false, dropbox: "Team", phone: null },
+          ],
+        }),
+      ).toBe("PrivateSynced");
       // One with no name of its own follows sync as it is now, not as the list was read.
-      const unnamed = renderSidebar({
-        Component: PhoneSidebar,
-        sync: bound("Work"),
-        locations: [
-          { id: "main", name: "Phone", named: false, open: true, dropbox: null, phone: null },
-        ],
-      });
-      expect(unnamed.getByTestId("sync-status").parentElement.textContent).toBe("Work");
-      unnamed.unmount();
+      expect(
+        named({
+          sync: bound("Work"),
+          locations: [
+            { id: "main", name: "Phone", named: false, open: true, dropbox: null, phone: null },
+          ],
+        }),
+      ).toBe("WorkSynced");
       // The app folder itself, which the binding writes "".
-      const root = renderSidebar({ Component: PhoneSidebar, sync: bound("") });
-      expect(root.getByTestId("sync-status").parentElement.textContent).toBe("Boojy Notes");
-      root.unmount();
-      const off = renderSidebar({ Component: PhoneSidebar, sync: bound(null) });
-      expect(off.getByTestId("sync-status").parentElement.textContent).toBe("Phone");
-    } finally {
-      vi.doUnmock("../../src/utils/platform");
-      vi.resetModules();
-    }
-  });
+      expect(named({ sync: bound("") })).toBe("Boojy NotesSynced");
+      expect(named({ sync: bound(null) })).toBe("PhoneOn this phone only");
+    }));
 
-  // The desktop's own menu: the same rows, glyphs and tick, less the file toggles.
-  it("opens the desktop's storage-location menu from the name: switch, and manage in Settings", () =>
+  // Switching is rare, and a wrong tap would move the whole list: Settings' alone.
+  it("offers no other storage location on Home, and marks the ··· only while sync needs the person", () =>
     onPhone(async (PhoneSidebar) => {
-      const onOpenLocation = vi.fn();
       const status = (state, problems = []) => ({
         state,
         folder: "Work",
@@ -1110,32 +1115,23 @@ describe("Sidebar on the phone", () => {
           phone: "Documents/P",
         },
       ];
+      const syncNow = vi.fn();
       const view = renderSidebar({
         Component: PhoneSidebar,
-        sync: { status: status("synced"), syncNow: vi.fn(), signInAgain: vi.fn() },
+        sync: { status: status("synced"), syncNow, signInAgain: vi.fn() },
         locations,
-        onOpenLocation,
       });
-      expect(view.getByTestId("sync-status").getAttribute("aria-expanded")).toBe("false");
-      fireEvent.click(view.getByTestId("sync-status"));
-      expect(view.getByTestId("sync-status").getAttribute("aria-expanded")).toBe("true");
-      const rows = view.getAllByRole("menuitemradio");
-      expect(rows.map((el) => el.textContent)).toEqual(["Work", "Private"]);
-      expect(rows.map((el) => el.getAttribute("aria-checked"))).toEqual(["true", "false"]);
-      expect(view.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
-        "Manage storage locations…",
-      ]);
-      expect(view.queryByText("Show other files")).not.toBeInTheDocument();
-      // Synced: the cloud says so, and the menu says nothing about sync.
-      expect(view.queryByText(/Synced with Dropbox/)).not.toBeInTheDocument();
-      fireEvent.click(view.getByText("Private"));
-      expect(onOpenLocation).toHaveBeenCalledWith("l1");
-      fireEvent.click(view.getByTestId("sync-status"));
-      fireEvent.click(view.getByText("Manage storage locations…"));
-      expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
+      expect(view.getByTestId("home-more").getAttribute("aria-label")).toBe("More");
+      expect(view.queryByTestId("home-sync-dot")).not.toBeInTheDocument();
+      fireEvent.click(view.getByTestId("home-more"));
+      expect(view.queryByText("Private")).not.toBeInTheDocument();
+      expect(view.queryByText("Manage storage locations…")).not.toBeInTheDocument();
+      // The location's row syncs now, and the menu stays for its answer.
+      fireEvent.click(view.getByTestId("home-sync"));
+      expect(syncNow).toHaveBeenCalledOnce();
+      expect(view.getByRole("menu")).toBeInTheDocument();
       view.unmount();
 
-      // Sync needing the person is said there, with the one thing to do.
       const signInAgain = vi.fn();
       const trouble = renderSidebar({
         Component: PhoneSidebar,
@@ -1146,60 +1142,26 @@ describe("Sidebar on the phone", () => {
         },
         locations,
       });
-      fireEvent.click(trouble.getByTestId("sync-status"));
-      expect(trouble.getByText(/sign-in has expired/)).toBeInTheDocument();
-      fireEvent.click(trouble.getByText("Sign in again"));
+      expect(trouble.getByTestId("home-more").getAttribute("aria-label")).toBe(
+        "More. Sync needs attention",
+      );
+      expect(trouble.getByTestId("home-sync-dot")).toBeInTheDocument();
+      fireEvent.click(trouble.getByTestId("home-more"));
+      expect(trouble.getByTestId("home-sync").textContent).toBe("WorkSign in again");
+      fireEvent.click(trouble.getByTestId("home-sync"));
       expect(signInAgain).toHaveBeenCalledOnce();
     }));
 
-  it("shows sync's state after the folder's name, and says it in words on a tap", async () => {
+  // The desktop says nothing of sync: it has none of its own.
+  it("shows no sync state on the desktop, whatever it is handed", () => {
     const sync = {
       status: { state: "problem", lastSynced: null, problems: [{ kind: "signed-out" }] },
       syncNow: vi.fn(),
       signInAgain: vi.fn(),
     };
-    const { getByTestId, getByText } = renderSidebar({ sync });
-    const glyph = getByTestId("sync-status");
-    expect(glyph.dataset.state).toBe("problem");
-    expect(glyph.getAttribute("aria-label")).toBe("Notes. Sync: Needs attention");
-    expect(glyph.parentElement.textContent).toBe("Notes");
-    fireEvent.click(glyph);
-    expect(getByText(/Dropbox sign-in has expired/)).toBeInTheDocument();
-    fireEvent.click(getByTestId("sync-sign-in"));
-    expect(sync.signInAgain).toHaveBeenCalledTimes(1);
-  });
-
-  // Connecting and disconnecting are Settings' (PhoneSettings): Home's menu says the state and leads there.
-  it("says Dropbox is not connected and leads to Settings, never connecting from Home", () => {
-    const sync = {
-      status: { state: "off", folder: null, lastSynced: null, problems: [] },
-      connect: vi.fn(),
-      disconnect: vi.fn(),
-      syncNow: vi.fn(),
-    };
-    const off = renderSidebar({ sync });
-    const glyph = off.getByTestId("sync-status");
-    expect(glyph.getAttribute("aria-label")).toBe("Notes. Sync: Dropbox not connected");
-    // No Dropbox, no glyph: the name alone.
-    expect(glyph.querySelector("svg")).toBeNull();
-    fireEvent.click(glyph);
-    expect(
-      off.getByText(/Dropbox not connected. Your notes are on this phone only./),
-    ).toBeInTheDocument();
-    expect(off.queryByTestId("sync-connect")).not.toBeInTheDocument();
-    expect(off.getByTestId("sync-settings")).toBeInTheDocument();
-    off.unmount();
-
-    sync.status = { state: "synced", folder: "Personal", lastSynced: null, problems: [] };
-    const on = renderSidebar({ sync });
-    fireEvent.click(on.getByTestId("sync-status"));
-    expect(on.queryByTestId("sync-disconnect")).not.toBeInTheDocument();
-    expect(on.getByTestId("sync-now")).toBeInTheDocument();
-    expect(on.getByTestId("sync-settings")).toBeInTheDocument();
-  });
-
-  it("shows no sync state where nothing syncs", () => {
-    const { queryByTestId } = renderSidebar();
-    expect(queryByTestId("sync-status")).not.toBeInTheDocument();
+    const view = renderSidebar({ sync });
+    expect(view.queryByTestId("home-more")).not.toBeInTheDocument();
+    expect(view.queryByTestId("home-sync-dot")).not.toBeInTheDocument();
+    expect(view.getByText("Notes")).toBeInTheDocument();
   });
 });

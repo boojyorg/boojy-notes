@@ -69,6 +69,9 @@ export default function GlobalStyles() {
         @keyframes motion-pop-out { to { opacity: 0; scale: 0.97; } }
         @keyframes motion-rise-out { to { opacity: 0; translate: 0 5px; } }
         @keyframes motion-fade-out { to { opacity: 0; } }
+        /* Sync at work (the phone's Home menu): the arrows turn; still under reduced motion, below. */
+        @keyframes sync-turn { to { rotate: 360deg; } }
+        .sync-turning { animation: sync-turn 1s linear infinite; }
         .motion-pop {
           transform-origin: var(--motion-origin, top left);
           animation: motion-pop-in var(--motion-enter) var(--ease-enter) backwards;
@@ -101,7 +104,7 @@ export default function GlobalStyles() {
         @media (prefers-reduced-motion: reduce) {
           .panel-motion, .theme-fade { transition: none !important; }
           .checkbox-tick, .press svg, .sidebar-section-action svg { transition: none !important; }
-          .block-drop-marker { transition: none !important; }
+          .block-drop-marker, html.is-phone .home-mark img { transition: none !important; }
           *, *::before, *::after { animation: none !important; }
         }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
@@ -368,6 +371,19 @@ export default function GlobalStyles() {
           background-color: ${theme.BG.hover} !important;
           transition: none !important;
         }
+        /* Home's N answers a press in its own teal, a touch livelier while the
+           finger is down and fading back after: the brand is not a grey
+           button, and the answer is felt more than seen. */
+        html.is-phone .home-mark img { transition: filter calc(var(--motion-settle) * 1.7) ease-out; }
+        html.is-phone .home-mark:active img {
+          filter: saturate(1.35) brightness(1.04);
+          transition: none;
+        }
+        /* Home's list keeps a pull past its end to itself. Without this a drag
+           that starts at the top (or the bottom) is handed to the page, which
+           cannot scroll, so Android's stretch showed only when a scroll ran
+           into the end and never on a pull from rest. */
+        html.is-phone .sidebar-scroll { overscroll-behavior-y: contain; }
         /* A card of two controls (a storage location's row and its ···) is
            one thing to the eye: a press on its row greys the whole card. */
         html.is-phone .press-card:not([data-opening]):has(> .press-card-body:active) {

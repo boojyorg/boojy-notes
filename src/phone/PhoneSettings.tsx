@@ -15,7 +15,7 @@ import Menu, { type MenuAnchor, type MenuItem } from "../components/Menu";
 import AppearanceTab from "../components/settings/AppearanceTab";
 import SettingsFooter from "../components/settings/SettingsFooter";
 import { SectionTitle } from "../components/settings/SettingsPrimitives";
-import { syncAction, syncCount, syncLines } from "../components/SyncStatusButton";
+import { syncAction, syncCount, syncLines } from "./syncWords";
 import { Z } from "../constants/zIndex";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useHeldScale } from "../hooks/useHeldScale";

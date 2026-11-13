@@ -4,6 +4,7 @@
 
 ### Improvements
 
+- **The phone's Home has one top row** — The row under it, with the storage location's name, New folder and Sort, is gone, so a line more of your notes fits. Its controls are in one menu under the ··· at the top right, which replaces the cog: the location's name with how sync is (tap it to sync now, or to sign in again when that is what's wrong; the arrows turn while it works and end in a tick), New folder, the two sort orders, and Settings. A dot on the ··· means sync needs you. The N no longer opens Settings; tapping it takes the list back to its top, and changing storage location is done in Settings alone.
 - **New app icon** — The icon is now the teal N by itself on its light tile, softly shaded, so it reads at a glance in the Dock, on the taskbar and on the phone's home screen, where the word "Notes" had become too small to read. The N in the sidebar's "Notes" and on the phone's Home has the same shading.
 
 ## v0.22.0 — 2026-11-09
