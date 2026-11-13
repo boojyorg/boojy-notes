@@ -13,14 +13,9 @@ export const NEW_NOTE_SIZE = 72;
 const MARK_H = 28;
 
 /** The air on either side of the Search field: to the N, and to the ···'s dots. */
-const FIELD_GAP = 16;
-/** The grey the ··· stands on while its menu is open: the desktop's icon-button square. */
-const MORE_HELD = 32;
-/**
- * How far the ···'s dots stand inside their touch target, less 2px so the held
- * square keeps clear of the field: an 18px glyph, centred, its dots 3px inside it.
- */
-const MORE_INSET = (TOUCH - 18) / 2 + 3 - 2;
+const FIELD_GAP = 20;
+/** How far the ···'s dots stand inside their button: an 18px glyph, centred, its dots 3px inside it. */
+const MORE_INSET = (TOUCH - 18) / 2 + 3;
 
 const PLAIN = { border: "none", background: "transparent", padding: 0, font: "inherit" } as const;
 
@@ -28,10 +23,11 @@ const PLAIN = { border: "none", background: "transparent", padding: 0, font: "in
  * Home's one top row on the phone: the N (the brand; a tap takes the list
  * back to its top, and leads nowhere), a field that opens Search, and the ···
  * whose menu holds everything else (`HomeMenu`): one way to each thing. The
- * ··· is on the row's grey while its menu is open, and carries a dot only
- * while sync needs the person; synced, syncing or offline it says nothing.
- * The field stands as far from the N as from the ···'s dots, which sit
- * inside a touch target wider than they are.
+ * ··· is the note's own ··· button (EditorChrome): its size and corners, on
+ * the row's grey while its menu is open. It carries a dot only while sync
+ * needs the person; synced, syncing or offline it says nothing. The field
+ * stands as far from the N as from the ···'s dots, which sit inside a button
+ * wider than they are. A press brightens the N (`.home-mark`, GlobalStyles).
  */
 export function HomeTop({
   onTop,
@@ -54,6 +50,7 @@ export function HomeTop({
       <button
         type="button"
         data-testid="home-mark"
+        className="home-mark"
         aria-label="Back to top"
         onClick={onTop}
         style={{
@@ -94,6 +91,7 @@ export function HomeTop({
       <button
         type="button"
         data-testid="home-more"
+        className="press"
         aria-label={syncTrouble ? "More. Sync needs attention" : "More"}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
@@ -108,26 +106,12 @@ export function HomeTop({
           alignItems: "center",
           justifyContent: "center",
           flexShrink: 0,
-          borderRadius: 8,
-          color: TEXT.secondary,
+          borderRadius: 6,
+          background: menuOpen ? BG.hover : "transparent",
+          color: menuOpen ? TEXT.primary : TEXT.secondary,
         }}
       >
-        {/* Held while its menu is open, on a square smaller than the touch target:
-            the target touches the field, and two greys side by side read as one. */}
-        <span
-          data-testid="home-more-held"
-          style={{
-            width: MORE_HELD,
-            height: MORE_HELD,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 8,
-            background: menuOpen ? BG.hover : "transparent",
-          }}
-        >
-          <MoreHorizontalIcon />
-        </span>
+        <MoreHorizontalIcon />
         {syncTrouble && (
           <span
             data-testid="home-sync-dot"

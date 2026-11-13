@@ -371,6 +371,13 @@ export default function GlobalStyles() {
           background-color: ${theme.BG.hover} !important;
           transition: none !important;
         }
+        /* Home's N answers a press in its own teal, livelier while the finger
+           is down and fading back after: the brand is not a grey button. */
+        html.is-phone .home-mark img { transition: filter var(--motion-settle); }
+        html.is-phone .home-mark:active img {
+          filter: saturate(1.5) brightness(1.06);
+          transition: none;
+        }
         /* A card of two controls (a storage location's row and its ···) is
            one thing to the eye: a press on its row greys the whole card. */
         html.is-phone .press-card:not([data-opening]):has(> .press-card-body:active) {

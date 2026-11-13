@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";
 
 // jsdom does not implement scrollIntoView — stub it globally.
 Element.prototype.scrollIntoView = vi.fn();
@@ -936,7 +936,7 @@ describe("Sidebar on the phone", () => {
       const list = view.container.querySelector(".sidebar-scroll");
       list.scrollTop = 300;
       fireEvent.click(view.getByTestId("home-mark"));
-      expect(list.scrollTop).toBe(0);
+      await waitFor(() => expect(list.scrollTop).toBe(0));
       expect(settingsState.setSettingsOpen).not.toHaveBeenCalled();
       fireEvent.click(view.getByTestId("home-search"));
       expect(onOpenSearch).toHaveBeenCalledTimes(1);

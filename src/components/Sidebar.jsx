@@ -44,6 +44,7 @@ import SortMenu from "./SortMenu";
 import VaultMenu from "./VaultMenu";
 import { HOME_LIST_END, HomeFoot, HomeTop } from "../phone/HomeChrome";
 import HomeMenu from "../phone/HomeMenu";
+import { scrollToTop } from "../phone/scrollToTop";
 import RecentCards from "../phone/RecentCards";
 import { liveRows } from "../phone/locations";
 import { syncFolderName } from "../phone/syncFolder";
@@ -51,7 +52,7 @@ import RenameField from "./RenameField";
 import Collapsible, { IndentGuide } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
 import Wordmark from "./Wordmark";
-import { PANEL_FADE_MS, PANEL_MS, panelTransition, prefersReducedMotion } from "../tokens/motion";
+import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
   ACTION_RADIUS,
   ACTION_ROW_H,
@@ -1101,7 +1102,7 @@ const Sidebar = memo(function Sidebar({
   const listHead = (
     <div inert={hiddenControls} style={{ background: theme.BG.standard, flexShrink: 0 }}>
       {/* On the phone the cards stand a little clear of the top row's field. */}
-      <div style={{ height: isPhone ? 8 : COLUMN_HEAD_GAP }} />
+      <div style={{ height: isPhone ? 12 : COLUMN_HEAD_GAP }} />
       {!isPhone && (
         <>
           <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />
@@ -1229,12 +1230,7 @@ const Sidebar = memo(function Sidebar({
         {isPhone ? (
           // The phone's one row: the N, the Search field and the ··· (HomeChrome).
           <HomeTop
-            onTop={() => {
-              const list = sidebarScrollRef.current;
-              if (!list) return;
-              if (prefersReducedMotion() || !list.scrollTo) list.scrollTop = 0;
-              else list.scrollTo({ top: 0, behavior: "smooth" });
-            }}
+            onTop={() => sidebarScrollRef.current && scrollToTop(sidebarScrollRef.current)}
             onSearch={onOpenSearch}
             onMenu={setHomeMenu}
             menuOpen={homeMenu !== null}
