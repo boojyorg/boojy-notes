@@ -13,12 +13,7 @@ import {
   folderKey,
   fileKey,
 } from "../utils/treeNav";
-import {
-  attachmentLabel,
-  groupOtherFiles,
-  otherFileKind,
-  splitExtension,
-} from "../utils/otherFiles";
+import { attachmentLabel, groupOtherFiles, splitExtension } from "../utils/otherFiles";
 import { useVaultView } from "../hooks/useVaultView";
 import { focusNote } from "../utils/domHelpers";
 import { useSettings } from "../context/SettingsContext";
@@ -28,7 +23,6 @@ import {
   FolderIcon,
   OffloadedIcon,
   UnreadableIcon,
-  OtherFileIcon,
   NewFolderIcon,
   SearchIcon,
   MoreHorizontalIcon,
@@ -167,6 +161,19 @@ const treeRowStyle = (depth, color) => ({
   fontFamily: "inherit",
   textAlign: "left",
 });
+/** A file row's type (`PDF`): small capitals, never cut before the name is;
+ *  a long extension gives way at 40% of the row. */
+const FILE_TYPE_TAG = {
+  flexShrink: 0,
+  maxWidth: "40%",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  textTransform: "uppercase",
+  fontSize: isPhone ? 11 : 10,
+  fontWeight: 600,
+  letterSpacing: "0.06em",
+};
 /** The folder row's two trailing glyph boxes (New note, ···), 20px each with
  *  4px between them (adjacent, the pen's ink sits on the dots), the note row's single ··· slot twice over. */
 const FOLDER_ACTIONS_W = 44;
@@ -1007,10 +1014,12 @@ const Sidebar = memo(function Sidebar({
     );
   };
 
-  // A file that is not a note: its kind's glyph, its name in the folder's
-  // ink with the extension a step quieter (it is what tells `report` the PDF
-  // from `report` the note). A click shows it in the note's place, and the
-  // row then wears the open note's pill. Not draggable and not renamed here
+  // A file that is not a note: its name on a note's column with no glyph, and
+  // its type a small muted tag at the row's right edge (it is what tells
+  // `report` the PDF from `report` the note, and it stays whole when a long
+  // name is cut). The row is named by the whole filename. A click shows it in
+  // the note's place, and the row then wears the open note's pill. Not
+  // draggable and not renamed here
   // (an attachment renamed would break the notes that embed it, since a
   // rename rewrites no links).
   const renderFile = (path, depth, label = baseName(path)) => {
@@ -1023,6 +1032,7 @@ const Sidebar = memo(function Sidebar({
         type="button"
         data-file-path={path}
         role="treeitem"
+        aria-label={label}
         aria-selected={shown}
         {...rowProps(fileKey(path))}
         className={`sidebar-file sidebar-row${menuOpen || shown ? " is-held" : ""}`}
@@ -1031,15 +1041,18 @@ const Sidebar = memo(function Sidebar({
           e.preventDefault();
           setCtxMenu({ x: e.clientX, y: e.clientY, type: "file", id: path });
         }}
-        style={treeRowStyle(depth, shown ? TEXT.primary : TEXT.secondary)}
+        style={{ ...treeRowStyle(depth, shown ? TEXT.primary : TEXT.secondary), gap: 8 }}
       >
-        <OtherFileIcon kind={otherFileKind(label)} />
         <span
           style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
         >
-          {stem}
-          <span style={{ color: TEXT.muted }}>{ext}</span>
+          {ext ? stem : label}
         </span>
+        {ext && (
+          <span data-file-type style={{ ...FILE_TYPE_TAG, color: TEXT.muted }}>
+            {ext.slice(1)}
+          </span>
+        )}
       </button>
     );
   };

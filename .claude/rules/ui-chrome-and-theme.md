@@ -160,9 +160,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **The row shows the storage location's name** (its folder's, or a label; code: vault). It
   and ⌘O open `VaultMenu`, a switcher; Settings manages. **Both A–Z (`vaultEntries`).** A
   Settings row's menu leaves out what cannot work. `vault-switcher.spec.ts`.
-- **A file that is not a note** follows its folder's notes, extension muted; menu Open in
-  Default App, Show in Finder, Delete; never
-  renamed or dragged. The attachment store is the root's last row.
+- **A file that is not a note** follows its folder's notes, type tagged right; menu Open in
+  Default App, Show in Finder, Delete; never renamed or dragged. The attachment store is the root's last row.
 - The wordmark is generated per theme (`dev/wordmarks.sh`), never the master PNG.
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
   note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` stays
