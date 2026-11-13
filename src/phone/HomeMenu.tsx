@@ -8,14 +8,23 @@ import {
 } from "../components/Icons";
 import Menu, { type MenuAnchor, type MenuItem } from "../components/Menu";
 import { SORT_MODES } from "../components/SortMenu";
-import { syncAction, syncLine } from "../components/SyncWords";
 import { useTheme } from "../hooks/useTheme";
+import { SYNC_OFF_LINE, syncAction, syncLine, syncNeedsSettings } from "./syncWords";
 import type { PhoneSync } from "./useSyncStatus";
 
 /** How long the tick stands after a pass ends, before the arrows come back. */
 export const DONE_SHOWS_MS = 1500;
-
-const OFF_LINE = "On this phone only";
+/**
+ * How long the arrows turn for a tap at the least: sync shows as working only
+ * once a pass has run a while (SYNCING_SHOWS_AFTER_MS), so a quick one would
+ * leave the tap unanswered.
+ */
+export const ASKED_TURNS_MS = 700;
+/**
+ * The menu's one width: its first row's words change while it is open, and a
+ * menu that grew would leave the ··· it hangs from. Every line of syncLine fits.
+ */
+const WIDTH = 200;
 
 /**
  * Home's one menu on the phone, under the ··· of its top row: everything that
@@ -51,17 +60,25 @@ export default function HomeMenu({
   const state = sync?.status.state ?? "off";
   const act = sync ? syncAction(sync) : null;
 
-  // A pass that ends while the menu is open says so: a tick, for a moment.
-  const [done, setDone] = useState(false);
-  const was = useRef(state);
+  // The arrows turn while a pass runs, and for a moment after a tap that asked
+  // for one. Turning that ends synced says so: a tick, for a moment.
+  const [asked, setAsked] = useState(false);
   useEffect(() => {
-    const ended = was.current === "syncing" && state === "synced";
-    was.current = state;
+    if (!asked) return;
+    const timer = setTimeout(() => setAsked(false), ASKED_TURNS_MS);
+    return () => clearTimeout(timer);
+  }, [asked]);
+  const turning = asked || state === "syncing";
+  const [done, setDone] = useState(false);
+  const wasTurning = useRef(turning);
+  useEffect(() => {
+    const ended = wasTurning.current && !turning && state === "synced";
+    wasTurning.current = turning;
     setDone(ended);
     if (!ended) return;
     const timer = setTimeout(() => setDone(false), DONE_SHOWS_MS);
     return () => clearTimeout(timer);
-  }, [state]);
+  }, [turning, state]);
 
   const glyph =
     state === "problem" ? (
@@ -78,7 +95,7 @@ export default function HomeMenu({
     ) : (
       <span
         data-testid="home-sync-arrows"
-        className={state === "syncing" ? "sync-turning" : undefined}
+        className={turning ? "sync-turning" : undefined}
         style={{ display: "flex" }}
       >
         <RefreshIcon />
@@ -93,8 +110,17 @@ export default function HomeMenu({
             detail: syncLine(sync.status),
             trailing: glyph,
             testId: "home-sync",
-            // The menu stays: the arrows and the tick are this tap's answer.
-            action: act.action,
+            // A fix that is the person's own is said in Settings. Else the menu
+            // stays: the arrows and the tick are this tap's answer.
+            action: syncNeedsSettings(sync.status)
+              ? () => {
+                  onClose();
+                  onSettings();
+                }
+              : () => {
+                  setAsked(true);
+                  act.action?.();
+                },
           },
         ]
       : []),
@@ -141,8 +167,8 @@ export default function HomeMenu({
       anchor={anchor}
       align="end"
       gapY={4}
-      minWidth={200}
-      maxWidth={260}
+      minWidth={WIDTH}
+      maxWidth={WIDTH}
       checkTestId="sort-check"
       onClose={onClose}
       items={items}
@@ -152,7 +178,7 @@ export default function HomeMenu({
           <div data-testid="home-location" style={{ padding: "8px 14px 6px", fontSize: 15 }}>
             {name}
             <span style={{ display: "block", color: theme.TEXT.muted, fontSize: 13 }}>
-              {OFF_LINE}
+              {sync ? syncLine(sync.status) : SYNC_OFF_LINE}
             </span>
           </div>
         )

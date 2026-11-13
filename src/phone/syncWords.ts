@@ -1,8 +1,7 @@
-import { useTheme } from "../hooks/useTheme";
-import type { PhoneSync } from "../phone/useSyncStatus";
+import type { MenuItem } from "../components/Menu";
 import { describeProblem } from "../sync/syncStatus";
 import { clock } from "../utils/versionTime";
-import type { MenuItem } from "./Menu";
+import type { PhoneSync } from "./useSyncStatus";
 
 /** `09:42` (or `9:42 AM`, by the phone's language) today, `16 Oct` before. */
 export function syncedAt(ms: number, now = new Date()) {
@@ -50,42 +49,32 @@ export function syncAction(sync: PhoneSync): MenuItem | null {
   };
 }
 
-/** Sync's state in a few words, under the location's name in Home's menu: what its tap will do when something is wrong. */
+/** Where the notes are, said where nothing syncs them. */
+export const SYNC_OFF_LINE = "On this phone only";
+
+/**
+ * A problem no retry or sign-in mends (a file Dropbox won't take): the fix is
+ * the person's, and Settings says which file and what to do.
+ */
+export const syncNeedsSettings = ({ state, problems }: PhoneSync["status"]) =>
+  state === "problem" && problems.every((p) => describeProblem(p).action === undefined);
+
+/**
+ * Sync's state in a few words, under the location's name in Home's menu: the
+ * state, or what the row's tap will do about it. Short enough for the menu's
+ * fixed width (HomeMenu), so it never has to be cut.
+ */
 export function syncLine(status: PhoneSync["status"]): string {
   const { state, problems, lastSynced } = status;
-  if (state === "off") return "On this phone only";
-  if (state === "problem")
-    return problems.some((p) => describeProblem(p).action === "sign-in")
-      ? "Sign in again"
-      : "Couldn't sync. Try again";
+  if (state === "off") return SYNC_OFF_LINE;
+  if (state === "problem") {
+    if (problems.some((p) => describeProblem(p).action === "sign-in")) return "Sign in again";
+    return syncNeedsSettings(status) ? "See Settings to fix" : "Couldn't sync";
+  }
   if (state === "offline") return "Can't reach Dropbox";
   if (state === "syncing") {
     const count = syncCount(status);
     return count ? `Syncing… ${count}` : "Syncing…";
   }
   return lastSynced === null ? "Synced" : `Synced ${syncedAt(lastSynced)}`;
-}
-
-/** Sync's state in words, at the head of a menu. */
-export function SyncWords({ lines }: { lines: string[] }) {
-  const { theme } = useTheme();
-  return (
-    <div
-      style={{
-        padding: "8px 10px",
-        fontSize: 14,
-        lineHeight: 1.45,
-        color: theme.TEXT.primary,
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-      }}
-    >
-      {lines.map((line) => (
-        <p key={line} style={{ margin: 0 }}>
-          {line}
-        </p>
-      ))}
-    </div>
-  );
 }

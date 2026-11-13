@@ -45,7 +45,6 @@ import {
   Clock as LuClock,
   Cloud as LuCloud,
   CloudAlert as LuCloudAlert,
-  CloudCheck as LuCloudCheck,
   CloudDownload as LuCloudDownload,
   CloudOff as LuCloudOff,
   CloudSync as LuCloudSync,
@@ -198,7 +197,6 @@ export const OffloadedIcon = navIcon(LuCloudDownload);
 export const UnreadableIcon = navIcon(LuFileExclamationPoint);
 /** The phone's sync, after its folder's name on Home: no Dropbox, then its four states. */
 export const SyncOffIcon = navIcon(LuCloud);
-export const SyncedIcon = navIcon(LuCloudCheck);
 export const SyncingIcon = navIcon(LuCloudSync);
 export const SyncOfflineIcon = navIcon(LuCloudOff);
 export const SyncProblemIcon = navIcon(LuCloudAlert);

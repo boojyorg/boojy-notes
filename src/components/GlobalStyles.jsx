@@ -104,7 +104,7 @@ export default function GlobalStyles() {
         @media (prefers-reduced-motion: reduce) {
           .panel-motion, .theme-fade { transition: none !important; }
           .checkbox-tick, .press svg, .sidebar-section-action svg { transition: none !important; }
-          .block-drop-marker { transition: none !important; }
+          .block-drop-marker, html.is-phone .home-mark img { transition: none !important; }
           *, *::before, *::after { animation: none !important; }
         }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
@@ -374,7 +374,7 @@ export default function GlobalStyles() {
         /* Home's N answers a press in its own teal, a touch livelier while the
            finger is down and fading back after: the brand is not a grey
            button, and the answer is felt more than seen. */
-        html.is-phone .home-mark img { transition: filter 320ms ease-out; }
+        html.is-phone .home-mark img { transition: filter calc(var(--motion-settle) * 1.7) ease-out; }
         html.is-phone .home-mark:active img {
           filter: saturate(1.35) brightness(1.04);
           transition: none;

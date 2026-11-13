@@ -925,7 +925,7 @@ describe("Sidebar on the phone", () => {
       }
     }));
 
-  // One menu on Home, under the ···: the N is the brand and nothing to press.
+  // One menu on Home, under the ···: the N is the brand, and leads nowhere.
   it("has one top row: the N, the Search field and the ···, whose menu holds New folder, Sort and Settings", () =>
     onPhone(async (PhoneSidebar) => {
       const onOpenSearch = vi.fn();

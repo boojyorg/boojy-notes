@@ -1,9 +1,9 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { syncLine } from "../../src/components/SyncWords";
 import { ThemeProvider } from "../../src/context/ThemeContext";
-import HomeMenu, { DONE_SHOWS_MS } from "../../src/phone/HomeMenu";
+import HomeMenu, { ASKED_TURNS_MS, DONE_SHOWS_MS } from "../../src/phone/HomeMenu";
+import { syncLine } from "../../src/phone/syncWords";
 import type { PhoneSync } from "../../src/phone/useSyncStatus";
 import type { SyncStatus } from "../../src/sync/syncStatus";
 import { SORT_ALPHA, SORT_RECENT } from "../../src/utils/noteSort";
@@ -86,6 +86,37 @@ describe("the location's row", () => {
     expect(m.onClose).not.toHaveBeenCalled();
   });
 
+  // Sync shows as working only once a pass has run a while: a quick one would
+  // leave the tap looking dead.
+  it("answers a tap even when the pass is too quick to show: the arrows turn, then the tick", () => {
+    vi.useFakeTimers();
+    menu(sync(SYNCED));
+    fireEvent.click(screen.getByTestId("home-sync"));
+    expect(screen.getByTestId("home-sync-arrows").className).toBe("sync-turning");
+    act(() => {
+      vi.advanceTimersByTime(ASKED_TURNS_MS);
+    });
+    expect(screen.getByTestId("home-sync-done")).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(DONE_SHOWS_MS);
+    });
+    expect(screen.getByTestId("home-sync-arrows").className).toBe("");
+  });
+
+  it("leads to Settings for a problem only the person can fix, where the file is named", () => {
+    const s = sync({
+      ...SYNCED,
+      state: "problem",
+      problems: [{ kind: "refused", path: "a?.md" }],
+    });
+    const m = menu(s);
+    expect(screen.getByTestId("home-sync").textContent).toBe("PersonalSee Settings to fix");
+    fireEvent.click(screen.getByTestId("home-sync"));
+    expect(m.onSettings).toHaveBeenCalledOnce();
+    expect(m.onClose).toHaveBeenCalledOnce();
+    expect(s.syncNow).not.toHaveBeenCalled();
+  });
+
   it("signs in again when that is what is wrong, under the warning glyph", () => {
     const s = sync({ ...SYNCED, state: "problem", problems: [{ kind: "signed-out" }] });
     menu(s);
@@ -158,7 +189,11 @@ describe("sync in a few words", () => {
     );
     expect(
       syncLine({ ...SYNCED, state: "problem", problems: [{ kind: "failing", message: "x" }] }),
-    ).toBe("Couldn't sync. Try again");
+    ).toBe("Couldn't sync");
+    // No retry mends a file Dropbox won't take: Settings says which, and what to do.
+    expect(
+      syncLine({ ...SYNCED, state: "problem", problems: [{ kind: "refused", path: "a?.md" }] }),
+    ).toBe("See Settings to fix");
     const at = new Date();
     at.setHours(9, 42, 0, 0);
     expect(syncLine({ ...SYNCED, lastSynced: at.getTime() })).toMatch(/^Synced .*9.42/);

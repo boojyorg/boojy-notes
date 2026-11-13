@@ -220,7 +220,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   (`@media (hover: hover)`, `fromTouch`). The key bar sends menu commands; **a list item brings the list row** (✕ till it
   leaves); in a field what can't act greys; **tap acts, hold explains** (no Markdown),
   a held slide following (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.
-- **Home there**: the N (no button), Search, ··· (`HomeMenu`: sync, New folder, Sort,
+- **Home there**: the N (to the top), Search, ··· (`HomeMenu`: sync, New folder, Sort,
   Settings). **New note is the one teal surface.** **Cards: the notes edited last**
   (`recentCards.ts`), at any sort. **Settings: locations, ticked at the press** (`PhoneSettings`).
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`). **A line is at
