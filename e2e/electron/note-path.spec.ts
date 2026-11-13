@@ -327,7 +327,9 @@ test("the first line's middle is level with New note's, for a paragraph, a headi
       // The note measured is the one just opened, not the one before it.
       await expect(h.page.locator("[data-block-id]").first()).toContainText(text);
       const { row, line } = await middles();
-      expect(Math.abs(line - row), name).toBeLessThan(0.75);
+      // Within a pixel: the column's padding and a face's glyph box each
+      // round to the device, by up to half a pixel. Baselines sat 1.6 to 3.2 off.
+      expect(Math.abs(line - row), name).toBeLessThanOrEqual(1);
     }
   } finally {
     await h.close();
