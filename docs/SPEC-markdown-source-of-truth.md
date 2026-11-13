@@ -177,8 +177,20 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   numeric label; nothing else in the file moves or is renumbered.
 - `![[Note]]`, `![[Note#Heading]]` and `![[#^id]]` draw what the same link reaches, read-only;
   only the embed's own `![[…]]` is edited here, and it is written as typed.
-- Typing `_italic_` or `__bold__` is committed in the star form the renderer speaks; an imported
-  underscore form is left as written and shown literal.
+- `_italic_`, `__bold__` and `___both___` are drawn as emphasis by CommonMark's rule (at a
+  word's edge, never inside a word, a code span, a formula or an address) and keep their
+  underscores through an edit (`writesUnderscores`; `preservation.spec.ts`). The stars are
+  written only where an edit leaves the underscores unable to say it: a letter, digit or
+  underscore would sit against a marker, or the text between them would no longer be drawn as
+  that one element (an edge space, an underscore typed inside). What sits beside a marker is
+  judged as Markdown, so `_a_**b**` and `word**_x_**` stay as written. Typing `_italic_` or
+  `__bold__` is still committed in the star form.
+- `[text](Folder/Note.md#Heading)`, a Markdown link whose destination is a path, opens the note
+  or file at exactly that path: from the folder of the note it sits in (the embedded note's,
+  inside an embed), then from the vault's root, percent-escapes decoded. A bare file name at
+  neither place names the one note or file called that, as a wikilink's does; a path with a
+  folder is never found elsewhere by its name. Nothing is created, and a path that names nothing
+  (or climbs out of the vault) is said. A destination with a scheme goes to the system browser.
 - Copy writes the app's spelling of the copied blocks (`-` bullets, canonical numbering and
   indentation), never the file's bytes; the file itself is untouched.
 

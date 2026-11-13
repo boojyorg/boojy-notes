@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import {
+  noteAtPath,
   missingBlockMessage,
   missingHeadingMessage,
   noteLinkKeys,
@@ -10,7 +11,8 @@ import {
 import { blockSubpath, findBlockTarget } from "../utils/blockTarget";
 import { findHeadingSection, headingSegments } from "../utils/headingTarget";
 import { editBlocks } from "../utils/editBlocks";
-import { fileForTarget } from "../utils/fileView";
+import { fileForTarget, linkedPage } from "../utils/fileView";
+import { vaultLinkTargets } from "../utils/vaultLinkTarget";
 import { baseName } from "../utils/vaultPath";
 import { vaultNotes } from "../utils/vaultNotes";
 
@@ -164,6 +166,52 @@ export function useWikilinkHandlers({
     [noteDataRef, showToast, openLinkFixerRef, openFileInPlace, activeNote, followNoteLink],
   );
 
+  // A Markdown link whose destination is a path in the vault
+  // (`[text](Folder/Note.md#Heading)`, a file, `#Heading`): the note or file
+  // at that path is opened, from the folder of the note the link sits in (an
+  // embed's source when it sits in one) and then from the vault's root. A
+  // bare file name at neither place names the one note or file called that,
+  // as a wikilink's does. False for an address, which is the system browser's.
+  const handleVaultLinkClick = useCallback(
+    (dest, el = null) => {
+      const notes = noteDataRef.current;
+      const source = el?.closest?.("[data-embed-source]")?.getAttribute("data-embed-source");
+      const embedded = source ? wikilinkStatus(source, notes) : null;
+      const here = embedded?.kind === "note" ? embedded.id : activeNote;
+      const targets = vaultLinkTargets(dest, notes[here]?.folder ?? null);
+      if (targets === null) return false;
+      for (const target of targets) {
+        const parsed = parseWikilinkTarget(target);
+        if (!parsed.name) {
+          if (here && notes[here]) followNoteLink(here, parsed.subpath);
+          return true;
+        }
+        const path = target.split("#")[0].toLowerCase();
+        const file = showFile && otherFiles?.find((f) => f.path.toLowerCase() === path);
+        if (file) {
+          showFile(file.path, linkedPage(parsed.subpath));
+          return true;
+        }
+        const id = noteAtPath(parsed, notes);
+        if (id) {
+          followNoteLink(id, parsed.subpath);
+          return true;
+        }
+      }
+      for (const target of targets.filter((t) => !t.split("#")[0].includes("/"))) {
+        if (openFileInPlace(target)) return true;
+        const status = wikilinkStatus(target, notes);
+        if (status.kind === "note") {
+          followNoteLink(status.id, parseWikilinkTarget(target).subpath);
+          return true;
+        }
+      }
+      showToast?.(`No note or file at "${(targets.at(-1) ?? dest).split("#")[0]}".`, "info");
+      return true;
+    },
+    [noteDataRef, activeNote, openFileInPlace, followNoteLink, showToast, showFile, otherFiles],
+  );
+
   // Wikilink autocomplete select handler
   const handleWikilinkSelect = useCallback(
     (title) => {
@@ -207,6 +255,7 @@ export function useWikilinkHandlers({
   return {
     noteTitleSet,
     handleWikilinkClick,
+    handleVaultLinkClick,
     handleWikilinkSelect,
     openFileInPlace,
   };
