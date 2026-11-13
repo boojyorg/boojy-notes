@@ -32,6 +32,7 @@ import {
 } from "./Icons";
 import {
   BTN_GAP,
+  CHROME_INSET,
   CHROME_TOP,
   CHROME_BTN,
   MAC_TRAFFIC_INSET,
@@ -1215,14 +1216,16 @@ const Sidebar = memo(function Sidebar({
           // Children are centred, so top padding shifts them by half of it.
           // Height is unchanged, so nothing below the header moves.
           paddingTop: HEADER_NUDGE * 2,
-          // On the phone the wordmark starts on the column's spine, over New note's
-          // glyph: with no traffic lights or divider to answer to, the column is the edge.
+          // On the phone the N stands 2px inside the column's spine: the cards under
+          // it have round corners, and its straight side level with them read as
+          // standing out. The ··· stands where the note's own does (CHROME_INSET),
+          // so it does not move between Home and a note.
           paddingLeft: trafficLightsShown(fullScreen)
             ? MAC_TRAFFIC_INSET
             : isPhone
-              ? TREE_SPINE
+              ? TREE_SPINE + 2
               : HEADER_LEFT_INSET,
-          paddingRight: HEADER_RIGHT_INSET,
+          paddingRight: isPhone ? CHROME_INSET : HEADER_RIGHT_INSET,
           flexShrink: 0,
           WebkitAppRegion: isElectronMac ? "drag" : undefined,
         }}
