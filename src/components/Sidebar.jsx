@@ -1191,7 +1191,7 @@ const Sidebar = memo(function Sidebar({
         // the DOM and scroll position stay; `inert` on the whole
         // column would break a double-click mid-slide.
         // On the phone it is Home: the whole screen, swapped with the note;
-        // the move between them is a view transition (phone/screenMotion.ts).
+        // the move between them is a copy's (phone/screenMotion.ts).
         width: isPhone ? "100%" : sidebarWidth,
         flexShrink: 0,
         display: "flex",

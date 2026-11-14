@@ -7,8 +7,9 @@ import {
   tagPillGround,
 } from "../styles/tagPill";
 import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W, TOUCH } from "../constants/layout";
+import { Z } from "../constants/zIndex";
 import { CHROME_TOP } from "./EditorChrome";
-import { EASE_EXIT, MOTION_VARS, PANEL_EASE, SCREEN_IN_MS, SCREEN_OUT_MS } from "../tokens/motion";
+import { EASE_EXIT, MOTION_VARS, PANEL_EASE, SCREEN_SHIFT } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
 import { fontStack } from "../tokens/typography";
 import { bandFill, withAlpha } from "../utils/selectionBand";
@@ -67,20 +68,19 @@ export default function GlobalStyles() {
         @keyframes motion-pop-in { from { opacity: 0; scale: var(--pop-from); } }
         @keyframes motion-rise-in { from { opacity: 0; translate: 0 var(--rise); } }
         @keyframes motion-fade-in { from { opacity: 0; } }
-        /* The phone's two screens (phone/screenMotion.ts): the note comes in
-           from the right over Home, which holds still under it, and goes back
-           out the way it came. Pictures of the screens move, never the note. */
-        @keyframes screen-in { from { opacity: 0; transform: translateX(var(--screen-shift, 25%)); } }
-        @keyframes screen-out { to { opacity: 0; transform: translateX(var(--screen-shift, 25%)); } }
-        html[data-screen]::view-transition-old(root),
-        html[data-screen]::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
-        html[data-screen="note"]::view-transition-new(root) {
-          animation: screen-in var(--screen-in-ms, ${SCREEN_IN_MS}ms) ${PANEL_EASE} both;
+        /* The phone's two screens (phone/screenMotion.ts), on the small clock:
+           the app arrives as the note over a copy of Home that holds still,
+           and a copy of the note leaves over Home. The arrival fills
+           backwards only, so the app is left with no transform. */
+        @keyframes screen-in { from { opacity: 0; transform: translateX(${SCREEN_SHIFT}); } }
+        @keyframes screen-out { to { opacity: 0; transform: translateX(${SCREEN_SHIFT}); } }
+        .screen-ghost { position: fixed; top: 0; left: 0; width: 100%; pointer-events: none; }
+        .screen-ghost.screen-under { z-index: -1; }
+        .screen-ghost.screen-out {
+          z-index: ${Z.OVERLAY};
+          animation: screen-out var(--motion-exit) ${EASE_EXIT} both;
         }
-        html[data-screen="home"]::view-transition-old(root) {
-          z-index: 1;
-          animation: screen-out var(--screen-out-ms, ${SCREEN_OUT_MS}ms) ${EASE_EXIT} both;
-        }
+        #root.screen-in { animation: screen-in var(--motion-settle) ${PANEL_EASE} backwards; }
         @keyframes motion-glyph-in { from { opacity: 0; scale: 0.6; } }
         @keyframes motion-pop-out { to { opacity: 0; scale: 0.97; } }
         @keyframes motion-rise-out { to { opacity: 0; translate: 0 5px; } }

@@ -1,78 +1,89 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/utils/platform", () => ({ isPhone: true }));
 
 import { switchScreen } from "../../src/phone/screenMotion";
 
-type Doc = Document & { startViewTransition?: unknown };
-
 const reduced = (on: boolean) => {
   window.matchMedia = ((q: string) => ({ matches: on, media: q })) as typeof window.matchMedia;
 };
+const ghosts = () => [...document.querySelectorAll<HTMLElement>(".screen-ghost")];
+const app = () => document.getElementById("root") as HTMLElement;
 
-/** A stand-in for the browser's: runs the update when told, then finishes. */
-function fakeTransitions() {
-  let run: () => void = () => {};
-  let finish: () => void = () => {};
-  const finished = new Promise<void>((resolve) => {
-    finish = resolve;
-  });
-  (document as Doc).startViewTransition = vi.fn((update: () => void) => {
-    run = update;
-    return { finished };
-  });
-  return { run: () => run(), finish: () => finish(), finished };
-}
+beforeEach(() => {
+  vi.useFakeTimers();
+  reduced(false);
+  document.body.innerHTML = `<div id="root"><div id="screen" data-screen-name="home">
+    <input value="typed" /><p contenteditable="true" autofocus>Home</p></div></div>`;
+});
 
 afterEach(() => {
-  delete (document as Doc).startViewTransition;
-  delete document.documentElement.dataset.screen;
+  vi.runAllTimers();
+  vi.useRealTimers();
 });
 
 describe("switchScreen", () => {
-  it("swaps at once where the browser has no view transitions", () => {
-    reduced(false);
-    const change = vi.fn();
-    switchScreen("note", change);
-    expect(change).toHaveBeenCalledOnce();
-    expect(document.documentElement.dataset.screen).toBeUndefined();
+  it("makes the change at once, whichever way it goes", () => {
+    for (const to of ["note", "home"] as const) {
+      const change = vi.fn();
+      switchScreen(to, change);
+      expect(change).toHaveBeenCalledOnce();
+    }
   });
 
-  it("swaps at once when motion is reduced", () => {
-    reduced(true);
-    const transitions = fakeTransitions();
-    const change = vi.fn();
-    switchScreen("note", change);
-    expect(change).toHaveBeenCalledOnce();
-    expect((document as Doc).startViewTransition).not.toHaveBeenCalled();
-    transitions.finish();
+  it("to the note: a copy of the screen left stands under the app as it arrives", () => {
+    switchScreen("note", () => {
+      document.getElementById("screen")!.textContent = "Note";
+    });
+    const [ghost] = ghosts();
+    expect(ghost.classList.contains("screen-under")).toBe(true);
+    // The copy is of the screen before the change.
+    expect(ghost.textContent).toContain("Home");
+    expect(app().classList.contains("screen-in")).toBe(true);
+    vi.runAllTimers();
+    expect(ghosts()).toHaveLength(0);
+    expect(app().classList.contains("screen-in")).toBe(false);
   });
 
-  it("names the way for the keyframes, changes inside the transition, and clears after", async () => {
-    reduced(false);
-    const transitions = fakeTransitions();
-    const change = vi.fn();
-    switchScreen("home", change);
-    // The picture of the screen being left is taken before the change.
-    expect(change).not.toHaveBeenCalled();
-    expect(document.documentElement.dataset.screen).toBe("home");
-    transitions.run();
-    expect(change).toHaveBeenCalledOnce();
-    transitions.finish();
-    await transitions.finished;
-    await Promise.resolve();
-    expect(document.documentElement.dataset.screen).toBeUndefined();
-  });
-
-  it("leaves a later switch's direction alone when an earlier one ends", async () => {
-    reduced(false);
-    const first = fakeTransitions();
-    switchScreen("note", () => {});
-    fakeTransitions();
+  it("to Home: a copy of the note leaves over the app, which does not move", () => {
     switchScreen("home", () => {});
-    first.finish();
-    await first.finished;
-    await Promise.resolve();
-    expect(document.documentElement.dataset.screen).toBe("home");
+    expect(ghosts()[0].classList.contains("screen-out")).toBe(true);
+    expect(app().classList.contains("screen-in")).toBe(false);
+    vi.runAllTimers();
+    expect(ghosts()).toHaveLength(0);
+  });
+
+  it("the copy cannot be reached, focused or typed in, and keeps what a field held", () => {
+    (document.querySelector("input") as HTMLInputElement).value = "newer";
+    switchScreen("home", () => {});
+    const [ghost] = ghosts();
+    expect(ghost.hasAttribute("inert")).toBe(true);
+    expect(ghost.getAttribute("aria-hidden")).toBe("true");
+    expect(ghost.id).toBe("");
+    expect(ghost.querySelector("[id], [autofocus], [contenteditable]")).toBeNull();
+    expect(ghost.querySelector("input")?.value).toBe("newer");
+    // The note's look is written against its data attributes, so they stay.
+    expect(ghost.querySelector("[data-screen-name]")).not.toBeNull();
+    // The app's own node is still the first a lookup finds.
+    expect(document.querySelector("[data-screen-name]")?.id).toBe("screen");
+  });
+
+  it("a second change starts from rest: one copy, and no arrival left running", () => {
+    switchScreen("note", () => {});
+    switchScreen("home", () => {});
+    expect(ghosts()).toHaveLength(1);
+    expect(ghosts()[0].classList.contains("screen-out")).toBe(true);
+    expect(app().classList.contains("screen-in")).toBe(false);
+  });
+
+  it("only changes, with no copy, when motion is reduced or the screen is put back", () => {
+    reduced(true);
+    const change = vi.fn();
+    switchScreen("note", change);
+    reduced(false);
+    switchScreen("note", change, false);
+    expect(change).toHaveBeenCalledTimes(2);
+    expect(ghosts()).toHaveLength(0);
+    expect(app().classList.contains("screen-in")).toBe(false);
   });
 });

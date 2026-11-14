@@ -12,7 +12,6 @@ import { useEffect, useState } from "react";
 import { PATH_FONT } from "../src/components/NotePath";
 import { PHONE_LABEL_SIZE, PHONE_ROW_H } from "../src/constants/layout";
 import { HOME_LIST_END, NEW_NOTE_LIFT } from "../src/phone/HomeChrome";
-import { SCREEN_IN_MS, SCREEN_OUT_MS } from "../src/tokens/motion";
 import { DEFAULT_RHYTHM, setRhythm } from "../src/tokens/rhythm";
 import { NAV_BAR_H } from "../src/utils/uiScale";
 
@@ -26,9 +25,6 @@ const NOW = {
   bodySize: DEFAULT_RHYTHM.bodySize,
   lineHeight: DEFAULT_RHYTHM.lineHeight,
   nameSize: PATH_FONT.fontSize,
-  screenIn: SCREEN_IN_MS,
-  screenOut: SCREEN_OUT_MS,
-  screenShift: 25,
 };
 
 /** Measured against Notion on a Pixel 8a: Home's names ~15% taller than the desktop's, note lines ~1.5. */
@@ -47,9 +43,6 @@ const CONTROLS = [
   { key: "bodySize", label: "Note: text size", min: 14, max: 19, step: 0.5, unit: "px" },
   { key: "lineHeight", label: "Note: line spacing", min: 1.3, max: 1.8, step: 0.05, unit: "×" },
   { key: "nameSize", label: "Note: name in header", min: 13, max: 19, step: 0.5, unit: "px" },
-  { key: "screenIn", label: "Motion: note in", min: 0, max: 500, step: 10, unit: "ms" },
-  { key: "screenOut", label: "Motion: back to Home", min: 0, max: 500, step: 10, unit: "ms" },
-  { key: "screenShift", label: "Motion: slide distance", min: 0, max: 100, step: 5, unit: "%" },
 ];
 
 function load() {
@@ -88,12 +81,6 @@ export default function PhoneTweaker() {
         padding-bottom: ${HOME_LIST_END + values.newNoteLift - NEW_NOTE_LIFT}px !important;
       }
       html.is-phone [data-title] { font-size: ${values.nameSize}px !important; }
-      /* The change of screen (GlobalStyles' screen-in and screen-out). */
-      :root {
-        --screen-in-ms: ${values.screenIn}ms;
-        --screen-out-ms: ${values.screenOut}ms;
-        --screen-shift: ${values.screenShift}%;
-      }
     `;
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(values));

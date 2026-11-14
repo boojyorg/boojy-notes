@@ -218,7 +218,7 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 
 - **No touch layout, no overlay sidebar** at any desktop width.
 - **The phone is Home (the sidebar, full width) or the note, never both**; else the desktop's
-  rules. Screens change as pictures (`switchScreen`). Back is Escape first. Controls are `TOUCH` tall; nothing waits for or keeps hover
+  rules. A screen change moves a copy (`switchScreen`). Back is Escape first. Controls are `TOUCH` tall; nothing waits for or keeps hover
   (`fromTouch`). The key bar sends menu commands; **a list item brings the list row**; in a field what can't act greys; **tap acts, hold explains** (no Markdown),
   a held slide following (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.
 - **Home**: the N (to the top), Search, ··· (`HomeMenu`). No open

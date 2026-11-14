@@ -1111,7 +1111,7 @@ export default function BoojyNotes() {
     showHome: revealSidebar,
     showNote: useCallback(() => {
       const open = noteDataRef.current[activeNote];
-      if (open && !open._draft) hideSidebar();
+      if (open && !open._draft) hideSidebar({ motion: false });
     }, [noteDataRef, activeNote, hideSidebar]),
     closeCaretMenus: () => {
       if (!slashMenu && !wikilinkMenu && !tagMenu) return false;

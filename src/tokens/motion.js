@@ -16,11 +16,6 @@
 export const PANEL_MS = 280;
 export const PANEL_EASE = "cubic-bezier(0.2, 0, 0, 1)";
 
-/** The phone's change of screen: the note in on the panel's curve, and back
- *  out in about half the time, since going back should never feel waited for. */
-export const SCREEN_IN_MS = 180;
-export const SCREEN_OUT_MS = 100;
-
 /** How long the sidebar's contents take to fade, inside the panel's clock:
  *  half of it, so the panel is never a blank slab for long. */
 export const PANEL_FADE_MS = PANEL_MS / 2;
@@ -79,6 +74,9 @@ export const PRESS_ICON_SCALE = 0.93;
  *  starts below where it rests. */
 export const POP_SCALE_FROM = 0.95;
 export const RISE_PX = 8;
+/** How far from its place the phone's note starts as its screen arrives
+ *  (`phone/screenMotion.ts`), and ends as it leaves. */
+export const SCREEN_SHIFT = "25%";
 
 export const MOTION_VARS = {
   "--motion-fast": `${MOTION_FAST_MS}ms`,
