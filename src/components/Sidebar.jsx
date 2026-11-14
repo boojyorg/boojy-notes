@@ -140,7 +140,9 @@ const rowMenuAnchor = (btn, row) => ({
 /**
  * A tree row's box: the column's width less its insets, one label high, its
  * glyph or title starting on the spine at its depth. The pill is CSS
- * (`.sidebar-row` in GlobalStyles): hover, `.is-held`, `.lift-ink`.
+ * (`.sidebar-row` in GlobalStyles): hover, `.is-held`, `.is-open`,
+ * `.lift-ink`. A row passes no `color` when it is the open one: `.is-open`
+ * inks it, and only off the phone.
  */
 const treeRowStyle = (depth, color) => ({
   width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
@@ -720,7 +722,9 @@ const Sidebar = memo(function Sidebar({
     const menuOpen = ctxMenuNoteId === nId;
     // Desktop: quiet row grammar — a full-width pill; hover, selection and
     // multi-select all use neutral BG.hover, and the active note is
-    // distinguished by ink (TEXT.primary, never bold), never by accent. A note's
+    // distinguished by ink (TEXT.primary, never bold), never by accent. The
+    // open note's pill and ink are `.is-open`, never `.is-held`: the phone's
+    // Home draws neither, and says no row is selected. A note's
     // title starts where a folder at the same depth puts its glyph (SPINE +
     // depth × TREE_INDENT, the folder row's own padding), so notes
     // and folders at one depth share a left edge and a folder's name is further
@@ -731,7 +735,7 @@ const Sidebar = memo(function Sidebar({
         key={nId}
         data-note-id={nId}
         role="treeitem"
-        aria-selected={act}
+        aria-selected={act && !isPhone}
         {...rowProps(noteKey(nId))}
         onClick={(e) => handleNoteClick(nId, e)}
         // Double-click = rename in place: the row swaps its title for the same
@@ -755,9 +759,8 @@ const Sidebar = memo(function Sidebar({
           setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId });
         }}
         style={{
-          // The open note is marked by the pill and its ink, never bold; on
-          // the phone's Home, where no note is open beside the list, by neither.
-          ...treeRowStyle(depth, (act && !isPhone) || sel ? TEXT.primary : TEXT.secondary),
+          // The open note's ink is `.is-open`'s, never bold.
+          ...treeRowStyle(depth, sel ? TEXT.primary : act ? undefined : TEXT.secondary),
           gap: 5,
           appearance: "none",
           WebkitAppearance: "none",
@@ -1026,7 +1029,7 @@ const Sidebar = memo(function Sidebar({
         data-file-path={path}
         role="treeitem"
         aria-label={label}
-        aria-selected={shown}
+        aria-selected={shown && !isPhone}
         {...rowProps(fileKey(path))}
         className={`sidebar-file sidebar-row${menuOpen ? " is-held" : ""}${shown ? " is-open" : ""}`}
         onClick={() => onOpenFile?.(path)}
@@ -1034,10 +1037,7 @@ const Sidebar = memo(function Sidebar({
           e.preventDefault();
           setCtxMenu({ x: e.clientX, y: e.clientY, type: "file", id: path });
         }}
-        style={{
-          ...treeRowStyle(depth, shown && !isPhone ? TEXT.primary : TEXT.secondary),
-          gap: 8,
-        }}
+        style={{ ...treeRowStyle(depth, shown ? undefined : TEXT.secondary), gap: 8 }}
       >
         <span
           style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
