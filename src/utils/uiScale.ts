@@ -57,13 +57,24 @@ export function initialUiScale(): number {
  * Draw the app at `scale`. `--ui-scale` goes beside the zoom because `vw` and
  * `vh` are not divided by `zoom` (a `100vh` box is twice the window at 200%):
  * anything sized against the viewport divides by it (`atScale`).
+ *
+ * The zoom lands in one frame, so everything computed from the scale must too:
+ * the note column's centring margin eases on the panel's clock, and left to
+ * ease here the column stood at its new size on its old margin (a jump to one
+ * side, then a slide back). `scale-changing` switches transitions off
+ * (GlobalStyles) while the new styles are computed; reading a layout value
+ * computes them now, so the class can go in the same task.
  */
 export function applyUiScale(scale: number) {
   const drawn = drawnScale(scale);
-  const root = document.documentElement.style;
+  const el = document.documentElement;
+  const root = el.style;
+  el.classList.add("scale-changing");
   root.zoom = `${drawn}%`;
   root.setProperty("--ui-scale", String(drawn / 100));
   root.minHeight = drawn !== 100 ? `${10000 / drawn}vh` : "";
+  void el.offsetWidth;
+  el.classList.remove("scale-changing");
 }
 
 /** A whole percentage inside the range. */

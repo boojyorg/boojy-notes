@@ -49,7 +49,7 @@ export default function GlobalStyles() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        .sidebar-dragging *, .window-resizing * { transition: none !important; }
+        .sidebar-dragging *, .window-resizing *, .scale-changing * { transition: none !important; }
         /* While the divider is dragged nothing else answers the pointer: a row
            or button passed over would light up as if it could be pressed. The
            drag itself listens on the window, and body keeps the cursor. */

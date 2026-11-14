@@ -12,6 +12,7 @@
 
 - **"Notes" lines up with the list under it** — In full screen, and on Windows and Linux, the Notes wordmark at the top of the sidebar sat a little left of New note and the notes below it. Its N now stands on the same line.
 - **New folder and Sort no longer touch the first note** — Their highlight, when you point at them, used to meet the top of the first row in the list. The list now starts a little lower.
+- **Changing the interface size no longer makes the note jump** — With ⌘+ or ⌘− (or the control in Settings), the note's text used to jump to one side and then slide back to the middle. It now lands in place at once.
 
 ## v0.22.0 — 2026-11-09
 
