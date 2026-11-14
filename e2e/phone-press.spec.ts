@@ -34,6 +34,23 @@ test("a row wears the row grey while pressed, and nothing after", async ({ page 
   await expect(row).not.toHaveCSS("background-color", ROW_GREY);
 });
 
+// Home has no note open beside it, so the grey that marks the open note on the
+// desktop would read there as a press that never let go.
+test("Home marks no row as the open note", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("[data-title]").first().click();
+  await page.keyboard.type("Open");
+  const row = page.locator('.sidebar-note[aria-selected="true"]');
+  const ink = () => row.evaluate((el) => getComputedStyle(el).color);
+  await page.mouse.move(800, 500);
+  await expect(row).toHaveCSS("background-color", ROW_GREY);
+  const openInk = await ink();
+  await page.evaluate(() => document.documentElement.classList.add("is-phone"));
+  await expect(row).not.toHaveCSS("background-color", ROW_GREY);
+  // Nor is its name darker than its neighbours'.
+  await expect.poll(ink).not.toBe(openInk);
+});
+
 test("the note's ··· stays lit while its menu is open, and only then", async ({ page }) => {
   await page.goto("/");
   await page.locator("[data-title]").first().click();
