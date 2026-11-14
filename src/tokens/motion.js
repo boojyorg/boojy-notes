@@ -74,6 +74,11 @@ export const PRESS_ICON_SCALE = 0.93;
  *  starts below where it rests. */
 export const POP_SCALE_FROM = 0.95;
 export const RISE_PX = 8;
+/** The phone's change of screen (`phone/screenMotion.ts`), timed by eye on a
+ *  phone and apart from the two clocks: the note in, and back out sooner,
+ *  since going back should never feel waited for. */
+export const SCREEN_IN_MS = 180;
+export const SCREEN_OUT_MS = 120;
 /** How far from its place the phone's note starts as its screen arrives
  *  (`phone/screenMotion.ts`), and ends as it leaves. */
 export const SCREEN_SHIFT = "25%";

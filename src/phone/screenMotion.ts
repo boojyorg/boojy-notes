@@ -1,4 +1,4 @@
-import { currentExitMs, currentSettleMs, prefersReducedMotion } from "../tokens/motion";
+import { prefersReducedMotion, SCREEN_IN_MS, SCREEN_OUT_MS } from "../tokens/motion";
 import { isPhone } from "../utils/platform";
 
 /**
@@ -89,5 +89,5 @@ export function switchScreen(to: "note" | "home", change: () => void, motion = t
   change();
   if (to === "note") app.classList.add("screen-in");
   // A timer, never `animationend`: an event a hidden window loses.
-  timer = window.setTimeout(settle, (to === "note" ? currentSettleMs() : currentExitMs()) + 60);
+  timer = window.setTimeout(settle, (to === "note" ? SCREEN_IN_MS : SCREEN_OUT_MS) + 60);
 }
