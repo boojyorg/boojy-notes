@@ -16,6 +16,11 @@
 export const PANEL_MS = 280;
 export const PANEL_EASE = "cubic-bezier(0.2, 0, 0, 1)";
 
+/** The phone's change of screen, on the panel's curve: the note in, and (a
+ *  little quicker, as a thing leaving is) back out. */
+export const SCREEN_IN_MS = 220;
+export const SCREEN_OUT_MS = 180;
+
 /** How long the sidebar's contents take to fade, inside the panel's clock:
  *  half of it, so the panel is never a blank slab for long. */
 export const PANEL_FADE_MS = PANEL_MS / 2;
