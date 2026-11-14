@@ -104,7 +104,7 @@ export default function GlobalStyles() {
         @media (prefers-reduced-motion: reduce) {
           .panel-motion, .theme-fade { transition: none !important; }
           .checkbox-tick, .press svg, .sidebar-section-action svg { transition: none !important; }
-          .block-drop-marker, html.is-phone .home-mark img { transition: none !important; }
+          .block-drop-marker, html.is-phone .home-mark img, .wordmark-lit img { transition: none !important; }
           *, *::before, *::after { animation: none !important; }
         }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
@@ -378,6 +378,13 @@ export default function GlobalStyles() {
         html.is-phone .home-mark:active img {
           filter: saturate(1.35) brightness(1.04);
           transition: none;
+        }
+        /* The desktop's wordmark answers the pointer in its N alone, anywhere
+           on the word: the mark is the button, "otes" its label. Stronger than
+           the phone's press, since a hover has no finger to be felt under. */
+        .wordmark-lit img { transition: filter var(--motion-enter) ease-out; }
+        @media (hover: hover) {
+          .wordmark-button:hover .wordmark-lit img { filter: saturate(1.6) brightness(1.1); }
         }
         /* Home's list keeps a pull past its end to itself. Without this a drag
            that starts at the top (or the bottom) is handed to the page, which

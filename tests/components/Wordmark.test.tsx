@@ -34,4 +34,19 @@ describe("Wordmark", () => {
     expect(img.src).toMatch(/boojy-notes-wordmark-dark\.png$/);
     expect(img.dataset.theme).toBe("dark");
   });
+
+  // The desktop's hover brightens the N alone, which one image cannot do in
+  // part: a second copy, clipped to the N, lies over the artwork's own.
+  it("lays a second N over the artwork when asked, the size of the phone's", () => {
+    themeState.isDark = false;
+    const { container, getAllByTestId } = render(<Wordmark height={18} litMark />);
+    expect(getAllByTestId("wordmark")).toHaveLength(1);
+    const lit = container.querySelector(".wordmark-lit") as HTMLElement;
+    expect(lit.getAttribute("aria-hidden")).toBe("true");
+    expect(lit.style.overflow).toBe("hidden");
+    expect(lit.style.pointerEvents).toBe("none");
+    cleanup();
+    const mark = render(<Wordmark height={18} markOnly />).getByTestId("wordmark-mark");
+    expect(lit.style.width).toBe(mark.style.width);
+  });
 });
