@@ -1,3 +1,4 @@
+import { isPhone } from "../utils/platform";
 import { genNoteId, genBlockId } from "../utils/storage";
 import { parentFolder, remapFolderPath, withinFolder, baseName } from "../utils/vaultPath";
 
@@ -32,6 +33,11 @@ export function useNoteCrud({
   // renderer adopts it once the caret has left the field (useResolvedTitle).
   // `open: false` makes the note and leaves the reader where they are (the
   // link picker's Create note row). Answers the new note's id.
+  //
+  // On the phone an unnamed note opened this way is a draft: no file and no
+  // row until its first character (useHistory ends a draft there), so New
+  // note tapped and backed out of leaves nothing. The desktop's row arriving
+  // in the sidebar is its answer to the click, so its note is real at once.
   const createNote = (folder = null, title = null, { open: openIt = true } = {}) => {
     const id = genNoteId();
     const firstBlockId = genBlockId();
@@ -41,6 +47,7 @@ export function useNoteCrud({
       title: noteTitle,
       folder,
       content: { title: noteTitle, blocks: [{ id: firstBlockId, type: "p", text: "" }] },
+      ...(isPhone && openIt && !noteTitle && { _draft: true }),
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
     // A note made inside a folder (the row's New note, or New note from

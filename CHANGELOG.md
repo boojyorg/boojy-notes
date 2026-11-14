@@ -16,6 +16,7 @@
 - **Changing the interface size no longer makes the note jump** — With ⌘+ or ⌘− (or the control in Settings), the note's text used to jump to one side and then slide back to the middle. It now lands in place at once.
 - **The window's red, yellow and green buttons stay in line with "Notes" at every interface size** — On a Mac, at any size but 100%, the three buttons stood under the Notes wordmark (smaller sizes) or above and well left of it (larger ones). They now move with the row as you change the size, and the wordmark keeps a steady gap after them that grows a little with the interface.
 - **The phone's Home no longer greys the note you last opened** — Its row in the list kept a grey background, which looked like a press that had never let go. Every row on Home now looks the same until you touch one.
+- **On the phone, New note leaves nothing behind if you don't type** — Tapping New note and going back without writing anything used to leave an empty note called Untitled in the list. The note is now kept only once it has its first character, in its name or its text.
 
 ## v0.22.0 — 2026-11-09
 
