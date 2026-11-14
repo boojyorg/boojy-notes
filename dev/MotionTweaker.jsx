@@ -28,7 +28,15 @@ const DEFAULTS = {
   rise: RISE_PX,
   press: PRESS_ICON_SCALE,
   slow: 1,
+  // The wordmark's hover (GlobalStyles' fallbacks): an experiment, not yet a token.
+  litSat: 1.6,
+  litBright: 1.1,
 };
+/** The two hovers to compare on the wordmark's N. */
+const LIT_PRESETS = [
+  { label: "Stronger", litSat: 1.6, litBright: 1.1 },
+  { label: "Phone's press", litSat: 1.35, litBright: 1.04 },
+];
 const CONTROLS = [
   { key: "enter", label: "Arrive", min: 40, max: 320, step: 10, unit: "ms" },
   { key: "exit", label: "Leave", min: 30, max: 240, step: 10, unit: "ms" },
@@ -38,6 +46,8 @@ const CONTROLS = [
   { key: "rise", label: "Toast lifts", min: 0, max: 20, step: 1, unit: "px" },
   { key: "press", label: "Icon dips to", min: 0.8, max: 1, step: 0.01, unit: "" },
   { key: "slow", label: "Slow motion", min: 1, max: 10, step: 1, unit: "×" },
+  { key: "litSat", label: "Wordmark N: saturate", min: 1, max: 2.5, step: 0.05, unit: "" },
+  { key: "litBright", label: "Wordmark N: brightness", min: 1, max: 1.4, step: 0.01, unit: "" },
 ];
 
 function load() {
@@ -57,6 +67,8 @@ function apply(v) {
   root.setProperty("--pop-from", String(v.popFrom));
   root.setProperty("--rise", `${v.rise}px`);
   root.setProperty("--press-icon-scale", String(v.press));
+  root.setProperty("--wordmark-lit-saturate", String(v.litSat));
+  root.setProperty("--wordmark-lit-brightness", String(v.litBright));
 }
 
 const panel = {
@@ -110,6 +122,7 @@ export default function MotionTweaker() {
         `export const POP_SCALE_FROM = ${values.popFrom};`,
         `export const RISE_PX = ${values.rise};`,
         `export const PRESS_ICON_SCALE = ${values.press};`,
+        `// wordmark hover: saturate(${values.litSat}) brightness(${values.litBright})`,
         "",
       ].join("\n"),
     );
@@ -168,6 +181,23 @@ export default function MotionTweaker() {
           />
         </label>
       ))}
+      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+        {LIT_PRESETS.map(({ label, litSat, litBright }) => (
+          <button
+            key={label}
+            type="button"
+            style={{
+              ...btn,
+              flexGrow: 1,
+              borderColor:
+                values.litSat === litSat && values.litBright === litBright ? "#9CC9CE" : "#444",
+            }}
+            onClick={() => setValues((v) => ({ ...v, litSat, litBright }))}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div style={{ color: "#888", marginTop: 4 }}>
         Open a menu, dialog or toast after moving a slider. Slow motion is never copied. Teal =
         changed from motion.js.
