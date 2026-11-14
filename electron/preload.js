@@ -174,6 +174,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setWindowTitle: (title) => ipcRenderer.send("set-window-title", title),
   // macOS full screen hides the traffic lights; the renderer drops the inset
   // that clears them while it is on. One answer at mount, then every edge.
+  // The traffic lights do not scale with the interface size: the window says
+  // what it is drawn at (1 is 100%) and they move to its row's middle.
+  setChromeScale: (scale) => ipcRenderer.send("set-chrome-scale", scale),
   isFullScreen: () => ipcRenderer.invoke("is-full-screen"),
   onFullScreenChanged: subscribe("full-screen-changed"),
 

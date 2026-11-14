@@ -235,6 +235,8 @@ declare global {
 
       // Window
       setWindowTitle: (title: string) => void;
+      /** The interface size as a factor (1 is 100%), so the traffic lights follow their row. */
+      setChromeScale: (scale: number) => void;
       /** Whether the window is in macOS full screen now (the traffic lights are hidden). */
       isFullScreen: () => Promise<boolean>;
       /** Every enter or leave of full screen after `isFullScreen` answered. */

@@ -11,7 +11,9 @@ import {
   SIDEBAR_MAX_W,
   WINDOW_MIN_W,
   WORDMARK_W,
+  sidebarMinFor,
   sidebarWidthFor,
+  trafficInset,
 } from "../../src/constants/layout";
 
 // The sidebar yields before the note does: what is drawn is the dragged
@@ -47,5 +49,27 @@ describe("sidebarWidthFor", () => {
       MAC_TRAFFIC_INSET + WORDMARK_W + 2 * CHROME_BTN + BTN_GAP + HEADER_RIGHT_INSET,
     );
     expect(SIDEBAR_MIN_W).toBeGreaterThan(SIDEBAR_HEADER_W);
+  });
+
+  // The traffic lights are the system's and keep their size (they end 75px
+  // in), so the room they take is one distance on screen; the air after them
+  // is the app's, so it grows with the interface and never shrinks below 100%'s.
+  it("clears the traffic lights by air that grows with the scale and never shrinks", () => {
+    const air = MAC_TRAFFIC_INSET - 75;
+    for (const scale of [0.5, 0.8, 1]) {
+      expect(trafficInset(scale) * scale).toBeCloseTo(75 + air);
+    }
+    for (const scale of [1.5, 2]) {
+      expect(trafficInset(scale) * scale).toBeCloseTo(75 + air * scale);
+    }
+    expect(trafficInset()).toBe(MAC_TRAFFIC_INSET);
+  });
+
+  it("widens the sidebar's minimum by what the inset takes below 100%, never narrows it", () => {
+    expect(sidebarMinFor(1)).toBe(SIDEBAR_MIN_W);
+    expect(sidebarMinFor(0.5)).toBe(SIDEBAR_MIN_W + MAC_TRAFFIC_INSET);
+    expect(sidebarMinFor(2)).toBe(SIDEBAR_MIN_W);
+    // The drawn width honours the minimum it is given.
+    expect(sidebarWidthFor(SIDEBAR_MIN_W, 1200, sidebarMinFor(0.5))).toBe(sidebarMinFor(0.5));
   });
 });

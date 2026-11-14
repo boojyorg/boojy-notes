@@ -56,7 +56,7 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 
 - The window is shown on `ready-to-show` (else an empty canvas). `first-paint.spec.ts`.
 - **No title bar** (`hiddenInset`); the traffic lights sit in the sidebar header. In full screen
-  they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone. **Full
+  they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone. At any scale they keep to the row (`trafficLightsAt`). **Full
   screen's strip has no window title but a centred label of its own** (`fullScreenTitle.ts`,
   through undocumented AppKit: check it after each macOS update).
 - **Windows and Linux: `WindowStrip` above the Mac's row** (`hasWindowStrip`): File, Edit,
@@ -100,8 +100,8 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   never a transform (it would contain the `fixed` children). A menu inside it passes
   `overSettings` (else it stacks under the pane) and owns Escape; the scale keys are the one
   shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
-- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale`). What eases from it is
-  `scale-fit`: a scale change lands it at once.
+- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale`); `scale-fit` never eases
+  its change.
 - **One zoom system**: the app's UI scale, a size up on the phone (`drawnScale`); `main.js`
   resets Chromium's on `dom-ready`. A scale key answers with `UiScaleChip`.
 - **First-run setup** (`SetupDialog`): every way out saves the choice and never shows again;
@@ -166,8 +166,8 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 - The wordmark opens Settings; per theme (`dev/wordmarks.sh`), never the master PNG; hovered,
   its N alone lights (`litMark`). `chrome-tooltips.spec.ts`.
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
-  note's title starts where a folder at its depth puts its glyph; with no traffic
-  lights before it, the wordmark starts on the column's spine.
+  note's title starts where a folder at its depth puts its glyph; the wordmark
+  starts on the spine, or past the lights.
 - The active note is never bold or accent. Only structure and actions get a glyph. An unnamed
   note reads `Untitled` muted.
 - Row controls (note ···, folder New note + ···) are zero-width at rest and `span

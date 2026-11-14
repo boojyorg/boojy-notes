@@ -10,7 +10,7 @@ import {
 } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout, useSourceView } from "../context/LayoutContext";
-import { useSettings } from "../context/SettingsContext";
+import { useDrawnScale, useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
 import { isPhone, isWeb } from "../utils/platform";
@@ -314,6 +314,7 @@ const EditorArea = memo(
       [setBlockSelection],
     );
     const { accentColor, sidebarVisible, sidebarWidth, fullScreen } = useLayout();
+    const drawnScale = useDrawnScale();
     const [sourceView, setSourceView] = useSourceView(activeNote);
 
     // Find bar state
@@ -1796,6 +1797,7 @@ const EditorArea = memo(
             rightControlsW={fileView?.controlsWidth ?? 0}
             collapsed={!sidebarVisible}
             fullScreen={fullScreen}
+            scale={drawnScale}
             bg={theme.BG.editor}
             activeNote={activeNote}
             onOpenNote={openNoteProp}
