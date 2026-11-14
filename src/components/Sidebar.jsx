@@ -81,10 +81,11 @@ import { baseName, parentFolder } from "../utils/vaultPath";
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.
 /** Left inset of the wordmark from the sidebar edge (web and full screen;
- *  MAC_TRAFFIC_INSET otherwise). The right inset, the wordmark's size and the
- *  control box live in constants/layout.js, because the sidebar's minimum
- *  width is derived from what this row holds. */
-const HEADER_LEFT_INSET = 12;
+ *  MAC_TRAFFIC_INSET otherwise): the column's spine, so the N's straight side
+ *  stands on the line New note and the rows start on. The right inset, the
+ *  wordmark's size and the control box live in constants/layout.js, because
+ *  the sidebar's minimum width is derived from what this row holds. */
+const HEADER_LEFT_INSET = SPINE + SIDEBAR_TREE_INSET;
 /** Optical drop for the whole header row (wordmark + toggle together). */
 const HEADER_NUDGE = 4;
 
@@ -228,7 +229,10 @@ const SECTION_HEADER_RIGHT = 5;
  *  phone has no such row (its New folder and Sort are HomeMenu's). */
 const SECTION_BTN = 32;
 const SECTION_GLYPH = 16;
-const SECTION_CONTENT_GAP = 2;
+/** Air between the Notes row and its first row. The controls' box is taller
+ *  than the row and overhangs it by 2px, so this is that overhang plus the
+ *  tree's own 2px gap: at 2 a hovered box touched the first row's pill. */
+const SECTION_CONTENT_GAP = 4;
 // Header controls (New folder, Sort) are hidden at rest and revealed, muted,
 // while the pointer is on the Notes row or a keyboard focus is in it, lifting
 // to full ink on their own hover; the pair is held while the Sort menu is open.
