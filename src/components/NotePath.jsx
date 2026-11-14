@@ -175,6 +175,7 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
  * @param {string} props.name the note's title as state holds it (for measurement)
  * @param {boolean} props.collapsed whether the sidebar is hidden
  * @param {boolean} props.fullScreen macOS full screen (no traffic lights)
+ * @param {number} [props.scale] the interface size as a factor (`useDrawnScale`)
  * @param {string} props.bg the editor's ground, painted so the note scrolls under the row
  * @param {string | null} [props.activeNote] the open note's id, marked in the popup
  * @param {(id: string) => void} [props.onOpenNote] opens a note chosen in the popup
@@ -190,6 +191,7 @@ export default function NotePath({
   name,
   collapsed,
   fullScreen,
+  scale = 1,
   bg,
   activeNote = null,
   onOpenNote,
@@ -251,7 +253,7 @@ export default function NotePath({
     return () => document.documentElement.classList.remove("popup-open");
   }, [menu]);
 
-  const padLeft = chromePathInset(collapsed, fullScreen);
+  const padLeft = chromePathInset(collapsed, fullScreen, scale);
   const padRight = chromePathRightInset(rightControlsW);
   // The band sits inside the scroller, whose scrollbar lane (none on the
   // phone, whose bar is drawn over the content) is always kept at
@@ -379,7 +381,7 @@ export default function NotePath({
           style={{
             position: "absolute",
             top: CHROME_TOP,
-            left: historyLeft(collapsed, fullScreen),
+            left: historyLeft(collapsed, fullScreen, scale),
             display: "flex",
             transition: glide("left"),
           }}

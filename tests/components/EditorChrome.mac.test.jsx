@@ -71,6 +71,13 @@ describe("EditorChrome on macOS with the sidebar hidden", () => {
     const group = getByLabelText("Toggle sidebar").parentElement.parentElement;
     expect(Number.parseInt(group.style.left, 10)).toBe(MAC_TRAFFIC_INSET);
     expect(chromeControlsLeft(true)).toBe(MAC_TRAFFIC_INSET);
+    // The lights keep their size on screen, so at half scale the inset doubles
+    // in the app's own pixels, and the path's band moves with it. Above 100%
+    // only the lights' room shrinks; the air after them is the app's.
+    expect(chromeControlsLeft(true, false, 2)).toBe(75 / 2 + (MAC_TRAFFIC_INSET - 75));
+    expect(chromeControlsLeft(true, false, 0.5)).toBe(MAC_TRAFFIC_INSET * 2);
+    expect(chromePathInset(true, false, 0.5) - chromePathInset(true)).toBe(MAC_TRAFFIC_INSET);
+    expect(chromeControlsLeft(false, false, 0.5)).toBe(chromeControlsLeft(false));
 
     // Three controls, and the path's band starts past the last of them.
     for (const t of ["Toggle sidebar", "Search notes", "New note"]) {

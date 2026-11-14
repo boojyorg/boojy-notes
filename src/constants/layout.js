@@ -37,9 +37,23 @@ export const SCROLLBAR_W = 12;
  * Left inset that clears the macOS traffic lights: x:14, three 14px lights on
  * a 23px pitch on macOS 26 (they end at 75px), then breathing room. Shared by
  * the sidebar header's wordmark and the collapsed control group. Pairs with
- * trafficLightPosition in electron/main.js. Judge it at 100% only.
+ * `trafficLightsAt` in electron/trafficLights.ts. This is the figure at 100%;
+ * at any other interface size ask `trafficInset`.
  */
-export const MAC_TRAFFIC_INSET = 82;
+export const MAC_TRAFFIC_INSET = 84;
+/** Where the lights end, from the window's left edge, in screen pixels. */
+const MAC_LIGHTS_END = 75;
+/**
+ * That inset at an interface size (`scale`: 1 is 100%), in the app's own
+ * pixels. It is two things. The lights are the system's and stay one size on
+ * screen, so the room they take is divided by the scale. The air after them
+ * is the app's own and grows with it: beside a large wordmark the 100% gap
+ * read as touching. It never shrinks below what 100% has, so a small wordmark
+ * keeps clear too.
+ * @param {number} [scale]
+ */
+export const trafficInset = (scale = 1) =>
+  MAC_LIGHTS_END / scale + (MAC_TRAFFIC_INSET - MAC_LIGHTS_END) * Math.max(1, 1 / scale);
 /** Breathing room between the header's last control and the sidebar divider. */
 export const HEADER_RIGHT_INSET = 6;
 /** The wordmark's drawn height in the sidebar header (a label, not a headline:
@@ -65,6 +79,14 @@ export const HEADER_AIR = 2;
  * control to the row and the minimum follows.
  */
 export const SIDEBAR_MIN_W = SIDEBAR_HEADER_W + HEADER_AIR;
+/**
+ * The sidebar's minimum beside the traffic lights at an interface size: below
+ * 100% the inset that clears them takes more of the header (`trafficInset`),
+ * and the row must still hold its toggle. Never under the 100% minimum.
+ * @param {number} [scale]
+ */
+export const sidebarMinFor = (scale = 1) =>
+  SIDEBAR_MIN_W + Math.max(0, trafficInset(scale) - MAC_TRAFFIC_INSET);
 
 /** Widest the sidebar can be dragged. */
 export const SIDEBAR_MAX_W = 400;
@@ -103,9 +125,10 @@ export const WINDOW_MIN_W = SIDEBAR_MIN_W + SIDEBAR_HANDLE_W + EDITOR_FLOOR_W;
  * the window gives the dragged width back.
  * @param {number} preference the dragged width
  * @param {number} windowWidth `window.innerWidth`
+ * @param {number} [min] the sidebar's minimum (`sidebarMinFor`)
  */
-export const sidebarWidthFor = (preference, windowWidth) =>
-  Math.max(SIDEBAR_MIN_W, Math.min(preference, windowWidth - SIDEBAR_HANDLE_W - EDITOR_FLOOR_W));
+export const sidebarWidthFor = (preference, windowWidth, min = SIDEBAR_MIN_W) =>
+  Math.max(min, Math.min(preference, windowWidth - SIDEBAR_HANDLE_W - EDITOR_FLOOR_W));
 
 /**
  * First-run width. Not persisted, so this is what every reload lands on —

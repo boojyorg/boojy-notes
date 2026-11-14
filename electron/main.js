@@ -37,6 +37,7 @@ import {
   watchMenuSpelling,
 } from "./spelling.js";
 import { hideFullScreenTitle, setFullScreenTitle, showFullScreenTitle } from "./fullScreenTitle.js";
+import { trafficLightsAt } from "./trafficLights.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -91,11 +92,10 @@ function createWindow() {
     ...(isMac
       ? {}
       : { titleBarOverlay: { color: "#FFFFFF", symbolColor: "#14110F", height: WINDOW_STRIP_H } }),
-    // The lights share the sidebar header row, whose wordmark centres at
-    // ~25px. macOS 26 draws each light 14px across, so y = 25 - 7.
-    // x pairs with MAC_TRAFFIC_INSET in EditorChrome.jsx — move one, re-judge
-    // the other, and only at 100% (View has no zoom, see below).
-    trafficLightPosition: { x: 14, y: 18 },
+    // The lights share the sidebar header row. Here for 100%; the window
+    // reports its interface size once it has loaded and they follow the row
+    // (`set-chrome-scale`, trafficLights.ts).
+    trafficLightPosition: trafficLightsAt(1),
     // First-paint ground before React takes over. DAY's BG.darkest — light is
     // the default theme; a NIGHT user gets one brief light flash at launch
     // until the renderer can report its saved theme back (not wired up).

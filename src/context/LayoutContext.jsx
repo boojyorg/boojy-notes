@@ -11,7 +11,15 @@ import { useTheme } from "../hooks/useTheme";
 import { usePanelResize } from "../hooks/usePanelResize";
 import { useFullScreen } from "../hooks/useFullScreen";
 import { useWindowWidth } from "../hooks/useWindowWidth";
-import { SIDEBAR_DEFAULT_W, SIDEBAR_MAX_W, sidebarWidthFor } from "../constants/layout";
+import {
+  SIDEBAR_DEFAULT_W,
+  SIDEBAR_MAX_W,
+  SIDEBAR_MIN_W,
+  sidebarMinFor,
+  sidebarWidthFor,
+} from "../constants/layout";
+import { isElectronMac } from "../utils/platform";
+import { useDrawnScale } from "./SettingsContext";
 import {
   readMarkdownViewNotes,
   withMarkdownView,
@@ -34,8 +42,7 @@ export function LayoutProvider({ children }) {
    */
   const [sidebarPrefWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_W);
   const windowWidth = useWindowWidth();
-  const sidebarWidth = sidebarWidthFor(sidebarPrefWidth, windowWidth);
-  const sidebarMaxWidth = sidebarWidthFor(SIDEBAR_MAX_W, windowWidth);
+  const drawnScale = useDrawnScale();
   const accentColor = theme.ACCENT.primary; // marks and fills
 
   /**
@@ -44,6 +51,11 @@ export function LayoutProvider({ children }) {
    * them) moves back to the ordinary inset. Only the window writes it.
    */
   const fullScreen = useFullScreen();
+  // Beside the traffic lights the header's inset grows as the interface size
+  // shrinks, so the sidebar's minimum does too (`sidebarMinFor`).
+  const sidebarMinWidth = isElectronMac && !fullScreen ? sidebarMinFor(drawnScale) : SIDEBAR_MIN_W;
+  const sidebarWidth = sidebarWidthFor(sidebarPrefWidth, windowWidth, sidebarMinWidth);
+  const sidebarMaxWidth = sidebarWidthFor(SIDEBAR_MAX_W, windowWidth, sidebarMinWidth);
 
   /*
    * The sidebar is either in the layout or hidden, and only the user decides
@@ -84,6 +96,7 @@ export function LayoutProvider({ children }) {
   const { isDragging, startDrag } = usePanelResize({
     sidebarHandles,
     setSidebarWidth,
+    minWidth: sidebarMinWidth,
     maxWidth: sidebarMaxWidth,
     handleActiveBg: theme.sidebarHandle.active,
     handleHoverBg: theme.sidebarHandle.hover,

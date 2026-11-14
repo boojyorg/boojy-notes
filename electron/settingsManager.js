@@ -3,6 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { autoUpdater } from "electron-updater";
 import { writeFileAtomic } from "./atomicWrite.js";
+import { trafficLightsAt } from "./trafficLights.js";
 import {
   forgetVault,
   isKnownVault,
@@ -246,6 +247,14 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
   ipcMain.on("set-window-title", (_, title) => {
     const win = getMainWindow();
     if (win && !win.isFullScreen()) win.setTitle(title);
+  });
+
+  // The interface size the window is drawn at, as a factor: the traffic
+  // lights are the system's and do not scale, so they are moved to the middle
+  // of the row they share at that size.
+  ipcMain.on("set-chrome-scale", (_, scale) => {
+    if (process.platform !== "darwin") return;
+    getMainWindow()?.setWindowButtonPosition(trafficLightsAt(scale));
   });
 
   // Whether the window is in (macOS) full screen right now; main.js sends

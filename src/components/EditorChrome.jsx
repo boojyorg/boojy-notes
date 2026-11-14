@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { useLayout, useSourceView } from "../context/LayoutContext";
+import { useDrawnScale } from "../context/SettingsContext";
 import {
   SidebarToggleIcon,
   MoreHorizontalIcon,
@@ -16,7 +17,7 @@ import DeletedNoteButton from "./DeletedNoteButton";
 import FileControls from "./FileControls";
 import { hasWindowStrip, isElectronMac, isMac, isPhone } from "../utils/platform";
 import { WINDOW_STRIP_H as STRIP_H } from "../constants/layout";
-import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET, TOUCH } from "../constants/layout";
+import { BTN_GAP, CHROME_BTN, TOUCH, trafficInset } from "../constants/layout";
 import { PANEL_MS } from "../tokens/motion";
 import { STATUS_BAR_H } from "../utils/uiScale";
 import { Tooltip, shortcutLabel, useTooltip } from "./Tooltip";
@@ -72,6 +73,7 @@ export {
   CHROME_BTN,
   BTN_GAP,
   MAC_TRAFFIC_INSET,
+  trafficInset,
   SIDEBAR_HANDLE_W,
 } from "../constants/layout";
 import { fromTouch } from "../utils/touch";
@@ -103,9 +105,11 @@ const TRIO_FADE_MS = PANEL_MS / 2;
  * Collapsed that edge is the viewport's, and on macOS the group starts right
  * of the traffic lights (unless full screen has hidden them); expanded the
  * sidebar holds the corner and the group takes the editor's own inset.
+ * `scale` is the interface size as a factor (`useDrawnScale`): the lights
+ * keep their size on screen, so the inset that clears them is divided by it.
  */
-export const chromeControlsLeft = (collapsed, fullScreen = false) =>
-  collapsed && trafficLightsShown(fullScreen) ? MAC_TRAFFIC_INSET : CHROME_INSET;
+export const chromeControlsLeft = (collapsed, fullScreen = false, scale = 1) =>
+  collapsed && trafficLightsShown(fullScreen) ? trafficInset(scale) : CHROME_INSET;
 
 /**
  * Where the path's band begins, measured from the editor's left edge: past
@@ -114,16 +118,16 @@ export const chromeControlsLeft = (collapsed, fullScreen = false) =>
  * name. Keep this beside the group it measures — the two must move
  * together.
  */
-export const chromePathInset = (collapsed, fullScreen = false) =>
-  historyLeft(collapsed, fullScreen) + HISTORY_GROUP * CHROME_BOX + PATH_AIR;
+export const chromePathInset = (collapsed, fullScreen = false, scale = 1) =>
+  historyLeft(collapsed, fullScreen, scale) + HISTORY_GROUP * CHROME_BOX + PATH_AIR;
 
 /**
  * Where Back and Forward begin, from the editor's left edge: after the
  * collapsed trio, else at the editor's own inset. On the phone, which has
  * none, the end of the left group, so the path's inset is the group's alone.
  */
-export const historyLeft = (collapsed, fullScreen = false) =>
-  chromeControlsLeft(collapsed, fullScreen) +
+export const historyLeft = (collapsed, fullScreen = false, scale = 1) =>
+  chromeControlsLeft(collapsed, fullScreen, scale) +
   (collapsed ? groupWidth(LEFT_GROUP) + (HISTORY_GROUP ? BTN_GAP : 0) : 0);
 
 /**
@@ -291,6 +295,7 @@ export default function EditorChrome({
   fileView = null,
 }) {
   const { sidebarVisible, fullScreen, toggleSidebar, revealSidebar } = useLayout();
+  const drawnScale = useDrawnScale();
   const [sourceView] = useSourceView(activeNote);
   const { theme } = useTheme();
   const collapsed = !sidebarVisible;
@@ -298,7 +303,7 @@ export default function EditorChrome({
   // The left controls belong to the editor, so they start at its left edge,
   // which collapsed is the viewport's. An expanded sidebar leaves the
   // editor's side of the row empty.
-  const trioLeft = chromeControlsLeft(true, fullScreen);
+  const trioLeft = chromeControlsLeft(true, fullScreen, drawnScale);
 
   return (
     <>
