@@ -144,5 +144,20 @@ describe("LayoutContext sidebar presentation", () => {
       act(() => layout.revealSidebar());
       expect(layout.sidebarVisible).toBe(true);
     });
+
+    it("calls made before a render each see the one before", () => {
+      renderLayout(1200);
+      // Hidden then shown in one tick ends shown; two toggles end where they began.
+      act(() => {
+        layout.hideSidebar();
+        layout.revealSidebar();
+      });
+      expect(layout.sidebarVisible).toBe(true);
+      act(() => {
+        layout.toggleSidebar();
+        layout.toggleSidebar();
+      });
+      expect(layout.sidebarVisible).toBe(true);
+    });
   });
 });

@@ -19,6 +19,7 @@ import {
   sidebarWidthFor,
 } from "../constants/layout";
 import { isElectronMac } from "../utils/platform";
+import { switchScreen } from "../phone/screenMotion";
 import { useDrawnScale } from "./SettingsContext";
 import {
   readMarkdownViewNotes,
@@ -67,13 +68,28 @@ export function LayoutProvider({ children }) {
    */
   const sidebarVisible = !collapsed;
 
-  const toggleSidebar = useCallback(() => setCollapsed((c) => !c), []);
+  const collapsedRef = useRef(collapsed);
+  collapsedRef.current = collapsed;
+  /**
+   * The one writer of `collapsed`. On the phone the two are screens, and a
+   * change of screen moves (`switchScreen`); the ref is written here too, so
+   * a second call before the render sees the screen the first one asked for.
+   */
+  const showScreen = useCallback((hide, motion = true) => {
+    if (collapsedRef.current === hide) return;
+    collapsedRef.current = hide;
+    switchScreen(hide ? "note" : "home", () => setCollapsed(hide), motion);
+  }, []);
+  const toggleSidebar = useCallback(() => showScreen(!collapsedRef.current), [showScreen]);
 
   /** Make the sidebar visible without toggling it away if it already is. */
-  const revealSidebar = useCallback(() => setCollapsed(false), []);
+  const revealSidebar = useCallback(() => showScreen(false), [showScreen]);
 
-  /** The phone's other screen: the note, with Home (the sidebar) put away. */
-  const hideSidebar = useCallback(() => setCollapsed(true), []);
+  /**
+   * The phone's other screen: the note, with Home (the sidebar) put away.
+   * `{ motion: false }` puts it back without the move (a launch's restore).
+   */
+  const hideSidebar = useCallback((opts) => showScreen(true, opts?.motion !== false), [showScreen]);
 
   /**
    * The Markdown view (SourceView): the note shown as its file. Per note, and

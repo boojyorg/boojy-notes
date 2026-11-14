@@ -218,12 +218,11 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 
 - **No touch layout, no overlay sidebar** at any desktop width.
 - **The phone is Home (the sidebar, full width) or the note, never both**; else the desktop's
-  rules. Back is Escape first. Controls are `TOUCH` tall; nothing waits for or keeps hover
-  (`@media (hover: hover)`, `fromTouch`). The key bar sends menu commands; **a list item brings the list row** (✕ till it
-  leaves); in a field what can't act greys; **tap acts, hold explains** (no Markdown),
+  rules. A screen change moves a copy, timed apart (`switchScreen`). Back is Escape first. Controls are `TOUCH` tall; nothing waits for or keeps hover
+  (`fromTouch`). The key bar sends menu commands; **a list item brings the list row**; in a field what can't act greys; **tap acts, hold explains** (no Markdown),
   a held slide following (`keyBar.ts`). A block hold is felt once. **The top clears `STATUS_BAR_H`**.
-- **Home there**: the N (to the top), Search, ··· (`HomeMenu`: sync, New folder, Sort,
-  Settings). **New note is the one teal surface.** **Cards: the notes edited last**
+- **Home**: the N, Search, ··· (`HomeMenu`). No open
+  row (`phone-press.spec.ts`). **New note is the one teal surface.** **Cards: the notes edited last**
   (`recentCards.ts`), at any sort. **Settings: locations, ticked at the press** (`PhoneSettings`).
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`). **A line is at
   most `rhythm.measure` ems**, centred under the name; margins go first, then gutters.

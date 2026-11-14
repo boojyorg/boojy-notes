@@ -7,8 +7,16 @@ import {
   tagPillGround,
 } from "../styles/tagPill";
 import { CHROME_BTN, LABEL_PAD_X, MENU_PAD, SCROLLBAR_W, TOUCH } from "../constants/layout";
+import { Z } from "../constants/zIndex";
 import { CHROME_TOP } from "./EditorChrome";
-import { MOTION_VARS } from "../tokens/motion";
+import {
+  EASE_EXIT,
+  MOTION_VARS,
+  PANEL_EASE,
+  SCREEN_IN_MS,
+  SCREEN_OUT_MS,
+  SCREEN_SHIFT,
+} from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
 import { fontStack } from "../tokens/typography";
 import { bandFill, withAlpha } from "../utils/selectionBand";
@@ -67,6 +75,19 @@ export default function GlobalStyles() {
         @keyframes motion-pop-in { from { opacity: 0; scale: var(--pop-from); } }
         @keyframes motion-rise-in { from { opacity: 0; translate: 0 var(--rise); } }
         @keyframes motion-fade-in { from { opacity: 0; } }
+        /* The phone's two screens (phone/screenMotion.ts), on times of their own:
+           the app arrives as the note over a copy of Home that holds still,
+           and a copy of the note leaves over Home. The arrival fills
+           backwards only, so the app is left with no transform. */
+        @keyframes screen-in { from { opacity: 0; transform: translateX(${SCREEN_SHIFT}); } }
+        @keyframes screen-out { to { opacity: 0; transform: translateX(${SCREEN_SHIFT}); } }
+        .screen-ghost { position: fixed; top: 0; left: 0; width: 100%; pointer-events: none; }
+        .screen-ghost.screen-under { z-index: -1; }
+        .screen-ghost.screen-out {
+          z-index: ${Z.OVERLAY};
+          animation: screen-out ${SCREEN_OUT_MS}ms ${EASE_EXIT} both;
+        }
+        #root.screen-in { animation: screen-in ${SCREEN_IN_MS}ms ${PANEL_EASE} backwards; }
         @keyframes motion-glyph-in { from { opacity: 0; scale: 0.6; } }
         @keyframes motion-pop-out { to { opacity: 0; scale: 0.97; } }
         @keyframes motion-rise-out { to { opacity: 0; translate: 0 5px; } }
@@ -264,15 +285,23 @@ export default function GlobalStyles() {
           transition: color var(--motion-fast);
         }
         .sidebar-folder-action:hover { color: ${theme.TEXT.primary}; }
-        /* The sidebar's rows: the neutral pill on hover and while held (the
-           open note, a selection, a row whose menu is up: .is-held); ink
-           lifts to primary on hover where the row's label is muted
-           (.lift-ink). A drag's drop paint is inline, so it still wins. */
+        /* The sidebar's rows: the neutral pill on hover, while held (a
+           selection, a row whose menu is up: .is-held) and on what is open
+           beside the list (.is-open), which also takes the primary ink (its
+           row sets no ink of its own); ink lifts to primary on hover where
+           the row's label is muted (.lift-ink). A drag's drop paint is
+           inline, so it still wins. The phone's Home has nothing open beside
+           it, so .is-open marks no row there, by pill or by ink: the grey
+           would read as a press held. */
         .sidebar-row {
           background-color: transparent;
           transition: background-color var(--motion-fast), color var(--motion-fast);
         }
-        .sidebar-row:hover, .sidebar-row.is-held { background-color: ${theme.BG.hover}; }
+        .sidebar-row:hover, .sidebar-row.is-held, :where(html:not(.is-phone)) .sidebar-row.is-open {
+          background-color: ${theme.BG.hover};
+        }
+        .sidebar-row.is-open { color: ${theme.TEXT.secondary}; }
+        :where(html:not(.is-phone)) .sidebar-row.is-open { color: ${theme.TEXT.primary}; }
         .sidebar-row.lift-ink:hover, .sidebar-row.lift-ink.is-held { color: ${theme.TEXT.primary}; }
         /* A row renaming stands down: no pill under the field, however it is
            hovered, active or selected, and no trailing actions, whose only

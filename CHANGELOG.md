@@ -5,6 +5,7 @@
 ### Improvements
 
 - **The phone's Home has one top row** — The row under it, with the storage location's name, New folder and Sort, is gone, so a line more of your notes fits. Its controls are in one menu under the ··· at the top right, which replaces the cog: the location's name with how sync is (tap it to sync now, or to sign in again when that is what's wrong; the arrows turn while it works and end in a tick), New folder, the two sort orders, and Settings. A dot on the ··· means sync needs you. The N no longer opens Settings; tapping it takes the list back to its top, and changing storage location is done in Settings alone.
+- **The phone moves between Home and a note** — Opening a note now slides it in from the right over Home, and going back sends it out the way it came, quicker. The two screens used to swap in an instant. With Android's Remove animations setting on, they still do.
 - **Hovering "Notes" lights its N** — Resting the pointer anywhere on the Notes wordmark at the top of the sidebar now makes its teal N a little richer and brighter, and leaves the rest of the word as it is. The whole word used to fade instead, which made it look less like something to click. A click anywhere on the word still opens Settings.
 - **New app icon** — The icon is now the teal N by itself on its light tile, softly shaded, so it reads at a glance in the Dock, on the taskbar and on the phone's home screen, where the word "Notes" had become too small to read. The N in the sidebar's "Notes" and on the phone's Home has the same shading.
 
@@ -14,6 +15,7 @@
 - **New folder and Sort no longer touch the first note** — Their highlight, when you point at them, used to meet the top of the first row in the list. The list now starts a little lower.
 - **Changing the interface size no longer makes the note jump** — With ⌘+ or ⌘− (or the control in Settings), the note's text used to jump to one side and then slide back to the middle. It now lands in place at once.
 - **The window's red, yellow and green buttons stay in line with "Notes" at every interface size** — On a Mac, at any size but 100%, the three buttons stood under the Notes wordmark (smaller sizes) or above and well left of it (larger ones). They now move with the row as you change the size, and the wordmark keeps a steady gap after them that grows a little with the interface.
+- **The phone's Home no longer greys the note you last opened** — Its row in the list kept a grey background, which looked like a press that had never let go. Every row on Home now looks the same until you touch one.
 - **On the phone, New note leaves nothing behind if you don't type** — Tapping New note and going back without writing anything used to leave an empty note called Untitled in the list. The note is now kept only once it has its first character, in its name or its text.
 
 ## v0.22.0 — 2026-11-09
