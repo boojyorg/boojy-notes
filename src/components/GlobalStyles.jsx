@@ -50,6 +50,8 @@ export default function GlobalStyles() {
           to { opacity: 1; }
         }
         .sidebar-dragging *, .window-resizing * { transition: none !important; }
+        /* A scale change (applyUiScale): only what is laid out from the scale. */
+        .scale-changing .scale-fit { transition: none !important; }
         /* While the divider is dragged nothing else answers the pointer: a row
            or button passed over would light up as if it could be pressed. The
            drag itself listens on the window, and body keeps the cursor. */

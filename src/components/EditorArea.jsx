@@ -1829,7 +1829,7 @@ const EditorArea = memo(
           <div
             key={deletedNote ? `deleted:${deletedNote.item.id}` : activeNote}
             ref={columnRef}
-            className="panel-motion"
+            className="panel-motion scale-fit"
             onMouseDownCapture={selectFromGutter}
             style={{
               padding: `${columnTop(rhythm)}px ${colPad} 80px ${colPad}`,

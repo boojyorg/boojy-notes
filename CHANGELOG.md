@@ -8,6 +8,12 @@
 - **Hovering "Notes" lights its N** — Resting the pointer anywhere on the Notes wordmark at the top of the sidebar now makes its teal N a little richer and brighter, and leaves the rest of the word as it is. The whole word used to fade instead, which made it look less like something to click. A click anywhere on the word still opens Settings.
 - **New app icon** — The icon is now the teal N by itself on its light tile, softly shaded, so it reads at a glance in the Dock, on the taskbar and on the phone's home screen, where the word "Notes" had become too small to read. The N in the sidebar's "Notes" and on the phone's Home has the same shading.
 
+### Fixes
+
+- **"Notes" lines up with the list under it** — In full screen, and on Windows and Linux, the Notes wordmark at the top of the sidebar sat a little left of New note and the notes below it. Its N now stands on the same line.
+- **New folder and Sort no longer touch the first note** — Their highlight, when you point at them, used to meet the top of the first row in the list. The list now starts a little lower.
+- **Changing the interface size no longer makes the note jump** — With ⌘+ or ⌘− (or the control in Settings), the note's text used to jump to one side and then slide back to the middle. It now lands in place at once.
+
 ## v0.22.0 — 2026-11-09
 
 ### Improvements

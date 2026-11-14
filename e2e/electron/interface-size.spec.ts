@@ -13,7 +13,7 @@
  * storage on the next launch.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { MOD, SETTLE_MS, launchApp, sleep, type AppHandle } from "./harness";
+import { MOD, SETTLE_MS, launchApp, setWidth, settled, sleep, type AppHandle } from "./harness";
 
 const scale = (page: Page) => page.evaluate(() => document.documentElement.style.zoom);
 
@@ -295,6 +295,63 @@ test("a scale shortcut says what it did, the reset included, and goes by itself"
     await h.page.keyboard.press(`${MOD}+=`);
     await sleep(100);
     await expect(chip).toContainText("Interface size 200%");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a scale change lands the note's column in one frame, never easing to its place", async () => {
+  // With the app's motion on: under reduced motion the column never eases.
+  const h = await launchApp({ "Note.md": "One.\n" }, { motion: true });
+  try {
+    await h.openNote("Note");
+    // Wide enough that the column has margins to centre it.
+    await setWidth(h, 1400);
+    // The resize switches transitions off for a moment itself; wait that out.
+    await expect(h.page.locator("html")).not.toHaveClass(/window-resizing/);
+
+    // Every frame from here: the scale, and where the note's first line starts.
+    await h.page.evaluate(() => {
+      const frames: { zoom: string; left: number }[] = [];
+      const probe = window as unknown as { __frames: typeof frames; __stop?: boolean };
+      probe.__frames = frames;
+      const tick = () => {
+        if (probe.__stop) return;
+        const block = document.querySelector(".editor-scroll [data-block-id]");
+        if (block) {
+          frames.push({
+            zoom: document.documentElement.style.zoom,
+            left: block.getBoundingClientRect().left,
+          });
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+
+    await h.page.keyboard.press(`${MOD}+=`);
+    await expect.poll(() => scale(h.page)).toBe("110%");
+    await settled(h.page);
+    await sleep(300);
+
+    const frames = await h.page.evaluate(() => {
+      const probe = window as unknown as {
+        __frames: { zoom: string; left: number }[];
+        __stop?: boolean;
+      };
+      probe.__stop = true;
+      return probe.__frames;
+    });
+    const before = frames.filter((f) => f.zoom !== "110%").map((f) => f.left);
+    const lefts = frames.filter((f) => f.zoom === "110%").map((f) => f.left);
+    expect(before.length).toBeGreaterThan(0);
+    expect(lefts.length).toBeGreaterThan(5);
+    // The first frame at the new scale is already the resting place.
+    const resting = lefts[lefts.length - 1];
+    // And the scale did move the line: otherwise nothing here could have eased.
+    expect(Math.abs(resting - before[before.length - 1])).toBeGreaterThan(10);
+    for (const left of lefts) expect(Math.abs(left - resting)).toBeLessThan(1);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

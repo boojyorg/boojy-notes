@@ -432,7 +432,7 @@ export default function NotePath({
           minWidth: 0,
         }}
       >
-        <div style={spacer(-bias)} />
+        <div className="scale-fit" style={spacer(-bias)} />
         <div
           data-testid="note-path"
           style={{
@@ -476,7 +476,7 @@ export default function NotePath({
             {children}
           </span>
         </div>
-        <div style={spacer(bias)} />
+        <div className="scale-fit" style={spacer(bias)} />
         {menu && (
           <PathTreeMenu
             anchor={menu.anchor}
