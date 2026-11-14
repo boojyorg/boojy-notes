@@ -79,13 +79,12 @@ import { fromTouch } from "../utils/touch";
 import { baseName, parentFolder } from "../utils/vaultPath";
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
-// Tweakable in one place: wordmark left, panel toggle right near the divider.
-/** Left inset of the wordmark from the sidebar edge (web and full screen;
- *  MAC_TRAFFIC_INSET otherwise): the column's spine, so the N's straight side
- *  stands on the line New note and the rows start on. The right inset, the
- *  wordmark's size and the control box live in constants/layout.js, because
- *  the sidebar's minimum width is derived from what this row holds. */
-const HEADER_LEFT_INSET = SPINE + SIDEBAR_TREE_INSET;
+// Wordmark left, panel toggle right near the divider. Without traffic lights
+// (web, full screen, Windows, Linux) the wordmark starts on the column's spine
+// (TREE_SPINE), so the N's straight side stands on the line New note and the
+// rows start on; MAC_TRAFFIC_INSET otherwise. The right inset, the wordmark's
+// size and the control box live in constants/layout.js, because the sidebar's
+// minimum width is derived from what this row holds.
 /** Optical drop for the whole header row (wordmark + toggle together). */
 const HEADER_NUDGE = 4;
 
@@ -229,10 +228,10 @@ const SECTION_HEADER_RIGHT = 5;
  *  phone has no such row (its New folder and Sort are HomeMenu's). */
 const SECTION_BTN = 32;
 const SECTION_GLYPH = 16;
-/** Air between the Notes row and its first row. The controls' box is taller
- *  than the row and overhangs it by 2px, so this is that overhang plus the
- *  tree's own 2px gap: at 2 a hovered box touched the first row's pill. */
-const SECTION_CONTENT_GAP = 4;
+/** Air between the Notes row and its first row: the tree's own gap below the
+ *  controls' box, which is taller than the row and overhangs it. On the row's
+ *  gap alone a hovered box touched the first row's pill. */
+const SECTION_CONTENT_GAP = (SECTION_BTN - SECTION_HEADER_H) / 2 + TREE_ROW_GAP;
 // Header controls (New folder, Sort) are hidden at rest and revealed, muted,
 // while the pointer is on the Notes row or a keyboard focus is in it, lifting
 // to full ink on their own hover; the pair is held while the Sort menu is open.
@@ -1228,7 +1227,7 @@ const Sidebar = memo(function Sidebar({
             ? MAC_TRAFFIC_INSET
             : isPhone
               ? TREE_SPINE + 2
-              : HEADER_LEFT_INSET,
+              : TREE_SPINE,
           paddingRight: isPhone ? CHROME_INSET : HEADER_RIGHT_INSET,
           flexShrink: 0,
           WebkitAppRegion: isElectronMac ? "drag" : undefined,

@@ -53,17 +53,22 @@ export function initialUiScale(): number {
   return Number(localStorage.getItem(SCALE_KEY)) || SCALE_DEFAULT;
 }
 
+/** The pending end of `scale-changing`, so a second step restarts the wait. */
+let scaleSettling = 0;
+
 /**
  * Draw the app at `scale`. `--ui-scale` goes beside the zoom because `vw` and
  * `vh` are not divided by `zoom` (a `100vh` box is twice the window at 200%):
  * anything sized against the viewport divides by it (`atScale`).
  *
- * The zoom lands in one frame, so everything computed from the scale must too:
+ * The zoom lands in one frame, so what is laid out from the scale must too:
  * the note column's centring margin eases on the panel's clock, and left to
  * ease here the column stood at its new size on its old margin (a jump to one
- * side, then a slide back). `scale-changing` switches transitions off
- * (GlobalStyles) while the new styles are computed; reading a layout value
- * computes them now, so the class can go in the same task.
+ * side, then a slide back). `scale-changing` switches off the transitions of
+ * what is marked `scale-fit` (GlobalStyles), and only those: a sidebar
+ * mid-slide or a fold mid-way keeps its own. It is held for the whole of the
+ * next frame, because the path band re-measures itself in that frame's resize
+ * observers, after the styles from CSS are computed.
  */
 export function applyUiScale(scale: number) {
   const drawn = drawnScale(scale);
@@ -73,8 +78,11 @@ export function applyUiScale(scale: number) {
   root.zoom = `${drawn}%`;
   root.setProperty("--ui-scale", String(drawn / 100));
   root.minHeight = drawn !== 100 ? `${10000 / drawn}vh` : "";
-  void el.offsetWidth;
-  el.classList.remove("scale-changing");
+  // The first callback runs before that frame's styles; the second, before the next's.
+  cancelAnimationFrame(scaleSettling);
+  scaleSettling = requestAnimationFrame(() => {
+    scaleSettling = requestAnimationFrame(() => el.classList.remove("scale-changing"));
+  });
 }
 
 /** A whole percentage inside the range. */

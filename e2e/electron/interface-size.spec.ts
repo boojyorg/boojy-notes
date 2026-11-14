@@ -314,8 +314,10 @@ test("a scale change lands the note's column in one frame, never easing to its p
     // Every frame from here: the scale, and where the note's first line starts.
     await h.page.evaluate(() => {
       const frames: { zoom: string; left: number }[] = [];
-      (window as unknown as { __frames: typeof frames }).__frames = frames;
+      const probe = window as unknown as { __frames: typeof frames; __stop?: boolean };
+      probe.__frames = frames;
       const tick = () => {
+        if (probe.__stop) return;
         const block = document.querySelector(".editor-scroll [data-block-id]");
         if (block) {
           frames.push({
@@ -333,14 +335,22 @@ test("a scale change lands the note's column in one frame, never easing to its p
     await settled(h.page);
     await sleep(300);
 
-    const lefts = await h.page.evaluate(() =>
-      (window as unknown as { __frames: { zoom: string; left: number }[] }).__frames
-        .filter((f) => f.zoom === "110%")
-        .map((f) => f.left),
-    );
+    const frames = await h.page.evaluate(() => {
+      const probe = window as unknown as {
+        __frames: { zoom: string; left: number }[];
+        __stop?: boolean;
+      };
+      probe.__stop = true;
+      return probe.__frames;
+    });
+    const before = frames.filter((f) => f.zoom !== "110%").map((f) => f.left);
+    const lefts = frames.filter((f) => f.zoom === "110%").map((f) => f.left);
+    expect(before.length).toBeGreaterThan(0);
     expect(lefts.length).toBeGreaterThan(5);
     // The first frame at the new scale is already the resting place.
     const resting = lefts[lefts.length - 1];
+    // And the scale did move the line: otherwise nothing here could have eased.
+    expect(Math.abs(resting - before[before.length - 1])).toBeGreaterThan(10);
     for (const left of lefts) expect(Math.abs(left - resting)).toBeLessThan(1);
     expect(h.pageErrors).toEqual([]);
   } finally {

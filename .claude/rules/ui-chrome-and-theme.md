@@ -15,7 +15,7 @@
   pill alone has its own ink (`tagText`).
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   **One button, bordered and neutral**: the asked-for action is bold, Delete red ink.
-  Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`),
+  The only tints: the tag pill, a mode that is on (the lit `</>`),
   a note's selection (`bandFill`, below the ==highlight==), a search hit's words.
 - **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
@@ -64,7 +64,7 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   it. Window and Help are the Mac's. The system's buttons are the overlay. Fixed chrome stands
   `WINDOW_STRIP_H` lower.
 - **A drag rectangle must never lie under a control earlier in the DOM**: Chromium applies
-  regions in DOM order, so a later `drag` overrides an earlier `no-drag`. Regions stand down while a popup is open; a surface that floats into the row (the
+  regions in DOM order. Regions stand down while a popup is open; a surface that floats into the row (the
   selection toolbar) is `no-drag`. `chrome-row.spec.ts`.
 - Leave the `resolveInitialActiveNote()` migration read path.
 - No About, Help or Recently Deleted.
@@ -100,7 +100,8 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   never a transform (it would contain the `fixed` children). A menu inside it passes
   `overSettings` (else it stacks under the pane) and owns Escape; the scale keys are the one
   shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
-- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale`).
+- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale`). What eases from it is
+  `scale-fit`: a scale change lands it at once.
 - **One zoom system**: the app's UI scale, a size up on the phone (`drawnScale`); `main.js`
   resets Chromium's on `dom-ready`. A scale key answers with `UiScaleChip`.
 - **First-run setup** (`SetupDialog`): every way out saves the choice and never shows again;
@@ -165,8 +166,8 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 - The wordmark opens Settings; per theme (`dev/wordmarks.sh`), never the master PNG; hovered,
   its N alone lights (`litMark`). `chrome-tooltips.spec.ts`.
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
-  note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` stays
-  out of the shared constants.
+  note's title starts where a folder at its depth puts its glyph; with no traffic
+  lights before it, the wordmark starts on the column's spine.
 - The active note is never bold or accent. Only structure and actions get a glyph. An unnamed
   note reads `Untitled` muted.
 - Row controls (note ···, folder New note + ···) are zero-width at rest and `span

@@ -129,8 +129,8 @@ export const SPINE = 12;
  * The sidebar's own column (New note, the Notes row, the tree and its indent
  * guides) sits this much further in than SPINE; every x in it is SPINE + this, so nesting and the
  * glyph-to-name gap are unchanged.
- * Sidebar only: the folder popup draws its tree on the bare SPINE, and the
- * wordmark row keeps its own inset.
+ * Sidebar only: the folder popup draws its tree on the bare SPINE. The
+ * wordmark starts here too wherever no traffic lights stand before it.
  */
 export const SIDEBAR_TREE_INSET = 6;
 /** Label column: where every text label in a tree starts. */
