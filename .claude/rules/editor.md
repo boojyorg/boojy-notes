@@ -7,7 +7,7 @@ Note state has two copies: React state and `useHistory`'s keystroke ref, which r
 
 | Action | For | Undo |
 | --- | --- | --- |
-| `commitTextChange` | typing (debounced); ends a draft at its first character | per burst |
+| `commitTextChange` | typing; ends a draft (phone New note) at its first character | per burst |
 | `commitNoteData` | a user edit: block, checkbox, rename, new/deleted note, drop | yes |
 | `adoptNoteData` | a change of record: the written filename, a folder move | no |
 | `applyExternalNote` | a note as the disk holds it | drops its entries |

@@ -1,14 +1,17 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useNoteCrud } from "../../src/hooks/useNoteCrud.js";
 import { makeNote, resetBlockCounter } from "../mocks/blocks.js";
 
-// Mock platform — default to non-native
+// The platform, the desktop unless a test says the phone.
+const platform = vi.hoisted(() => ({ isPhone: false }));
 vi.mock("../../src/utils/platform", () => ({
-  isNative: false,
+  get isPhone() {
+    return platform.isPhone;
+  },
 }));
 
 // Mock ID generators for deterministic output
@@ -102,6 +105,44 @@ describe("useNoteCrud", () => {
       expect(data[noteId].content.blocks[0].id).toBe("blk-1");
       expect(data[noteId].content.blocks[0].type).toBe("p");
       expect(setActiveNote).toHaveBeenCalledWith(noteId);
+    });
+
+    it("on the desktop the new note is real at once, so its row arrives", () => {
+      const { result, getNoteData } = setup();
+      act(() => {
+        result.current.createNote();
+      });
+      expect(getNoteData()["note-1"]._draft).toBeUndefined();
+    });
+
+    describe("on the phone", () => {
+      beforeEach(() => {
+        platform.isPhone = true;
+      });
+      afterEach(() => {
+        platform.isPhone = false;
+      });
+
+      it("an unnamed new note is a draft: nothing to keep until its first character", () => {
+        const { result, getNoteData, setActiveNote } = setup();
+        act(() => {
+          result.current.createNote("Projects");
+        });
+        const note = getNoteData()["note-1"];
+        expect(note._draft).toBe(true);
+        expect(note.folder).toBe("Projects");
+        expect(setActiveNote).toHaveBeenCalledWith("note-1");
+      });
+
+      it("a note made with a name, or made without opening it, is real", () => {
+        const { result, getNoteData } = setup();
+        act(() => {
+          result.current.createNote(null, "Named");
+          result.current.createNote(null, null, { open: false });
+        });
+        expect(getNoteData()["note-1"]._draft).toBeUndefined();
+        expect(getNoteData()["note-2"]._draft).toBeUndefined();
+      });
     });
 
     it("creates a note inside the given folder", () => {
