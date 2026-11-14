@@ -384,9 +384,7 @@ export default function GlobalStyles() {
            the phone's press, since a hover has no finger to be felt under. */
         .wordmark-lit img { transition: filter var(--motion-enter) ease-out; }
         @media (hover: hover) {
-          .wordmark-button:hover .wordmark-lit img {
-            filter: saturate(var(--wordmark-lit-saturate, 1.6)) brightness(var(--wordmark-lit-brightness, 1.1));
-          }
+          .wordmark-button:hover .wordmark-lit img { filter: saturate(1.6) brightness(1.1); }
         }
         /* Home's list keeps a pull past its end to itself. Without this a drag
            that starts at the top (or the bottom) is handed to the page, which

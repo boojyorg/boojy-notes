@@ -92,9 +92,18 @@ test("a chrome control names itself under the pointer, shortcut on a pill, whole
   );
 
   // The wordmark's says what the wordmark does, and leaving hides it.
-  await hoverForChip(h.page.getByTestId("wordmark-settings-button"), /^Settings(⌘,|Ctrl\+,)$/);
+  const wordmark = h.page.getByTestId("wordmark-settings-button");
+  await hoverForChip(wordmark, /^Settings(⌘,|Ctrl\+,)$/);
+  // Under the pointer the N alone answers, anywhere on the word: the copy of
+  // it laid over the artwork is livelier, and the word itself is untouched
+  // (before this the whole word faded to 0.75).
+  const lit = wordmark.locator(".wordmark-lit img");
+  await expect(lit).toHaveCSS("filter", "saturate(1.6) brightness(1.1)");
+  await expect(wordmark).toHaveCSS("opacity", "1");
+  await expect(wordmark.getByTestId("wordmark")).toHaveCSS("filter", "none");
   await h.page.mouse.move(400, 300);
   await expect(chip).toHaveCount(0);
+  await expect(lit).toHaveCSS("filter", "none");
   expect(h.pageErrors).toEqual([]);
 });
 

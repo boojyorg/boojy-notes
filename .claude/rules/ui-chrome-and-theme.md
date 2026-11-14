@@ -28,8 +28,8 @@
 
 ## Toasts
 
-A quiet surface with **one coloured glyph that carries the
-meaning**. `done` fades (a click dismisses); `notice`, `warning`, `error`
+A quiet surface; **one coloured glyph carries the meaning**. `done` fades (a click
+dismisses); `notice`, `warning`, `error`
 wait for their ×. **Notices about one condition share
 a key, the newer replacing the older, and end when it stops being true** (`writeRecovered`).
 `toasts.spec.ts`.
@@ -47,10 +47,10 @@ a key, the newer replacing the older, and end when it stops being true** (`write
 
 ## Icons: Lucide only
 
-`Icons.jsx` wraps `lucide-react`, always `currentColor`; never hand-roll an SVG
-(exceptions: `FindBar`, `CodeBlock`, the task tick). Two sizes (list, navigation) and two
-strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder): don't flatten the
-tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, never a box.
+`Icons.jsx` wraps `lucide-react`, always `currentColor`; no hand-rolled SVG
+(but `FindBar`, `CodeBlock`, the task tick). Two sizes (list, navigation) and two
+strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). Hit boxes are
+`CHROME_BTN`. A row's icon action (`RowAction`) darkens, never a box.
 
 ## Window chrome
 
@@ -67,7 +67,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   regions in DOM order, so a later `drag` overrides an earlier `no-drag`. Regions stand down while a popup is open; a surface that floats into the row (the
   selection toolbar) is `no-drag`. `chrome-row.spec.ts`.
 - Leave the `resolveInitialActiveNote()` migration read path.
-- The wordmark opens Settings. No About, Help or Recently Deleted.
+- No About, Help or Recently Deleted.
 - **The header ··· is the active note's menu** (a row's ··· is its first group and Delete).
   Both end with words and when edited (`editedLabel`), one line.
   While the Markdown view is on, a lit `</>` stands left of the ···; the path band reserves its
@@ -162,7 +162,8 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   Settings row's menu leaves out what cannot work. `vault-switcher.spec.ts`.
 - **A file that is not a note** follows its folder's notes, type tagged right; menu Open in
   Default App, Show in Finder, Delete; never renamed or dragged. The attachment store is the root's last row.
-- The wordmark is generated per theme (`dev/wordmarks.sh`), never the master PNG.
+- The wordmark opens Settings; per theme (`dev/wordmarks.sh`), never the master PNG; hovered,
+  its N alone lights (`litMark`). `chrome-tooltips.spec.ts`.
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
   note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` stays
   out of the shared constants.
@@ -185,7 +186,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   never opened.
 - **The divider is 1px; hovered or held, 2px centred**, the layout unmoved; mid-drag nothing
   else takes the pointer. `chrome-row.spec.ts`.
-- **Drag means location, not order**: dragging moves the file or directory. A drag starts past
+- **Drag means location, not order**: the file or directory moves. A drag starts past
   `DRAG_THRESHOLD`, no hold. Dropping on the editor doesn't open the note.
 
 ## Search is a palette, not a panel
