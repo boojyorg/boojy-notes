@@ -264,15 +264,19 @@ export default function GlobalStyles() {
           transition: color var(--motion-fast);
         }
         .sidebar-folder-action:hover { color: ${theme.TEXT.primary}; }
-        /* The sidebar's rows: the neutral pill on hover and while held (the
-           open note, a selection, a row whose menu is up: .is-held); ink
-           lifts to primary on hover where the row's label is muted
-           (.lift-ink). A drag's drop paint is inline, so it still wins. */
+        /* The sidebar's rows: the neutral pill on hover, while held (a
+           selection, a row whose menu is up: .is-held) and on what is open
+           beside the list (.is-open); ink lifts to primary on hover where the
+           row's label is muted (.lift-ink). A drag's drop paint is inline, so
+           it still wins. The phone's Home has nothing open beside it, so
+           .is-open marks no row there: the grey would read as a press held. */
         .sidebar-row {
           background-color: transparent;
           transition: background-color var(--motion-fast), color var(--motion-fast);
         }
-        .sidebar-row:hover, .sidebar-row.is-held { background-color: ${theme.BG.hover}; }
+        .sidebar-row:hover, .sidebar-row.is-held, :where(html:not(.is-phone)) .sidebar-row.is-open {
+          background-color: ${theme.BG.hover};
+        }
         .sidebar-row.lift-ink:hover, .sidebar-row.lift-ink.is-held { color: ${theme.TEXT.primary}; }
         /* A row renaming stands down: no pill under the field, however it is
            hovered, active or selected, and no trailing actions, whose only

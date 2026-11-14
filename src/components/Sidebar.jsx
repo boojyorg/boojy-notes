@@ -740,7 +740,8 @@ const Sidebar = memo(function Sidebar({
         onDoubleClick={renamingNote !== nId ? () => setRenamingNote(nId) : undefined}
         className={[
           "sidebar-note sidebar-row",
-          act || sel || menuOpen ? "is-held" : "",
+          sel || menuOpen ? "is-held" : "",
+          act ? "is-open" : "",
           renamingNote === nId ? "is-renaming" : "",
           // A note that just landed here (Move to…, a drag in the path's
           // popup) wears the pill for a beat, as a duplicated folder does.
@@ -754,8 +755,9 @@ const Sidebar = memo(function Sidebar({
           setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId });
         }}
         style={{
-          // The active note is marked by the pill alone, never bold.
-          ...treeRowStyle(depth, act || sel ? TEXT.primary : TEXT.secondary),
+          // The open note is marked by the pill and its ink, never bold; on
+          // the phone's Home, where no note is open beside the list, by neither.
+          ...treeRowStyle(depth, (act && !isPhone) || sel ? TEXT.primary : TEXT.secondary),
           gap: 5,
           appearance: "none",
           WebkitAppearance: "none",
@@ -1026,13 +1028,16 @@ const Sidebar = memo(function Sidebar({
         aria-label={label}
         aria-selected={shown}
         {...rowProps(fileKey(path))}
-        className={`sidebar-file sidebar-row${menuOpen || shown ? " is-held" : ""}`}
+        className={`sidebar-file sidebar-row${menuOpen ? " is-held" : ""}${shown ? " is-open" : ""}`}
         onClick={() => onOpenFile?.(path)}
         onContextMenu={(e) => {
           e.preventDefault();
           setCtxMenu({ x: e.clientX, y: e.clientY, type: "file", id: path });
         }}
-        style={{ ...treeRowStyle(depth, shown ? TEXT.primary : TEXT.secondary), gap: 8 }}
+        style={{
+          ...treeRowStyle(depth, shown && !isPhone ? TEXT.primary : TEXT.secondary),
+          gap: 8,
+        }}
       >
         <span
           style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
