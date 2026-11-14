@@ -1,7 +1,7 @@
 import { createContext, useState, useEffect, useContext, useMemo, useCallback } from "react";
 import { settingsPageToOpen } from "../phone/reopenSettings";
 import { isElectron } from "../utils/platform";
-import { applyUiScale, initialUiScale } from "../utils/uiScale";
+import { applyUiScale, drawnScale, initialUiScale } from "../utils/uiScale";
 
 const SettingsContext = createContext(null);
 
@@ -15,6 +15,8 @@ export function SettingsProvider({ children }) {
 
   useEffect(() => {
     applyUiScale(uiScale);
+    // macOS draws the traffic lights itself, at one size: they follow the row.
+    window.electronAPI?.setChromeScale?.(drawnScale(uiScale) / 100);
     localStorage.setItem("boojy-ui-scale", String(uiScale));
   }, [uiScale]);
 
@@ -71,6 +73,16 @@ export function SettingsProvider({ children }) {
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
+}
+
+/**
+ * The scale the app is drawn at, as a factor (1 is 100%), for layout that
+ * must answer something the system draws at a fixed size (the traffic
+ * lights). 1 outside a provider, so a component under test needs none.
+ */
+export function useDrawnScale() {
+  const ctx = useContext(SettingsContext);
+  return drawnScale(ctx?.uiScale ?? 100) / 100;
 }
 
 export function useSettings() {

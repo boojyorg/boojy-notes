@@ -16,7 +16,7 @@ import {
 import { attachmentLabel, groupOtherFiles, nameAndType } from "../utils/otherFiles";
 import { useVaultView } from "../hooks/useVaultView";
 import { focusNote } from "../utils/domHelpers";
-import { useSettings } from "../context/SettingsContext";
+import { useDrawnScale, useSettings } from "../context/SettingsContext";
 import {
   AttachmentsIcon,
   TrashIcon,
@@ -35,7 +35,7 @@ import {
   CHROME_INSET,
   CHROME_TOP,
   CHROME_BTN,
-  MAC_TRAFFIC_INSET,
+  trafficInset,
   ChromeButton,
   SHORTCUTS,
   trafficLightsShown,
@@ -82,7 +82,7 @@ import { baseName, parentFolder } from "../utils/vaultPath";
 // Wordmark left, panel toggle right near the divider. Without traffic lights
 // (web, full screen, Windows, Linux) the wordmark starts on the column's spine
 // (TREE_SPINE), so the N's straight side stands on the line New note and the
-// rows start on; MAC_TRAFFIC_INSET otherwise. The right inset, the wordmark's
+// rows start on; `trafficInset` otherwise. The right inset, the wordmark's
 // size and the control box live in constants/layout.js, because the sidebar's
 // minimum width is derived from what this row holds.
 /** Optical drop for the whole header row (wordmark + toggle together). */
@@ -506,6 +506,7 @@ const Sidebar = memo(function Sidebar({
   // swallow the second click of a double-click while the panel animates shut.
   const hiddenControls = !sidebarVisible;
   const { setSettingsOpen } = useSettings();
+  const drawnScale = useDrawnScale();
   const { theme } = useTheme();
   const wordmarkTip = useTooltip();
   const wordmarkRef = useRef(null);
@@ -1224,7 +1225,7 @@ const Sidebar = memo(function Sidebar({
           // standing out. The ··· stands where the note's own does (CHROME_INSET),
           // so it does not move between Home and a note.
           paddingLeft: trafficLightsShown(fullScreen)
-            ? MAC_TRAFFIC_INSET
+            ? trafficInset(drawnScale)
             : isPhone
               ? TREE_SPINE + 2
               : TREE_SPINE,

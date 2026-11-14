@@ -10,7 +10,7 @@
  */
 import { expect, type Page, test } from "@playwright/test";
 import { PATH_AIR } from "../../src/components/EditorChrome";
-import { launchApp, settled, setWidth } from "./harness";
+import { MOD, launchApp, settled, setWidth } from "./harness";
 import {
   EDITOR_FLOOR_W,
   HEADER_AIR,
@@ -420,6 +420,61 @@ test("the selection toolbar over the top row opts out of the window drag", async
       };
     });
     expect(found).toEqual({ overlaps: true, after: true, region: "no-drag" });
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+/*
+ * The traffic lights are the system's: one size, wherever the window says.
+ * The row they share is drawn at the interface size, so at any scale but 100%
+ * the wordmark stood under them (small) or far below and right of them
+ * (large). They now follow the row's middle, and the room the inset leaves
+ * them is one distance on screen, with the app's own air after it. Needs the real window: the lights are placed by
+ * the main process, told the scale over IPC.
+ */
+test("the traffic lights and the wordmark stay in line at every interface size", async () => {
+  test.skip(process.platform !== "darwin", "the traffic lights are macOS's");
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  const zoom = () => h.page.evaluate(() => document.documentElement.style.zoom);
+  const lights = () =>
+    h.app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].getWindowButtonPosition(),
+    );
+  const box = async (selector: string) => (await h.page.locator(selector).boundingBox())!;
+  /** The lights' middle and the wordmark's, from the window's top, in screen pixels. */
+  const inLine = async (scale: number) => {
+    await expect.poll(lights).toEqual({ x: 14, y: Math.round(25 * scale - 7) });
+    const wordmark = await box("[data-testid='wordmark-settings-button']");
+    // Clear of the lights (they end at 75px), by air that grows with the
+    // interface and is never less than 100%'s.
+    const air = (MAC_TRAFFIC_INSET - 75) * Math.max(1, scale);
+    expect(Math.abs(wordmark.x - (75 + air))).toBeLessThan(1);
+    // Level with them. At 100% the lights sit 1.5px under the wordmark's middle,
+    // by eye; that grows with the scale and no further (a pixel for rounding).
+    const lightsMiddle = (await lights())!.y + 7;
+    const apart = Math.abs(wordmark.y + wordmark.height / 2 - lightsMiddle);
+    expect(apart).toBeLessThanOrEqual(1.5 * scale + 1);
+  };
+  try {
+    await h.openNote("Alpha");
+    await setWidth(h, 1200);
+    await inLine(1);
+
+    for (let i = 0; i < 12; i++) await h.page.keyboard.press(`${MOD}+=`);
+    await expect.poll(zoom).toBe("200%");
+    await settled(h.page);
+    await inLine(2);
+
+    for (let i = 0; i < 16; i++) await h.page.keyboard.press(`${MOD}+-`);
+    await expect.poll(zoom).toBe("50%");
+    await settled(h.page);
+    await inLine(0.5);
+    // The inset takes more of the header here, and the row still holds its toggle.
+    const toggle = await box("[aria-label='Toggle sidebar']:not([inert] *)");
+    const editor = await box(".editor-scroll");
+    expect(toggle.x + toggle.width).toBeLessThanOrEqual(editor.x + SUBPIXEL);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

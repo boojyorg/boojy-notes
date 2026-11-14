@@ -66,6 +66,7 @@ const settingsState = {
 
 vi.mock("../../src/context/SettingsContext", () => ({
   useSettings: () => settingsState,
+  useDrawnScale: () => 1,
   SettingsProvider: ({ children }) => children,
 }));
 

@@ -25,6 +25,7 @@ export function paintHandles(handles, colour, wide) {
 export function usePanelResize({
   sidebarHandles,
   setSidebarWidth,
+  minWidth = SIDEBAR_MIN_W,
   maxWidth = SIDEBAR_MAX_W,
   handleActiveBg,
   handleHoverBg,
@@ -47,7 +48,7 @@ export function usePanelResize({
       if (handleActiveBg) paintHandles(sidebarHandles.current, handleActiveBg, true);
       const onMove = (ev) => {
         if (!isDragging.current) return;
-        setSidebarWidth(Math.min(maxWidth, Math.max(SIDEBAR_MIN_W, ev.clientX - grab)));
+        setSidebarWidth(Math.min(maxWidth, Math.max(minWidth, ev.clientX - grab)));
       };
       // Ends on release, or when the window loses focus: a release in another
       // app never reaches us, and the pointer lock would outlive the drag.
@@ -70,6 +71,7 @@ export function usePanelResize({
     [
       setSidebarWidth,
       sidebarHandles,
+      minWidth,
       maxWidth,
       handleActiveBg,
       handleHoverBg,
