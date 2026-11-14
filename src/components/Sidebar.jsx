@@ -1244,6 +1244,7 @@ const Sidebar = memo(function Sidebar({
             <button
               data-testid="wordmark-settings-button"
               ref={wordmarkRef}
+              className="wordmark-button"
               type="button"
               onClick={() => setSettingsOpen(true)}
               aria-label="Notes — open Settings"
@@ -1260,13 +1261,9 @@ const Sidebar = memo(function Sidebar({
               }}
               onMouseEnter={(e) => {
                 if (fromTouch(e)) return;
-                e.currentTarget.style.opacity = "0.75";
                 wordmarkTip.handlers.onMouseEnter();
               }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
-                wordmarkTip.handlers.onMouseLeave();
-              }}
+              onMouseLeave={wordmarkTip.handlers.onMouseLeave}
               onMouseDown={wordmarkTip.handlers.onMouseDown}
               onMouseUp={wordmarkTip.handlers.onMouseUp}
               onFocus={wordmarkTip.handlers.onFocus}
@@ -1277,7 +1274,7 @@ const Sidebar = memo(function Sidebar({
               the note's H1. Drawn in the theme's ink (Wordmark picks the
               per-theme asset); the 0.92-opacity stand-in for a black asset is
               gone with it. */}
-              <Wordmark height={WORDMARK_H} />
+              <Wordmark height={WORDMARK_H} litMark />
               {/* The wordmark is the one control nothing marks as clickable: the
               chip is what says it opens Settings. */}
               {wordmarkTip.shown && (

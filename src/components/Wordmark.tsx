@@ -20,34 +20,56 @@ const ASPECT = 858 / 226;
 export default function Wordmark({
   height,
   markOnly = false,
+  litMark = false,
 }: {
   height: number;
   markOnly?: boolean;
+  /** Lay a second N over the artwork's own (`.wordmark-lit`), so CSS can
+   *  brighten the N alone: one image cannot be filtered in part. */
+  litMark?: boolean;
 }) {
   const { isDark } = useTheme();
-  const img = (
+  const image = (testId?: string) => (
     <img
       src={isDark ? wordmarkDark : wordmarkLight}
       alt=""
-      data-testid="wordmark"
+      data-testid={testId}
       data-theme={isDark ? "dark" : "light"}
       style={{ height, display: "block", maxWidth: "none" }}
       draggable="false"
     />
   );
-  if (!markOnly) return img;
-  // The N alone (the phone's Home): the same artwork, shown as far as the N goes.
+  const markWidth = Math.round(height * ASPECT * MARK_SHARE);
+  if (markOnly) {
+    // The N alone (the phone's Home): the same artwork, shown as far as the N goes.
+    return (
+      <span
+        data-testid="wordmark-mark"
+        style={{ display: "block", overflow: "hidden", height, width: markWidth }}
+      >
+        {image("wordmark")}
+      </span>
+    );
+  }
+  if (!litMark) return image("wordmark");
   return (
-    <span
-      data-testid="wordmark-mark"
-      style={{
-        display: "block",
-        overflow: "hidden",
-        height,
-        width: Math.round(height * ASPECT * MARK_SHARE),
-      }}
-    >
-      {img}
+    <span style={{ position: "relative", display: "block" }}>
+      {image("wordmark")}
+      <span
+        className="wordmark-lit"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          overflow: "hidden",
+          height,
+          width: markWidth,
+          pointerEvents: "none",
+        }}
+      >
+        {image()}
+      </span>
     </span>
   );
 }
