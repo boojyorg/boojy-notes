@@ -2,12 +2,18 @@
 
 ## Unreleased
 
+## v0.23.0 — 2026-11-15
+
 ### Improvements
 
-- **The phone's Home has one top row** — The row under it, with the storage location's name, New folder and Sort, is gone, so a line more of your notes fits. Its controls are in one menu under the ··· at the top right, which replaces the cog: the location's name with how sync is (tap it to sync now, or to sign in again when that is what's wrong; the arrows turn while it works and end in a tick), New folder, the two sort orders, and Settings. A dot on the ··· means sync needs you. The N no longer opens Settings; tapping it takes the list back to its top, and changing storage location is done in Settings alone.
-- **The phone moves between Home and a note** — Opening a note now slides it in from the right over Home, and going back sends it out the way it came, quicker. The two screens used to swap in an instant. With Android's Remove animations setting on, they still do.
-- **Hovering "Notes" lights its N** — Resting the pointer anywhere on the Notes wordmark at the top of the sidebar now makes its teal N a little richer and brighter, and leaves the rest of the word as it is. The whole word used to fade instead, which made it look less like something to click. A click anywhere on the word still opens Settings.
+- **Links follow a rename or a move** — Rename a note or a folder, or move one, and the links to it in your other notes keep working: `[[Beta]]`, `[[Beta#Intro|alias]]`, `![[Beta]]` and `[text](Beta.md)` are rewritten to the new name. A message says how many links changed, and each note that was rewritten keeps a "Before link update" entry in its version history. Before, those links were left pointing at nothing. Only a rename or move made in the app is followed; one made in Finder or by a sync is not.
+- **Underscore emphasis is drawn** — `_italic_` and `__bold__` now show as italic and bold, as they do in Obsidian and most other editors, where they used to show stray underscores. Editing in or beside them leaves the underscores in the file.
+- **A Markdown link to a note or file opens it** — `[notes](Folder/Note.md#Heading)` used to do nothing when clicked. It now opens the note, at the heading if it names one, or a PDF or picture in the note's place.
+- **A file that isn't a note shows its type** — A PDF or picture in the sidebar now has a small tag at the right (`PDF`, `PNG`) in place of an icon, its name starts on the same column as a note's, and a long name is cut while the tag stays whole.
+- **An unnamed note's name is easier to find** — While a note has no name and the cursor is in it, `Untitled` stands on a grey field, where it used to be a very faint label. A named note's name looks as it did.
+- **The note starts a little higher** — New note and the note's first line sit closer to the top of the window, and a heading that opens a note no longer makes the block handle jump.
 - **Deep folders keep room for their names** — Each level of folders in the sidebar now steps in by less, so a note five folders down still shows most of its name where it used to be cut short. The line beside an open folder's contents now drops from the folder's left edge, a clear step before what is inside it, and no longer shows through the highlight of the row you point at or have open. The folder menu under a note's path steps the same way, and the phone's list a little wider, to suit its taller rows.
+- **Hovering "Notes" lights its N** — Resting the pointer anywhere on the Notes wordmark at the top of the sidebar now makes its teal N a little richer and brighter, and leaves the rest of the word as it is. The whole word used to fade instead, which made it look less like something to click. A click anywhere on the word still opens Settings.
 - **New app icon** — The icon is now the teal N by itself on its light tile, softly shaded, so it reads at a glance in the Dock, on the taskbar and on the phone's home screen, where the word "Notes" had become too small to read. The N in the sidebar's "Notes" and on the phone's Home has the same shading.
 
 ### Fixes
@@ -17,6 +23,18 @@
 - **New folder and Sort no longer touch the first note** — Their highlight, when you point at them, used to meet the top of the first row in the list. The list now starts a little lower.
 - **Changing the interface size no longer makes the note jump** — With ⌘+ or ⌘− (or the control in Settings), the note's text used to jump to one side and then slide back to the middle. It now lands in place at once.
 - **The window's red, yellow and green buttons stay in line with "Notes" at every interface size** — On a Mac, at any size but 100%, the three buttons stood under the Notes wordmark (smaller sizes) or above and well left of it (larger ones). They now move with the row as you change the size, and the wordmark keeps a steady gap after them that grows a little with the interface.
+- **Back and Forward keep up with quick presses** — Back pressed straight after opening a note could be ignored, two quick presses could count as one, and Forward after a quick Back from a heading link could land on the note's top. Each press is now one step, to the place you left.
+
+### Android (in testing)
+
+- **Works without Dropbox** — The app opens straight to its notes; there is no sign-in screen. Dropbox is optional, connected from Settings, and disconnecting leaves your notes on the phone.
+- **Your notes can live in a folder you can see** — A new install asks where to keep its notes: a folder on the phone that the Files app and other apps can reach, or inside the app. Notes kept inside the app can be moved to a folder later, from Settings. Changes another app makes in that folder show up without a restart.
+- **Storage locations** — As on the desktop, the phone can hold more than one set of notes. Settings lists them, each with where it is and whether it syncs with Dropbox, and is where you switch between them and add, rename or remove one.
+- **Settings is a page of its own** — Storage locations, appearance and interface size, on one page reached from Home. The interface size now reads 100% for the size the phone was designed at.
+- **Home shows the notes you edited last** — Up to four cards at the top of Home, each with the note's name, its first lines, and its folder and time. New note is a teal button at the foot, and an empty Home says "No notes yet".
+- **Connecting Dropbox asks which folder** — If your Dropbox already holds folders of notes, connecting asks which one to sync, or all of them; with none, nothing is asked. A first sync shows a count ("34 of 180 files") and brings notes down before pictures and other files. Settings says where the folder is on a computer.
+- **The phone's Home has one top row** — The row under it, with the storage location's name, New folder and Sort, is gone, so a line more of your notes fits. Its controls are in one menu under the ··· at the top right, which replaces the cog: the location's name with how sync is (tap it to sync now, or to sign in again when that is what's wrong; the arrows turn while it works and end in a tick), New folder, the two sort orders, and Settings. A dot on the ··· means sync needs you. The N no longer opens Settings; tapping it takes the list back to its top, and changing storage location is done in Settings alone.
+- **The phone moves between Home and a note** — Opening a note now slides it in from the right over Home, and going back sends it out the way it came, quicker. The two screens used to swap in an instant. With Android's Remove animations setting on, they still do.
 - **The phone's Home no longer greys the note you last opened** — Its row in the list kept a grey background, which looked like a press that had never let go. Every row on Home now looks the same until you touch one.
 - **On the phone, New note leaves nothing behind if you don't type** — Tapping New note and going back without writing anything used to leave an empty note called Untitled in the list. The note is now kept only once it has its first character, in its name or its text.
 

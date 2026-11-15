@@ -67,7 +67,6 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   regions in DOM order. Regions stand down while a popup is open; a surface that floats into the row (the
   selection toolbar) is `no-drag`. `chrome-row.spec.ts`.
 - Leave the `resolveInitialActiveNote()` migration read path.
-- No About, Help or Recently Deleted.
 - **The header ··· is the active note's menu** (a row's ··· is its first group and Delete).
   Both end with words and when edited (`editedLabel`), one line.
   While the Markdown view is on, a lit `</>` stands left of the ···; the path band reserves its
@@ -94,8 +93,7 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 - **Spelling: a Mac's system chooses the language**, so that row opens Keyboard settings, never a
   dead control; elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
 - **Interface size is one segmented control; every press applies at once**. The figure is a
-  field committed on Enter/blur; an outside change
-  cancels an unfinished edit. `stepScale` is the one rule shared with `⌘±`.
+  field committed on Enter/blur; an outside change cancels it. `stepScale` is the one rule shared with `⌘±`.
 - **Settings keeps the scale it opened with**, so the pane holds still. Centred by a wrapper,
   never a transform (it would contain the `fixed` children). A menu inside it passes
   `overSettings` (else it stacks under the pane) and owns Escape; the scale keys are the one
@@ -116,7 +114,7 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
 - **A press shades the button and dips an icon-only one's glyph, never scales it**. `.press`
   opts in. **On the phone a press is the row grey, fading out; no tap flash.**
-  `phone-press.spec.ts`. **A desktop tree row's hover never fades** (a fade trails the
+  `phone-press.spec.ts`. **A desktop tree row never fades** (it would trail the
   pointer). `motion.spec.ts`.
 - Reduced motion plays no keyframe, makes no copy; the suites run with it, `motion.spec.ts`
   without.
@@ -141,7 +139,7 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 
 - `PathTreeMenu` shows the crumb's parent's contents with the path to the open note expanded
   (`crumbScope`); `…` shows the root. A root note's path carries a folder glyph to
-  click. Click, never hover.
+  click, never hover.
 - Tree keys on a document listener; **a press outside closes and is not swallowed** (no backdrop).
 - **Rows drag with the sidebar's drag** (`useSidebarDrag`); the head row (`data-drop-scope`) is
   the drop "up into this folder". Only folder rows and the head row are targets.
@@ -167,8 +165,8 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   its N alone lights (`litMark`). `chrome-tooltips.spec.ts`.
 - **Alignment**: `SPINE` and `TEXT_COL` in `layout.js`, shared with the popup; a note's title
   starts on its depth's glyph column; the wordmark on the spine, or past the lights.
-- **A level steps less than a glyph, so the folder's guide says whose a row is**
-  (`GuidedGroup`): on its left side, behind the rows. `Sidebar.test.jsx`.
+- **A level steps less than a name's offset, so the folder's guide says whose a row is**
+  (`GuidedGroup`): on its left, behind the rows. `Sidebar.test.jsx`.
 - The active note is never bold or accent. Only structure and actions get a glyph. An unnamed
   note reads `Untitled` muted.
 - Row controls (note ···, folder New note + ···) are zero-width at rest and `span
@@ -179,8 +177,8 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   folder.
 - **The tree is one Tab stop** (roving tabindex: last focused row, else the open note).
   `visibleTreeRows` / `treeMove` (`utils/treeNav.ts`) are the order and the arrows; rows
-  carry `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 the
-  row's menu, Escape back to the note (not under a menu or dialog); ⌃⌘S lands on the open
+  carry `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 its
+  menu, Escape back to the note (not under a menu or dialog); ⌃⌘S lands on the open
   row. Focus returns to the row after a rename, its neighbour after a delete.
   `tree-keyboard.spec.ts`.
 - **Sort is a preference, not an arrangement**: Most recent is *modified* (`recencyOf()`),
