@@ -165,8 +165,9 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   its N alone lights (`litMark`). `chrome-tooltips.spec.ts`.
 - **Alignment**: `SPINE` and `TEXT_COL` in `layout.js`, shared with the popup; a note's title
   starts on its depth's glyph column; the wordmark on the spine, or past the lights.
-- **A level steps less than a name's offset, so the folder's guide says whose a row is**
-  (`GuidedGroup`): on its left, behind the rows. `Sidebar.test.jsx`.
+- **A level steps less than a name's offset (`treeIndent`, further on the phone), so the
+  folder's guide says whose a row is** (`GuidedGroup`): on its left, behind the rows.
+  `Sidebar.test.jsx`.
 - The active note is never bold or accent. Only structure and actions get a glyph. An unnamed
   note reads `Untitled` muted.
 - Row controls (note ···, folder New note + ···) are zero-width at rest and `span
