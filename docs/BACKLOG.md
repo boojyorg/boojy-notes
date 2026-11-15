@@ -18,8 +18,8 @@ else sit in Fix now.
 
 The tiers, kept apart. **Requirements** are what a stage waits for. **Candidates** are
 optional; each is judged on its own and may be declined. **Future** is everything after 1.0,
-recorded so a preference and its open question are not lost. Last reviewed: 2026-11-09, the
-v0.22.0 release pass (what is wanted before 1.0 was revised on 2026-11-13); the 1.0 scope pass was 2026-10-24 (a read-only audit of v0.18.0, an
+recorded so a preference and its open question are not lost. Last reviewed: 2026-11-15, the
+v0.23.0 release pass (what is wanted before 1.0 was revised on 2026-11-13); the 1.0 scope pass was 2026-10-24 (a read-only audit of v0.18.0, an
 independent review and a Codex review). Items
 marked *review §n* come from the whole-app review of 2026-09-07.
 
