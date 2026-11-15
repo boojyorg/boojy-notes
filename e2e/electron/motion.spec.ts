@@ -298,3 +298,21 @@ test("a submenu near the window's foot is placed by its resting size, its last r
     await h.close();
   }
 });
+
+test("a sidebar row's hover is instant: its grey and ink do not fade", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n", "Beta.md": "Beta.\n" }, { motion: true });
+  try {
+    await h.openNote("Alpha");
+    // A fade is always a step behind a pointer sweeping down the list.
+    // Motion is on here, so what is read is the row's own rule.
+    const seconds = await h.page.evaluate(() => {
+      const row = document.querySelector(".sidebar-row") as HTMLElement;
+      return Math.max(
+        ...getComputedStyle(row).transitionDuration.split(",").map(Number.parseFloat),
+      );
+    });
+    expect(seconds).toBe(0);
+  } finally {
+    await h.close();
+  }
+});

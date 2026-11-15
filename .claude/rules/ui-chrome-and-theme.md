@@ -91,17 +91,15 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 ## Settings, setup and UI scale
 
 - Settings is one pane on the palette's surface.
-- **Spelling: a Mac's system chooses the language**, so that row opens Keyboard settings, never a
-  dead control; elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
+- **Spelling: a Mac's system chooses the language**, so that row opens Keyboard settings;
+  elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
 - **Interface size is one segmented control; every press applies at once**. The figure is a
-  field committed on Enter/blur; an outside change
-  cancels an unfinished edit. `stepScale` is the one rule shared with `⌘±`.
+  field committed on Enter/blur; an outside change cancels an edit. `stepScale` is the one rule shared with `⌘±`.
 - **Settings keeps the scale it opened with**, so the pane holds still. Centred by a wrapper,
   never a transform (it would contain the `fixed` children). A menu inside it passes
   `overSettings` (else it stacks under the pane) and owns Escape; the scale keys are the one
   shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
-- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale`); `scale-fit` never eases
-  its change.
+- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale`); `scale-fit` never eases.
 - **One zoom system**: the app's UI scale, a size up on the phone (`drawnScale`); `main.js`
   resets Chromium's on `dom-ready`. A scale key answers with `UiScaleChip`.
 - **First-run setup** (`SetupDialog`): every way out saves the choice and never shows again;
@@ -113,15 +111,15 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 (`MOTION_*`) moves popovers, dialogs, toasts, ticks and presses; never a spring.
 
 - **A surface leaves by unmounting at once and leaving a copy** (`useExitGhost`: inert,
-  timer-removed), never by staying mounted (it would keep its focus trap and keys). Its root
+  timer-removed), never by staying mounted (it would keep its focus trap). Its root
   is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
-- **A press shades the button and dips an icon-only one's glyph, never scales the button**.
-  `.press` opts a control in. **On the phone a press is the row grey,
-  fading out; no tap flash.** `phone-press.spec.ts`.
+- **A press shades the button and dips an icon-only one's glyph, never scales it**. `.press`
+  opts in. **On the phone a press is the row grey, fading out; no tap flash.**
+  `phone-press.spec.ts`. **Off it a tree row's hover is instant** (a fade trails the pointer).
 - Reduced motion plays no keyframe, makes no copy; the suites run with it, `motion.spec.ts`
   without.
-- The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the window edge;
-  no transform at rest. `sidebar-motion.spec.ts`.
+- The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the window edge,
+  untransformed. `sidebar-motion.spec.ts`.
 
 ## The note's path is centred in the chrome row
 

@@ -300,6 +300,10 @@ export default function GlobalStyles() {
         .sidebar-row:hover, .sidebar-row.is-held, :where(html:not(.is-phone)) .sidebar-row.is-open {
           background-color: ${theme.BG.hover};
         }
+        /* Off the phone a row's grey and ink change at once, in and out: a
+           fade is always a step behind a pointer sweeping down the list. The
+           phone keeps its press fading out. */
+        :where(html:not(.is-phone)) .sidebar-row { transition: none; }
         .sidebar-row.is-open { color: ${theme.TEXT.secondary}; }
         :where(html:not(.is-phone)) .sidebar-row.is-open { color: ${theme.TEXT.primary}; }
         .sidebar-row.lift-ink:hover, .sidebar-row.lift-ink.is-held { color: ${theme.TEXT.primary}; }
