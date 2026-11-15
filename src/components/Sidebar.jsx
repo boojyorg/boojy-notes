@@ -68,7 +68,8 @@ import {
   SPINE_ICON,
   TEXT_COL,
   TREE_GUIDE_X,
-  TREE_INDENT,
+  PHONE_TREE_INDENT,
+  TREE_INDENT as DESKTOP_TREE_INDENT,
   TOUCH,
   PHONE_ROW_H,
   PHONE_LABEL_SIZE,
@@ -109,6 +110,8 @@ const TREE_ROW_H = isPhone ? PHONE_ROW_H : DESKTOP_ROW_H;
 /** A row's name: a size up on the phone. */
 const ROW_NAME_SIZE = isPhone ? PHONE_LABEL_SIZE : ROW_LABEL_SIZE;
 const ROW_GAP = isPhone ? 0 : TREE_ROW_GAP;
+/** The step per level: wider on the phone, whose rows are taller. */
+const TREE_INDENT = isPhone ? PHONE_TREE_INDENT : DESKTOP_TREE_INDENT;
 
 // ── Row grammar (desktop) ────────────────────────────────────────────────────
 // Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,

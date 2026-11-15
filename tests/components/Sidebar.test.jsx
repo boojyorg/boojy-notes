@@ -110,9 +110,11 @@ import Sidebar from "../../src/components/Sidebar.jsx";
 import { extractAllTags } from "../../src/utils/tags";
 import {
   ROW_INSET,
+  PHONE_TREE_INDENT,
   SIDEBAR_TREE_INSET,
   SPINE,
   SPINE_ICON,
+  TEXT_COL,
   TREE_GUIDE_X,
   TREE_INDENT,
 } from "../../src/constants/layout.js";
@@ -778,6 +780,11 @@ describe("Sidebar", () => {
     // and the folder's guide stands a whole step before its children: on the
     // folder's left side, never under its middle.
     expect(TREE_INDENT).toBeLessThan(SPINE_ICON);
+    // The phone's taller rows step further, but still short of a name's
+    // offset from its glyph: a child never lines up under its parent's name,
+    // so the guides stay.
+    expect(PHONE_TREE_INDENT).toBeGreaterThan(TREE_INDENT);
+    expect(PHONE_TREE_INDENT).toBeLessThan(TEXT_COL - SPINE);
     expect(TREE_GUIDE_X).toBeLessThan(SPINE_ICON / 2);
   });
 
