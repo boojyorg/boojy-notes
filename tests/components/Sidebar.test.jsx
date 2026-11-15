@@ -113,7 +113,7 @@ import {
   SIDEBAR_TREE_INSET,
   SPINE,
   SPINE_ICON,
-  TEXT_COL,
+  TREE_GUIDE_X,
   TREE_INDENT,
 } from "../../src/constants/layout.js";
 
@@ -774,10 +774,29 @@ describe("Sidebar", () => {
     expect(root.style.paddingLeft).toBe(`${spine - ROW_INSET}px`);
     expect(root.style.paddingLeft).toBe(folder.style.paddingLeft);
     expect(nested.style.paddingLeft).toBe(`${spine + TREE_INDENT - ROW_INSET}px`);
-    // The step is a little less than the name's own offset from its glyph,
-    // so a folder's note starts past the folder's glyph and before its name.
-    expect(TREE_INDENT).toBeGreaterThan(SPINE_ICON);
-    expect(TREE_INDENT).toBeLessThan(TEXT_COL - SPINE);
+    // The step is less than a glyph, so a deep tree keeps its names' room,
+    // and the folder's guide stands a whole step before its children: on the
+    // folder's left side, never under its middle.
+    expect(TREE_INDENT).toBeLessThan(SPINE_ICON);
+    expect(TREE_GUIDE_X).toBeLessThan(SPINE_ICON / 2);
+  });
+
+  it("draws a folder's guide behind the rows, so a lit row covers it", () => {
+    const noteData = buildNoteData([{ id: "n1", title: "Nested Note" }]);
+    const folderTree = [{ name: "My Folder", _path: "My Folder", children: [], notes: ["n1"] }];
+    const { getByText, getByRole } = renderSidebar({
+      noteData,
+      folderTree,
+      expanded: { "My Folder": true },
+    });
+    const group = getByText("Nested Note").closest("[data-note-id]").parentElement;
+    const guide = group.querySelector('[aria-hidden="true"]');
+    expect(guide.style.width).toBe("1px");
+    // Under the folder's left side, and under the rows in the tree's own
+    // stacking context (without it the guide would go behind the panel).
+    expect(guide.style.left).toBe(`${SPINE + SIDEBAR_TREE_INSET + TREE_GUIDE_X}px`);
+    expect(guide.style.zIndex).toBe("-1");
+    expect(getByRole("tree").style.isolation).toBe("isolate");
   });
 });
 

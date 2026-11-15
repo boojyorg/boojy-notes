@@ -22,6 +22,7 @@ import {
   SPINE,
   SPINE_ICON,
   TEXT_COL,
+  TREE_GUIDE_X,
   TREE_INDENT,
   TREE_ROW_GAP,
   TREE_ROW_H,
@@ -483,11 +484,11 @@ export default function PathTreeMenu({
         {hasChildren && (
           <Collapsible open={isOpen}>
             <div role="group" style={{ position: "relative" }}>
-              {/* The sidebar's indent guide: a hairline from the glyph's centre
+              {/* The sidebar's indent guide: a hairline from the glyph's left side
                   through the children, which is what says "this folder ends here". */}
               <IndentGuide
                 bottom={TREE_ROW_GAP}
-                left={SPINE + SPINE_ICON / 2 + (depth + shift) * TREE_INDENT - ROW_INSET}
+                left={SPINE + TREE_GUIDE_X + (depth + shift) * TREE_INDENT - ROW_INSET}
               />
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((id) => renderNote(id, depth + 1))}
@@ -578,6 +579,8 @@ export default function PathTreeMenu({
             : {})}
           style={{
             outline: "none",
+            // The indent guides are drawn behind the rows, within this.
+            isolation: "isolate",
             maxHeight: POPUP_MAX_H,
             boxSizing: "border-box",
             overflowY: "auto",
@@ -610,7 +613,7 @@ export default function PathTreeMenu({
               {/* No role: these are the tree's own top-level items, drawn
                   under the head row with its indent guide. */}
               <div style={{ position: "relative" }}>
-                <IndentGuide bottom={TREE_ROW_GAP} left={SPINE + SPINE_ICON / 2 - ROW_INSET} />
+                <IndentGuide bottom={TREE_ROW_GAP} left={SPINE + TREE_GUIDE_X - ROW_INSET} />
                 {rows.length === 0 && (
                   <div
                     style={{

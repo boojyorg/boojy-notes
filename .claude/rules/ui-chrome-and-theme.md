@@ -150,7 +150,7 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   and its subtree are disabled in place. `breadcrumb-tree.spec.ts`, `move-to.spec.ts`.
 - **Every move ends in `moveNotesTo` / `moveFolderTo`**: notes via `bulkMoveNotes`
   (`adoptNoteData`). **The destination is shown, never announced**: revealed and
-  pill-marked in the sidebar if it is showing, no toast; a sidebar drag skips the reveal.
+  pill-marked in a showing sidebar, no toast; a sidebar drag skips the reveal.
 
 ## Sidebar
 
@@ -165,30 +165,30 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   Default App, Show in Finder, Delete; never renamed or dragged. The attachment store is the root's last row.
 - The wordmark opens Settings; per theme (`dev/wordmarks.sh`), never the master PNG; hovered,
   its N alone lights (`litMark`). `chrome-tooltips.spec.ts`.
-- **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
-  note's title starts where a folder at its depth puts its glyph; the wordmark
-  starts on the spine, or past the lights.
+- **Alignment**: `SPINE` and `TEXT_COL` in `layout.js`, shared with the popup; a
+  note's title starts on its depth's glyph column; the wordmark on the spine, or past the
+  lights. **A level steps less than a glyph; the folder's guide, on its left
+  side and behind the rows, says whose a row is.**
 - The active note is never bold or accent. Only structure and actions get a glyph. An unnamed
   note reads `Untitled` muted.
 - Row controls (note ···, folder New note + ···) are zero-width at rest and `span
-  role="button" tabIndex={-1}` (a nested button fails axe). A row's ··· passes its rectangle
+  role="button" tabIndex={-1}` (axe: no nested button). A row's ··· passes its rectangle
   (`rowMenuAnchor`) so a flipped menu clears the row.
-- A note renames inline on double-click; a folder only from its menu. The rename input commits
-  once.
+- A note renames inline on double-click; a folder only from its menu, committing once.
 - One `role="tree"`, the vault row a sibling (axe). Folders first, alphabetical; the root is a
   folder.
 - **The tree is one Tab stop** (roving tabindex: last focused row, else the open note).
-  `visibleTreeRows` / `treeMove` (`utils/treeNav.ts`) are the order and the arrows; each row
-  carries `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 the
-  row's menu, Escape back to the note (not under a menu or dialog); ⌃⌘S lands on the open
-  row. Focus returns to the row after a rename, its neighbour after a delete.
+  `treeNav.ts` is the order and the arrows; rows carry
+  `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 its menu,
+  Escape back to the note (not under a menu or dialog); ⌃⌘S lands on the open row. Focus
+  returns to the row after a rename, its neighbour after a delete.
   `tree-keyboard.spec.ts`.
 - **Sort is a preference, not an arrangement**: Most recent is *modified* (`recencyOf()`),
   never opened.
 - **The divider is 1px; hovered or held, 2px centred**, the layout unmoved; mid-drag nothing
   else takes the pointer. `chrome-row.spec.ts`.
 - **Drag means location, not order**: the file or directory moves. A drag starts past
-  `DRAG_THRESHOLD`, no hold. Dropping on the editor doesn't open the note.
+  `DRAG_THRESHOLD`, no hold. A drop on the editor opens nothing.
 
 ## Search is a palette, not a panel
 

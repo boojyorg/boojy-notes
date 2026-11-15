@@ -163,12 +163,16 @@ export const ROW_INSET = 4;
 /** Folder-row glyph box on the spine (16px list tier). */
 export const SPINE_ICON = 16;
 /**
- * Each level of nesting steps the row's contents this far right: a little
- * less than the name's own offset from its glyph (TEXT_COL − SPINE), so a
- * child starts just left of its parent's name and a deep tree keeps its
- * names' room.
+ * Each level of nesting steps the row's contents this far right: less than a
+ * glyph, so a tree five folders deep keeps its names' room. A step this
+ * short does not say whose child a row is; the folder's indent guide does.
  */
-export const TREE_INDENT = 18;
+export const TREE_INDENT = 12;
+/**
+ * Where a folder's indent guide stands, from its glyph's left edge: on the
+ * folder's drawn left side, a whole step before its children.
+ */
+export const TREE_GUIDE_X = 1.5;
 /** Tree rows are this tall, with a 2px rhythm gap. */
 export const TREE_ROW_H = 28;
 export const TREE_ROW_GAP = 2;

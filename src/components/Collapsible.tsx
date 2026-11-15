@@ -60,9 +60,12 @@ export default function Collapsible({ open, children }: { open: boolean; childre
 }
 
 /**
- * The tree's indent guide: a hairline from a folder glyph's centre down
- * through its open children, its end saying where the folder ends. Drawn in
- * the children's group, which is `position: relative`.
+ * The tree's indent guide: a hairline under a folder glyph's left side
+ * (`TREE_GUIDE_X`) down through its open children, its end saying where the
+ * folder ends. Drawn in the children's group, which is `position: relative`,
+ * and behind the rows: a lit row's pill covers the guides that cross it. The
+ * tree's root is the stacking context that keeps it over the panel
+ * (`isolation`).
  */
 export function IndentGuide({ left, bottom }: { left: number; bottom: number }) {
   const { theme } = useTheme();
@@ -75,6 +78,7 @@ export function IndentGuide({ left, bottom }: { left: number; bottom: number }) 
         bottom,
         left,
         width: 1,
+        zIndex: -1,
         background: theme.BG.divider,
         pointerEvents: "none",
       }}
