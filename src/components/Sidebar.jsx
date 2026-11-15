@@ -50,7 +50,7 @@ import RecentCards from "../phone/RecentCards";
 import { liveRows } from "../phone/locations";
 import { syncFolderName } from "../phone/syncFolder";
 import RenameField from "./RenameField";
-import Collapsible, { IndentGuide } from "./Collapsible";
+import Collapsible, { GuidedGroup } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
 import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
@@ -67,6 +67,7 @@ import {
   SPINE,
   SPINE_ICON,
   TEXT_COL,
+  TREE_GUIDE_X,
   TREE_INDENT,
   TOUCH,
   PHONE_ROW_H,
@@ -993,17 +994,13 @@ const Sidebar = memo(function Sidebar({
         {hasChildren && (
           <Collapsible open={isOpen}>
             {/* An indent guide, a hairline dropping from the
-                folder glyph's centre through its children; the line ending is
+                folder glyph's left side through its children; the line ending is
                 what says "this folder ends here" in a mixed tree. */}
-            <div style={{ position: "relative" }}>
-              <IndentGuide
-                bottom={ROW_GAP}
-                left={TREE_SPINE + SPINE_ICON / 2 + depth * TREE_INDENT}
-              />
+            <GuidedGroup bottom={ROW_GAP} left={TREE_SPINE + TREE_GUIDE_X + depth * TREE_INDENT}>
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((nId) => renderNote(nId, depth + 1))}
               {files.map((path) => renderFile(path, depth + 1))}
-            </div>
+            </GuidedGroup>
           </Collapsible>
         )}
       </div>
@@ -1078,10 +1075,9 @@ const Sidebar = memo(function Sidebar({
         </button>
         {files.length > 0 && (
           <Collapsible open={isOpen}>
-            <div style={{ position: "relative" }}>
-              <IndentGuide bottom={ROW_GAP} left={TREE_SPINE + SPINE_ICON / 2} />
+            <GuidedGroup bottom={ROW_GAP} left={TREE_SPINE + TREE_GUIDE_X}>
               {files.map((path) => renderFile(path, 1, attachmentLabel(path)))}
-            </div>
+            </GuidedGroup>
           </Collapsible>
         )}
       </div>
