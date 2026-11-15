@@ -110,9 +110,11 @@ import Sidebar from "../../src/components/Sidebar.jsx";
 import { extractAllTags } from "../../src/utils/tags";
 import {
   ROW_INSET,
+  PHONE_TREE_INDENT,
   SIDEBAR_TREE_INSET,
   SPINE,
   SPINE_ICON,
+  TEXT_COL,
   TREE_GUIDE_X,
   TREE_INDENT,
 } from "../../src/constants/layout.js";
@@ -360,6 +362,46 @@ describe("Sidebar", () => {
       });
       expect(getByLabelText("Rename note").style.fontSize).toBe(`${PHONE_LABEL_SIZE}px`);
       expect(getByLabelText("Rename folder").style.fontSize).toBe(`${PHONE_LABEL_SIZE}px`);
+    } finally {
+      vi.doUnmock("../../src/utils/platform");
+      vi.resetModules();
+    }
+  });
+
+  // The phone's tree steps further than the desktop's (its rows are taller),
+  // and the folder's guide moves with it.
+  it("on the phone, a nested row and its folder's guide step the phone's step", async () => {
+    vi.resetModules();
+    vi.doMock("../../src/utils/platform", async (actual) => ({
+      ...(await actual()),
+      isPhone: true,
+    }));
+    try {
+      const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
+      const layout = await import("../../src/constants/layout.js");
+      const noteData = buildNoteData([{ id: "n1", title: "Deep Note" }]);
+      const folderTree = [
+        {
+          name: "Outer",
+          _path: "Outer",
+          notes: [],
+          children: [{ name: "Inner", _path: "Outer/Inner", children: [], notes: ["n1"] }],
+        },
+      ];
+      const { getByText } = renderSidebar({
+        Component: PhoneSidebar,
+        folderTree,
+        noteData,
+        expanded: { Outer: true, "Outer/Inner": true },
+      });
+      const spine = layout.SPINE + layout.SIDEBAR_TREE_INSET;
+      const step = layout.PHONE_TREE_INDENT;
+      expect(step).not.toBe(layout.TREE_INDENT);
+      const note = getByText("Deep Note").closest("[data-note-id]");
+      expect(note.style.paddingLeft).toBe(`${spine + 2 * step - layout.ROW_INSET}px`);
+      // Inner's guide: one step in, on its glyph's left side.
+      const guide = note.parentElement.querySelector("[data-indent-guide]");
+      expect(guide.style.left).toBe(`${spine + layout.TREE_GUIDE_X + step}px`);
     } finally {
       vi.doUnmock("../../src/utils/platform");
       vi.resetModules();
@@ -778,6 +820,11 @@ describe("Sidebar", () => {
     // and the folder's guide stands a whole step before its children: on the
     // folder's left side, never under its middle.
     expect(TREE_INDENT).toBeLessThan(SPINE_ICON);
+    // The phone's taller rows step further, but still short of a name's
+    // offset from its glyph: a child never lines up under its parent's name,
+    // so the guides stay.
+    expect(PHONE_TREE_INDENT).toBeGreaterThan(TREE_INDENT);
+    expect(PHONE_TREE_INDENT).toBeLessThan(TEXT_COL - SPINE);
     expect(TREE_GUIDE_X).toBeLessThan(SPINE_ICON / 2);
   });
 

@@ -52,6 +52,7 @@ import { syncFolderName } from "../phone/syncFolder";
 import RenameField from "./RenameField";
 import Collapsible, { GuidedGroup } from "./Collapsible";
 import { isElectronMac, isPhone } from "../utils/platform";
+import { treeIndent } from "../utils/treeStep";
 import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
@@ -68,7 +69,6 @@ import {
   SPINE_ICON,
   TEXT_COL,
   TREE_GUIDE_X,
-  TREE_INDENT,
   TOUCH,
   PHONE_ROW_H,
   PHONE_LABEL_SIZE,
@@ -152,7 +152,7 @@ const treeRowStyle = (depth, color) => ({
   marginBottom: ROW_GAP,
   height: TREE_ROW_H,
   boxSizing: "border-box",
-  padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
+  padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * treeIndent}px`,
   borderRadius: ACTION_RADIUS,
   border: "none",
   cursor: "pointer",
@@ -727,7 +727,7 @@ const Sidebar = memo(function Sidebar({
     // open note's pill and ink are `.is-open`, never `.is-held`: the phone's
     // Home draws neither, and says no row is selected. A note's
     // title starts where a folder at the same depth puts its glyph (SPINE +
-    // depth × TREE_INDENT, the folder row's own padding), so notes
+    // depth × `treeIndent`, the folder row's own padding), so notes
     // and folders at one depth share a left edge and a folder's name is further
     // right only by its glyph. The folder popup keeps its notes on TEXT_COL
     // (PathTreeMenu), a deliberate difference.
@@ -996,7 +996,7 @@ const Sidebar = memo(function Sidebar({
             {/* An indent guide, a hairline dropping from the
                 folder glyph's left side through its children; the line ending is
                 what says "this folder ends here" in a mixed tree. */}
-            <GuidedGroup bottom={ROW_GAP} left={TREE_SPINE + TREE_GUIDE_X + depth * TREE_INDENT}>
+            <GuidedGroup bottom={ROW_GAP} left={TREE_SPINE + TREE_GUIDE_X + depth * treeIndent}>
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((nId) => renderNote(nId, depth + 1))}
               {files.map((path) => renderFile(path, depth + 1))}
