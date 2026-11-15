@@ -237,4 +237,4 @@ export const PHONE_LABEL_SIZE = 15;
 /** Home's step per level on the phone: a row there is half as tall again as
  *  the desktop's and the screen has the width to spare, so the desktop's 12
  *  read as tight. Still short of a name's offset, so the guides stay. */
-export const PHONE_TREE_INDENT = 16;
+export const PHONE_TREE_INDENT = 18;
