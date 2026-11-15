@@ -12,6 +12,7 @@ import { CHROME_TOP } from "./EditorChrome";
 import {
   EASE_EXIT,
   MOTION_VARS,
+  NEW_ROW_MS,
   PANEL_EASE,
   SCREEN_IN_MS,
   SCREEN_OUT_MS,
@@ -300,10 +301,12 @@ export default function GlobalStyles() {
         .sidebar-row:hover, .sidebar-row.is-held, :where(html:not(.is-phone)) .sidebar-row.is-open {
           background-color: ${theme.BG.hover};
         }
-        /* Off the phone a row's grey and ink change at once, in and out: a
-           fade is always a step behind a pointer sweeping down the list. The
-           phone keeps its press fading out. */
-        :where(html:not(.is-phone)) .sidebar-row { transition: none; }
+        /* Off the phone a tree row's grey and ink change at once, in and
+           out: a fade is always a step behind a pointer sweeping down the
+           list. The rows outside the tree (New note, Recently Deleted) are
+           single controls and keep the fade; the phone keeps its press
+           fading out. */
+        :where(html:not(.is-phone)) [role="tree"] .sidebar-row { transition: none; }
         .sidebar-row.is-open { color: ${theme.TEXT.secondary}; }
         :where(html:not(.is-phone)) .sidebar-row.is-open { color: ${theme.TEXT.primary}; }
         .sidebar-row.lift-ink:hover, .sidebar-row.lift-ink.is-held { color: ${theme.TEXT.primary}; }
@@ -316,6 +319,13 @@ export default function GlobalStyles() {
            wears the pill for NEW_ROW_MS, so it is found among its alphabetical
            neighbours instead of announced in a message. */
         .sidebar-row.is-new { background-color: ${theme.BG.hover}; }
+        /* Its last beat fades, where a tree row has no transition to do it:
+           a mark blinking off a row the pointer is not on reads as a glitch.
+           It ends clear and stays so until the class goes. */
+        @keyframes row-new-out { from, 96% { background-color: ${theme.BG.hover}; } to { background-color: transparent; } }
+        :where(html:not(.is-phone)) [role="tree"] .sidebar-row.is-new {
+          animation: row-new-out ${NEW_ROW_MS}ms linear forwards;
+        }
         .sidebar-note.is-renaming .sidebar-note-more,
         .sidebar-folder.is-renaming .sidebar-folder-actions {
           opacity: 0 !important;
