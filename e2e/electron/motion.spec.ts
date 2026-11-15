@@ -298,3 +298,30 @@ test("a submenu near the window's foot is placed by its resting size, its last r
     await h.close();
   }
 });
+
+test("a tree row's hover is instant, and New note keeps its fade", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n", "Sub/Beta.md": "Beta.\n" }, { motion: true });
+  try {
+    await h.openNote("Alpha");
+    // A fade is always a step behind a pointer sweeping down the list.
+    // Motion is on here, so what is read is each row's own rule: a note's
+    // and a folder's change at once; New note, a single control outside the
+    // tree, still fades.
+    const seconds = await h.page.evaluate(() => {
+      const longest = (selector: string) => {
+        const el = document.querySelector(selector) as HTMLElement;
+        return Math.max(
+          ...getComputedStyle(el).transitionDuration.split(",").map(Number.parseFloat),
+        );
+      };
+      return {
+        note: longest('[role="tree"] [data-note-id].sidebar-row'),
+        folder: longest('[role="tree"] [data-folder-path].sidebar-row'),
+        newNote: longest(".sidebar-action-row"),
+      };
+    });
+    expect(seconds).toEqual({ note: 0, folder: 0, newNote: 0.1 });
+  } finally {
+    await h.close();
+  }
+});

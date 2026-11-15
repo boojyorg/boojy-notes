@@ -49,8 +49,9 @@ export default function Collapsible({ open, children }: { open: boolean; childre
         transition: `grid-template-rows ${FOLDER_ANIM_MS}ms ease`,
       }}
       onTransitionEnd={(e) => {
-        // Guard on target: a child row's own background/color transition
-        // bubbling up must not unmount the subtree mid-collapse.
+        // Guard on target: a child's own transition bubbling up (a row's
+        // press fading on the phone, a row control's fade anywhere) must
+        // not unmount the subtree mid-collapse.
         if (!open && e.target === e.currentTarget) setMounted(false);
       }}
     >

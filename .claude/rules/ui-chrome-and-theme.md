@@ -100,8 +100,7 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   never a transform (it would contain the `fixed` children). A menu inside it passes
   `overSettings` (else it stacks under the pane) and owns Escape; the scale keys are the one
   shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
-- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale`); `scale-fit` never eases
-  its change.
+- **`vw`/`vh` ignore the UI scale**: divide by it (`atScale`); `scale-fit` never eases.
 - **One zoom system**: the app's UI scale, a size up on the phone (`drawnScale`); `main.js`
   resets Chromium's on `dom-ready`. A scale key answers with `UiScaleChip`.
 - **First-run setup** (`SetupDialog`): every way out saves the choice and never shows again;
@@ -115,9 +114,10 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 - **A surface leaves by unmounting at once and leaving a copy** (`useExitGhost`: inert,
   timer-removed), never by staying mounted (it would keep its focus trap and keys). Its root
   is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
-- **A press shades the button and dips an icon-only one's glyph, never scales the button**.
-  `.press` opts a control in. **On the phone a press is the row grey,
-  fading out; no tap flash.** `phone-press.spec.ts`.
+- **A press shades the button and dips an icon-only one's glyph, never scales it**. `.press`
+  opts in. **On the phone a press is the row grey, fading out; no tap flash.**
+  `phone-press.spec.ts`. **A desktop tree row's hover never fades** (a fade trails the
+  pointer). `motion.spec.ts`.
 - Reduced motion plays no keyframe, makes no copy; the suites run with it, `motion.spec.ts`
   without.
 - The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the window edge;
