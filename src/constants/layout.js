@@ -170,9 +170,11 @@ export const SPINE_ICON = 16;
 export const TREE_INDENT = 12;
 /**
  * Where a folder's indent guide stands, from its glyph's left edge: on the
- * folder's drawn left side, a whole step before its children.
+ * folder's drawn left side (its stroke is centred 1.3px in), a whole step
+ * before its children. A whole number: a 1px line on a half pixel is
+ * snapped by the screen, and not the same way at every interface size.
  */
-export const TREE_GUIDE_X = 1.5;
+export const TREE_GUIDE_X = 1;
 /** Tree rows are this tall, with a 2px rhythm gap. */
 export const TREE_ROW_H = 28;
 export const TREE_ROW_GAP = 2;

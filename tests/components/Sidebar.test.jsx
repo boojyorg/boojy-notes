@@ -784,19 +784,20 @@ describe("Sidebar", () => {
   it("draws a folder's guide behind the rows, so a lit row covers it", () => {
     const noteData = buildNoteData([{ id: "n1", title: "Nested Note" }]);
     const folderTree = [{ name: "My Folder", _path: "My Folder", children: [], notes: ["n1"] }];
-    const { getByText, getByRole } = renderSidebar({
+    const { getByText } = renderSidebar({
       noteData,
       folderTree,
       expanded: { "My Folder": true },
     });
     const group = getByText("Nested Note").closest("[data-note-id]").parentElement;
-    const guide = group.querySelector('[aria-hidden="true"]');
-    expect(guide.style.width).toBe("1px");
-    // Under the folder's left side, and under the rows in the tree's own
-    // stacking context (without it the guide would go behind the panel).
+    const guide = group.querySelector("[data-indent-guide]");
+    // Under the folder's left side, on a whole pixel.
     expect(guide.style.left).toBe(`${SPINE + SIDEBAR_TREE_INSET + TREE_GUIDE_X}px`);
+    expect(Number.isInteger(TREE_GUIDE_X)).toBe(true);
+    // Under the rows, in the group's own stacking context (without one the
+    // guide would go behind the panel).
     expect(guide.style.zIndex).toBe("-1");
-    expect(getByRole("tree").style.isolation).toBe("isolate");
+    expect(group.style.isolation).toBe("isolate");
   });
 });
 

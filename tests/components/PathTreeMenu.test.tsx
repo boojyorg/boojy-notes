@@ -273,6 +273,18 @@ describe("PathTreeMenu", () => {
     expect(container.querySelector('[role="group"]')).toBeNull();
   });
 
+  it("draws each guide behind the rows, in its own group's stacking context", () => {
+    const { container } = mount();
+    const guides = Array.from(container.querySelectorAll<HTMLElement>("[data-indent-guide]"));
+    // The scope's own contents and the open folder's: a guide each.
+    expect(guides.length).toBe(2);
+    for (const guide of guides) {
+      // Without the context the guide would go behind the menu's surface.
+      expect(guide.style.zIndex).toBe("-1");
+      expect(guide.parentElement?.style.isolation).toBe("isolate");
+    }
+  });
+
   it("a collapse whose transition never ends still unmounts its rows", () => {
     vi.useFakeTimers();
     try {

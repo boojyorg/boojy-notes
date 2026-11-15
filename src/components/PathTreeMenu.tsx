@@ -37,7 +37,7 @@ import {
   visibleRows,
 } from "../utils/pathTree";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "./Icons";
-import Collapsible, { IndentGuide } from "./Collapsible";
+import Collapsible, { GuidedGroup } from "./Collapsible";
 import { fromTouch } from "../utils/touch";
 import { menuSurface } from "./Menu";
 import { ancestorFolders, baseName } from "../utils/vaultPath";
@@ -483,16 +483,16 @@ export default function PathTreeMenu({
         </button>
         {hasChildren && (
           <Collapsible open={isOpen}>
-            <div role="group" style={{ position: "relative" }}>
-              {/* The sidebar's indent guide: a hairline from the glyph's left side
-                  through the children, which is what says "this folder ends here". */}
-              <IndentGuide
-                bottom={TREE_ROW_GAP}
-                left={SPINE + TREE_GUIDE_X + (depth + shift) * TREE_INDENT - ROW_INSET}
-              />
+            {/* The sidebar's indent guide: a hairline from the glyph's left side
+                through the children, which is what says "this folder ends here". */}
+            <GuidedGroup
+              role="group"
+              bottom={TREE_ROW_GAP}
+              left={SPINE + TREE_GUIDE_X + (depth + shift) * TREE_INDENT - ROW_INSET}
+            >
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((id) => renderNote(id, depth + 1))}
-            </div>
+            </GuidedGroup>
           </Collapsible>
         )}
       </div>
@@ -579,8 +579,6 @@ export default function PathTreeMenu({
             : {})}
           style={{
             outline: "none",
-            // The indent guides are drawn behind the rows, within this.
-            isolation: "isolate",
             maxHeight: POPUP_MAX_H,
             boxSizing: "border-box",
             overflowY: "auto",
@@ -612,8 +610,7 @@ export default function PathTreeMenu({
               </div>
               {/* No role: these are the tree's own top-level items, drawn
                   under the head row with its indent guide. */}
-              <div style={{ position: "relative" }}>
-                <IndentGuide bottom={TREE_ROW_GAP} left={SPINE + TREE_GUIDE_X - ROW_INSET} />
+              <GuidedGroup bottom={TREE_ROW_GAP} left={SPINE + TREE_GUIDE_X - ROW_INSET}>
                 {rows.length === 0 && (
                   <div
                     style={{
@@ -628,7 +625,7 @@ export default function PathTreeMenu({
                 )}
                 {contents.folders.map((folder) => renderFolder(folder, 0))}
                 {contents.notes.map((id) => renderNote(id, 0))}
-              </div>
+              </GuidedGroup>
             </>
           )}
         </div>

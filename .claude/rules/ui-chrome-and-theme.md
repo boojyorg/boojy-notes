@@ -165,10 +165,10 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
   Default App, Show in Finder, Delete; never renamed or dragged. The attachment store is the root's last row.
 - The wordmark opens Settings; per theme (`dev/wordmarks.sh`), never the master PNG; hovered,
   its N alone lights (`litMark`). `chrome-tooltips.spec.ts`.
-- **Alignment**: `SPINE` and `TEXT_COL` in `layout.js`, shared with the popup; a
-  note's title starts on its depth's glyph column; the wordmark on the spine, or past the
-  lights. **A level steps less than a glyph; the folder's guide, on its left
-  side and behind the rows, says whose a row is.**
+- **Alignment**: `SPINE` and `TEXT_COL` in `layout.js`, shared with the popup; a note's title
+  starts on its depth's glyph column; the wordmark on the spine, or past the lights.
+- **A level steps less than a glyph, so the folder's guide says whose a row is**
+  (`GuidedGroup`): on its left side, behind the rows. `Sidebar.test.jsx`.
 - The active note is never bold or accent. Only structure and actions get a glyph. An unnamed
   note reads `Untitled` muted.
 - Row controls (note ···, folder New note + ···) are zero-width at rest and `span
@@ -178,10 +178,10 @@ strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder). H
 - One `role="tree"`, the vault row a sibling (axe). Folders first, alphabetical; the root is a
   folder.
 - **The tree is one Tab stop** (roving tabindex: last focused row, else the open note).
-  `treeNav.ts` is the order and the arrows; rows carry
-  `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 its menu,
-  Escape back to the note (not under a menu or dialog); ⌃⌘S lands on the open row. Focus
-  returns to the row after a rename, its neighbour after a delete.
+  `visibleTreeRows` / `treeMove` (`utils/treeNav.ts`) are the order and the arrows; rows
+  carry `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 the
+  row's menu, Escape back to the note (not under a menu or dialog); ⌃⌘S lands on the open
+  row. Focus returns to the row after a rename, its neighbour after a delete.
   `tree-keyboard.spec.ts`.
 - **Sort is a preference, not an arrangement**: Most recent is *modified* (`recencyOf()`),
   never opened.

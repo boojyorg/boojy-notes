@@ -60,28 +60,45 @@ export default function Collapsible({ open, children }: { open: boolean; childre
 }
 
 /**
- * The tree's indent guide: a hairline under a folder glyph's left side
- * (`TREE_GUIDE_X`) down through its open children, its end saying where the
- * folder ends. Drawn in the children's group, which is `position: relative`,
- * and behind the rows: a lit row's pill covers the guides that cross it. The
- * tree's root is the stacking context that keeps it over the panel
- * (`isolation`).
+ * A folder's open children with its indent guide: a hairline under the
+ * folder glyph's left side (`left`, see `TREE_GUIDE_X`) down through them,
+ * its end saying where the folder ends.
+ *
+ * The guide is drawn behind the rows, so a lit row's pill covers the guides
+ * that cross it. The group is the stacking context that makes that so
+ * (`isolation`): its own guide sits under its rows, and a parent's guide under
+ * this whole group. That is why the two come as one component: a guide
+ * behind the rows with no context of its own would go behind the panel.
  */
-export function IndentGuide({ left, bottom }: { left: number; bottom: number }) {
+export function GuidedGroup({
+  left,
+  bottom,
+  role,
+  children,
+}: {
+  left: number;
+  bottom: number;
+  role?: "group";
+  children: ReactNode;
+}) {
   const { theme } = useTheme();
   return (
-    <div
-      aria-hidden="true"
-      style={{
-        position: "absolute",
-        top: 0,
-        bottom,
-        left,
-        width: 1,
-        zIndex: -1,
-        background: theme.BG.divider,
-        pointerEvents: "none",
-      }}
-    />
+    <div role={role} style={{ position: "relative", isolation: "isolate" }}>
+      <div
+        aria-hidden="true"
+        data-indent-guide=""
+        style={{
+          position: "absolute",
+          top: 0,
+          bottom,
+          left,
+          width: 1,
+          zIndex: -1,
+          background: theme.BG.divider,
+          pointerEvents: "none",
+        }}
+      />
+      {children}
+    </div>
   );
 }
