@@ -368,6 +368,46 @@ describe("Sidebar", () => {
     }
   });
 
+  // The phone's tree steps further than the desktop's (its rows are taller),
+  // and the folder's guide moves with it.
+  it("on the phone, a nested row and its folder's guide step the phone's step", async () => {
+    vi.resetModules();
+    vi.doMock("../../src/utils/platform", async (actual) => ({
+      ...(await actual()),
+      isPhone: true,
+    }));
+    try {
+      const { default: PhoneSidebar } = await import("../../src/components/Sidebar.jsx");
+      const layout = await import("../../src/constants/layout.js");
+      const noteData = buildNoteData([{ id: "n1", title: "Deep Note" }]);
+      const folderTree = [
+        {
+          name: "Outer",
+          _path: "Outer",
+          notes: [],
+          children: [{ name: "Inner", _path: "Outer/Inner", children: [], notes: ["n1"] }],
+        },
+      ];
+      const { getByText } = renderSidebar({
+        Component: PhoneSidebar,
+        folderTree,
+        noteData,
+        expanded: { Outer: true, "Outer/Inner": true },
+      });
+      const spine = layout.SPINE + layout.SIDEBAR_TREE_INSET;
+      const step = layout.PHONE_TREE_INDENT;
+      expect(step).not.toBe(layout.TREE_INDENT);
+      const note = getByText("Deep Note").closest("[data-note-id]");
+      expect(note.style.paddingLeft).toBe(`${spine + 2 * step - layout.ROW_INSET}px`);
+      // Inner's guide: one step in, on its glyph's left side.
+      const guide = note.parentElement.querySelector("[data-indent-guide]");
+      expect(guide.style.left).toBe(`${spine + layout.TREE_GUIDE_X + step}px`);
+    } finally {
+      vi.doUnmock("../../src/utils/platform");
+      vi.resetModules();
+    }
+  });
+
   // The rename field is invisible (2026-09-16): no border, fill or padding,
   // the row's own font, so the name does not move when it appears and the
   // selection is the whole signal; the row stands down under it (the

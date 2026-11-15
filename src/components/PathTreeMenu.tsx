@@ -23,7 +23,6 @@ import {
   SPINE_ICON,
   TEXT_COL,
   TREE_GUIDE_X,
-  TREE_INDENT,
   TREE_ROW_GAP,
   TREE_ROW_H,
 } from "../constants/layout";
@@ -38,6 +37,7 @@ import {
 } from "../utils/pathTree";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "./Icons";
 import Collapsible, { GuidedGroup } from "./Collapsible";
+import { treeIndent } from "../utils/treeStep";
 import { fromTouch } from "../utils/touch";
 import { menuSurface } from "./Menu";
 import { ancestorFolders, baseName } from "../utils/vaultPath";
@@ -357,7 +357,7 @@ export default function PathTreeMenu({
         }}
         style={{
           ...rowBase,
-          paddingLeft: SPINE - ROW_INSET + row.depth * TREE_INDENT,
+          paddingLeft: SPINE - ROW_INSET + row.depth * treeIndent,
           paddingRight: 0,
           gap: TEXT_COL - SPINE - SPINE_ICON,
           background: highlighted && !row.disabled ? BG.hover : "transparent",
@@ -430,7 +430,7 @@ export default function PathTreeMenu({
         }}
         style={{
           ...rowBase,
-          paddingLeft: TEXT_COL - ROW_INSET + (depth + shift) * TREE_INDENT,
+          paddingLeft: TEXT_COL - ROW_INSET + (depth + shift) * treeIndent,
           background: highlighted || current ? BG.hover : "transparent",
           color: highlighted || current ? TEXT.primary : TEXT.secondary,
           boxShadow: highlighted && keyed ? ring : undefined,
@@ -471,7 +471,7 @@ export default function PathTreeMenu({
           }}
           style={{
             ...rowBase,
-            paddingLeft: SPINE - ROW_INSET + (depth + shift) * TREE_INDENT,
+            paddingLeft: SPINE - ROW_INSET + (depth + shift) * treeIndent,
             gap: TEXT_COL - SPINE - SPINE_ICON,
             background: highlighted ? BG.hover : "transparent",
             color: highlighted ? TEXT.primary : TEXT.secondary,
@@ -488,7 +488,7 @@ export default function PathTreeMenu({
             <GuidedGroup
               role="group"
               bottom={TREE_ROW_GAP}
-              left={SPINE + TREE_GUIDE_X + (depth + shift) * TREE_INDENT - ROW_INSET}
+              left={SPINE + TREE_GUIDE_X + (depth + shift) * treeIndent - ROW_INSET}
             >
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((id) => renderNote(id, depth + 1))}
@@ -615,7 +615,7 @@ export default function PathTreeMenu({
                   <div
                     style={{
                       padding: "6px 10px",
-                      paddingLeft: TEXT_COL - ROW_INSET + TREE_INDENT,
+                      paddingLeft: TEXT_COL - ROW_INSET + treeIndent,
                       fontSize: 13,
                       color: TEXT.muted,
                     }}

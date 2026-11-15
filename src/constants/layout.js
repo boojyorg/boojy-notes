@@ -143,8 +143,8 @@ export const SIDEBAR_DEFAULT_W = 240;
 // structural (folder glyphs, section labels) sits on SPINE, every label on
 // TEXT_COL. The exception is the sidebar's note rows: a note
 // carries no glyph and its title starts on the glyph column of its depth
-// (SPINE + depth × TREE_INDENT), so notes and folders at one depth share a
-// left edge. The popup's note rows keep TEXT_COL.
+// (SPINE + depth × the tree's step, `treeIndent`), so notes and folders at one
+// depth share a left edge. The popup's note rows keep TEXT_COL.
 
 /** Structural spine: the left edge of folder glyphs and section labels. */
 export const SPINE = 12;
@@ -163,9 +163,12 @@ export const ROW_INSET = 4;
 /** Folder-row glyph box on the spine (16px list tier). */
 export const SPINE_ICON = 16;
 /**
- * Each level of nesting steps the row's contents this far right: less than a
- * glyph, so a tree five folders deep keeps its names' room. A step this
- * short does not say whose child a row is; the folder's indent guide does.
+ * The desktop's step: each level of nesting moves the row's contents this far
+ * right. Less than a glyph, so a tree five folders deep keeps its names'
+ * room. A step short of a name's offset (TEXT_COL − SPINE) does not say whose
+ * child a row is; the folder's indent guide does. The phone's is
+ * `PHONE_TREE_INDENT`; a tree reads `treeIndent` (utils/treeStep.ts), which
+ * chooses, and never either constant.
  */
 export const TREE_INDENT = 12;
 /**
@@ -234,7 +237,8 @@ export const TOUCH = 40;
  *  size up from the desktop's 14. Judged beside Notion on a Pixel 8a. */
 export const PHONE_ROW_H = 42;
 export const PHONE_LABEL_SIZE = 15;
-/** Home's step per level on the phone: a row there is half as tall again as
- *  the desktop's and the screen has the width to spare, so the desktop's 12
- *  read as tight. Still short of a name's offset, so the guides stay. */
+/** The phone's step per level, in Home and the folder popup alike: a row
+ *  there is half as tall again as the desktop's and the screen has the width
+ *  to spare, so the desktop's 12 read as tight. Still short of a name's
+ *  offset, so the guides stay. Read through `treeIndent`. */
 export const PHONE_TREE_INDENT = 18;
