@@ -333,12 +333,8 @@ none blocks a stage.
 ### From the November 2026 review, queued
 
 Found by the whole-repo review of 2026-11-08 and not fixed since (judged by which files
-changed, not each re-run). The first four bullets are Tyr's calls of 2026-11-09.
+changed, not each re-run). The first two bullets are Tyr's calls of 2026-11-09.
 
-- [ ] **A root note with a namesake in a folder** gets an ambiguous link from the picker (call:
-  a bare `[[Name]]` is the shortest clear path).
-- [ ] **A title holding `#`, `^`, `[`, `]` or `|`** gets a link from the picker that points
-  nowhere (call: in a new name `#`, `^`, `[` and `]` become `_`; `|` was not asked).
 - [ ] **A `#tag` inside a `%%comment%%`** is listed in Search and the tag menu and never drawn
   (call, reversed 2026-11-09: draw it as a pill, as Obsidian does; the rest stays literal).
 - [ ] **A block dropped between a list item and its nested items** takes them as its children

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Note, NoteData } from "../../src/types/notes";
-import { linksFollow } from "../../src/utils/linkRewrite";
+import { linksFollow, pathLinkTo } from "../../src/utils/linkRewrite";
 import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown";
 
 /** A vault from `{ "Folder/Title": markdown }`, each note's id its path. */
@@ -210,16 +210,62 @@ describe("linksFollow: a namesake", () => {
     expect(md.Alpha).toBe("[[Work/Plan]] and [[Home/Plan]]\n");
   });
 
-  it("writes nothing it could not read back as that note", () => {
-    // A root note cannot be told from a namesake in a folder by a wikilink.
+  it("a root note keeps its bare name beside a namesake in a folder", () => {
+    // A bare name means the note nearest the root, so the root note is
+    // still told from its namesake.
     const before = vault({
       Alpha: "[[Draft]] and [d](Draft.md)\n",
       Draft: "D.\n",
       "Work/Plan": "P.\n",
     });
     const { md, links } = followed(before, placed(before, "Draft", { title: "Plan" }));
-    expect(md.Alpha).toBe("[[Draft]] and [d](Plan.md)\n");
-    expect(links).toBe(1);
+    expect(md.Alpha).toBe("[[Plan]] and [d](Plan.md)\n");
+    expect(links).toBe(2);
+  });
+
+  it("a link that meant a note in a folder is spelled out when a root note takes its name", () => {
+    const before = vault({ Alpha: "[[Plan]]\n", "Work/Plan": "P.\n", Draft: "D.\n" });
+    const { md } = followed(before, placed(before, "Draft", { title: "Plan" }));
+    expect(md.Alpha).toBe("[[Work/Plan]]\n");
+  });
+
+  it("writes nothing where two namesakes sit at the same depth and the link named neither", () => {
+    const before = vault({ Alpha: "[[Plan]]\n", "Work/Plan": "P.\n", "Home/Plan": "H.\n" });
+    const { links } = followed(before, placed(before, "Work/Plan", { title: "Plans" }));
+    expect(links).toBe(0);
+  });
+});
+
+describe("pathLinkTo: a Markdown link for a name no wikilink can hold", () => {
+  const data = vault({
+    Alpha: "A.\n",
+    "Pros | Cons": "P.\n",
+    "Work/C# notes": "C.\n",
+    "Work/Notes [2024] (draft)": "N.\n",
+    "Work/Beta": "B.\n",
+  });
+
+  it("encodes the name so the link reads back as that note", () => {
+    expect(pathLinkTo("Pros | Cons", null, data)).toBe("Pros%20%7C%20Cons.md");
+    expect(pathLinkTo("Work/C# notes", null, data)).toBe("Work/C%23%20notes.md");
+    expect(pathLinkTo("Work/Notes [2024] (draft)", null, data)).toBe(
+      "Work/Notes%20%5B2024%5D%20%28draft%29.md",
+    );
+  });
+
+  it("is written from the folder of the note the link sits in", () => {
+    expect(pathLinkTo("Work/C# notes", "Work", data)).toBe("C%23%20notes.md");
+    expect(pathLinkTo("Pros | Cons", "Work", data)).toBe("../Pros%20%7C%20Cons.md");
+    expect(pathLinkTo("missing", null, data)).toBeNull();
+  });
+
+  it("is followed by a rename like any other link", () => {
+    const linked = vault({
+      Alpha: `[c](${pathLinkTo("Work/C# notes", null, data)})\n`,
+      "Work/C# notes": "C.\n",
+    });
+    const { md } = followed(linked, placed(linked, "Work/C# notes", { title: "C sharp" }));
+    expect(md.Alpha).toBe("[c](Work/C%20sharp.md)\n");
   });
 });
 

@@ -30,6 +30,7 @@ import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
 import { SCRIM } from "./settings/SettingsPrimitives";
 import { fromTouch } from "../utils/touch";
 import { baseName } from "../utils/vaultPath";
+import { BREAKS_WIKILINK } from "../utils/wikilinkTarget";
 
 /**
  * The desktop search, as a palette (Cmd+P): a field over a dimmed window,
@@ -176,7 +177,15 @@ export default function SearchPalette({
     const ordered: Row[] = orderResults(results, folders, files).map((r) =>
       r.kind === "note" ? { kind: "result", result: r.result } : r,
     );
-    if (ordered.length === 0 && typed && applied === typed && !tagFilter && onCreateNote)
+    if (
+      ordered.length === 0 &&
+      typed &&
+      applied === typed &&
+      !tagFilter &&
+      onCreateNote &&
+      // A name a link cannot hold would be made under another name.
+      !BREAKS_WIKILINK.test(typed)
+    )
       return [{ kind: "create", title: typed }];
     return ordered;
   };

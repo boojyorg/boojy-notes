@@ -209,8 +209,12 @@ test("editing: Text and Destination, no list until the destination changes, Ente
 });
 
 test("the chip says where a link goes; a missing or shared name says so and its click opens the picker", async () => {
+  // The two Goals at one depth: a true tie. At different depths a bare name
+  // means the one nearest the root (`link-names.spec.ts`).
+  const { "University/Semester 1/Goals.md": uniGoals, ...rest } = FILES;
   const h = await launchApp({
-    ...FILES,
+    ...rest,
+    "University/Goals.md": uniGoals,
     "Personal/Week 38.md":
       "See [[Goals]], [[Old plan]] and [[Todd's Note]] and https://example.org\n",
   });
@@ -254,7 +258,7 @@ test("the chip says where a link goes; a missing or shared name says so and its 
     // A click on the shared name opens the picker with both candidates and no guess.
     await links.nth(0).click();
     await expect(picker(h.page)).toBeVisible();
-    expect(await rowsOf(h.page)).toEqual(["Goals Personal", "Goals University/Semester 1"]);
+    expect(await rowsOf(h.page)).toEqual(["Goals Personal", "Goals University"]);
     await h.page.keyboard.press("Enter");
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("See [[Personal/Goals|Goals]]"));
     await expect(links.nth(0)).not.toHaveClass(/wikilink-broken/);

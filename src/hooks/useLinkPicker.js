@@ -1,6 +1,13 @@
 // @ts-check
 import { useCallback, useMemo, useState } from "react";
-import { linkTargetFor, wikilinkLabel, wikilinkStatus } from "../utils/wikilinkTarget";
+import {
+  BREAKS_WIKILINK,
+  linkTargetFor,
+  wikilinkLabel,
+  wikilinkStatus,
+} from "../utils/wikilinkTarget";
+import { pathLinkTo } from "../utils/linkRewrite";
+import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import { vaultNotes } from "../utils/vaultNotes";
 import { caretLength, caretOffsetAt, linkText, placeCaret } from "../utils/domHelpers";
 
@@ -62,6 +69,40 @@ function unwash(mark) {
   range.setEndAfter(last);
   return range;
 }
+/**
+ * `markdown` as the one link the renderer draws it as, so what is read back
+ * is what was written; null when it is drawn as anything else (text beside
+ * the link, a second element), or when there is nothing to draw.
+ */
+function drawnLink(markdown) {
+  if (!markdown) return null;
+  const holder = document.createElement("template");
+  holder.innerHTML = inlineMarkdownToHtml(markdown);
+  const el = holder.content.firstElementChild;
+  if (!el?.matches("a[data-url]")) return null;
+  const beside = [...holder.content.childNodes].some(
+    (n) => n !== el && (n.textContent ?? "").replace(/\u200B/g, "") !== "",
+  );
+  return beside ? null : el;
+}
+
+/** The `[[…]]` element for `target` showing `shown`, as the renderer draws one. */
+function wikilinkElement(existing, target, shown, notes) {
+  // Text left as the old target's drawn label is no alias: the new target
+  // draws its own, and the file keeps the link unpiped.
+  const drawn =
+    existing?.hasAttribute("data-label") &&
+    shown === wikilinkLabel(existing.getAttribute("data-target") || "");
+  const label = drawn ? wikilinkLabel(target) : shown;
+  const el = document.createElement("span");
+  const status = wikilinkStatus(target, notes);
+  el.className = status.kind === "note" ? "wikilink" : "wikilink wikilink-broken";
+  el.setAttribute("data-target", target);
+  if (drawn && label !== target) el.setAttribute("data-label", "");
+  el.textContent = label;
+  return el;
+}
+
 /**
  * @typedef {{ top: number, bottom: number, left: number, right: number }} Anchor
  * @typedef {{
@@ -173,25 +214,40 @@ export function useLinkPicker({
     if (el) placeCaret(el, caretLength(el));
   }, [wikilinkMenu, setWikilinkMenu, noteDataRef, blockRefs]);
 
-  /** The note a chosen destination means, made if asked; answers its target text. */
-  const noteTarget = useCallback(
+  /** The note a chosen destination means, made if asked. */
+  const noteOf = useCallback(
     (dest) => {
-      let id = dest.id;
-      if (dest.create) {
-        const folder = noteDataRef.current[activeNoteRef.current]?.folder || null;
-        id = createNote(folder, dest.title, { open: false });
-      }
-      return id ? linkTargetFor(id, noteDataRef.current) : dest.title;
+      if (!dest.create) return dest.id;
+      const folder = noteDataRef.current[activeNoteRef.current]?.folder || null;
+      return createNote(folder, dest.title, { open: false });
     },
     [createNote, noteDataRef, activeNoteRef],
+  );
+
+  /**
+   * A Markdown link to the note `id` showing `label`, when its name holds
+   * what a wikilink's syntax is made of (a file from outside: `C# notes`,
+   * `Pros | Cons`); null for every other note, which a `[[…]]` names.
+   */
+  const pathLink = useCallback(
+    (id, label) => {
+      const notes = noteDataRef.current;
+      if (!id || !BREAKS_WIKILINK.test(linkTargetFor(id, notes))) return null;
+      const dest = pathLinkTo(id, notes[activeNoteRef.current]?.folder || null, notes);
+      return dest ? `[${label.replace(/[\\[\]]/g, "\\$&")}](${dest})` : null;
+    },
+    [noteDataRef, activeNoteRef],
   );
 
   const applyQuick = useCallback(
     ({ dest }) => {
       if (dest.kind !== "note") return;
-      handleWikilinkSelect(noteTarget(dest));
+      const id = noteOf(dest);
+      const notes = noteDataRef.current;
+      const target = id ? linkTargetFor(id, notes) : dest.title;
+      handleWikilinkSelect(target, pathLink(id, notes[id]?.title ?? "") ?? undefined);
     },
-    [handleWikilinkSelect, noteTarget],
+    [handleWikilinkSelect, noteOf, pathLink, noteDataRef],
   );
 
   const apply = useCallback(
@@ -217,23 +273,21 @@ export function useLinkPicker({
         icon.textContent = "↗";
         el.appendChild(icon);
       } else {
-        const target =
-          dest.keep && p.existing?.classList.contains("wikilink")
-            ? p.existing.getAttribute("data-target") || dest.title
-            : noteTarget(dest);
-        // Text left as the old target's drawn label is no alias: the new
-        // target draws its own, and the file keeps the link unpiped.
+        const kept = dest.keep && p.existing?.classList.contains("wikilink");
+        const id = kept ? null : noteOf(dest);
+        const target = kept
+          ? p.existing?.getAttribute("data-target") || dest.title
+          : id
+            ? linkTargetFor(id, noteDataRef.current)
+            : dest.title;
         const shown = text || selectedText || dest.title;
-        const drawn =
-          p.existing?.hasAttribute("data-label") &&
-          shown === wikilinkLabel(p.existing.getAttribute("data-target") || "");
-        const label = drawn ? wikilinkLabel(target) : shown;
-        el = document.createElement("span");
-        const status = wikilinkStatus(target, noteDataRef.current);
-        el.className = status.kind === "note" ? "wikilink" : "wikilink wikilink-broken";
-        el.setAttribute("data-target", target);
-        if (drawn && label !== target) el.setAttribute("data-label", "");
-        el.textContent = label;
+        // The words as the label; where they cannot be one link's text (a
+        // line break, a bracket that closes it early), the note's name.
+        const title = noteDataRef.current[id]?.title ?? "";
+        el =
+          drawnLink(pathLink(id, shown.replace(/\s*\n\s*/g, " "))) ??
+          drawnLink(pathLink(id, title)) ??
+          wikilinkElement(p.existing, target, shown, noteDataRef.current);
       }
       if (p.existing) {
         p.existing.replaceWith(el);
@@ -257,7 +311,7 @@ export function useLinkPicker({
       editorRef.current?.focus({ preventScroll: true });
       if (blockEl && pos >= 0) placeCaret(blockEl, pos);
     },
-    [picker, noteTarget, noteDataRef, reReadBlockFromDom, editorRef],
+    [picker, noteOf, pathLink, noteDataRef, reReadBlockFromDom, editorRef],
   );
 
   const remove = useCallback(() => {

@@ -24,7 +24,7 @@ import { literalRuns } from "./footnotes";
 import { LINK_DEST } from "./linkDestination";
 import { type VaultLinkForm, vaultLinkForms, vaultPathsOf } from "./vaultLinkTarget";
 import { vaultNotes } from "./vaultNotes";
-import { linkTargetFor, parseWikilinkTarget, wikilinkKey } from "./wikilinkTarget";
+import { linkTargetFor, nearestRoot, parseWikilinkTarget, wikilinkKey } from "./wikilinkTarget";
 
 // ── What the notes answer to ────────────────────────────────────────────────
 
@@ -62,12 +62,14 @@ function worldOf(noteData: NoteData): World {
 
 const only = (ids: string[] | undefined) => (ids?.length === 1 ? ids[0] : null);
 
-/** The note a wikilink's target names: the one of that title, or the one at that path. */
+/** The note a wikilink's target names: the one at that path, or of that title, nearest the root. */
 function wikiNote(target: string, world: World): string | null {
   const parsed = parseWikilinkTarget(target);
   const key = wikilinkKey(parsed);
   if (!key) return null;
-  return only((parsed.folder ? world.byPlace : world.byTitle).get(key));
+  return parsed.folder
+    ? only(world.byPlace.get(key))
+    : nearestRoot(world.byTitle.get(key), world.notes);
 }
 
 const noteAt = (path: string, world: World) =>
@@ -280,6 +282,25 @@ function followInText(
     count.links++;
   }
   return at === 0 ? text : out + text.slice(at);
+}
+
+/**
+ * A Markdown link's destination for the note `id`, written from the folder
+ * `fromFolder`: for a name no wikilink can hold (`BREAKS_WIKILINK`). Null
+ * when even that would not be read back as the note.
+ */
+export function pathLinkTo(
+  id: string,
+  fromFolder: string | null,
+  noteData: NoteData,
+): string | null {
+  const world = worldOf(noteData);
+  const note = world.notes[id];
+  if (!note) return null;
+  const dest = writePath(`${relativePath(fromFolder, placeOf(note))}.md`, true, false);
+  return readsAs(`[x](${dest})`, "path", dest) && pathNote(dest, fromFolder, world)?.id === id
+    ? dest
+    : null;
 }
 
 // ── A note's blocks ─────────────────────────────────────────────────────────

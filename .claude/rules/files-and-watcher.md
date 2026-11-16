@@ -41,7 +41,7 @@
 
 ## An outside rename or move is the same note
 
-Identity is the inode, read exact (`fileIdentity`, memory only), asked by `relocateNote` for an unclaimed
+Identity is the inode, read exact (`fileIdentity`), asked by `relocateNote` for an unclaimed
 unlink or a save finding its file gone. Found elsewhere, the note follows (`file-moved` →
 `adoptNoteData`), pending edits flushed there; a save carrying an old name before the window's
 `outside-move-taken` is no rename back. No match is a delete. Never compare bytes to decide
@@ -91,12 +91,12 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 
 - **`write-note` is the only place that knows the final name**
   and answers every write; `useResolvedTitle` adopts it. **Don't add a sanitiser to an input.**
-- A name the app makes is sanitised; a name the disk holds is kept (`Why?.md` stays).
+- A name the app makes is sanitised, link syntax (`# ^ [ ]`) too; a name the disk holds is kept (`Why?.md` stays).
   `disk-names.spec.ts`.
 - A note's own file is never its own collision (`ensureUniqueFilePath`).
 - **The name field is the user's while focused**: answers are adopted on blur (`settleTitle`).
   `title-is-filename.spec.ts`.
-- A save keeps the mode, on macOS xattrs and birthtime (`cp -p`); a symlink is written
+- A save keeps the mode, on macOS xattrs and birthtime; a symlink is written
   through. `file-mode.spec.ts`.
 - **A rename moves the file first**, then the index, then the text: one file at every instant,
   its id kept through a crash. **Unchanged text is not rewritten**: a sync client takes the

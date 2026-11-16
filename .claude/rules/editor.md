@@ -91,8 +91,8 @@ through state.**
   byte. Never strip it by value.
 - **The browser's caret is fixed at the keystroke** (`caretOutOfLinkEnd`/`Start`), never on
   `selectionchange`, which would trap ArrowLeft.
-- **A wikilink click opens the note its target names; it never guesses or creates**
-  (`wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the
+- **A wikilink click opens the note its target names; it never guesses or creates.**
+  A shared bare name is the note nearest the root (`nearestRoot`); a tie, or none, is dashed and opens the
   picker to fix; a file opens (`fileForTarget`); a heading or `^id` is found as Obsidian finds
   it (`headingTarget.ts`, a child only in its parent; `blockTarget.ts`), as a visit
   (`historyJump`); a missing one is said. An ID is
@@ -101,7 +101,7 @@ through state.**
 - **A footnote reference is one sealed character showing `[n]`** over its source
   (`numberFootnotes`), which copies and saves.
   A caret anchor follows; ←/→ take it whole, Backspace its `]` (`footnoteRefKey`). A click goes to
-  its definition (its label's last), a visit; with none, the panel writes one. `footnotes.spec.ts`.
+  its definition, a visit; with none, the panel writes one. `footnotes.spec.ts`.
 - **A footnote is made in its panel** (`useFootnoteDraft`): `[^` shows a faint `n]`,
   Enter/Tab types it; a typed new label (not line-first) or Insert footnote too. A draft
   till Done or a leave (`flushAll`, not a blur); refused, its text waits in a notice.
@@ -112,7 +112,8 @@ through state.**
 - **Move footnotes to bottom waits for its safety save** (`useMoveFootnotes`).
   `footnote-move.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for every way in, writing the shortest clear target
-  (`linkTargetFor`). `link-picker.spec.ts`.
+  (`linkTargetFor`); a kept name with `# ^ [ ] |` gets a Markdown link (`pathLinkTo`).
+  `link-picker.spec.ts`, `link-names.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
   reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at its
@@ -211,15 +212,14 @@ keeps its own view, saved** (`useSourceView`).
   (`markdownToBlocks`) and committed (`commitTextChange`).
 - **It repaints only when the blocks aren't the ones it committed** (by identity). The caret
   crosses by block (`sourceView.ts`). `source-view.spec.ts`.
-- **Colour says what each part is; nothing may change a character's width**:
-  no ligatures. `sourceView.test.ts`.
+- **Colour says what each part is; nothing may change a character's width**. `sourceView.test.ts`.
 
 ## Lists
 
 - **The caret, and a selection's ends, never rest beside a marker** (`caretIntoTextRoot`,
   `selectionIntoTextRoots`). `list-caret.spec.ts`.
 - **Tab moves an item with its nested items; over several, all of them** (`indentRun`): in is
-  all or nothing, out each that can; one undo. `multi-item-indent.spec.ts`.
+  all or nothing, out each that can. `multi-item-indent.spec.ts`.
 - `listLayout` owns numbers and prefixes; authored spellings stay; a text edit never renumbers
   an imported list (`reconcileListEdit`).
 
@@ -285,9 +285,9 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **Ragged on disk, ragged forever**: a row holds exactly its line's cells; only an explicit
   column operation pads (`tableShape.ts`).
 - **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
-  (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, and an edited
+ ; otherwise unchanged rows keep their lines, and an edited
   one fitting a lined-up header takes its columns. `table-preservation.spec.ts`.
-- **Rows and columns move by grips on the edges** (`TableHandles`) or a cell's keys; one write, on drop. `table-handles.spec.ts`.
+- **Rows and columns move by grips on the edges** (`TableHandles`) or a cell's keys. `table-handles.spec.ts`.
 
 ## Whole-block selection
 
@@ -312,7 +312,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
   link's click finds it (`embedTarget`); a link inside reads as in its source.
 - **The copy is fenced by the selection, never the target**:
   `useEmbedFence` cancels an edit in it and its chip says where to edit.
-- **A click opens its `![[…]]` underneath** (keys: Edit link), saved once; closing leaves it picked. `embeds.spec.ts`.
+- **A click opens its `![[…]]` underneath**, saved once; closing leaves it picked. `embeds.spec.ts`.
 
 ## Paste and copy
 

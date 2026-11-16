@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Improvements
+
+- **A note that shares its name can be linked** — With `Gamma` at the top of your notes and another `Gamma` in a folder, a link to the first was written `[[Gamma]]`, drawn dashed, and could never be fixed. A plain `[[Name]]` that several notes share now means the one nearest the top, as in Obsidian; the others are linked by their folder, as before. Two namesakes equally deep are still a tie: the link is dashed and a click asks which. Renaming or moving a note now also updates these links.
+- **New names can always be linked** — `#`, `^`, `[` and `]` in the name of a new note, folder or attachment are now written `_`, as `|` already was, because a link cannot hold them: `[[C# notes]]` means a heading in a note called `C`. A file that already has such a name keeps it until you edit its name. Search and the link picker no longer offer to create a note under a name they could not keep.
+- **Notes with `#`, `^`, `[`, `]` or `|` in their name can be linked** — For a file that already has such a name (made in Finder, or before this version), the link picker now writes a Markdown link, `[C# notes](C%23%20notes.md)`, which works here, in Obsidian and elsewhere. It used to write a link that pointed nowhere.
+
 ### Fixes
 
 - **Tab and Escape in Search** — Tab used to carry the keyboard out of the search palette to the window behind it, and Escape only closed the palette while its text field had the keyboard, so a click on "Recent" or on empty space left it stuck open. Tab now stays inside, Escape closes it from anywhere, and a click on empty space leaves you typing in the field. The folder menu under a note's path keeps Tab in the same way.
@@ -11,6 +17,7 @@
 - **AltGr characters type on Windows** — On keyboard layouts that type a backslash with AltGr (German, Spanish, Nordic), the key toggled the sidebar and typed nothing. Not checked on a Windows machine yet.
 - **The cursor lands where the edit happened** — After deleting or typing over a selection that ran across two blocks, the cursor sat too far right whenever the first line had bold, a link or a footnote reference before the cut, so the next letters went into the middle of a word. The same happened after pasting several lines that ended in formatted text. It now sits exactly at the join.
 - **Pasting a note's text no longer makes a Properties block mid-note** — Text that began with `---`, some lines and `---` (a note copied whole from Obsidian or another editor) was pasted as a Properties block wherever the cursor stood, and that block turned into a divider and plain text the next time the note was opened. Mid-note it is now pasted as that divider and text from the start. Pasted into the empty first line of a note, it is still the note's properties.
+- **A Markdown link to a name holding `#` opens its note** — `[text](C%23%20notes.md)` did nothing when clicked.
 
 ## v0.23.1 — 2026-11-16
 

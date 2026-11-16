@@ -99,6 +99,7 @@ describe("the editor's calls", () => {
 
   it("makes names safe the way the desktop does", () => {
     expect(sanitizeFilename("a/b: c?")).toBe("a_b_ c_");
+    expect(sanitizeFilename("C# notes [x^2]")).toBe("C_ notes _x_2_");
     expect(sanitizeFilename(".env")).toBe("_env");
     expect(sanitizeFilename("CON")).toBe("CON_");
     expect(sanitizeFilename("  ")).toBe("Untitled");

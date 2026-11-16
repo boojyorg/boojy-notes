@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  BREAKS_WIKILINK,
   linkTargetFor,
+  nearestRoot,
   noteLinkKeys,
   parseWikilinkTarget,
   missingHeadingMessage,
@@ -139,6 +141,38 @@ describe("missingHeadingMessage", () => {
   });
 });
 
+describe("a bare name several notes share (2026-11-09)", () => {
+  it("means the note nearest the root, as Obsidian's shortest path", () => {
+    // A root note beside a namesake in a folder could not be linked at all:
+    // the picker wrote `[[Gamma]]`, which named both.
+    expect(wikilinkStatus("Gamma", vault)).toMatchObject({ kind: "note", id: "gammaRoot" });
+    expect(wikilinkStatus("gamma#Intro", vault)).toMatchObject({ kind: "note", id: "gammaRoot" });
+    expect(linkTargetFor("gammaRoot", vault)).toBe("Gamma");
+    // The one in the folder is still named by its path, and only by it.
+    expect(linkTargetFor("gamma", vault)).toBe("Work/Gamma");
+    expect(wikilinkStatus("Work/Gamma", vault)).toMatchObject({ kind: "note", id: "gamma" });
+  });
+
+  it("a shallower folder wins over a deeper one; the same depth is a tie", () => {
+    const notes = { a: note("Plan", "Work"), b: note("Plan", "Work/Old"), c: note("Plan", "Home") };
+    expect(nearestRoot(["a", "b"], notes)).toBe("a");
+    expect(nearestRoot(["a", "b", "c"], notes)).toBeNull();
+    expect(nearestRoot(["b"], notes)).toBe("b");
+    expect(nearestRoot([], notes)).toBeNull();
+    expect(wikilinkStatus("Plan", notes)).toMatchObject({
+      kind: "ambiguous",
+      ids: ["a", "b", "c"],
+    });
+  });
+
+  it("names the characters a wikilink cannot hold", () => {
+    for (const name of ["C# notes", "x^2", "Notes [2024]", "Pros | Cons"]) {
+      expect(BREAKS_WIKILINK.test(name)).toBe(true);
+    }
+    expect(BREAKS_WIKILINK.test("Why? (draft) & more_1-2.3")).toBe(false);
+  });
+});
+
 describe("the picker's readings (2026-09-20)", () => {
   const namesakes = {
     a: { title: "Goals", folder: "Personal", content: { blocks: [] } },
@@ -175,11 +209,14 @@ describe("the picker's readings (2026-09-20)", () => {
       title: "Other",
       folder: null,
     });
-    expect(wikilinkStatus("Goals", namesakes)).toEqual({
+    // Two at one depth name neither; of two at different depths, the nearer.
+    const level = { ...namesakes, b: { ...namesakes.b, folder: "Uni" } };
+    expect(wikilinkStatus("Goals", level)).toEqual({
       kind: "ambiguous",
       ids: ["a", "b"],
       name: "Goals",
     });
+    expect(wikilinkStatus("Goals", namesakes)).toMatchObject({ kind: "note", id: "a" });
     expect(wikilinkStatus("Work/Delta#Plan", namesakes)).toEqual({
       kind: "missing",
       name: "Delta",
