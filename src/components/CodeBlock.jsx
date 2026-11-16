@@ -4,6 +4,7 @@ import CodeLangMenu from "./CodeLangMenu";
 import { canonicalLang, sameLang } from "../utils/codeLanguage";
 import { highlightCode } from "../utils/codeHighlight";
 import { paintMarkdownCode } from "../utils/sourceView";
+import { caretOnEdgeRow } from "../utils/textareaRows";
 import Menu, { pointAnchor } from "./Menu";
 import {
   CheckIcon,
@@ -45,6 +46,14 @@ const LANGUAGES = [
 
 // The highlight overlay: each line wrapped in a span. Markdown is painted as
 // the Markdown view paints it, so it reads the same in both.
+/**
+ * Where a selection's lines end. A selection that stops at the start of a
+ * line (a triple-click, Shift+↓) does not hold that line, as in any editor.
+ */
+function selectedLinesEnd(val, start, end) {
+  return end > start && val[end - 1] === "\n" ? end - 1 : end;
+}
+
 function overlayHtml(text, langKey) {
   const html =
     canonicalLang(langKey) === "markdown" ? paintMarkdownCode(text) : highlightCode(text, langKey);
@@ -213,30 +222,45 @@ export default memo(function CodeBlock({
         } else {
           // Multi-line: indent each selected line
           const firstLineStart = val.lastIndexOf("\n", start - 1) + 1;
-          const lines = val.substring(firstLineStart, end).split("\n");
+          const tail = selectedLinesEnd(val, start, end);
+          const lines = val.substring(firstLineStart, tail).split("\n");
           const indented = lines.map((l) => "    " + l).join("\n");
-          const newVal = val.substring(0, firstLineStart) + indented + val.substring(end);
+          const newVal = val.substring(0, firstLineStart) + indented + val.substring(tail);
           ta.value = newVal;
           ta.selectionStart = firstLineStart;
-          ta.selectionEnd = firstLineStart + indented.length;
+          ta.selectionEnd = firstLineStart + indented.length + (end - tail);
         }
         commit(ta.value);
         return;
       }
 
-      // Shift+Tab — dedent (supports multi-line selection)
+      // Shift+Tab — dedent the caret's line, or every selected line
       if (e.key === "Tab" && e.shiftKey) {
         e.preventDefault();
         const start = ta.selectionStart;
         const end = ta.selectionEnd;
         const val = ta.value;
         const firstLineStart = val.lastIndexOf("\n", start - 1) + 1;
-        const lines = val.substring(firstLineStart, end).split("\n");
-        const dedented = lines.map((l) => (l.startsWith("    ") ? l.substring(4) : l)).join("\n");
-        const newVal = val.substring(0, firstLineStart) + dedented + val.substring(end);
-        ta.value = newVal;
-        ta.selectionStart = firstLineStart;
-        ta.selectionEnd = firstLineStart + dedented.length;
+        const dedent = (l) => l.replace(/^ {1,4}/, "");
+        if (start === end) {
+          // A caret: its whole line, wherever in the line it stands, and it
+          // stays a caret (a selection here was overwritten by the next key).
+          const nl = val.indexOf("\n", start);
+          const lineEnd = nl === -1 ? val.length : nl;
+          const line = val.substring(firstLineStart, lineEnd);
+          const next = dedent(line);
+          const removed = line.length - next.length;
+          if (!removed) return;
+          ta.value = val.substring(0, firstLineStart) + next + val.substring(lineEnd);
+          ta.selectionStart = ta.selectionEnd = Math.max(firstLineStart, start - removed);
+        } else {
+          const tail = selectedLinesEnd(val, start, end);
+          const lines = val.substring(firstLineStart, tail).split("\n");
+          const dedented = lines.map(dedent).join("\n");
+          ta.value = val.substring(0, firstLineStart) + dedented + val.substring(tail);
+          ta.selectionStart = firstLineStart;
+          ta.selectionEnd = firstLineStart + dedented.length + (end - tail);
+        }
         commit(ta.value);
         return;
       }
@@ -277,8 +301,7 @@ export default memo(function CodeBlock({
 
       // ArrowUp at first line
       if (e.key === "ArrowUp") {
-        const beforeCursor = ta.value.substring(0, ta.selectionStart);
-        if (!beforeCursor.includes("\n")) {
+        if (caretOnEdgeRow(ta, "first")) {
           e.preventDefault();
           if (onBlockNav) onBlockNav(blockIndex, "prev");
           return;
@@ -287,8 +310,7 @@ export default memo(function CodeBlock({
 
       // ArrowDown at last line
       if (e.key === "ArrowDown") {
-        const afterCursor = ta.value.substring(ta.selectionEnd);
-        if (!afterCursor.includes("\n")) {
+        if (caretOnEdgeRow(ta, "last")) {
           e.preventDefault();
           if (onBlockNav) onBlockNav(blockIndex, "next");
           return;

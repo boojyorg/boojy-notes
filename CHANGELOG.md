@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixes
+
+- **Tab and Escape in Search** — Tab used to carry the keyboard out of the search palette to the window behind it, and Escape only closed the palette while its text field had the keyboard, so a click on "Recent" or on empty space left it stuck open. Tab now stays inside, Escape closes it from anywhere, and a click on empty space leaves you typing in the field. The folder menu under a note's path keeps Tab in the same way.
+- **The cursor comes back after Search** — Closing Search with Escape left the keyboard nowhere, so you had to click into the note before typing. The cursor now returns to where it was.
+- **Shift+Tab in a code block no longer sets up an overwrite** — With no selection, Shift+Tab removed only part of the line's indent and left the line selected, so the next key replaced it; at the start of a line it did nothing. It now removes the indent of the whole line and leaves the cursor in place. Tab and Shift+Tab over a selection that ends at the start of a line leave that line alone.
+- **Up and Down move through a long wrapped line of code or a formula** — In a code block, or a formula's source, a line long enough to wrap counted as one row, so Up from its last row jumped out of the block (and closed the formula). The arrows now leave only from the first and last rows you see.
+- **AltGr characters type on Windows** — On keyboard layouts that type a backslash with AltGr (German, Spanish, Nordic), the key toggled the sidebar and typed nothing. Not checked on a Windows machine yet.
+
 ## v0.23.1 — 2026-11-16
 
 ### Fixes

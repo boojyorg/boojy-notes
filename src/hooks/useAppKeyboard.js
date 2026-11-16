@@ -167,6 +167,10 @@ export function useAppKeyboard({
         return;
       }
       if (e.defaultPrevented) return;
+      // AltGr types a character (a German `\\` is AltGr+ß) and Windows reports
+      // it as Ctrl+Alt: never a shortcut, the scale keys included, or the
+      // character is never typed.
+      if (e.getModifierState?.("AltGraph")) return;
       const owner = focusOwner();
       // The scale keys are the one shortcut Settings does not stand in front
       // of: the app resizes behind the open pane, so the keys
