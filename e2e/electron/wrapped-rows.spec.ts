@@ -5,7 +5,7 @@
  * of the block (closing the formula's panel) instead of moving up a row.
  */
 import { expect, test } from "@playwright/test";
-import { type AppHandle, launchApp } from "./harness";
+import { type AppHandle, START_OF_LINE, launchApp } from "./harness";
 
 const LONG = Array.from({ length: 80 }, (_, i) => `word${i}`).join(" ");
 
@@ -50,6 +50,16 @@ test("↑ and ↓ move through a wrapped code line, and leave only from its edge
   await h.page.keyboard.press("ArrowDown");
   await expect(field).toBeFocused();
   expect(await caret(h.page)).toBeGreaterThan(0);
+
+  // The start of the last row is one offset with the end of the row above:
+  // Up from there moves up a row, it does not leave.
+  await caretTo(h.page, "end");
+  await h.page.keyboard.press(START_OF_LINE);
+  const rowStart = await caret(h.page);
+  expect(rowStart).toBeGreaterThan(0);
+  await h.page.keyboard.press("ArrowUp");
+  await expect(field).toBeFocused();
+  expect(await caret(h.page)).toBeLessThan(rowStart);
 
   // The edge rows still walk out.
   await caretTo(h.page, "start");

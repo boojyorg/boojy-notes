@@ -60,6 +60,18 @@ export function useFocusTrap(containerRef, isOpen, initialFocus = "first") {
     const container = containerRef.current;
     if (!container) return;
 
+    // What holds focus now, if it is not the surface's own: a surface opened
+    // from a menu's item rendered while the closing menu still held focus,
+    // and the menu has since handed it back to its row. The render's reading
+    // stands only where the surface has taken focus itself (`autoFocus`).
+    const now = document.activeElement;
+    if (now && !container.contains(now) && now !== previousFocusRef.current) {
+      previousFocusRef.current = now;
+      ringedRef.current = now.matches?.(":focus-visible") ?? false;
+      const sel = document.getSelection();
+      rangeRef.current = sel?.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+    }
+
     // Focus the first focusable element inside the container, unless the
     // surface has already put focus somewhere inside itself.
     const focusFirst = () => {

@@ -141,6 +141,25 @@ describe("useFocusTrap", () => {
     expect(document.activeElement.tagName).toBe("INPUT");
   });
 
+  it("opened from a menu's item, hands focus back to what the menu handed it to", async () => {
+    // The dialog renders while the closing menu still holds focus; by its
+    // effect the menu has given focus back to the row that opened it.
+    const row = opener();
+    const { rerender } = render(<MenuThenDialog key="m" stage="menu" />);
+    await nextFrame();
+    expect(document.activeElement.dataset.first).toBe("true");
+    // The same position, a new surface: the menu unmounts as the dialog mounts.
+    rerender(
+      <>
+        <Surface key="dialog" open />
+      </>,
+    );
+    await nextFrame();
+    expect(document.activeElement.dataset.first).toBe("true");
+    rerender(<></>);
+    expect(document.activeElement).toBe(row);
+  });
+
   it("Tab goes nowhere in a surface with no Tab stop at all", async () => {
     // The path's folder menu: focus on the container, every row tabindex -1.
     opener();
@@ -163,6 +182,11 @@ describe("useFocusTrap", () => {
     expect(document.activeElement).toBe(btn);
   });
 });
+
+/** A menu holding focus, then the dialog its item opens: one commit swaps them. */
+function MenuThenDialog({ stage }) {
+  return stage === "menu" ? <Surface open /> : stage === "dialog" ? <Surface open /> : null;
+}
 
 function Palette({ stops = false }) {
   const ref = useRef(null);
