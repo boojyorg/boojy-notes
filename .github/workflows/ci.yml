@@ -148,6 +148,14 @@ jobs:
       # node_modules, so no Playwright browser download.
       - name: Build
         run: pnpm exec vite build
+      # The suite fetches Chromium's spelling dictionary from Google before
+      # its first test (`DICTIONARY` in harness.ts), and a failed fetch failed
+      # the whole shard. Kept between runs, the network is asked only once.
+      - name: Keep the spelling dictionary
+        uses: actions/cache@v6
+        with:
+          path: /tmp/boojy-e2e-dictionaries
+          key: spelling-dictionary-en-us-10-1
       - name: Electron core-journey tests
         timeout-minutes: 15
         run: pnpm exec playwright test -c playwright.electron.config.ts --shard=${{ matrix.shard }}/6
