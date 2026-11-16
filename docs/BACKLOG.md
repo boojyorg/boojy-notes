@@ -334,7 +334,7 @@ none blocks a stage.
 
 Found by the whole-repo review of 2026-11-08 and not fixed since (judged by which files
 changed, not each re-run). The first four bullets are one batch of keys and focus (seven
-faults); the next four are Tyr's calls of 2026-11-09.
+faults); the next two are Tyr's calls of 2026-11-09.
 
 - [ ] **Search palette**: Tab leaves it (and the path popup), as the focus trap counts buttons
   that are not Tab stops; Escape closes it only while its field has focus; closed with Escape,
@@ -349,10 +349,6 @@ faults); the next four are Tyr's calls of 2026-11-09.
   a bare `[[Name]]` is the shortest clear path).
 - [ ] **A title holding `#`, `^`, `[`, `]` or `|`** gets a link from the picker that points
   nowhere (call: in a new name `#`, `^`, `[` and `]` become `_`; `|` was not asked).
-- [ ] **A `#tag` inside a `%%comment%%`** is listed in Search and the tag menu and never drawn
-  (call, reversed 2026-11-09: draw it as a pill, as Obsidian does; the rest stays literal).
-- [ ] **A block dropped between a list item and its nested items** takes them as its children
-  (call: a drop never re-parents; the keyboard move never does).
 - [ ] **Save point, Restore and Version History report success** when the pending edits could
   not be written first.
 - [ ] **A phone note whose file ends `.MD`** is renamed `Name.MD.md` at its first save.

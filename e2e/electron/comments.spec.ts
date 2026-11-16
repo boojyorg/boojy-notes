@@ -1,6 +1,7 @@
 /**
  * A `%%…%%` comment within one block is drawn muted and literal: its markers
- * stay, nothing inside is drawn (no bold, link, pill or code), and its bytes
+ * stay, nothing inside is drawn (no bold, link or code) but a `#tag`, a pill
+ * as Obsidian draws it (2026-11-09), and its bytes
  * are the file's however the line around it is edited. The grey follows the
  * markers as they are typed or removed, the caret kept; formatting does not
  * act in one; a comment across blocks stays plain text (not drawn yet).
@@ -33,20 +34,46 @@ async function open(file: string) {
 const comments = (page: Page) => page.locator("[data-editor] .md-comment");
 const file = () => h.vault.read("C.md");
 
-test("a comment is drawn muted and literal; its link and tag do nothing on a click", async () => {
+test("a comment is drawn muted and literal but for its tag, a pill whose click searches", async () => {
   const md = "Seen. %%**raw** [[Other]] #todo `c` \\*%% after\n";
   const blocks = await open(md);
   await expect(comments(h.page)).toHaveText(["%%**raw** [[Other]] #todo `c` \\*%%"]);
   const c = comments(h.page).first();
-  await expect(c.locator("strong, .wikilink, .inline-tag, code")).toHaveCount(0);
+  await expect(c.locator("strong, .wikilink, code")).toHaveCount(0);
   const ink = await c.evaluate((el) => getComputedStyle(el).color);
   const prose = await blocks.first().evaluate((el) => getComputedStyle(el).color);
   expect(ink).not.toBe(prose);
-  // A click on its [[Other]] or #todo is a click in text.
-  await c.getByText("#todo", { exact: false }).click();
+  // A click on its [[Other]] is a click in text.
+  await c.getByText("[[Other]]", { exact: false }).click({ position: { x: 4, y: 6 } });
   await expect(h.page.getByRole("dialog", { name: /search/i })).toHaveCount(0);
+  // Its #todo is a tag as Obsidian draws it: listed in Search, so shown and
+  // clickable here (it was listed and never drawn).
+  const pill = c.locator(".inline-tag");
+  await expect(pill).toHaveText("#todo");
+  await pill.click();
+  const search = h.page.getByRole("dialog", { name: /search/i });
+  await expect(search.getByTestId("search-tag-chip")).toHaveText(/#todo/);
+  await h.page.keyboard.press("Escape");
   await sleep(SETTLE_MS);
   expect(file()).toBe(md);
+});
+
+test("a tag typed inside a comment becomes a pill as it is typed, its bytes the file's", async () => {
+  const blocks = await open("x %%abc def%% y\n");
+  const c = comments(h.page).first();
+  // The caret after `abc`, by keys: seven characters into the line.
+  await blocks.first().click({ position: { x: 2, y: 6 } });
+  await h.page.keyboard.press(START_OF_LINE);
+  for (let i = 0; i < 7; i++) await h.page.keyboard.press("ArrowRight");
+  await h.page.keyboard.type(" #late");
+  await expect(c.locator(".inline-tag")).toHaveText("#late");
+  await h.page.keyboard.type("r, then");
+  await expect(c.locator(".inline-tag")).toHaveText("#later");
+  await expect(comments(h.page)).toHaveText(["%%abc #later, then def%%"]);
+  // Nothing is offered in a comment.
+  await expect(h.page.getByRole("listbox")).toHaveCount(0);
+  await sleep(SETTLE_MS);
+  expect(file()).toBe("x %%abc #later, then def%% y\n");
 });
 
 test("the closing %% greys the comment at once, the caret kept; removing a marker unpaints; undo greys again", async () => {

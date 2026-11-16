@@ -4,7 +4,7 @@
 import { CARET_ANCHOR_CLASS, ESCAPE_CLASS, INLINE_MATH_CLASS } from "./domHelpers";
 import { parseWikilinkTarget, wikilinkKey, wikilinkLabel } from "./wikilinkTarget";
 import { LINK_DEST } from "./linkDestination";
-import { TAG_RE } from "./tags";
+import { TAG_RE, tagSpans } from "./tags";
 import { BLOCK_ID_END_RE } from "./blockTarget";
 import { codeSourceText, codeSpanSource, editedCodeSpanSource, findCodeSpans } from "./codeSpans";
 import { FOOTNOTE_REF_CLASS, FOOTNOTE_SRC_CLASS, literalRuns } from "./footnotes";
@@ -243,10 +243,20 @@ const CODE_TOKEN_RE = /\x00CODE(\d+)\x00/g;
 function shieldComments(md, comments) {
   const found = literalRuns(md);
   if (!found.length) return md;
+  // The tags the text holds, by the one grammar Search and the tag list read
+  // (`tagSpans`): those inside a run are drawn in it, so a tag that is listed
+  // is a tag that is shown.
+  const tags = tagSpans(md);
   let out = "";
   let last = 0;
   for (const { start, end, cls } of found) {
-    comments.push({ src: md.slice(start, end), cls });
+    comments.push({
+      src: md.slice(start, end),
+      cls,
+      tags: tags
+        .filter((t) => t.start >= start && t.end <= end)
+        .map((t) => ({ start: t.start - start, end: t.end - start, tag: t.tag })),
+    });
     out += `${md.slice(last, start)}\x00CMT${comments.length - 1}\x00`;
     last = end;
   }
@@ -276,8 +286,23 @@ function restoreComments(html, comments) {
       // a caret after an uneditable element, and End put it before the number.
       if (cls === FOOTNOTE_REF_CLASS)
         return `<span class="${cls}" contenteditable="false" data-fn="${attr(refLabel(src))}"><span class="${FOOTNOTE_SRC_CLASS}">${escapeHtml(src)}</span></span><span class="${CARET_ANCHOR_CLASS}">\u200B</span>`;
-      return `<span class="${cls}">${escapeHtml(src)}</span>`;
+      return `<span class="${cls}">${literalHtml(src, comments[Number(i)].tags)}</span>`;
     });
+}
+
+/**
+ * A comment's or an inline footnote's text as written, its tags alone drawn
+ * (as Obsidian draws them): each a pill holding exactly its own characters,
+ * so what is read back is the source.
+ */
+function literalHtml(src, tags) {
+  let html = "";
+  let at = 0;
+  for (const { start, end, tag } of tags ?? []) {
+    html += `${escapeHtml(src.slice(at, start))}<span class="inline-tag" data-tag="${escapeHtml(tag)}">${escapeHtml(src.slice(start, end))}</span>`;
+    at = end;
+  }
+  return html + escapeHtml(src.slice(at));
 }
 
 /**

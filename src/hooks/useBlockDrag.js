@@ -279,8 +279,11 @@ export function useBlockDrag({
     }
     // Never above the frontmatter: the highest position is the gap under it.
     targetIndex = Math.max(reorderFloor(blocks), Math.min(targetIndex, blocks.length));
-    // Never between a footnote and its later paragraphs (utils/blockRun).
-    targetIndex = dropBoundary(blocks, targetIndex);
+    // Never between a footnote and its later paragraphs, nor between a list
+    // item and what nests under it (utils/blockRun). The marker is drawn at
+    // the boundary this gives, so what is shown is where the drop lands.
+    const first = blocks.find((b) => bd.blockIds.includes(b.id));
+    targetIndex = dropBoundary(blocks, targetIndex, first?.indent || 0);
 
     // Releasing outside the editor's scroll area (over the sidebar, say) is a
     // cancel, so the marker disappears the moment the pointer crosses out.

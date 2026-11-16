@@ -357,7 +357,11 @@ function commentPlaces(root) {
     const before = document.createRange();
     before.setStart(root, 0);
     before.setEndBefore(c);
-    places.push(`${c.className}:${clean(before.toString()).length}:${clean(c.textContent ?? "")}`);
+    // Its tags too: a `#tag` typed inside a comment is drawn as it is typed.
+    const tags = [...c.querySelectorAll(".inline-tag")].map((t) => clean(t.textContent ?? ""));
+    places.push(
+      `${c.className}:${clean(before.toString()).length}:${clean(c.textContent ?? "")}:${tags.join(" ")}`,
+    );
   }
   return places.join("\u0000");
 }
@@ -367,7 +371,8 @@ function commentPlaces(root) {
  * comments the text makes (each one's text and place) differ from those
  * drawn, the block is painted from its text and the caret put back at its
  * offset. Typing inside a comment changes both alike, so nothing repaints;
- * a marker that moves, even with a comment still drawn, does.
+ * a marker that moves, even with a comment still drawn, does, and so does a
+ * tag made or unmade inside one.
  */
 export function repaintComments(el, text, native, noteTitles) {
   if (!native || native.isComposing) return;

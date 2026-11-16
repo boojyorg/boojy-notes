@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Improvements
+
+- **A tag inside a comment is a tag you can see** — `%%todo #later%%` listed `#later` in Search and the tag menu, but the note showed it as plain grey text. It is now drawn as a tag inside the comment, as in Obsidian, and a click on it searches. The rest of a comment is still shown exactly as written. The same goes for a tag inside an inline footnote, `^[see #source]`.
+
+### Fixes
+
+- **A dragged block no longer takes another item's nested items** — Dropping a block between a list item and the items nested under it made those items the dropped block's own. The drop now lands after them, and the line that shows where it will land says so while you drag. An item dragged from the same level still lands among them. A picture dropped there from Finder follows the same rule.
+
 ## v0.23.1 — 2026-11-16
 
 ### Fixes

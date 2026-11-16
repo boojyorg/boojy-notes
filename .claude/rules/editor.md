@@ -133,8 +133,7 @@ through state.**
   `typed-formatting.spec.ts`.
 - **A code span is literal** (`codeSpans.js`): nothing in it is drawn; untouched it keeps its
   spelling (`data-md`), edited only what changed; only ⌘E acts in one. `literal-code.spec.ts`.
-  **So are a `%%` comment and an inline footnote, muted** (`literalRuns`), no format acting; the grey
-  follows the markers (`repaintComments`). `comments.spec.ts`, `footnotes.spec.ts`.
+  **So are a `%%` comment and an inline footnote, muted but for their `#tags`** (`literalRuns`), no format acts; the grey follows markers and tags (`repaintComments`). `comments.spec.ts`, `footnotes.spec.ts`.
 - **Formatting ends with its text** (`forgetDeletedStyle`): after a deletion the next letters
   take the caret's formatting, never a deleted run's; overtyping keeps its style.
   `typing-style.spec.ts`.
@@ -154,7 +153,7 @@ through state.**
 ## Right-click
 
 - `EditorContextMenu`: a misspelled word's, link's or tag's actions, then Cut, Copy, Paste; a field
-  outside the note gets the same (`TextFieldMenu`); Shift+F10 at the caret. **Items
+  outside the note gets the same (`TextFieldMenu`). **Items
   run the keys' own path.** `text-context-menu.spec.ts`.
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`),
   never in code, tags or links; guesses only on a marked word.
