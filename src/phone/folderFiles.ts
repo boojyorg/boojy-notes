@@ -120,6 +120,13 @@ const readRecord = (raw: Uint8Array): { intent: Intent; bytes: Uint8Array } => {
  * goes; `recover` writes again whatever a crash left in the journal. Nothing
  * temporary is ever put in the folder, where other apps would see and sync it.
  *
+ * **A save that failed keeps its entry** (the file may be cut short) only
+ * until something newer is true of its path: saved again, removed, or taken
+ * by another file. Finished at the next start, an entry older than that
+ * would undo it. A file about to be renamed is made whole first, so its
+ * entry never stays behind under the old name. What the folder cannot know
+ * (the note was saved under another path) the vault says: `forgetSave`.
+ *
  * Android never refuses a name that is taken: it makes `b (1).md`. A create
  * or rename that got another name is undone and thrown.
  */
@@ -131,6 +138,43 @@ export function folderFiles(
   const dirs = new Map<string, Map<string, FolderEntry>>();
   let serial = 0;
   const journalName = () => `${JOURNAL}/${Date.now().toString(36)}-${(serial++).toString(36)}`;
+  /**
+   * The saves still in the journal, oldest first, by path as the folder tells
+   * names apart (without case). Several only after saves that failed: a
+   * start finishes them in order, so the newest is what the file ends with.
+   */
+  const unfinished = new Map<string, string[]>();
+  const under = (path: string) => {
+    const at = path.toLowerCase();
+    return [...unfinished].filter(([key]) => key === at || key.startsWith(`${at}/`));
+  };
+
+  /** Drops the journal's saves at and under `path`: what they held is no longer wanted. */
+  const dropSaves = async (path: string) => {
+    for (const [key, names] of under(path)) {
+      while (names.length) {
+        try {
+          await journal.remove(names[0]);
+        } catch (error) {
+          // Already gone is done; anything else is a save that cannot be called finished.
+          if (await journal.exists(names[0])) throw error;
+        }
+        names.shift();
+      }
+      unfinished.delete(key);
+    }
+  };
+
+  /** Writes the newest save left at and under `path` over its file, so the file is whole. */
+  const finishSaves = async (path: string) => {
+    for (const [, names] of under(path)) {
+      const raw = await journal.read(names[names.length - 1]);
+      if (!raw) continue;
+      const { intent, bytes } = readRecord(raw);
+      if (intent.op === "write") await put(intent.path, bytes);
+    }
+    await dropSaves(path);
+  };
 
   const find = (map: Map<string, FolderEntry>, name: string) => {
     const exact = map.get(name);
@@ -195,6 +239,7 @@ export function folderFiles(
     await access.remove({ tree, id: e.id });
     (await listing(parentOf(path))).delete(e.name);
     forget(path);
+    await dropSaves(path);
   };
 
   /** A new name in the same folder; `e` is the entry at `path`. */
@@ -243,6 +288,40 @@ export function folderFiles(
     mtime: e.mtime,
     size: e.size,
   });
+
+  const renamed = async (from: string, to: string) => {
+    const e = await entry(from);
+    if (!e) throw new Error(`${from} does not exist`);
+    const there = await entry(to);
+    if (there && there.id !== e.id) throw new Error(`${to} already exists`);
+    if (parentOf(from) !== parentOf(to)) {
+      await mkdir(parentOf(to));
+      const moved = await access.move({
+        tree,
+        id: e.id,
+        from: (await dirId(parentOf(from))) as string,
+        to: (await dirId(parentOf(to))) as string,
+      });
+      (await listing(parentOf(from))).delete(e.name);
+      forget(from);
+      const landed = { ...e, id: moved.id, name: moved.name };
+      (await listing(parentOf(to))).set(moved.name, landed);
+      if (moved.name !== nameOf(to))
+        await renameIn(join(parentOf(to), moved.name), landed, nameOf(to));
+      return;
+    }
+    if (e.name === nameOf(to)) return;
+    if (e.name.toLowerCase() !== nameOf(to).toLowerCase()) return renameIn(from, e, nameOf(to));
+    // Only the capitals change. The folder takes the new spelling for the
+    // name already there and would make `Name (1)`, so it goes by way of a
+    // hidden name, journalled: a crash between the two is finished at start.
+    const temp = join(parentOf(from), `.~${nameOf(to)}.case`);
+    const name = journalName();
+    await journal.write(name, record({ op: "case", temp, to }));
+    await renameIn(from, e, nameOf(temp));
+    await renameIn(temp, (await entry(temp)) as FolderEntry, nameOf(to));
+    await journal.remove(name);
+  };
 
   const ops: FileOps = {
     async list(dir) {
@@ -295,50 +374,28 @@ export function folderFiles(
     async write(path, bytes) {
       const name = journalName();
       await journal.write(name, record({ op: "write", path }, bytes));
+      const key = path.toLowerCase();
+      unfinished.set(key, [...(unfinished.get(key) ?? []), name]);
       try {
         await put(path, bytes);
       } catch (error) {
         // Refused, not cut short: written again at the next start, it would
         // go over the file that holds the name.
-        if (error instanceof Taken) await journal.remove(name);
+        if (error instanceof Taken) await dropSaves(path);
         throw error;
       }
-      await journal.remove(name);
+      await dropSaves(path);
     },
 
     async rename(from, to) {
-      const e = await entry(from);
-      if (!e) throw new Error(`${from} does not exist`);
-      const there = await entry(to);
-      if (there && there.id !== e.id) throw new Error(`${to} already exists`);
-      if (parentOf(from) !== parentOf(to)) {
-        await mkdir(parentOf(to));
-        const moved = await access.move({
-          tree,
-          id: e.id,
-          from: (await dirId(parentOf(from))) as string,
-          to: (await dirId(parentOf(to))) as string,
-        });
-        (await listing(parentOf(from))).delete(e.name);
-        forget(from);
-        const landed = { ...e, id: moved.id, name: moved.name };
-        (await listing(parentOf(to))).set(moved.name, landed);
-        if (moved.name !== nameOf(to))
-          await renameIn(join(parentOf(to), moved.name), landed, nameOf(to));
-        return;
-      }
-      if (e.name === nameOf(to)) return;
-      if (e.name.toLowerCase() !== nameOf(to).toLowerCase()) return renameIn(from, e, nameOf(to));
-      // Only the capitals change. The folder takes the new spelling for the
-      // name already there and would make `Name (1)`, so it goes by way of a
-      // hidden name, journalled: a crash between the two is finished at start.
-      const temp = join(parentOf(from), `.~${nameOf(to)}.case`);
-      const name = journalName();
-      await journal.write(name, record({ op: "case", temp, to }));
-      await renameIn(from, e, nameOf(temp));
-      await renameIn(temp, (await entry(temp)) as FolderEntry, nameOf(to));
-      await journal.remove(name);
+      // A file a failed save may have cut short is whole before it moves.
+      await finishSaves(from);
+      await renamed(from, to);
+      // A save left for the name it took is not this file's.
+      await dropSaves(to);
     },
+
+    forgetSave: dropSaves,
 
     remove: removeEntry,
     mkdir,

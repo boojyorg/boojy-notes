@@ -310,6 +310,12 @@ none blocks a stage.
 
 ## Known issues
 
+- [ ] **A phone's notes folder emptied where it stands empties Dropbox** (2026-11-15 audit):
+  removed and made again under its old name, or every file deleted in the Files app, while the
+  app is closed. No "can't reach your notes folder" screen shows, so sync reads every note as
+  deleted on the phone and deletes it from Dropbox (kept there 30 days; the desktop keeps
+  Recently Deleted). A folder chosen again from that screen is safe: sync merges. The guard
+  is a pass that would delete every synced note stopping to ask.
 - [ ] **Inline maths is not drawn on the first open of a note iCloud had offloaded** (found
   2026-11-07): `drawInlineMath` watches the editor element, which is a new one once the note
   downloads (or a past version closes) with the note unchanged; switching away and back draws

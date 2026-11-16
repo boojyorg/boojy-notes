@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { FolderLost } from "../../src/phone/folderFiles";
-import { createPhoneVault } from "../../src/phone/phoneVault";
+import { FolderLost, folderFiles } from "../../src/phone/folderFiles";
+import { createPhoneVault, forgetSync } from "../../src/phone/phoneVault";
+import { routedFiles } from "../../src/phone/routedFiles";
 import { contentHash } from "../../src/sync/contentHash";
+import { syncPass } from "../../src/sync/engine";
 import type { Note } from "../../src/types/notes";
 import { markdownToBlocks } from "../../src/utils/markdown";
-import { routedMemory } from "./folderMemory";
+import { FakeDropbox } from "../sync/fakes";
+import { fakeFolderAccess, routedMemory } from "./folderMemory";
 import { memoryFiles } from "./memoryFiles";
 
 const note = (id: string, title: string, text: string, folder: string | null = null): Note => ({
@@ -200,5 +203,109 @@ describe("what another app changes in the folder", () => {
     await expect(vault.store.list()).rejects.toThrow(FolderLost);
     await expect(vault.api.readAllNotes()).rejects.toThrow(FolderLost);
     expect(events).toEqual([]);
+  });
+});
+
+/**
+ * The folder was lost and another chosen in its place, as a start does it
+ * (`install.ts`): the app's own files are the same, the folder is not. The
+ * real vault and the real engine, against a stand-in Dropbox.
+ */
+describe("a notes folder chosen again, as sync sees it", () => {
+  const NOTES = { "A.md": "alpha", "Ideas/B.md": "beta", "C.md": "gamma" };
+  /** The vault over `priv` and a folder of its own. */
+  const vaultIn = (priv: ReturnType<typeof memoryFiles>) => {
+    const fake = fakeFolderAccess();
+    const folder = folderFiles({ tree: "tree", root: "root" }, priv, fake.plugin);
+    return { fake, vault: createPhoneVault(routedFiles(priv, folder, "vault")) };
+  };
+  const settle = async (vault: ReturnType<typeof createPhoneVault>, dropbox: FakeDropbox) => {
+    for (let i = 0; i < 6; i++) {
+      if (!(await syncPass({ local: vault.store, remote: dropbox })).again) return;
+    }
+    throw new Error("sync never settled");
+  };
+  const synced = async () => {
+    const priv = memoryFiles();
+    const dropbox = new FakeDropbox();
+    for (const [path, text] of Object.entries(NOTES)) await dropbox.macWrite(path, text);
+    await settle(vaultIn(priv).vault, dropbox);
+    return { priv, dropbox };
+  };
+  const holds = (fake: ReturnType<typeof fakeFolderAccess>) =>
+    Object.fromEntries(
+      [...fake.snapshot()]
+        .filter(([, v]) => v !== "dir")
+        .map(([path, v]) => [path, new TextDecoder().decode(v as Uint8Array)]),
+    );
+
+  it("an empty folder is filled from Dropbox, and nothing is deleted there", async () => {
+    const { priv, dropbox } = await synced();
+    await forgetSync(priv);
+    const { fake, vault } = vaultIn(priv);
+    await settle(vault, dropbox);
+    expect(dropbox.paths()).toEqual(Object.keys(NOTES).sort());
+    expect(holds(fake)).toEqual(NOTES);
+    expect(
+      Object.values(await vault.api.readAllNotes())
+        .map((n) => n.title)
+        .sort(),
+    ).toEqual(["A", "B", "C"]);
+  });
+
+  it("a folder holding other notes is merged: each side's notes reach the other", async () => {
+    const { priv, dropbox } = await synced();
+    await forgetSync(priv);
+    const { fake, vault } = vaultIn(priv);
+    fake.outside.put("A.md", bytes("alpha"));
+    fake.outside.put("Old.md", bytes("only in this folder"));
+    await settle(vault, dropbox);
+    expect(holds(fake)).toEqual({ ...NOTES, "Old.md": "only in this folder" });
+    expect(dropbox.paths()).toEqual([...Object.keys(NOTES), "Old.md"].sort());
+  });
+});
+
+/**
+ * A save that failed stays in the folder's journal under the path it was
+ * for. Saved next under another path, or deleted with no file yet, that
+ * entry would make a note nobody has at the next start.
+ */
+describe("a note whose save failed, saved or deleted elsewhere", () => {
+  /** A new note whose first save Android refused; `again` is the next start. */
+  const failedFirstSave = async () => {
+    const { files, fake, vault } = open();
+    const create = fake.plugin.create;
+    fake.plugin.create = async () => {
+      throw new Error("no room");
+    };
+    await expect(vault.api.writeNote(note("n1", "Untitled", "first words"))).rejects.toThrow();
+    fake.plugin.create = create;
+    const again = () =>
+      routedFiles(
+        files.priv,
+        folderFiles({ tree: "tree", root: "root" }, files.priv, fake.plugin),
+        "vault",
+      ).recover("vault");
+    return { fake, vault, again };
+  };
+
+  it("leaves no second note when it is saved next under another name", async () => {
+    const { fake, vault, again } = await failedFirstSave();
+    await vault.api.writeNote(note("n1", "Trip", "first words, and more"));
+    await again();
+    expect([...fake.snapshot().keys()]).toEqual(["Trip.md"]);
+  });
+
+  it("does not come back when it is deleted before it has a file", async () => {
+    const { fake, vault, again } = await failedFirstSave();
+    expect(await vault.api.trashNote("n1")).toEqual({ missing: true });
+    await again();
+    expect([...fake.snapshot().keys()]).toEqual([]);
+  });
+
+  it("is still finished at the next start when nothing else happened to it", async () => {
+    const { fake, again } = await failedFirstSave();
+    await again();
+    expect([...fake.snapshot().keys()]).toEqual(["Untitled.md"]);
   });
 });
