@@ -18,7 +18,7 @@ else sit in Fix now.
 
 The tiers, kept apart. **Requirements** are what a stage waits for. **Candidates** are
 optional; each is judged on its own and may be declined. **Future** is everything after 1.0,
-recorded so a preference and its open question are not lost. Last reviewed: 2026-11-15, the
+recorded so a preference and its open question are not lost. Last reviewed: 2026-11-16 (stale lines corrected after the 2026-11-15 audit); before that the
 v0.23.0 release pass (what is wanted before 1.0 was revised on 2026-11-13); the 1.0 scope pass was 2026-10-24 (a read-only audit of v0.18.0, an
 independent review and a Codex review). Items
 marked *review §n* come from the whole-app review of 2026-09-07.
@@ -113,17 +113,17 @@ the test its rule names when it is built.
 **Files and safety**
 
 - **A moved vault keeps its history.** The note index and version history are keyed by a hash
-  of the folder's path (`vaultKey`, `electron/vaultFs.ts:33`), so any move, the one into
+  of the folder's path (`vaultKey`, `electron/vaultFs.ts`), so any move, the one into
   Dropbox that sync setup asks for included, detaches history, Recently Deleted, Recents and
   PDF positions (moving it back restores them).
 - **Recovery is demonstrated**: export and a tested restore on every platform; full storage,
   revoked folder access and a disconnected Dropbox stated and tested, local notes usable
   throughout. The crash screen promises a backup whose write can fail silently and that
-  nothing reads back (`ErrorBoundary.jsx:18`): fix the path and the wording.
+  nothing reads back (`ErrorBoundary.jsx`): fix the path and the wording.
 
 **Compatibility**
 
-- **Link titles leave the address; code spans and the other divider forms draw as they
+- **Link titles leave the address; indented code and the other divider forms draw as they
   mean**, each keeping its spelling (Markdown compatibility, below).
 - **The Obsidian extensions, explicitly.** Drawn and edited: wikilinks and aliases,
   `[[Note#Heading]]` and `#^block-id` (drawn quietly), note embeds (drawn read-only, a heading's section or a block), embeds with a size (`#page=`: a file card that opens that page), callouts,
@@ -147,27 +147,24 @@ the test its rule names when it is built.
   with the first and goes with the last; a second route, never a move. Kept in one small file
   in the vault (under `.boojy/`, by vault-relative path), written with the first favourite,
   remapped by the app's moves; a missing path is ignored and losing the file damages nothing.
-  Sync and the phone's listing skip dot paths (`src/sync/engine.ts:57`, `phoneVault.ts:365`):
+  Sync and the phone's listing skip dot paths (`isIgnored` in `src/sync/engine.ts`, `hidden` in `phoneVault.ts`):
   that one file is let through. **Tried first** on a branch with local storage, which never
   merges. Open: ordering, folders.
 
 **Phone (Android)**
 
-- **Works offline with no Dropbox and no account.** The sign-in screen goes
-  (`src/phone/install.ts:43`); Connect Dropbox is optional, from Settings, choosing the folder
-  (`syncFolder.ts`). A damaged sign-in file never locks anyone
-  out (`phoneSync.ts:59-68`). The first connect is tested on a phone that already has notes.
-- **A folder the user can see** (Storage Access Framework), as well as app-private storage:
-  chosen at first launch, other apps' changes noticed, and notes kept inside the app moved to
-  an empty folder (`moveToFolder.ts`; modified times are not kept, their order is). Storage
-  and Dropbox are set in the phone's Settings page (`PhoneSettings.tsx`). Left: changing the
-  folder.
+- **Works offline with no Dropbox and no account** (shipped, v0.23.0). Left: the first
+  connect tested on a phone that already has notes.
+- **A folder the user can see**, as well as app-private storage (shipped, v0.23.0; a move to
+  a folder keeps the notes' order, not their modified times). Left: changing a location's
+  folder for another; a way from the "can't reach your notes folder" screen to another
+  location; typing not yet saved kept when the folder is lost while the app is open.
 - **Home's cards show the notes written to this phone last**, which is the notes edited last
   only once the phone has been in use: a file Dropbox downloads, or a move to a folder writes,
   is stamped with that moment (Android sets no modified time), so after a first connect or a
   reinstall the cards are the last four downloaded. Putting it right needs the edit's own time
   carried through sync.
-- **Export and import**, **adding pictures** (off, `platform.js:12`), the Dropbox token in
+- **Export and import**, **adding pictures** (off, `addsFiles` in `platform.js`), the Dropbox token in
   Android's Keystore (a plain file today), a deliberate backup setting (settings yes, token
   never), Settings laid out for a phone.
 - **Google Play, without the Mac**: a release key, `versionCode` from `package.json`, an AAB
@@ -189,7 +186,7 @@ the test its rule names when it is built.
   tyr@boojy.org with version and OS, shown before sending; no telemetry); help pages on sync
   and history not being a backup, and moving from Notion by hand.
 - The Known issues a finished Public Beta cannot live with: New note writing `Untitled.md` at
-  once; Replace skipping cells, callouts and code, and Find's double count; the symlink
+  once on the desktop; Replace skipping cells, callouts and code, and Find's double count; the symlink
   check.
 - A 10,000-note vault on the desktop; a first phone sync with large attachments; VoiceOver and
   TalkBack over the editor.
@@ -287,8 +284,8 @@ none blocks a stage.
   Neither sync nor history replaces an independent backup.
 - **Searchable `/link`.** Consider an entry point to the existing inline-link controls, not a
   new block type. Discoverability and interaction need live judgement; adding it may be declined.
-- **Other files in the tree, the rest**: Rename and Move to… on the row (once links follow
-  renames), and a drag into a note that writes a link. A Finder change reaches the tree on
+- **Other files in the tree, the rest**: Rename and Move to… on the row (links follow a
+  note's rename; a file's would need the same), and a drag into a note that writes a link. A Finder change reaches the tree on
   window focus; watching them only if that proves slow.
 
 - **Custom shortcuts**, once the defaults are good (2026-09-30).
@@ -333,12 +330,40 @@ none blocks a stage.
   Finder and a file card's Open are wired to no-ops in `ReadOnlyBlocks`. Pass the real handlers
   through `EmbedBlock` (nested embeds too), or hide them.
 
+### From the November 2026 review, queued
+
+Found by the whole-repo review of 2026-11-08 and not fixed since (judged by which files
+changed, not each re-run). The first seven are one batch of keys and focus; the next four are
+Tyr's calls of 2026-11-09.
+
+- [ ] **Search palette**: Tab leaves it (and the path popup), as the focus trap counts buttons
+  that are not Tab stops; Escape closes it only while its field has focus; closed with Escape,
+  focus does not go back to the note.
+- [ ] **Code blocks**: Shift+Tab turns the caret into a selection, so the next key overwrites
+  the line; ↑ and ↓ leave a code or maths source from a wrapped line.
+- [ ] **The caret after a cross-block delete, type-over or block paste** is placed by Markdown
+  length, so it lands too far right on a line with formatting, links or footnote references.
+- [ ] **Pasted Markdown that starts with `---` … `---`** puts a Properties block in the middle
+  of the note.
+- [ ] **A root note with a namesake in a folder** gets an ambiguous link from the picker (call:
+  a bare `[[Name]]` is the shortest clear path).
+- [ ] **A title holding `#`, `^`, `[`, `]` or `|`** gets a link from the picker that points
+  nowhere (call: in a new name they become `_`).
+- [ ] **A `#tag` inside a `%%comment%%`** is listed in Search and the tag menu and never drawn
+  (call, reversed 2026-11-09: draw it as a pill, as Obsidian does; the rest stays literal).
+- [ ] **A block dropped between a list item and its nested items** takes them as its children
+  (call: a drop never re-parents; the keyboard move never does).
+- [ ] **Save point, Restore and Version History report success** when the pending edits could
+  not be written first.
+- [ ] **A phone note whose file ends `.MD`** is renamed `Name.MD.md` at its first save.
+
 ### From the September 2026 review
 
 Still reproduce on master, in the review's order. Those named in Public Beta's requirements
 block it; the rest do not.
 
-- [ ] **New note writes `Untitled.md` at once** — `createNote` makes a real note, so the sidebar's
+- [ ] **New note writes `Untitled.md` at once, on the desktop** (the phone's is a draft since
+  v0.23.0) — `createNote` makes a real note, so the sidebar's
   New note and Cmd+N reach disk within a second even if nothing is typed; only the empty-state
   draft waits for content (`useNoteCrud.js`). Cmd+N reuses an active draft where the button
   creates a real note: the one inconsistency in the New Note workflow, to be resolved with the
@@ -360,7 +385,7 @@ block it; the rest do not.
   the accessibility pass.)
 - [ ] **⌘N then ··· → Rename at once leaves focus on the ··· button**, so the name typed goes
   nowhere; with the caret in the body first, Rename works on a draft as on a note (checked
-  2026-09-24). Duplicate and Delete on an empty draft do nothing visible and write nothing.
+  2026-09-24; the first half again 2026-11-16). Duplicate and Delete on an empty draft do nothing visible and write nothing.
 - **Taste calls, judge live:** `\# bar` shown after a reopen (the soft-break escape of
   2026-09-09); opening `/` after a space mid-line as well as at the start of an empty block
   (Craft's compromise; review §7.6). Multi-line paste into a code block should be native since
@@ -382,13 +407,12 @@ block it; the rest do not.
 Re-verified on 2026-10-24 (v0.18.0) with converter probes; the first four are Public Beta
 requirements (reference-style links aside, which stay preserved only). Missing support is distinct from a correctness defect; each keeps the file's
 bytes on load and save. **Two-way use with Obsidian is not yet a general guarantee**: the
-bytes the app understands are safe and the rest is preserved, but a rename leaves dangling
-references (Public Beta).
+bytes the app understands are safe and the rest is preserved, but a rename made outside the app
+leaves dangling references (Public Beta).
 
 - **Links.** A link title joins the address (`[a](b "t")` → `href="b "t""`); reference-style
   links show as text.
-- **Code.** Formatting inside a code span draws as emphasis; a multi-backtick span splits;
-  indented code is a paragraph.
+- **Code.** Indented code is a paragraph.
 - **Dividers.** Only exactly `---` is one: `***`, `___` and `-----` are text, and `* * *` reads
   as a bullet holding an empty emphasis.
 - **Delimiters interleaved** (`**a==b**c==`, an escaped one beside live ones) pair differently
@@ -404,7 +428,7 @@ references (Public Beta).
   the note has focus, a moment after; a word taken out of the dictionary (Undo) is kept on
   Windows' exclusion list and reads as misspelled again only after its paragraph is edited.
 - [ ] **Escape left a code block's right-click menu open on the macOS runner**
-  (`editor-menus.spec.ts:48`, `fixme` there). A menu takes focus a frame after it opens
+  (`editor-menus.spec.ts`, `fixme` there). A menu takes focus a frame after it opens
   (`useFocusTrap`), and a window that paints no frames (hidden, or covered on the runner)
   never gets there, so Escape went to the code block. Not seen by a person; reproduced on a
   hidden local window. Fix the runner's window, or focus without waiting for a frame.
@@ -412,7 +436,7 @@ references (Public Beta).
 - [ ] **The app once failed to quit on the Linux runner** (`app-menu.spec.ts:82`, master
   858f118, 2026-10-06): `app.quit()` after File → Duplicate and the find bar did not close the
   app within 30 s, though the quit handshake caps the flush at 2 s; the retry passed. Once in
-  about sixty runs; again on the macOS runner (`first-run.spec.ts:71`, 2026-10-21). If it
+  about sixty runs; again on the macOS runner (`first-run.spec.ts:71`, 2026-10-21; `:167`, 2026-11-13). If it
   recurs, trace which quit step waits (`BOOJY_TRACE`).
 - [ ] **Typing through an outside rename still splits the note about once in 160 Windows runs**
   (`repaint-spaces.spec.ts:16` repeated in draft #432). #433 fixed the two traced races (a save
@@ -459,8 +483,7 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   `unflushedNotes`, `adoptNoteData` included). The two outside-news sites (a rename found
   outside, an offloaded mark) take it back out; guarding the add on `recordHistory` would close
   it at the seam, but every `adoptNoteData` caller needs checking first (2026-11-08 review).
-- **Untested seams worth a case each**: `remapNoteFolders` (undo across a folder rename) and a
-  pending title at quit. No layer covers them today.
+- **An untested seam worth a case**: a pending title at quit. No layer covers it today.
 - **No Content-Security-Policy on the renderer** (review §6). The escaping is sound (every
   path-taking IPC handler goes through the vault guard, `will-navigate` and the window-open
   handler deny everything, `open-external` is `http(s)`-only), but it is a hand-rolled regex
@@ -473,9 +496,8 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   or a function from the frozen `EditorContext` (AGENTS.md gotcha 3), so adding them blindly
   would change behaviour. One audit: teach the rule the stable hooks, suppress each deliberate
   site with its reason, fix the real ones. `noAssignInExpressions` and `noNonNullAssertion` are
-  off by decision. Actions are pinned by tag, not SHA. No unit coverage on
-  `useTableInteractions`, `useSidebarDrag`, `FindBar`, `SidebarContext`, the watcher's handlers
-  or `folderOps`; the Electron suite covers those journeys.
+  off by decision. Actions are pinned by tag, not SHA. No unit suite of
+  their own for `SidebarContext` or `folderOps`; the Electron suite covers those journeys.
 - **Chrome ink, one pass if it is seen** (review §5): fourteen popovers carry hardcoded black
   shadows at 0.4–0.5 where `theme.modalShadow` is 0.12/0.08 in Light; the code block's
   context-menu hover is white at 6% over a white surface, invisible in Light; the find
@@ -483,15 +505,15 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   straight from `lucide-react` at 15 and 17px, stroke 1.8, off both tiers;
   four mono stacks, no `tabular-nums` where counts change width.
 - **Updater behaviour** — `autoDownload` is on and every launch checks. A failed check reaches
-  Settings → Updates ("Couldn't check for updates", Try again; `settingsManager.js:136`,
-  `UpdatesTab.tsx`) and nowhere else; the promise's own `catch(() => {})` is harmless.
+  Settings → Updates ("Couldn’t check for updates. Try again later."; the updater's `error` event in
+  `settingsManager.js`, `UpdatesTab.tsx`) and nowhere else; the promise's own `catch(() => {})` is harmless.
 - **Editor hook copies, for a quiet window with the Electron suite green**: the "text before and
   after the caret" split helper exists six times and the block-update boilerplate about
   eighteen times across the editor hooks (~150 lines on hot paths). Mechanical, but not during
   Beta bug-fixing.
 - **Two dependencies to try removing locally first**: `vite-plugin-electron-renderer`, whose job
   is Node shimming in a `nodeIntegration` renderer this app does not have, and the `accentColor`
-  prop threaded through 18 files when it is always `theme.ACCENT.primary` (worth it only if a
+  prop threaded through 16 files when it is always `theme.ACCENT.primary` (worth it only if a
   second accent ever appears).
 - **Small residue, tidy when touching the file**: `z-index: 999`/`9999` literals in
   `GlobalStyles.jsx` beside the `Z` scale; the `index.html` viewport meta is PWA residue; the
@@ -575,10 +597,6 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 - **Conflict handling.** Competing edits must be understandable and recoverable; keeping both
   versions is the fallback; automatic merging needs carefully defined limits. One person on two
   offline devices is enough to cause it.
-- **Open a single Markdown file** through Open With, without importing it or choosing a vault.
-  Open: how to return to the usual collection, and how links and search behave with one
-  document. One option to evaluate is opening the file's folder as a temporary vault, which
-  widens the experience from one file to a folder and may not be wanted.
 - **Text colour and fonts**: not now; maybe later (2026-09-30), fonts at most three.
 - **Private notes**: maybe near 1.0, maybe never (2026-09-30).
 
