@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.24.0 — 2026-11-16
+
 ### Improvements
 
 - **A note that shares its name can be linked** — With `Gamma` at the top of your notes and another `Gamma` in a folder, a link to the first was written `[[Gamma]]`, drawn dashed, and could never be fixed. A plain `[[Name]]` that several notes share now means the one nearest the top, as in Obsidian; the others are linked by their folder, as before. Two namesakes equally deep are still a tie: the link is dashed and a click asks which. Renaming or moving a note now also updates these links.
