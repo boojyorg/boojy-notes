@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   belowItem,
   dropBoundary,
+  runDepth,
   gripSelection,
   indentRun,
   moveStep,
@@ -307,6 +308,39 @@ describe("a footnote's continuation paragraphs belong to it", () => {
 
   it("a block inserted below the footnote goes after them", () => {
     expect(belowItem(notes, 1)).toBe(5);
+  });
+
+  it("a drop between a list item and its nested items lands after them", () => {
+    // [A, B, B1, B1a, B2, C]: dropped under B, a top-level block would take
+    // B1…B2 as its own children.
+    const li = (id: string, indent = 0) => ({ id, type: "bullet", text: id, indent }) as Block;
+    const list = [li("A"), li("B"), li("B1", 1), li("B1a", 2), li("B2", 1), li("C")];
+    expect(dropBoundary(list, 2)).toBe(5);
+    expect(dropBoundary(list, 3)).toBe(5);
+    expect(dropBoundary(list, 4)).toBe(5);
+    // Between two top-level items, and at the ends, it stays.
+    expect(dropBoundary(list, 1)).toBe(1);
+    expect(dropBoundary(list, 5)).toBe(5);
+    expect(dropBoundary(list, 0)).toBe(0);
+    expect(dropBoundary(list, 6)).toBe(6);
+    // A nested item lands among its level: before B1 or B2, never under B1.
+    expect(dropBoundary(list, 2, 1)).toBe(2);
+    expect(dropBoundary(list, 3, 1)).toBe(4);
+    expect(dropBoundary(list, 4, 1)).toBe(4);
+    // A paragraph after an item is no nested item, whatever came before.
+    const mixed = [li("A"), li("A1", 1), { id: "p", type: "p", text: "p" } as Block];
+    expect(dropBoundary(mixed, 2)).toBe(2);
+  });
+
+  it("a run is dropped at its shallowest block's depth", () => {
+    // [B, B1, X1 (nested), Y (top)]: the run X1+Y dropped under B would give
+    // B1 to Y, though its first block is as deep as B1.
+    const li = (id: string, indent = 0) => ({ id, type: "bullet", text: id, indent }) as Block;
+    const list = [li("B"), li("B1", 1), li("X"), li("X1", 1), li("Y")];
+    expect(runDepth(list, ["X1", "Y"])).toBe(0);
+    expect(runDepth(list, ["X1"])).toBe(1);
+    expect(runDepth(list, [])).toBe(0);
+    expect(dropBoundary(list, 1, runDepth(list, ["X1", "Y"]))).toBe(2);
   });
 
   it("a drop inside a footnote's group lands after it", () => {

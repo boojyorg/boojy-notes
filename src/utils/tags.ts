@@ -61,15 +61,31 @@ const NOT_PROSE_RE = new RegExp(
 
 /** Every tag in one piece of prose, as written. */
 export function tagsInText(text: string): string[] {
+  return tagSpans(text).map((t) => t.tag);
+}
+
+/**
+ * Every tag in one piece of prose with where it stands: `start` at its `#`,
+ * `end` past its last character. What is not prose is blanked in place, so
+ * the offsets are the text's own. A `%%comment%%` and an inline footnote are
+ * prose here, as in Obsidian: their tags are listed, searched and drawn
+ * (the renderer asks this for the pills inside one, the rest of it literal).
+ */
+export function tagSpans(text: string): { start: number; end: number; tag: string }[] {
   if (!text?.includes("#")) return [];
+  const blank = (s: string) => " ".repeat(s.length);
   // Code spans first, by the renderer's own rule (``` `` `#x` `` ```), then the rest.
   let prose = text;
-  for (const span of findCodeSpans(text).reverse()) {
-    prose = `${prose.slice(0, span.start)} ${prose.slice(span.end)}`;
+  for (const span of findCodeSpans(text)) {
+    prose =
+      prose.slice(0, span.start) + blank(prose.slice(span.start, span.end)) + prose.slice(span.end);
   }
-  prose = prose.replace(NOT_PROSE_RE, " ");
-  const out: string[] = [];
-  for (const m of prose.matchAll(TAG_RE)) out.push(m[2]);
+  prose = prose.replace(NOT_PROSE_RE, blank);
+  const out: { start: number; end: number; tag: string }[] = [];
+  for (const m of prose.matchAll(TAG_RE)) {
+    const start = m.index + m[1].length;
+    out.push({ start, end: start + 1 + m[2].length, tag: m[2] });
+  }
   return out;
 }
 

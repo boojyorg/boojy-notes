@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { htmlToInlineMarkdown, inlineMarkdownToHtml } from "../../src/utils/inlineFormatting";
 import { findComments } from "../../src/utils/comments";
 import { repaintComments } from "../../src/utils/typedFormatting";
-import { extractAllTags } from "../../src/utils/tags";
+import { extractAllTags, tagSpans, tagsInText } from "../../src/utils/tags";
 import { getCaretOffset, placeCaret } from "../../src/utils/domHelpers";
 
 const drawn = (md: string) => {
@@ -45,13 +45,48 @@ describe("findComments", () => {
 });
 
 describe("a comment is drawn literally, muted", () => {
-  it("keeps markers and draws nothing inside: no bold, link, tag, code or escape", () => {
+  it("keeps markers and draws nothing inside but its tags: no bold, link, code or escape", () => {
     const md = "see %%**b** [[Note]] #tag `c` \\*%% then **bold**";
     const host = drawn(md);
     const c = host.querySelector(".md-comment");
     expect(c?.textContent).toBe("%%**b** [[Note]] #tag `c` \\*%%");
-    expect(c?.querySelector("strong, .wikilink, .inline-tag, code, a")).toBeNull();
+    expect(c?.querySelector("strong, .wikilink, code, a")).toBeNull();
     expect(host.querySelector("strong")?.textContent).toBe("bold");
+  });
+  it("draws a tag inside as a pill, as Obsidian does, and reads the source back", () => {
+    // Listed in Search and the tag menu, a tag in a comment was never drawn.
+    const md = "x %%todo #later, (#work/uni) & <b>%% y";
+    const host = drawn(md);
+    const pills = [...host.querySelectorAll(".md-comment .inline-tag")];
+    expect(pills.map((p) => p.textContent)).toEqual(["#later", "#work/uni"]);
+    expect(pills.map((p) => p.getAttribute("data-tag"))).toEqual(["later", "work/uni"]);
+    expect(host.querySelector(".md-comment")?.textContent).toBe(
+      "%%todo #later, (#work/uni) & <b>%%",
+    );
+    expect(htmlToInlineMarkdown(host.innerHTML)).toBe(md);
+    // The pills are the tags Search lists: one grammar.
+    expect(pills.map((p) => p.getAttribute("data-tag"))).toEqual(tagsInText(md));
+  });
+  it("draws no pill for what the grammar calls no tag", () => {
+    for (const md of [
+      "%%#x%%",
+      "%%a#b%%",
+      "%%`#code`%%",
+      "%%[[Note #t]]%%",
+      "%%see https://a.b/#top%%",
+    ]) {
+      expect(drawn(md).querySelector(".inline-tag")).toBeNull();
+      expect(tagsInText(md)).toEqual([]);
+    }
+  });
+  it("draws the tags of an inline footnote too, its text as written", () => {
+    const md = "claim^[see #source **raw**] end";
+    const host = drawn(md);
+    expect([...host.querySelectorAll(".inline-tag")].map((p) => p.textContent)).toEqual([
+      "#source",
+    ]);
+    expect(host.querySelector("strong")).toBeNull();
+    expect(htmlToInlineMarkdown(host.innerHTML)).toBe(md);
   });
   it("draws several comments, and none for an odd marker or one in code", () => {
     expect(comments("%%one%% and %%two%%")).toEqual(["%%one%%", "%%two%%"]);
@@ -136,5 +171,33 @@ describe("tags in a comment", () => {
     };
     // biome-ignore lint/suspicious/noExplicitAny: a minimal note map
     expect([...extractAllTags(noteData as any).keys()]).toContain("hidden");
+  });
+});
+
+describe("tagSpans", () => {
+  it("answers each tag with its place in the text as written", () => {
+    const md = "`#no` #one and (#two) [x](a#b) #three";
+    const spans = tagSpans(md);
+    expect(spans.map((s) => s.tag)).toEqual(["one", "two", "three"]);
+    for (const s of spans) expect(md.slice(s.start, s.end)).toBe(`#${s.tag}`);
+  });
+});
+
+describe("a tag typed inside a comment", () => {
+  it("is drawn as it is typed, and undrawn when it stops being one", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    el.contentEditable = "true";
+    const native = { isComposing: false } as InputEvent;
+    el.innerHTML = inlineMarkdownToHtml("a %%todo%% b");
+    // The page after a keystroke: the comment's text grown, no pill yet.
+    const c = el.querySelector(".md-comment") as HTMLElement;
+    c.textContent = "%%todo #l%%";
+    repaintComments(el, "a %%todo #l%% b", native, undefined);
+    expect(el.querySelector(".md-comment .inline-tag")?.textContent).toBe("#l");
+    // Its `#` loses its space: no tag, no pill.
+    (el.querySelector(".md-comment") as HTMLElement).textContent = "%%todo#l%%";
+    repaintComments(el, "a %%todo#l%% b", native, undefined);
+    expect(el.querySelector(".inline-tag")).toBeNull();
   });
 });

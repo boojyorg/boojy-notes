@@ -333,12 +333,8 @@ none blocks a stage.
 ### From the November 2026 review, queued
 
 Found by the whole-repo review of 2026-11-08 and not fixed since (judged by which files
-changed, not each re-run). The first two bullets are Tyr's calls of 2026-11-09.
+changed, not each re-run).
 
-- [ ] **A `#tag` inside a `%%comment%%`** is listed in Search and the tag menu and never drawn
-  (call, reversed 2026-11-09: draw it as a pill, as Obsidian does; the rest stays literal).
-- [ ] **A block dropped between a list item and its nested items** takes them as its children
-  (call: a drop never re-parents; the keyboard move never does).
 - [ ] **Save point, Restore and Version History report success** when the pending edits could
   not be written first.
 - [ ] **A phone note whose file ends `.MD`** is renamed `Name.MD.md` at its first save.

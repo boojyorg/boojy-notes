@@ -7,6 +7,7 @@
 - **A note that shares its name can be linked** — With `Gamma` at the top of your notes and another `Gamma` in a folder, a link to the first was written `[[Gamma]]`, drawn dashed, and could never be fixed. A plain `[[Name]]` that several notes share now means the one nearest the top, as in Obsidian; the others are linked by their folder, as before. Two namesakes equally deep are still a tie: the link is dashed and a click asks which. Renaming or moving a note now also updates these links.
 - **New names can always be linked** — `#`, `^`, `[` and `]` in the name of a new note, folder or attachment are now written `_`, as `|` already was, because a link cannot hold them: `[[C# notes]]` means a heading in a note called `C`. A file that already has such a name keeps it until you edit its name. Search and the link picker no longer offer to create a note under a name they could not keep.
 - **Notes with `#`, `^`, `[`, `]` or `|` in their name can be linked** — For a file that already has such a name (made in Finder, or before this version), the link picker now writes a Markdown link, `[C# notes](C%23%20notes.md)`, which works here, in Obsidian and elsewhere. It used to write a link that pointed nowhere.
+- **A tag inside a comment is a tag you can see** — `%%todo #later%%` listed `#later` in Search and the tag menu, but the note showed it as plain grey text. It is now drawn as a tag inside the comment, as in Obsidian, and a click on it searches. The rest of a comment is still shown exactly as written. The same goes for a tag inside an inline footnote, `^[see #source]`.
 
 ### Fixes
 
@@ -18,6 +19,7 @@
 - **The cursor lands where the edit happened** — After deleting or typing over a selection that ran across two blocks, the cursor sat too far right whenever the first line had bold, a link or a footnote reference before the cut, so the next letters went into the middle of a word. The same happened after pasting several lines that ended in formatted text. It now sits exactly at the join.
 - **Pasting a note's text no longer makes a Properties block mid-note** — Text that began with `---`, some lines and `---` (a note copied whole from Obsidian or another editor) was pasted as a Properties block wherever the cursor stood, and that block turned into a divider and plain text the next time the note was opened. Mid-note it is now pasted as that divider and text from the start. Pasted into the empty first line of a note, it is still the note's properties.
 - **A Markdown link to a name holding `#` opens its note** — `[text](C%23%20notes.md)` did nothing when clicked.
+- **A dragged block no longer takes another item's nested items** — Dropping a block between a list item and the items nested under it made those items the dropped block's own. The drop now lands after them, and the line that shows where it will land says so while you drag. An item dragged from the same level still lands among them. A picture dropped there from Finder follows the same rule.
 
 ## v0.23.1 — 2026-11-16
 

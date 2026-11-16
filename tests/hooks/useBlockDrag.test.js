@@ -527,6 +527,40 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
  * frontmatter root is mounted with a rect here, as any root may be one day;
  * the rule must not depend on it having none.
  */
+describe("useBlockDrag never changes an item's parent", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    cleanup();
+    document.body.innerHTML = "";
+    vi.useRealTimers();
+  });
+
+  const li = (id, indent = 0) => ({ id, type: "bullet", text: id, indent });
+
+  it("dropped between an item and its nested item, a block lands after the nested items", () => {
+    // Rows at y=100, 140, 180, 220. C dragged to just above B1's middle.
+    const commitNoteData = vi.fn();
+    const blocks = [li("A"), li("B"), li("B1", 1), li("C"), li("D")];
+    const { deps, blockRefs, noteDataRef } = setup({ blocks, commitNoteData });
+    mountBlocks(blockRefs, blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "A", { x: 10, y: 110 });
+    act(() => {
+      move(10, 190);
+    });
+    // The marker shows the gap under B1, where the drop will land.
+    expect(result.current.blockDrag.current.targetIndex).toBe(3);
+    expect(markerCentre()).toBeCloseTo(215, 0);
+    act(() => {
+      up();
+    });
+    const next = commitNoteData.mock.calls[0][0](noteDataRef.current);
+    expect(next.n1.content.blocks.map((b) => b.id)).toEqual(["B", "B1", "A", "C", "D"]);
+  });
+});
+
 describe("useBlockDrag keeps the frontmatter first", () => {
   const withFrontmatter = () => [
     { id: "fm", type: "frontmatter", text: "title: x" },

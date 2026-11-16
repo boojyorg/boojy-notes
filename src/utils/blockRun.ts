@@ -79,12 +79,30 @@ export function inFootnoteGroup(blocks: readonly Block[], k: number): boolean {
 /**
  * Where a dropped run goes for boundary `target`: never inside a footnote's
  * group, where it would part the footnote from its later paragraphs (and they
- * would join the dropped block), but after the group.
+ * would join the dropped block), but after the group. Nor between a list
+ * item and what nests under it: the nested items would follow the dropped
+ * block and become its own, so a drop never changes an item's parent, as
+ * ⌘⇧↑/↓ never does (`moveStep`). `depth` is the indent of the run's first
+ * block (0 for a dropped file): an item as deep as those below the boundary
+ * lands among them, as their sibling.
  */
-export function dropBoundary(blocks: readonly Block[], target: number): number {
+export function dropBoundary(blocks: readonly Block[], target: number, depth = 0): number {
   let t = target;
-  while (t > 0 && t < blocks.length && inFootnoteGroup(blocks, t)) t++;
+  const nestedDeeper = (b: Block) => LIST_TYPES.has(b.type) && (b.indent || 0) > depth;
+  while (t > 0 && t < blocks.length && (inFootnoteGroup(blocks, t) || nestedDeeper(blocks[t]))) {
+    t++;
+  }
   return t;
+}
+
+/**
+ * The depth a dragged run is dropped at (`dropBoundary`): its shallowest
+ * block's. A run that starts on a nested item and reaches a top-level one
+ * carries that top-level item, which would take the items below the drop.
+ */
+export function runDepth(blocks: readonly Block[], ids: readonly string[]): number {
+  const indents = blocks.filter((b) => ids.includes(b.id)).map((b) => b.indent || 0);
+  return indents.length ? Math.min(...indents) : 0;
 }
 
 /**
