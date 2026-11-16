@@ -18,9 +18,17 @@ import {
   isTextBlockType,
   pasteIsText,
   stripIncidentalLineEnding,
+  withoutStrayFrontmatter,
 } from "../../utils/pasteBlocks";
 import { clipboardHtml, richPasteMarkdown } from "../../utils/richPaste";
 import { editBlocks } from "../../utils/editBlocks";
+
+/** How many caret positions a piece of inline Markdown takes once drawn. */
+function drawnLength(markdown) {
+  const el = document.createElement("div");
+  el.innerHTML = inlineMarkdownToHtml(markdown);
+  return caretLength(el);
+}
 
 export function usePasteHandler({
   noteDataRef,
@@ -147,12 +155,28 @@ export function usePasteHandler({
     // A block-level paste: the pasted blocks replace the selection's blocks,
     // the kept block repaints, and the caret lands once React has mounted
     // the block it goes in.
+    // The empty first block of a note: the one place a pasted Properties
+    // block is the note's own (a whole note pasted into a new one).
+    const atNoteStart =
+      startIdx === 0 && deleteCount === 0 && beforeText === "" && afterText === "";
     const landBlocks = (pastedBlocks) => {
       const {
         blocks: newBlocks,
         focusId,
-        focusPos,
-      } = buildPastedBlocks(currentBlock, pastedBlocks, beforeText, afterText, genBlockId);
+        focusPos: markdownPos,
+      } = buildPastedBlocks(
+        currentBlock,
+        withoutStrayFrontmatter(pastedBlocks, atNoteStart),
+        beforeText,
+        afterText,
+        genBlockId,
+      );
+      // The paste ends at a place in the block's Markdown; the caret counts
+      // what is drawn (`**` and a link's address take no position).
+      const landed = newBlocks.find((b) => b.id === focusId);
+      const focusPos = isTextBlockType(landed.type)
+        ? drawnLength((landed.text ?? "").slice(0, markdownPos))
+        : markdownPos;
       commitNoteData(
         editBlocks(currentNote, (blks) => {
           blks.splice(startIdx, 1 + deleteCount, ...newBlocks);
@@ -201,7 +225,7 @@ export function usePasteHandler({
     const caretInEmptyBlock = () => !crossing && scope.start.el.textContent.trim() === "";
     if (textData.includes("\n") || (isStructuredMarkdownLine(textData) && caretInEmptyBlock())) {
       const rich = textData.includes("\n") && htmlData ? richPasteMarkdown(htmlData) : null;
-      const pastedBlocks = markdownToBlocks(rich ?? textData);
+      const pastedBlocks = markdownToBlocks(rich ?? textData, { fragment: !atNoteStart });
       if (pastedBlocks.length) landBlocks(pastedBlocks);
       return;
     }

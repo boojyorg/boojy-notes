@@ -7,6 +7,7 @@ import {
   rangeScope,
   reachAcross,
 } from "../../utils/crossBlockEdit";
+import { caretOffsetAt } from "../../utils/domHelpers";
 import { genBlockId } from "../../utils/storage";
 import { editBlocks } from "../../utils/editBlocks";
 
@@ -59,6 +60,9 @@ export function useCrossBlockEdit({
     const { start, end } = scope;
     if (!start.el || !end.el) return false;
     const before = markdownBefore(start.el, points.startContainer, points.startOffset);
+    // Read before the commit repaints: where the edit starts, as the caret
+    // counts it (what is drawn, never the Markdown's length).
+    const drawnBefore = caretOffsetAt(start.el, points.startContainer, points.startOffset);
     const after = markdownAfter(end.el, points.endContainer, points.endOffset);
     const result = applyAcrossBlocks(
       blocks,
@@ -77,7 +81,10 @@ export function useCrossBlockEdit({
     );
     syncGeneration.current++;
     focusBlockId.current = result.focusId;
-    focusCursorPos.current = result.focusPos;
+    focusCursorPos.current =
+      result.focusId === blocks[start.blockIndex].id
+        ? drawnBefore + (result.focusPos - before.length)
+        : result.focusPos;
     return true;
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);

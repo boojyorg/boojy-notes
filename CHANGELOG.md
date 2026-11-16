@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixes
+
+- **The cursor lands where the edit happened** — After deleting or typing over a selection that ran across two blocks, the cursor sat too far right whenever the first line had bold, a link or a footnote reference before the cut, so the next letters went into the middle of a word. The same happened after pasting several lines that ended in formatted text. It now sits exactly at the join.
+- **Pasting a note's text no longer makes a Properties block mid-note** — Text that began with `---`, some lines and `---` (a note copied whole from Obsidian or another editor) was pasted as a Properties block wherever the cursor stood, and that block turned into a divider and plain text the next time the note was opened. Mid-note it is now pasted as that divider and text from the start. Pasted into the empty first line of a note, it is still the note's properties.
+
 ## v0.23.1 — 2026-11-16
 
 ### Fixes

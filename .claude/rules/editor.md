@@ -68,11 +68,11 @@ through state.**
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
   completion. The `[[` picker is a dialog and takes focus.
 - A completion from a native listener commits at once. A triple-click selects the block or its
-  field, by the app (`selectClickedBlock`). A caret rescue never takes focus back, nor
+  field (`selectClickedBlock`). A caret rescue never takes focus back, nor
   follows a link's click.
 - ArrowUp with nothing above reaches the note's name, ArrowDown comes back; Shift+Arrow is
   always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
-- **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), on screen.
+- **⌥↑/↓ jump to a block's start** (`isBlockJump`).
   `block-jump.spec.ts`.
 - **A line command takes a line only if the selection holds some of it** (`selectedLines`);
   ⌘Enter ticks those to-dos one way (`todoFlip`), else is Enter. `selected-lines.spec.ts`.
@@ -100,7 +100,7 @@ through state.**
   drawn quietly only while it ends its block. `link-resolution.spec.ts`,
   `heading-links.spec.ts`, `block-links.spec.ts`.
 - **A footnote reference is one sealed character showing `[n]`** over its source
-  (`numberFootnotes`, first reference first), which copies and saves.
+  (`numberFootnotes`), which copies and saves.
   A caret anchor follows; ←/→ take it whole, Backspace its `]` (`footnoteRefKey`). A click goes to
   its definition (its label's last), a visit; with none, the panel writes one. `footnotes.spec.ts`.
 - **A footnote is made in its panel** (`useFootnoteDraft`): `[^` shows a faint `n]`,
@@ -180,8 +180,7 @@ through state.**
 
 ## Menus
 
-- **The slash menu is tiered**: `advanced: true` rows stay off the opening screen, one rule for
-  menu and keys (`filterSlashCommands()`).
+- **The slash menu is tiered**: `advanced: true` rows stay off the opening screen (`filterSlashCommands()`).
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
 - **Every menu's keys are one rule** (`useMenuKeys`); a caret suggestion (`suggestion: true`)
   is a `listbox`. `menuKeys.test.ts`, `callout-picker.spec.ts`.
@@ -202,7 +201,7 @@ through state.**
 ## Headings
 
 **Every editor spacing value lives in `DEFAULT_RHYTHM`.** New headings are ATX; an empty one
-shows `Heading N` (CSS). `heading-placeholder.spec.ts`.
+shows `Heading N`. `heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file
 
@@ -311,7 +310,7 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 ## Embeds: read-only copies
 
 - **An embed is drawn by `ReadOnlyBlocks`**, found as its
-  link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is said.
+  link's click finds it (`embedTarget`); a link inside reads as in its source.
 - **The copy is fenced by the selection, never the target**:
   `useEmbedFence` cancels an edit in it and its chip says where to edit.
 - **A click opens its `![[…]]` underneath** (keys: Edit link), saved once; closing leaves it picked. `embeds.spec.ts`.
@@ -320,7 +319,8 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 
 - **A block holding text never changes type on paste.** Plain lines stay soft breaks; a blank
   line starts a block; only an empty block is taken over by structure. Gboard's clipboard is a
-  paste (`typedPaste`).
+  paste (`typedPaste`). **A paste is a fragment**: `---` opens Properties only in a
+  note's empty first block. `paste-fragment.spec.ts`.
 - **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`); an app's
   picture of copied text yields to it (`pasteIsText`). `file-drop.spec.ts`.
 - **Copy**: structure travels only for whole blocks (`fullBlock`); a partial selection writes
