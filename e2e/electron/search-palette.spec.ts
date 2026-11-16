@@ -377,3 +377,29 @@ test("Tab stays in the palette, Escape closes it from anywhere, and the caret go
     await h.close();
   }
 });
+
+test("a tag clicked again after Escape searches again, and typing lands after the tag", async () => {
+  // The palette hands the caret back to the note. Left inside the tag the
+  // press put it in, the tag would be the one being edited, and its next
+  // click would place a caret instead of searching.
+  const h = await launchApp({ "Alpha.md": "Tagged #review here\n", "Beta.md": "also #review\n" });
+  try {
+    const page = h.page;
+    const dialog = page.getByRole("dialog", { name: "Search" });
+    const tag = page.locator("[data-block-id] .inline-tag").first();
+    await h.openNote("Alpha");
+    for (let i = 0; i < 2; i++) {
+      await tag.click();
+      await expect(dialog.getByTestId("search-tag-chip")).toHaveText(/#review/);
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+    }
+    await expect(tag).not.toHaveAttribute("data-editing");
+    await page.keyboard.type("!");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Tagged #review! here\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
