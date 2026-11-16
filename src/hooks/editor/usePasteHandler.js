@@ -22,13 +22,7 @@ import {
 } from "../../utils/pasteBlocks";
 import { clipboardHtml, richPasteMarkdown } from "../../utils/richPaste";
 import { editBlocks } from "../../utils/editBlocks";
-
-/** How many caret positions a piece of inline Markdown takes once drawn. */
-function drawnLength(markdown) {
-  const el = document.createElement("div");
-  el.innerHTML = inlineMarkdownToHtml(markdown);
-  return caretLength(el);
-}
+import { drawnLength } from "../../utils/drawnLength";
 
 export function usePasteHandler({
   noteDataRef,
@@ -155,10 +149,11 @@ export function usePasteHandler({
     // A block-level paste: the pasted blocks replace the selection's blocks,
     // the kept block repaints, and the caret lands once React has mounted
     // the block it goes in.
-    // The empty first block of a note: the one place a pasted Properties
-    // block is the note's own (a whole note pasted into a new one).
-    const atNoteStart =
-      startIdx === 0 && deleteCount === 0 && beforeText === "" && afterText === "";
+    // The very top of a note (nothing of its first block before the paste;
+    // a first block that is text means the note has no properties yet): the
+    // one place a pasted Properties block is the note's own. A whole note
+    // pasted into a new one, at the head of an old one, or over Select All.
+    const atNoteStart = startIdx === 0 && beforeText === "";
     const landBlocks = (pastedBlocks) => {
       const {
         blocks: newBlocks,

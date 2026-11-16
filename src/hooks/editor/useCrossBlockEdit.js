@@ -8,6 +8,7 @@ import {
   reachAcross,
 } from "../../utils/crossBlockEdit";
 import { caretOffsetAt } from "../../utils/domHelpers";
+import { drawnLength } from "../../utils/drawnLength";
 import { genBlockId } from "../../utils/storage";
 import { editBlocks } from "../../utils/editBlocks";
 
@@ -62,7 +63,12 @@ export function useCrossBlockEdit({
     const before = markdownBefore(start.el, points.startContainer, points.startOffset);
     // Read before the commit repaints: where the edit starts, as the caret
     // counts it (what is drawn, never the Markdown's length).
-    const drawnBefore = caretOffsetAt(start.el, points.startContainer, points.startOffset);
+    // A start outside the block's own root (Select All starts on the editor)
+    // is the block's start.
+    const drawnBefore = Math.max(
+      0,
+      caretOffsetAt(start.el, points.startContainer, points.startOffset),
+    );
     const after = markdownAfter(end.el, points.endContainer, points.endOffset);
     const result = applyAcrossBlocks(
       blocks,
@@ -81,9 +87,14 @@ export function useCrossBlockEdit({
     );
     syncGeneration.current++;
     focusBlockId.current = result.focusId;
+    // What went in is counted as drawn too: a pasted `**bold**` is four
+    // positions. A typed character or a line break is one.
+    const inserted = result.focusPos - before.length;
+    const drawnInserted =
+      intent.kind === "insertText" && intent.text.length > 1 ? drawnLength(intent.text) : inserted;
     focusCursorPos.current =
       result.focusId === blocks[start.blockIndex].id
-        ? drawnBefore + (result.focusPos - before.length)
+        ? drawnBefore + drawnInserted
         : result.focusPos;
     return true;
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks

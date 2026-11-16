@@ -128,6 +128,50 @@ test.describe("edits that reach across block roots are owned by the app", () => 
     }
   });
 
+  test("a formatted line pasted across blocks leaves the caret after what went in", async () => {
+    const h = await launchApp({ [NOTE]: THREE });
+    try {
+      await h.openNote("Note");
+      await h.page.locator("[data-block-id]").first().click();
+      // A formatted line over a selection across two blocks: the caret counts
+      // what is drawn of it, not its Markdown.
+      await selectAcross(h.page, 0, 2, 1, 3);
+      await h.page.evaluate(() => {
+        const dt = new DataTransfer();
+        dt.setData("text/plain", "bold link");
+        dt.setData("text/html", '<b>bold</b> <a href="https://example.com">link</a>');
+        document.activeElement!.dispatchEvent(
+          new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }),
+        );
+      });
+      await h.page.keyboard.type("1");
+      await waitForFile(h.vault.file(NOTE), (t) => t.includes("1"));
+      await sleep(SETTLE_MS);
+      expect(h.vault.read(NOTE)).toBe("fi**bold** [link](https://example.com)1ond\n\nthird\n");
+
+      expect(h.pageErrors).toEqual([]);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("letters typed over Select All come out in order", async () => {
+    // Select All starts on the editor, outside any block's own root.
+    const h = await launchApp({ [NOTE]: THREE });
+    try {
+      await h.openNote("Note");
+      await h.page.locator("[data-block-id]").first().click();
+      await h.page.keyboard.press(`${MOD}+a`);
+      await h.page.keyboard.type("xyz");
+      await waitForFile(h.vault.file(NOTE), (t) => t.includes("x"));
+      await sleep(SETTLE_MS);
+      expect(h.vault.read(NOTE).trimEnd()).toBe("xyz");
+      expect(h.pageErrors).toEqual([]);
+    } finally {
+      await h.close();
+    }
+  });
+
   test("Cut over a selection spanning two blocks leaves one block; Enter afterwards splits, no crash", async () => {
     const h = await launchApp({ [NOTE]: THREE });
     try {

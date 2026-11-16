@@ -11,7 +11,16 @@
  *   line has formatting and text follows it.
  */
 import { expect, test } from "@playwright/test";
-import { type AppHandle, SETTLE_MS, blockTypes, launchApp, sleep, waitForFile } from "./harness";
+import {
+  type AppHandle,
+  MOD,
+  SETTLE_MS,
+  START_OF_LINE,
+  blockTypes,
+  launchApp,
+  sleep,
+  waitForFile,
+} from "./harness";
 
 const WHOLE_NOTE = "---\ntitle: Pasted\n---\nBody";
 
@@ -65,6 +74,31 @@ test("pasted into a new, empty note, its properties are the note's", async () =>
   expect((await blockTypes(h.page))[0]).toBe("frontmatter");
   // The empty file ended with no newline, and its ending is kept.
   expect(written).toBe("---\ntitle: Pasted\n---\n\nBody");
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("pasted at the very top of a note with text, or over all of it, its properties are the note's", async () => {
+  // The file would start with `---` either way, and the next open would read
+  // properties: the screen must say so at once.
+  await h.openNote("Paste");
+  await h.page.locator('[data-block-type="p"]', { hasText: "Start" }).click();
+  await h.page.keyboard.press(START_OF_LINE);
+  await paste(WHOLE_NOTE);
+  await waitForFile(h.vault.file("Paste.md"), (t) => t.includes("Body"));
+  expect((await blockTypes(h.page))[0]).toBe("frontmatter");
+  expect(h.vault.read("Paste.md").startsWith("---\ntitle: Pasted\n---\n")).toBe(true);
+
+  await h.openNote("Blank");
+  await h.page.locator("[data-block-id]").first().click();
+  await h.page.keyboard.type("one");
+  await h.page.keyboard.press("Enter");
+  await h.page.keyboard.type("two");
+  await h.page.keyboard.press(`${MOD}+a`);
+  await paste(WHOLE_NOTE);
+  await waitForFile(h.vault.file("Blank.md"), (t) => t.includes("Body"));
+  await sleep(SETTLE_MS);
+  expect(await blockTypes(h.page)).toEqual(["frontmatter", "p"]);
+  expect(h.vault.read("Blank.md")).toBe("---\ntitle: Pasted\n---\n\nBody");
   expect(h.pageErrors).toEqual([]);
 });
 
