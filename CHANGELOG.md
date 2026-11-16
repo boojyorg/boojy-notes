@@ -4,6 +4,9 @@
 
 ### Fixes
 
+- **Android: a save that failed no longer comes back over newer text** — With notes in a folder you picked, a save that failed left a safety copy behind, and the next start wrote it over whatever you had typed since. It could also bring back a note you had renamed or deleted. The copy is now dropped as soon as the note is saved again, renamed or deleted.
+- **Android: choosing the notes folder again never empties Dropbox** — After "Boojy Notes can't reach your notes folder", choosing an empty or different folder made sync treat every note as deleted and remove them all from Dropbox. Sync now starts afresh after that screen: notes missing from the folder are downloaded again, and nothing is deleted.
+- **Android: Move to a folder refuses a folder another storage location uses** — A location added since the app was opened was missed, so two locations could end up sharing one folder.
 - **A link whose text holds a wikilink or a picture follows a rename** — `[see [[Beta]]](Beta.md)` and `[![cover](cover.png)](Beta.md)` were left pointing at the old name when Beta was renamed or moved. Both are now rewritten like any other link.
 - **A rename says when a note's links could not be updated** — If a note's "Before link update" version could not be saved, its links are left as they were, as before. The message used to report success, or say nothing at all; it now says how many notes were left with their old links, and stays until closed.
 - **Less work while typing** — Each pause in typing redrew the whole note once more than it needed to, since the Back and Forward arrows were added. Most noticeable in long notes.

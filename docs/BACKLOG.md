@@ -310,6 +310,12 @@ none blocks a stage.
 
 ## Known issues
 
+- [ ] **A phone's notes folder emptied where it stands empties Dropbox** (2026-11-15 audit):
+  removed and made again under its old name, or every file deleted in the Files app, while the
+  app is closed. No "can't reach your notes folder" screen shows, so sync reads every note as
+  deleted on the phone and deletes it from Dropbox (kept there 30 days; the desktop keeps
+  Recently Deleted). A folder chosen again from that screen is safe: sync merges. The guard
+  is a pass that would delete every synced note stopping to ask.
 - [ ] **The editor renders once on every keystroke** (measured 2026-11-16): 36 keys, 36
   renders of `EditorArea`, though its memo comparator skips each one. The cause is inside the
   component and not yet found; ruled out: the comparator, the theme, layout, settings and

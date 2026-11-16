@@ -10,6 +10,9 @@ const disk = vi.hoisted(() => ({
   /** What a move under way adds to the choice's file. */
   under: {} as Record<string, unknown>,
   written: [] as [string, string][],
+  /** Every file a start removed, and every write and removal in the order made. */
+  removed: [] as string[],
+  order: [] as string[],
   /** Any other file a start reads: the list of storage locations, another location's choice. */
   files: {} as Record<string, string>,
   /** The directories `fileAddress` was asked for. */
@@ -27,12 +30,21 @@ vi.mock("../../src/phone/files", () => ({
           ? new TextEncoder().encode(disk.files[path])
           : null,
     list: async (dir: string) =>
-      dir === "state" ? disk.state.map((name) => ({ name, kind: "file", mtime: 0, size: 1 })) : [],
+      (dir === "state"
+        ? disk.state
+        : Object.keys(disk.files)
+            .filter((path) => path.startsWith(`${dir}/`))
+            .map((path) => path.slice(dir.length + 1))
+      ).map((name) => ({ name, kind: "file", mtime: 0, size: 1 })),
     write: async (path: string, bytes: Uint8Array) => {
       disk.written.push([path, new TextDecoder().decode(bytes)]);
+      disk.order.push(`write ${path}`);
     },
-    exists: async () => false,
-    remove: async () => {},
+    exists: async (path: string) => path in disk.files,
+    remove: async (path: string) => {
+      disk.removed.push(path);
+      disk.order.push(`remove ${path}`);
+    },
     rmdir: async () => {},
   }),
   fileAddress: async (dir: string) => {
@@ -43,7 +55,8 @@ vi.mock("../../src/phone/files", () => ({
 const checkOutside = vi.hoisted(() => vi.fn(async () => {}));
 /** The vault's own calls, for a test that has the app read its notes. */
 const vaultApi = vi.hoisted(() => ({}) as Record<string, unknown>);
-vi.mock("../../src/phone/phoneVault", () => ({
+vi.mock("../../src/phone/phoneVault", async (original) => ({
+  forgetSync: (await original<typeof import("../../src/phone/phoneVault")>()).forgetSync,
   VAULT: "vault",
   createPhoneVault: () => ({
     api: vaultApi,
@@ -121,7 +134,8 @@ vi.mock("../../src/phone/folderFiles", () => ({
   },
   reachableFolder: reachable,
   folderReached: reached,
-  treesOverlap: (a: string, b: string) => a === b,
+  JOURNAL: "journal",
+  treesOverlap: (a: string, b: string) => a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`),
   folderFiles: () => ({ recover: async () => {} }),
   folderAddress: () => (rel: string) => rel,
   folderLabel: ({ root }: { root: string }) => root.slice(root.indexOf(":") + 1),
@@ -262,6 +276,8 @@ describe("where a start keeps the notes", () => {
     reached.mockClear();
     checkOutside.mockClear();
     disk.written.length = 0;
+    disk.removed.length = 0;
+    disk.order.length = 0;
     disk.addressed.length = 0;
     disk.reads.length = 0;
     await (await import("../../src/phone/install")).installPhone();
@@ -318,6 +334,50 @@ describe("where a start keeps the notes", () => {
         }),
       ],
     ]);
+  });
+
+  // The record lists every note as synced here. Read against a folder that
+  // is another, or the old one made again and empty, each would look deleted
+  // on the phone, and the next pass would delete them all from Dropbox.
+  it("forgets what sync knew before a folder chosen again is the choice, so the next pass merges", async () => {
+    Object.assign(disk, {
+      state: ["ids.json", "sync-record.json", "restored.json", "binding.json"],
+      choice: "folder",
+      under: { folder: { tree: "again", root: "primary:Documents/Again" } },
+      files: { "state/sync-record.json": "{}", "state/restored.json": "[]" },
+    });
+    reached.mockResolvedValueOnce(null);
+    await startOf(true);
+    disk.files = {};
+    expect(screens.askFolderAgain).toHaveBeenCalledOnce();
+    // Even at the address it had: Android's folder screen can make a folder of the old name.
+    expect(disk.removed).toEqual(["state/sync-record.json", "state/restored.json"]);
+    expect(disk.written).toEqual([]);
+  });
+
+  it("forgets it before the new folder is written, never after", async () => {
+    Object.assign(disk, {
+      state: ["ids.json", "sync-record.json"],
+      choice: "folder",
+      under: { folder: { tree: "old", root: "primary:Documents/Old" } },
+      files: { "state/sync-record.json": "{}" },
+    });
+    reached.mockResolvedValueOnce(null);
+    await startOf(true);
+    disk.files = {};
+    expect(disk.order).toEqual(["remove state/sync-record.json", "write state/storage.json"]);
+  });
+
+  it("keeps what sync knew at a start that reaches the folder", async () => {
+    Object.assign(disk, {
+      state: ["ids.json", "sync-record.json"],
+      choice: "folder",
+      under: { folder: { tree: "t", root: "primary:Documents/Notes" } },
+      files: { "state/sync-record.json": "{}" },
+    });
+    await startOf(true);
+    disk.files = {};
+    expect(disk.removed).toEqual([]);
   });
 
   describe("with more than one storage location", () => {
@@ -703,6 +763,21 @@ describe("where a start keeps the notes", () => {
       expect(device.stateChange).toBeNull();
     });
 
+    // Copies cut short stay in the journal for the same move to finish. Given up, they
+    // would be written into whichever folder a later move chose.
+    it("failed, leaves no copy in the journal for a later move to write", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: { moving: TO },
+        files: { "journal/a-0": "x", "journal/a-1": "y" },
+      });
+      move.copyNotes.mockRejectedValueOnce(new Error("No space left"));
+      await startOf(true);
+      disk.files = {};
+      expect(disk.removed).toEqual(["journal/a-0", "journal/a-1"]);
+    });
+
     it("killed while clearing, clears at the next start", async () => {
       Object.assign(disk, { state: ["ids.json"], choice: "folder", under: { clearing: true } });
       move.copyNotes.mockClear();
@@ -788,10 +863,53 @@ describe("where a start keeps the notes", () => {
         },
       });
       await startOf(true);
-      disk.files = {};
       released.length = 0;
       Object.assign(picker, { answer: { picked: true, ...TO }, holds: ["Diary.md"] });
       expect(await (offered() as Move)(async () => {})).toBe("in-use");
+      disk.files = {};
+      expect(released).toEqual([]);
+      expect(storage()).toEqual([]);
+    });
+
+    // A folder over or under another location's is refused too, and its own grant given back.
+    it("gives back a folder inside another location's, which no location would hold", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: {},
+        files: {
+          "state/locations.json": JSON.stringify({
+            open: "main",
+            list: [{ id: "main" }, { id: "w" }],
+          }),
+          "locations/w/state/storage.json": JSON.stringify({ kind: "folder", folder: TO }),
+        },
+      });
+      await startOf(true);
+      released.length = 0;
+      Object.assign(picker, {
+        answer: { picked: true, tree: "to/Sub", root: "primary:Documents/Boojy Notes/Sub" },
+        holds: [],
+      });
+      expect(await (offered() as Move)(async () => {})).toBe("in-use");
+      disk.files = {};
+      expect(released).toEqual(["to/Sub"]);
+    });
+
+    // The folders other locations hold are read at the press: one added since the start counts.
+    it("refuses the folder of a location added since the app started", async () => {
+      const moveToFolder = await inApp();
+      Object.assign(picker, { answer: { picked: true, ...TO }, holds: [] });
+      const { locations } = (
+        window as unknown as { boojyPhoneAPI: { locations: { add(): Promise<string> } } }
+      ).boojyPhoneAPI;
+      expect(await locations.add()).toBe("added");
+      // The disk as the add left it: the list, and the new location's choice.
+      disk.files = Object.fromEntries(disk.written);
+      disk.written.length = 0;
+      released.length = 0;
+      expect(await moveToFolder(async () => {})).toBe("in-use");
+      disk.files = {};
       expect(released).toEqual([]);
       expect(storage()).toEqual([]);
     });

@@ -28,6 +28,12 @@ export interface FileOps {
   /** Finishes or undoes any `write` a crash cut short, under `dir`. Run before anything reads. */
   recover(dir: string): Promise<void>;
   /**
+   * A `write` to `path` that failed is not to be finished at the next start:
+   * its note was saved under another path, or deleted. Only a store that
+   * keeps failed writes has it (`folderFiles.ts`).
+   */
+  forgetSave?(path: string): Promise<void>;
+  /**
    * Everything under `dir` in one call, paths relative to it, dot entries
    * left out. Only a store where a call per folder is slow has it (a picked
    * folder: `folderFiles.ts`); without it the vault lists folder by folder.

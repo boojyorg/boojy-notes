@@ -83,6 +83,115 @@ describe("a note saved to a picked folder", () => {
   });
 });
 
+// A save that failed (the app lived on) leaves its journal entry: the file
+// may be cut short. Whatever happens to the note next makes that entry old,
+// and an old entry finished at the next start would undo it.
+describe("a save that failed, when the app goes on", () => {
+  const failedSave = async () => {
+    let armed = false;
+    const env = setup((op) => armed && op === "write");
+    await env.files.write("Note.md", bytes("the first version"));
+    armed = true;
+    await expect(env.files.write("Note.md", bytes("the second version"))).rejects.toThrow();
+    return env;
+  };
+
+  it("never comes back over a later save of the note", async () => {
+    const { files, fake, restart, journalled } = await failedSave();
+    await files.write("Note.md", bytes("the third version, typed since"));
+    expect(journalled()).toEqual([]);
+    await restart().recover("");
+    expect(text(fake.snapshot().get("Note.md"))).toBe("the third version, typed since");
+  });
+
+  it("finishes the newest when the next save fails too", async () => {
+    const { files, restart, fake } = await failedSave();
+    const put = fake.plugin.write;
+    fake.plugin.write = async () => {
+      throw new Error("no room");
+    };
+    await expect(files.write("Note.md", bytes("the third version"))).rejects.toThrow(/no room/);
+    fake.plugin.write = put;
+    const next = restart();
+    await next.recover("");
+    expect(text(await next.read("Note.md"))).toBe("the third version");
+  });
+
+  // The file may be cut short, and the journal holds its only whole copy:
+  // it is made whole before it moves, never left behind with the old name.
+  it("is finished before the note is renamed, and never comes back under the old name", async () => {
+    const { files, fake, restart, journalled } = await failedSave();
+    expect(text(fake.snapshot().get("Note.md"))).not.toBe("the second version");
+    await files.rename("Note.md", "Renamed.md");
+    expect(text(fake.snapshot().get("Renamed.md"))).toBe("the second version");
+    expect(journalled()).toEqual([]);
+    await restart().recover("");
+    expect([...fake.snapshot().keys()]).toEqual(["Renamed.md"]);
+  });
+
+  // A journal entry already gone (the real storage fails a removal of nothing) is no failure.
+  it("still saves when its journal entry has gone missing", async () => {
+    const { fake, journal, journalled } = await failedSave();
+    const strict = {
+      ...journal,
+      async remove(path: string) {
+        if (!journal.store.has(path)) throw new Error(`${path} does not exist`);
+        return journal.remove(path);
+      },
+    };
+    const files = folderFiles(PICKED, strict, fake.plugin);
+    let armed = true;
+    const put = fake.plugin.write;
+    fake.plugin.write = async (o) => {
+      if (!armed) return put(o);
+      armed = false;
+      throw new Error("no room");
+    };
+    await expect(files.write("Note.md", bytes("the third version"))).rejects.toThrow(/no room/);
+    for (const name of journalled()) journal.store.delete(name);
+    await files.write("Note.md", bytes("the fourth version"));
+    expect(text(fake.snapshot().get("Note.md"))).toBe("the fourth version");
+  });
+
+  // The vault knows what the folder cannot: the note was saved under another
+  // name, or deleted before it ever had a file.
+  it("is forgotten when the vault says its note went elsewhere", async () => {
+    const { files, fake, restart, journalled } = setup((op) => op === "create");
+    await expect(files.write("Untitled.md", bytes("first words"))).rejects.toThrow();
+    expect(journalled()).toHaveLength(1);
+    await files.forgetSave?.("Untitled.md");
+    expect(journalled()).toEqual([]);
+    await restart().recover("");
+    expect([...fake.snapshot().keys()]).toEqual([]);
+  });
+
+  it("never writes over another note renamed to its name", async () => {
+    const { files, fake, restart } = await failedSave();
+    await files.remove("Note.md");
+    await files.write("Other.md", bytes("another note"));
+    await files.rename("Other.md", "Note.md");
+    await restart().recover("");
+    expect(text(fake.snapshot().get("Note.md"))).toBe("another note");
+  });
+
+  it("never brings back a note deleted since, nor one in a folder deleted since", async () => {
+    const { files, fake, restart } = await failedSave();
+    await files.remove("Note.md");
+    await restart().recover("");
+    expect([...fake.snapshot().keys()]).toEqual([]);
+
+    let armed = false;
+    const env = setup((op) => armed && op === "write");
+    await env.files.write("Trips/Rome.md", bytes("day one"));
+    armed = true;
+    await expect(env.files.write("Trips/Rome.md", bytes("day one, day two"))).rejects.toThrow();
+    await env.files.rename("Trips", "Travel");
+    await env.restart().recover("");
+    expect([...env.fake.snapshot().keys()].sort()).toEqual(["Travel", "Travel/Rome.md"]);
+    expect(text(env.fake.snapshot().get("Travel/Rome.md"))).toBe("day one, day two");
+  });
+});
+
 describe("a name that is taken", () => {
   // Android never refuses: it makes `b (1).md`, and the note would be saved
   // under a name nobody asked for.

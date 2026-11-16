@@ -104,6 +104,11 @@ export function routedFiles(priv: FileOps, folder: FileOps, mount: string): File
       await priv.remove(note);
     },
 
+    async forgetSave(path) {
+      const [store, rel] = route(path);
+      await store.forgetSave?.(rel);
+    },
+
     async recover(dir) {
       const [store, path] = route(dir);
       await store.recover(path);
