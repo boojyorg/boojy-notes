@@ -473,6 +473,17 @@ export default function SearchPalette({
         aria-modal="true"
         aria-label="Search"
         onClick={(e) => e.stopPropagation()}
+        // A press on the panel's own ground (a label, the padding) would
+        // drop focus on the page, where no key reaches the palette.
+        onMouseDown={(e) => {
+          if (!(e.target as HTMLElement).closest("button, input, a")) e.preventDefault();
+        }}
+        // Escape closes from anywhere inside, not only from the field.
+        onKeyDown={(e) => {
+          if (e.key !== "Escape" || e.defaultPrevented) return;
+          e.preventDefault();
+          onClose();
+        }}
         style={{
           ...(isPhone
             ? // Its own ground behind Android's status bar, its field below it.
@@ -572,9 +583,6 @@ export default function SearchPalette({
                 e.preventDefault();
                 if (tagFilter) removeChip(true);
                 else removeFolderChip(true);
-              } else if (e.key === "Escape") {
-                e.preventDefault();
-                onClose();
               }
             }}
             style={{

@@ -14,7 +14,16 @@
  * - A body hit opens the note at the matched passage.
  */
 import { expect, test } from "@playwright/test";
-import { MOD, editorTitle, launchApp, sidebarNoteTitles, waitForFile } from "./harness";
+import {
+  MOD,
+  SETTLE_MS,
+  editorTitle,
+  launchApp,
+  sidebarNoteTitles,
+  sleep,
+  typeAtEnd,
+  waitForFile,
+} from "./harness";
 
 const filler = Array.from({ length: 60 }, (_, i) => `Line ${i + 1} of padding.`).join("\n\n");
 
@@ -327,6 +336,68 @@ test("a file is found by name and shown in the note's place; a note opens with i
       .toEqual(["progress report"]);
     await expect(page.locator("[data-block-id] mark")).toHaveCount(0);
     expect(h.vault.read("Plan.md")).toContain("The interim **progress** report is due Friday.");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("Tab stays in the palette, Escape closes it from anywhere, and the caret goes back to the note", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha body\n", "Beta.md": "Beta body\n" });
+  try {
+    const page = h.page;
+    const dialog = page.getByRole("dialog", { name: "Search" });
+    const field = page.getByRole("textbox", { name: "Search notes" });
+    await h.openNote("Beta");
+    await h.openNote("Alpha");
+    await typeAtEnd(page, "!");
+
+    // The result rows are buttons Tab never stops on: the field is the one
+    // stop, and Tab used to leave it for the page behind the scrim.
+    await page.keyboard.press(`${MOD}+p`);
+    await expect(field).toBeFocused();
+    await expect(dialog.locator("[data-search-index]")).toHaveCount(1);
+    await page.keyboard.press("Tab");
+    await expect(field).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(field).toBeFocused();
+
+    // A press on a label is not a way out of the field, and Escape closes.
+    await dialog.getByText("Recent").click();
+    await expect(field).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    // The caret is back where it was: typing lands in the note.
+    await page.keyboard.type("Z");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Alpha body!Z\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a tag clicked again after Escape searches again, and typing lands after the tag", async () => {
+  // The palette hands the caret back to the note. Left inside the tag the
+  // press put it in, the tag would be the one being edited, and its next
+  // click would place a caret instead of searching.
+  const h = await launchApp({ "Alpha.md": "Tagged #review here\n", "Beta.md": "also #review\n" });
+  try {
+    const page = h.page;
+    const dialog = page.getByRole("dialog", { name: "Search" });
+    const tag = page.locator("[data-block-id] .inline-tag").first();
+    await h.openNote("Alpha");
+    for (let i = 0; i < 2; i++) {
+      await tag.click();
+      await expect(dialog.getByTestId("search-tag-chip")).toHaveText(/#review/);
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+    }
+    await expect(tag).not.toHaveAttribute("data-editing");
+    await page.keyboard.type("!");
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Tagged #review! here\n");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

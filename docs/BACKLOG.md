@@ -333,18 +333,8 @@ none blocks a stage.
 ### From the November 2026 review, queued
 
 Found by the whole-repo review of 2026-11-08 and not fixed since (judged by which files
-changed, not each re-run). The first four bullets are one batch of keys and focus (seven
-faults); the next two are Tyr's calls of 2026-11-09.
+changed, not each re-run). The first two bullets are Tyr's calls of 2026-11-09.
 
-- [ ] **Search palette**: Tab leaves it (and the path popup), as the focus trap counts buttons
-  that are not Tab stops; Escape closes it only while its field has focus; closed with Escape,
-  focus does not go back to the note.
-- [ ] **Code blocks**: Shift+Tab turns the caret into a selection, so the next key overwrites
-  the line; ↑ and ↓ leave a code or maths source from a wrapped line.
-- [ ] **The caret after a cross-block delete, type-over or block paste** is placed by Markdown
-  length, so it lands too far right on a line with formatting, links or footnote references.
-- [ ] **Pasted Markdown that starts with `---` … `---`** puts a Properties block in the middle
-  of the note.
 - [ ] **A `#tag` inside a `%%comment%%`** is listed in Search and the tag menu and never drawn
   (call, reversed 2026-11-09: draw it as a pill, as Obsidian does; the rest stays literal).
 - [ ] **A block dropped between a list item and its nested items** takes them as its children

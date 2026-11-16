@@ -266,6 +266,14 @@ describe("SearchPalette", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  it("closes on Escape from anywhere in the panel, and a press on its ground keeps focus", () => {
+    const { getByRole, getByText, onClose } = setup({ search: "zzz" });
+    // A press on text that is no control must not drop focus on the page.
+    expect(fireEvent.mouseDown(getByText(/No notes match/))).toBe(false);
+    fireEvent.keyDown(getByRole("dialog"), { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("says when nothing matches", () => {
     const { getByText } = setup({ search: "zzz" });
     expect(getByText(/No notes match “zzz”/)).toBeInTheDocument();
