@@ -96,6 +96,16 @@ export function dropBoundary(blocks: readonly Block[], target: number, depth = 0
 }
 
 /**
+ * The depth a dragged run is dropped at (`dropBoundary`): its shallowest
+ * block's. A run that starts on a nested item and reaches a top-level one
+ * carries that top-level item, which would take the items below the drop.
+ */
+export function runDepth(blocks: readonly Block[], ids: readonly string[]): number {
+  const indents = blocks.filter((b) => ids.includes(b.id)).map((b) => b.indent || 0);
+  return indents.length ? Math.min(...indents) : 0;
+}
+
+/**
  * The last index of block `i` and what is nested under it: the blocks that
  * follow a list item at a deeper indent, or a footnote's later paragraphs.
  * Anything else has no children (Markdown nests only under a list item or a

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   belowItem,
   dropBoundary,
+  runDepth,
   gripSelection,
   indentRun,
   moveStep,
@@ -329,6 +330,17 @@ describe("a footnote's continuation paragraphs belong to it", () => {
     // A paragraph after an item is no nested item, whatever came before.
     const mixed = [li("A"), li("A1", 1), { id: "p", type: "p", text: "p" } as Block];
     expect(dropBoundary(mixed, 2)).toBe(2);
+  });
+
+  it("a run is dropped at its shallowest block's depth", () => {
+    // [B, B1, X1 (nested), Y (top)]: the run X1+Y dropped under B would give
+    // B1 to Y, though its first block is as deep as B1.
+    const li = (id: string, indent = 0) => ({ id, type: "bullet", text: id, indent }) as Block;
+    const list = [li("B"), li("B1", 1), li("X"), li("X1", 1), li("Y")];
+    expect(runDepth(list, ["X1", "Y"])).toBe(0);
+    expect(runDepth(list, ["X1"])).toBe(1);
+    expect(runDepth(list, [])).toBe(0);
+    expect(dropBoundary(list, 1, runDepth(list, ["X1", "Y"]))).toBe(2);
   });
 
   it("a drop inside a footnote's group lands after it", () => {

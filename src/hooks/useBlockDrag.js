@@ -2,7 +2,7 @@ import { useRef, useEffect } from "react";
 import { EASE_ENTER, currentSettleMs, prefersReducedMotion } from "../tokens/motion";
 import { cssZoom, runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 import { reorderFloor } from "../utils/blockOrder";
-import { dropBoundary, selectedIds, subtreeEnd } from "../utils/blockRun";
+import { dropBoundary, runDepth, selectedIds, subtreeEnd } from "../utils/blockRun";
 import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
 import { EDGE_GAP, gapY, placeMarker } from "../utils/dropMarker";
 import { selectedLinesOf } from "../utils/selectedLines";
@@ -282,8 +282,7 @@ export function useBlockDrag({
     // Never between a footnote and its later paragraphs, nor between a list
     // item and what nests under it (utils/blockRun). The marker is drawn at
     // the boundary this gives, so what is shown is where the drop lands.
-    const first = blocks.find((b) => bd.blockIds.includes(b.id));
-    targetIndex = dropBoundary(blocks, targetIndex, first?.indent || 0);
+    targetIndex = dropBoundary(blocks, targetIndex, runDepth(blocks, bd.blockIds));
 
     // Releasing outside the editor's scroll area (over the sidebar, say) is a
     // cancel, so the marker disappears the moment the pointer crosses out.
