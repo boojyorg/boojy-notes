@@ -69,6 +69,23 @@ function unwash(mark) {
   range.setEndAfter(last);
   return range;
 }
+/**
+ * `markdown` as the one link the renderer draws it as, so what is read back
+ * is what was written; null when it is drawn as anything else (text beside
+ * the link, a second element), or when there is nothing to draw.
+ */
+function drawnLink(markdown) {
+  if (!markdown) return null;
+  const holder = document.createElement("template");
+  holder.innerHTML = inlineMarkdownToHtml(markdown);
+  const el = holder.content.firstElementChild;
+  if (!el?.matches("a[data-url]")) return null;
+  const beside = [...holder.content.childNodes].some(
+    (n) => n !== el && (n.textContent ?? "").replace(/\u200B/g, "") !== "",
+  );
+  return beside ? null : el;
+}
+
 /** The `[[…]]` element for `target` showing `shown`, as the renderer draws one. */
 function wikilinkElement(existing, target, shown, notes) {
   // Text left as the old target's drawn label is no alias: the new target
@@ -264,14 +281,13 @@ export function useLinkPicker({
             ? linkTargetFor(id, noteDataRef.current)
             : dest.title;
         const shown = text || selectedText || dest.title;
-        const byPath = pathLink(id, shown);
-        if (byPath) {
-          // Drawn by the renderer, so what is read back is what it wrote.
-          const holder = document.createElement("template");
-          holder.innerHTML = inlineMarkdownToHtml(byPath);
-          el = holder.content.firstElementChild;
-        }
-        if (!el) el = wikilinkElement(p.existing, target, shown, noteDataRef.current);
+        // The words as the label; where they cannot be one link's text (a
+        // line break, a bracket that closes it early), the note's name.
+        const title = noteDataRef.current[id]?.title ?? "";
+        el =
+          drawnLink(pathLink(id, shown.replace(/\s*\n\s*/g, " "))) ??
+          drawnLink(pathLink(id, title)) ??
+          wikilinkElement(p.existing, target, shown, noteDataRef.current);
       }
       if (p.existing) {
         p.existing.replaceWith(el);
