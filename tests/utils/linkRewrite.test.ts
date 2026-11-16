@@ -96,6 +96,26 @@ describe("linksFollow: a rename", () => {
     expect(skipped).toBe(0);
   });
 
+  // The click opens these, so a rename follows them: a link's text may hold a
+  // wikilink, or a picture (which other Markdown readers take as the link).
+  it("follows a Markdown link whose text holds a wikilink or a picture", () => {
+    const before = vault({
+      Alpha: "[see [[Beta]]](Beta.md) and [![cover](cover.png)](Beta.md#Intro)\n",
+      Beta: "B.\n",
+    });
+    const { md, links } = followed(before, placed(before, "Beta", { title: "Gamma" }));
+    expect(md.Alpha).toBe("[see [[Gamma]]](Gamma.md) and [![cover](cover.png)](Gamma.md#Intro)\n");
+    expect(links).toBe(3);
+  });
+
+  // The renderer reads the wikilink first: what follows it is plain text.
+  it("leaves the parentheses after a wikilink alone", () => {
+    const before = vault({ Alpha: "[[Beta]](Beta.md)\n", Beta: "B.\n" });
+    const { md, links } = followed(before, placed(before, "Beta", { title: "Gamma" }));
+    expect(md.Alpha).toBe("[[Gamma]](Beta.md)\n");
+    expect(links).toBe(1);
+  });
+
   it("renamed back, puts the links back", () => {
     const alpha = "See [[Beta]], [[Beta#Intro|the intro]] and [b](Beta.md).\n";
     const before = vault({ Alpha: alpha, Beta: "B.\n" });
