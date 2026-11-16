@@ -54,6 +54,7 @@ import {
   revealInNote,
   caretRangeAt,
   caretRect,
+  caretAfterTag,
   cssZoom,
 } from "../utils/domHelpers";
 import { openBlock } from "../utils/blockOpen";
@@ -2026,6 +2027,11 @@ const EditorArea = memo(
                         if (tag === tagAtPressRef.current) return;
                         // A click searches; editing is the tag's menu's (Edit tag).
                         const name = tagName(tag);
+                        // The press left the caret in the tag, and Search
+                        // hands the caret back when it closes: after the
+                        // tag, or it would come back as the tag being edited
+                        // and its next click would not search.
+                        if (name && tag.isContentEditable) caretAfterTag(tag);
                         if (name && onTagClick) onTagClick(name);
                         return;
                       }

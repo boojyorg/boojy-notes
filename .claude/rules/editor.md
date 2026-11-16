@@ -43,15 +43,14 @@ through state.**
   Enter and Shift+Enter, done in state.
 - **`execCommand` fires no `beforeinput`**, so script mutations ask `scopeOf` first.
 - **Bold, italic and code are structural wraps** (`toggleWrappingTag`), never
-  `execCommand("bold")` (computed style). What is selected decides on or off;
+  `execCommand("bold")`. What is selected decides on or off;
   edge spaces stay outside, typed ones too (`liftTypedSpace`). `heading-bold.spec.ts`,
   `format-edge-spaces.spec.ts`.
 - **A block with its own field owns its edits and its keys** (table cell, callout, code
   textarea): `handleEditorKeyDown` returns in a field, whose document selection is stale there;
   only inline-format shortcuts in a `data-inline-field` go to `applyFormat`.
 - A collapsed Delete/Backspace into a neighbour merges only with text; it selects a divider,
-  image or table (`reachAcross`). **Backspace in the only empty block is prevented** (Chromium deletes the
-  `<p>`). `cross-block-ownership.spec.ts`.
+  image or table (`reachAcross`). **Backspace in the only empty block is prevented**. `cross-block-ownership.spec.ts`.
 
 ## Keys and focus: the closest active surface owns them
 
@@ -63,8 +62,8 @@ through state.**
 - **An open modal, or a focused menu, owns every key beneath it** (`focusOwner()`). Each
   surface closes itself on Escape; Escape never hides the sidebar. A native text field outside
   the editor owns its editing keys.
-- **A closing surface hands focus back only while it holds it, unscrolled, ringed only if it
-  was.** `useFocusTrap`.
+- **A closing surface hands focus and the selection back only while it holds it,
+  unscrolled, ringed only if it was; Tab walks its Tab stops.** `useFocusTrap`.
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
   completion. The `[[` picker is a dialog and takes focus.
 - A completion from a native listener commits at once. A triple-click selects the block or its
@@ -165,18 +164,18 @@ through state.**
 - **On the desktop text never starts a block drag; a picture does.** One floating grip
   (`BlockDragHandle`) in the gutter; nested (`data-indent`), on its parent's marker
   (`gripX`), clear of a wide number; on hover, `aria-hidden`.
-- A key hides the grip (not a lone modifier: Shift-click). **Blur always cancels
+- A key hides the grip (not a lone modifier). **Blur always cancels
   a press**. `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`): moved, it drags; let go,
   `BlockMenu` (on a tag, the tag's menu). A scroll, double-tap or text selection is the browser's. A lone new finger ends
-  a lost hold (Android reuses ids). `hold-to-grab.spec.ts`.
+  a lost hold. `hold-to-grab.spec.ts`.
 - **Commits on drop**, one entry, only if order changed; Escape, blur or the sidebar
   cancel. A selection drags as one run. `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (`moveStep`).
   `list-move.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style**.
 - **Every root the grip shows beside is in `blockRefs`**; media, code and callout register via
-  `wholeRef`, not `elRef` (its repaint covers the wrapper).
+  `wholeRef`, not `elRef`.
 
 ## Menus
 
@@ -192,7 +191,7 @@ through state.**
 ## Maths
 
 - **A `$$` formula never moves; its source opens underneath** (`MathBlock`; ⌘Z is the
-  note's); ↑/↓ at its edges walk out. `math-block.spec.ts`.
+  note's); ↑/↓ leave it, or a code field, only from an edge row (`caretOnEdgeRow`). `math-block.spec.ts`, `wrapped-rows.spec.ts`.
 - **`$x$` in a sentence is one sealed element** (`data-math`): one caret character; its closing
   `$` converts it, a press opens its source (`InlineMathPanel`). `inline-math.spec.ts`.
 - **`\` completes the `\word` the caret ends**; a choice is one undo entry
