@@ -18,10 +18,10 @@ else sit in Fix now.
 
 The tiers, kept apart. **Requirements** are what a stage waits for. **Candidates** are
 optional; each is judged on its own and may be declined. **Future** is everything after 1.0,
-recorded so a preference and its open question are not lost. Last reviewed: 2026-11-16 (stale lines corrected after the 2026-11-15 audit); before that the
-v0.23.0 release pass (what is wanted before 1.0 was revised on 2026-11-13); the 1.0 scope pass was 2026-10-24 (a read-only audit of v0.18.0, an
-independent review and a Codex review). Items
-marked *review §n* come from the whole-app review of 2026-09-07.
+recorded so a preference and its open question are not lost. Last reviewed: 2026-11-16 (what
+is wanted before 1.0 was revised on 2026-11-13); the 1.0 scope pass was 2026-10-24 (a
+read-only audit of v0.18.0, an independent review and a Codex review). Items marked
+*review §n* come from the whole-app review of 2026-09-07.
 
 ## Direction
 
@@ -143,30 +143,30 @@ the test its rule names when it is built.
 
 **Organisation**
 
-- **Favourites, the same on every device**: from the note's ··· menu; a section that comes
-  with the first and goes with the last; a second route, never a move. Kept in one small file
-  in the vault (under `.boojy/`, by vault-relative path), written with the first favourite,
-  remapped by the app's moves; a missing path is ignored and losing the file damages nothing.
-  Sync and the phone's listing skip dot paths (`isIgnored` in `src/sync/engine.ts`, `hidden` in `phoneVault.ts`):
-  that one file is let through. **Tried first** on a branch with local storage, which never
-  merges. Open: ordering, folders.
+- **Favourites, the same on every device**: from the note's ··· menu; a section that comes with
+  the first and goes with the last; a second route, never a move. Kept in one small file in the
+  vault (under `.boojy/`, by vault-relative path), written with the first favourite, remapped
+  by the app's moves; a missing path is ignored and losing the file damages nothing. Sync and
+  the phone's listing skip dot paths (`isIgnored` in `src/sync/engine.ts`, `hidden` in
+  `phoneVault.ts`): that one file is let through. **Tried first** on a branch with local
+  storage, which never merges. Open: ordering, folders.
 
 **Phone (Android)**
 
-- **Works offline with no Dropbox and no account** (shipped, v0.23.0). Left: the first
-  connect tested on a phone that already has notes.
-- **A folder the user can see**, as well as app-private storage (shipped, v0.23.0; a move to
-  a folder keeps the notes' order, not their modified times). Left: changing a location's
-  folder for another; a way from the "can't reach your notes folder" screen to another
-  location; typing not yet saved kept when the folder is lost while the app is open.
+- **The first Dropbox connect, tested on a phone that already has notes.**
+- **A notes folder, the rest**: changing a location's folder for another; a way from the
+  "can't reach your notes folder" screen to another location; a note's unsaved typing kept
+  when the folder is lost while the app is open (a save to a note at the folder's top fails
+  before it is journalled, and the app then starts again). A move to a folder keeps the
+  notes' order, not their modified times.
 - **Home's cards show the notes written to this phone last**, which is the notes edited last
   only once the phone has been in use: a file Dropbox downloads, or a move to a folder writes,
   is stamped with that moment (Android sets no modified time), so after a first connect or a
   reinstall the cards are the last four downloaded. Putting it right needs the edit's own time
   carried through sync.
-- **Export and import**, **adding pictures** (off, `addsFiles` in `platform.js`), the Dropbox token in
-  Android's Keystore (a plain file today), a deliberate backup setting (settings yes, token
-  never), Settings laid out for a phone.
+- **Export and import**, **adding pictures** (off, `addsFiles` in `platform.js`), the Dropbox
+  token in Android's Keystore (a plain file today), a deliberate backup setting (settings yes,
+  token never), Settings laid out for a phone.
 - **Google Play, without the Mac**: a release key, `versionCode` from `package.json`, an AAB
   from CI, the data-safety form.
 
@@ -186,8 +186,8 @@ the test its rule names when it is built.
   tyr@boojy.org with version and OS, shown before sending; no telemetry); help pages on sync
   and history not being a backup, and moving from Notion by hand.
 - The Known issues a finished Public Beta cannot live with: New note writing `Untitled.md` at
-  once on the desktop; Replace skipping cells, callouts and code, and Find's double count; the symlink
-  check.
+  once on the desktop; Replace skipping cells, callouts and code, and Find's double count; the
+  symlink check.
 - A 10,000-note vault on the desktop; a first phone sync with large attachments; VoiceOver and
   TalkBack over the editor.
 - **The editor in Safari's engine**, since the demo meets Safari visitors: a Playwright WebKit
@@ -284,9 +284,9 @@ none blocks a stage.
   Neither sync nor history replaces an independent backup.
 - **Searchable `/link`.** Consider an entry point to the existing inline-link controls, not a
   new block type. Discoverability and interaction need live judgement; adding it may be declined.
-- **Other files in the tree, the rest**: Rename and Move to… on the row (links follow a
-  note's rename; a file's would need the same), and a drag into a note that writes a link. A Finder change reaches the tree on
-  window focus; watching them only if that proves slow.
+- **Other files in the tree, the rest**: Rename and Move to… on the row (links follow a note's
+  rename; a file's would need the same), and a drag into a note that writes a link. A Finder
+  change reaches the tree on window focus; watching them only if that proves slow.
 
 - **Custom shortcuts**, once the defaults are good (2026-09-30).
 - **Find in note, as good as a code editor's.** Cmd+F finds and replaces (it opens as it was
@@ -333,8 +333,8 @@ none blocks a stage.
 ### From the November 2026 review, queued
 
 Found by the whole-repo review of 2026-11-08 and not fixed since (judged by which files
-changed, not each re-run). The first seven are one batch of keys and focus; the next four are
-Tyr's calls of 2026-11-09.
+changed, not each re-run). The first four bullets are one batch of keys and focus (seven
+faults); the next four are Tyr's calls of 2026-11-09.
 
 - [ ] **Search palette**: Tab leaves it (and the path popup), as the focus trap counts buttons
   that are not Tab stops; Escape closes it only while its field has focus; closed with Escape,
@@ -348,7 +348,7 @@ Tyr's calls of 2026-11-09.
 - [ ] **A root note with a namesake in a folder** gets an ambiguous link from the picker (call:
   a bare `[[Name]]` is the shortest clear path).
 - [ ] **A title holding `#`, `^`, `[`, `]` or `|`** gets a link from the picker that points
-  nowhere (call: in a new name they become `_`).
+  nowhere (call: in a new name `#`, `^`, `[` and `]` become `_`; `|` was not asked).
 - [ ] **A `#tag` inside a `%%comment%%`** is listed in Search and the tag menu and never drawn
   (call, reversed 2026-11-09: draw it as a pill, as Obsidian does; the rest stays literal).
 - [ ] **A block dropped between a list item and its nested items** takes them as its children
@@ -385,7 +385,8 @@ block it; the rest do not.
   the accessibility pass.)
 - [ ] **⌘N then ··· → Rename at once leaves focus on the ··· button**, so the name typed goes
   nowhere; with the caret in the body first, Rename works on a draft as on a note (checked
-  2026-09-24; the first half again 2026-11-16). Duplicate and Delete on an empty draft do nothing visible and write nothing.
+  2026-09-24; the first half again 2026-11-16). Duplicate and Delete on an empty draft do
+  nothing visible and write nothing.
 - **Taste calls, judge live:** `\# bar` shown after a reopen (the soft-break escape of
   2026-09-09); opening `/` after a space mid-line as well as at the start of an empty block
   (Craft's compromise; review §7.6). Multi-line paste into a code block should be native since
@@ -404,22 +405,21 @@ block it; the rest do not.
 
 ### Markdown compatibility
 
-Re-verified on 2026-10-24 (v0.18.0) with converter probes; the first four are Public Beta
-requirements (reference-style links aside, which stay preserved only). Missing support is distinct from a correctness defect; each keeps the file's
-bytes on load and save. **Two-way use with Obsidian is not yet a general guarantee**: the
+Re-verified on 2026-10-24 (v0.18.0) with converter probes, and Code, Dividers and Embeds again
+on 2026-11-16; the first four are Public Beta requirements (reference-style links aside,
+which stay preserved only). Missing support is distinct from a correctness defect; each keeps
+the file's bytes on load and save. **Two-way use with Obsidian is not yet a general guarantee**: the
 bytes the app understands are safe and the rest is preserved, but a rename made outside the app
 leaves dangling references (Public Beta).
 
 - **Links.** A link title joins the address (`[a](b "t")` → `href="b "t""`); reference-style
   links show as text.
 - **Code.** Indented code is a paragraph.
-- **Dividers.** Only exactly `---` is one: `***`, `___` and `-----` are text, and `* * *` reads
-  as a bullet holding an empty emphasis.
+- **Dividers.** Only `---` is one: `***`, `___` and `-----` are text, and `* * *` reads as a
+  bullet holding an empty emphasis.
 - **Delimiters interleaved** (`**a==b**c==`, an escaped one beside live ones) pair differently
   than written; `tests/utils/knownRewrites.js` holds them, an entry deleted with each fix.
-- **Embeds.** `![[x.png|alt|300]]` and an embed mid-line or in a list item show as `!` and a
-  link, so a picture under a bullet is never drawn (`Personal/Budget/Jan 2026` in
-  `~/Documents/Vault`; Obsidian draws it in the item).
+- **Embeds.** `![[x.png|alt|300]]` and an embed mid-line show as `!` and a link.
 - **`=====`** (a setext underline) draws as a highlight.
 
 ### Found by the Windows and macOS CI (2026-10-05)
@@ -433,13 +433,16 @@ leaves dangling references (Public Beta).
   never gets there, so Escape went to the code block. Not seen by a person; reproduced on a
   hidden local window. Fix the runner's window, or focus without waiting for a frame.
 
-- [ ] **The app once failed to quit on the Linux runner** (`app-menu.spec.ts:82`, master
-  858f118, 2026-10-06): `app.quit()` after File → Duplicate and the find bar did not close the
-  app within 30 s, though the quit handshake caps the flush at 2 s; the retry passed. Once in
-  about sixty runs; again on the macOS runner (`first-run.spec.ts:71`, 2026-10-21; `:167`, 2026-11-13). If it
-  recurs, trace which quit step waits (`BOOJY_TRACE`).
+- [ ] **The app once failed to quit on the Linux runner** (`app-menu.spec.ts`, "File →
+  Duplicate, and Edit → Find…", master 858f118, 2026-10-06): `app.quit()` after File →
+  Duplicate and the find bar did not close the app within 30 s, though the quit handshake caps
+  the flush at 2 s; the retry passed. Once in about sixty runs; again on the macOS runner in
+  `first-run.spec.ts` ("Escape, × and a click outside…", 2026-10-21; "an existing user who
+  never chose a folder…", 2026-11-13). If it recurs, trace which quit step waits
+  (`BOOJY_TRACE`).
 - [ ] **Typing through an outside rename still splits the note about once in 160 Windows runs**
-  (`repaint-spaces.spec.ts:16` repeated in draft #432). #433 fixed the two traced races (a save
+  (`repaint-spaces.spec.ts`, "typing through an outside rename loses no space", repeated in
+  draft #432). #433 fixed the two traced races (a save
   beating the watcher to the rename; a save in flight carrying the old name). The third: a save
   half a second after the rename still wrote the old name without following the file; trace
   with #432's existence and inode lines to see whether the file looked present or the inode
@@ -505,8 +508,9 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   straight from `lucide-react` at 15 and 17px, stroke 1.8, off both tiers;
   four mono stacks, no `tabular-nums` where counts change width.
 - **Updater behaviour** — `autoDownload` is on and every launch checks. A failed check reaches
-  Settings → Updates ("Couldn’t check for updates. Try again later."; the updater's `error` event in
-  `settingsManager.js`, `UpdatesTab.tsx`) and nowhere else; the promise's own `catch(() => {})` is harmless.
+  Settings → Updates ("Couldn’t check for updates. Try again later."; the updater's `error`
+  event in `settingsManager.js`, `UpdatesTab.tsx`) and nowhere else; the promise's own
+  `catch(() => {})` is harmless.
 - **Editor hook copies, for a quiet window with the Electron suite green**: the "text before and
   after the caret" split helper exists six times and the block-update boilerplate about
   eighteen times across the editor hooks (~150 lines on hot paths). Mechanical, but not during
