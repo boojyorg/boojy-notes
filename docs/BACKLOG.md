@@ -326,6 +326,9 @@ none blocks a stage.
   (2026-11-08 review): ⌘C/⌘V of a footnote or a paragraph ending `^id` leaves two of each, and
   links reach the later one. Duplicate no longer does (`withoutOwnIds`); the paste of whole
   blocks (`materialise`) needs the same rule, and a choice for a label the note already uses.
+- [ ] **Linking words selected across a line break does nothing** (found 2026-11-16): with a
+  selection that runs over a soft break in one paragraph, ⌘K and a chosen note write no link,
+  for any note. Seen in the Electron harness, not yet traced.
 - [ ] **Read actions inside an embed do nothing** (2026-11-08 review): Copy image, Show in
   Finder and a file card's Open are wired to no-ops in `ReadOnlyBlocks`. Pass the real handlers
   through `EmbedBlock` (nested embeds too), or hide them.
