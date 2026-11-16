@@ -310,6 +310,10 @@ none blocks a stage.
 
 ## Known issues
 
+- [ ] **The editor renders once on every keystroke** (measured 2026-11-16): 36 keys, 36
+  renders of `EditorArea`, though its memo comparator skips each one. The cause is inside the
+  component and not yet found; ruled out: the comparator, the theme, layout, settings and
+  editor contexts, the find bar and maths state. A cost in long notes, never a wrong paint.
 - [ ] **Inline maths is not drawn on the first open of a note iCloud had offloaded** (found
   2026-11-07): `drawInlineMath` watches the editor element, which is a new one once the note
   downloads (or a past version closes) with the note unchanged; switching away and back draws

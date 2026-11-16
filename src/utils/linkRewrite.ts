@@ -108,7 +108,15 @@ function pathNote(dest: string, fromFolder: string | null, world: World): PathHi
 // ── Finding the links in a run of text ──────────────────────────────────────
 
 const WIKILINK_RE = /\[\[([^\]|\n]+)(\|[^\]\n]*)?\]\]/g;
-const MD_LINK_RE = new RegExp(String.raw`\[[^\]\n]*\]\((${LINK_DEST})\)`, "g");
+/**
+ * `[text](destination)`. The text may hold a wikilink (the click opens the
+ * outer link, `inlineFormatting.js`) or a picture (the outer link to other
+ * Markdown readers); any other bracket ends it, as it does for the renderer.
+ */
+const MD_LINK_RE = new RegExp(
+  String.raw`\[(?:[^\[\]\n]|\[\[[^\]\n]+\]\]|!\[[^\]\n]*\]\(${LINK_DEST}\))*\]\((${LINK_DEST})\)`,
+  "g",
+);
 /** Inline maths by the renderer's rule (`inlineFormatting.js`): its text is TeX, never a link. */
 const MATH_RE = /(?<![\\$])\$(?=[^\s$])(?:[^$\n\\]|\\[^\n])+?(?<=\S)\$(?![$\d])/g;
 
@@ -147,11 +155,15 @@ function findLinks(text: string): Found[] {
   const wikis = found.map((f) => ({ start: f.start - 2, end: f.end }));
   for (const m of text.matchAll(MD_LINK_RE)) {
     const end = m.index + m[0].length;
-    if (isEscaped(text, m.index) || !free(m.index, end, literal) || !free(m.index, end, wikis)) {
+    const dest = end - 1 - m[1].length;
+    // A wikilink inside the link's text is part of it. One it only overlaps
+    // was read first, and what follows that is text (`[[Note]](x)`).
+    const beside = wikis.filter((w) => !(w.start > m.index && w.end < dest - 2));
+    if (isEscaped(text, m.index) || !free(m.index, end, literal) || !free(m.index, end, beside)) {
       continue;
     }
     // The span is the destination alone: the text and the parentheses stay.
-    found.push({ kind: "path", start: end - 1 - m[1].length, end: end - 1, dest: m[1] });
+    found.push({ kind: "path", start: dest, end: end - 1, dest: m[1] });
   }
   return found.sort((a, b) => a.start - b.start);
 }

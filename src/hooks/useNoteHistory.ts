@@ -49,6 +49,11 @@ export function useNoteHistory({
   const historyRef = useRef(history);
   const currentRef = useRef(current);
   currentRef.current = current;
+  // The caller's functions are new every render. A step reads the latest
+  // through here, so Back and Forward stay the same two functions: the
+  // memoised editor compares them, and new ones would render it every time.
+  const io = useRef({ open, restoreHere, placeNow, exists });
+  io.current = { open, restoreHere, placeNow, exists };
   const move = useCallback((next: NoteHistory) => {
     historyRef.current = next;
     setHistory(next);
@@ -90,6 +95,7 @@ export function useNoteHistory({
 
   const step = useCallback(
     (dir: -1 | 1) => {
+      const { open, restoreHere, placeNow, exists } = io.current;
       const history = historyRef.current;
       const i = historyTarget(history, dir, exists);
       if (i < 0) return;
@@ -114,7 +120,7 @@ export function useNoteHistory({
       restoring.current = { key: history.ids[i], place };
       open(history.ids[i]);
     },
-    [exists, open, restoreHere, placeNow, move],
+    [move],
   );
 
   /**

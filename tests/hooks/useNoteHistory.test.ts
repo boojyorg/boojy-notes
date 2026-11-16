@@ -25,6 +25,32 @@ const mount = (current: string | null, resetKey: unknown) =>
   );
 
 describe("useNoteHistory", () => {
+  // The editor is memoised and compares Back and Forward by identity: new
+  // ones each render re-rendered every block on every text commit.
+  it("hands out the same Back and Forward on every render, which still act on the latest props", () => {
+    const first = vi.fn();
+    const latest = vi.fn();
+    const h = renderHook(
+      (p: { current: string; open: (key: string) => void }) =>
+        useNoteHistory({
+          restoreHere: () => {},
+          placeNow: () => null,
+          exists: () => true,
+          resetKey: "/vault",
+          ...p,
+        }),
+      { initialProps: { current: "a", open: first } },
+    );
+    h.rerender({ current: "b", open: first });
+    const { back, forward } = h.result.current;
+    h.rerender({ current: "b", open: latest });
+    expect(h.result.current.back).toBe(back);
+    expect(h.result.current.forward).toBe(forward);
+    act(() => back());
+    expect(latest).toHaveBeenCalledWith("a");
+    expect(first).not.toHaveBeenCalled();
+  });
+
   it("keeps the note open at startup when the storage location arrives after it", () => {
     const h = mount("first", null);
     h.rerender({ current: "first", resetKey: "/vault" });

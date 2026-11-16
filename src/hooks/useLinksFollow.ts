@@ -35,15 +35,29 @@ interface LinksFollowDeps {
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
-/** What the toast says once the links have followed. */
-export function linksFollowedMessage(links: number, notes: number, skipped: number): string {
+/**
+ * What the toast says once the links have followed. `left` are the notes
+ * whose links were not rewritten because no version of them could be kept:
+ * their links name nothing now, so it is said.
+ */
+export function linksFollowedMessage(
+  links: number,
+  notes: number,
+  skipped: number,
+  left = 0,
+): string {
   const unread =
     skipped > 0
       ? `${plural(skipped, "note")} kept online or not readable ${skipped === 1 ? "was" : "were"} not checked`
       : "";
-  if (links === 0) return unread ? `Links: ${unread}.` : "";
-  const updated = `Updated ${plural(links, "link")} in ${plural(notes, "note")}`;
-  return unread ? `${updated}; ${unread}.` : `${updated}.`;
+  const kept =
+    left > 0
+      ? `${plural(left, "note")} ${left === 1 ? "was left with its" : "were left with their"} old links, as no version of ${left === 1 ? "it" : "them"} could be kept`
+      : "";
+  const updated = links > 0 ? `Updated ${plural(links, "link")} in ${plural(notes, "note")}` : "";
+  const rest = [unread, kept].filter(Boolean).join("; ");
+  if (!updated) return rest ? `Links: ${rest}.` : "";
+  return rest ? `${updated}; ${rest}.` : `${updated}.`;
 }
 
 /** The notes as they were before the renames in `from`, text as it is now. */
@@ -182,7 +196,9 @@ export function useLinksFollow({
       // Read again only if a keystroke landed while the versions were kept.
       const now = noteDataRef.current;
       const again = now === basis ? found : linksFollow(before(now, from), now);
-      const changed = Object.keys(again.notes).filter((id) => kept.has(id));
+      const linking = Object.keys(again.notes);
+      const changed = linking.filter((id) => kept.has(id));
+      const left = linking.length - changed.length;
       let links = 0;
       if (changed.length > 0) {
         for (const id of changed) links += again.perNote[id];
@@ -202,9 +218,10 @@ export function useLinksFollow({
           { forget: changed },
         );
       }
-      const message = linksFollowedMessage(links, changed.length, again.skipped);
+      const message = linksFollowedMessage(links, changed.length, again.skipped, left);
       // It fades: a rename with nothing to say about it should not need closing.
-      if (message) showToast?.(message, "done", { key: TOAST_KEY });
+      // Links left broken are something to read, so that one waits.
+      if (message) showToast?.(message, left > 0 ? "warning" : "done", { key: TOAST_KEY });
       return changed.length > 0;
     },
     [noteDataRef, adoptNoteData, activeNoteRef, syncGeneration, showToast, settled, forget],

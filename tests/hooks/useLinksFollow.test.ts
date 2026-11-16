@@ -59,6 +59,18 @@ describe("linksFollowedMessage", () => {
     );
     expect(linksFollowedMessage(0, 0, 0)).toBe("");
   });
+
+  it("says which notes were left with their old links", () => {
+    expect(linksFollowedMessage(1, 1, 0, 1)).toBe(
+      "Updated 1 link in 1 note; 1 note was left with its old links, as no version of it could be kept.",
+    );
+    expect(linksFollowedMessage(0, 0, 0, 2)).toBe(
+      "Links: 2 notes were left with their old links, as no version of them could be kept.",
+    );
+    expect(linksFollowedMessage(0, 0, 1, 1)).toBe(
+      "Links: 1 note kept online or not readable was not checked; 1 note was left with its old links, as no version of it could be kept.",
+    );
+  });
 });
 
 describe("useLinksFollow", () => {
@@ -234,9 +246,29 @@ describe("useLinksFollow", () => {
     await act(() => h.result.current.settle());
     expect(textOf(h.noteDataRef.current, "a")).toBe("[[Beta]]");
     expect(textOf(h.noteDataRef.current, "c")).toBe("[[Gamma]]");
-    expect(h.showToast).toHaveBeenCalledWith("Updated 1 link in 1 note.", "done", {
-      key: "links-follow",
+    // Its links are broken now: said, and it waits to be read.
+    expect(h.showToast).toHaveBeenCalledWith(
+      "Updated 1 link in 1 note; 1 note was left with its old links, as no version of it could be kept.",
+      "warning",
+      { key: "links-follow" },
+    );
+    mark.mockImplementation(async () => ({ ok: true }) as const);
+  });
+
+  it("says so when no note's version could be kept, where it said nothing", async () => {
+    const h = setup({
+      a: note("a", "Alpha", "[[Beta]]"),
+      c: note("c", "Carol", "[[Beta]]"),
+      b: note("b", "Gamma", "body"),
     });
+    mark.mockImplementation(async () => ({ ok: false, reason: "failed" }) as never);
+    h.result.current.onNoteRenamed("b", from, to);
+    await act(() => h.result.current.settle());
+    expect(h.showToast).toHaveBeenCalledWith(
+      "Links: 2 notes were left with their old links, as no version of them could be kept.",
+      "warning",
+      { key: "links-follow" },
+    );
     mark.mockImplementation(async () => ({ ok: true }) as const);
   });
 
