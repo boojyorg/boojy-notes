@@ -170,6 +170,17 @@ async function mapLimited<T, R>(
   return out;
 }
 
+/**
+ * What sync knew goes from a location's own files (the record, restores
+ * waiting for it); the notes stay. With no record the next pass merges, and
+ * deletes nothing: for a disconnect, and for a notes folder chosen again.
+ */
+export async function forgetSync(files: FileOps) {
+  for (const name of ["sync-record.json", "restored.json"]) {
+    if (await files.exists(join(STATE, name))) await files.remove(join(STATE, name));
+  }
+}
+
 /** One operation at a time, in the order asked. */
 function createLock() {
   let tail: Promise<unknown> = Promise.resolve();
@@ -957,13 +968,7 @@ export function createPhoneVault(
     },
     saveRecord: (text) => files.write(join(STATE, "sync-record.json"), encoder.encode(text)),
 
-    /** A disconnect: what sync knew goes (the record, restores waiting for it); the notes stay. */
-    forgetSync: () =>
-      lock(async () => {
-        for (const name of ["sync-record.json", "restored.json"]) {
-          if (await files.exists(join(STATE, name))) await files.remove(join(STATE, name));
-        }
-      }),
+    forgetSync: () => lock(() => forgetSync(files)),
   };
 
   // ─── What other apps change (a picked folder) ───

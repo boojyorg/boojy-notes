@@ -26,7 +26,7 @@ import {
 } from "./locations";
 import { createPhoneSync, readBinding } from "./phoneSync";
 import { syncFolderName } from "./syncFolder";
-import { createPhoneVault, VAULT } from "./phoneVault";
+import { createPhoneVault, forgetSync, VAULT } from "./phoneVault";
 import { holdFelt } from "./haptics";
 import { clearCopied, copyNotes } from "./moveToFolder";
 import { watchOutside } from "./outsideWatch";
@@ -134,6 +134,11 @@ async function notesFolder(priv: FileOps, others: string[]): Promise<PickedFolde
     if (!folder) {
       folder = await askFolderAgain(others);
       await reachableFolder(FolderAccess, folder, others);
+      // The folder chosen may be another, or the old one made again and
+      // empty (the same address then): the record would read every note as
+      // deleted here, and sync would delete them all from Dropbox. Without
+      // it the next pass merges. It goes before the folder is the choice.
+      await forgetSync(priv);
     }
     if (record?.clearing) await clearMoved(priv, folder);
     else if (record?.folder?.tree !== folder.tree) await writeChoice(priv, "folder", { folder });
@@ -223,7 +228,9 @@ export type MoveAnswer = "moving" | "cancelled" | "refused" | "not-empty" | "in-
 /**
  * Settings' "Move to a folder…", for notes kept in the app's storage.
  * Android's folder screen opens in `Documents/<FOLDER_NAME>`; the folder
- * taken must be on the phone and empty (nothing is merged). `saved` writes
+ * taken must be on the phone and empty (nothing is merged), and no other
+ * location's: `others` reads theirs at the press, as one may have been added
+ * since the start. `saved` writes
  * the editor's waiting edits; then, with the vault at rest, the move is
  * recorded and the app starts again to make it (`finishMove`).
  */
@@ -231,14 +238,14 @@ async function moveToFolder(
   priv: FileOps,
   atRest: <T>(work: () => Promise<T>) => Promise<T>,
   saved: () => Promise<unknown>,
-  others: string[],
+  others: () => Promise<string[]>,
 ): Promise<MoveAnswer> {
   const { initial } = await FolderAccess.ensureDefault({ name: FOLDER_NAME });
   const got = await FolderAccess.pick({ initial });
   if (got.refused) return "refused";
   if (!got.picked || !got.tree || !got.root) return "cancelled";
   // Another location's folder: its grant is that location's, so it is not given back.
-  if (others.some((tree) => treesOverlap(tree, got.tree as string))) return "in-use";
+  if ((await others()).some((tree) => treesOverlap(tree, got.tree as string))) return "in-use";
   const to = { tree: got.tree, root: got.root };
   const { entries } = await FolderAccess.list({ tree: to.tree, id: to.root });
   if (entries.some((e) => !e.name.startsWith("."))) {
@@ -394,7 +401,10 @@ export async function installPhone({ home = true }: { home?: boolean } = {}) {
     // Offered only where there is a folder to move to, and the notes are not in one.
     moveToFolder:
       !folder && Capacitor.isNativePlatform()
-        ? (saved: () => Promise<unknown>) => moveToFolder(priv, vault.atRest, saved, others)
+        ? (saved: () => Promise<unknown>) =>
+            moveToFolder(priv, vault.atRest, saved, async () =>
+              foldersElsewhere(await keptOf(root, locations), locations.open),
+            )
         : undefined,
   };
   const read = Promise.all([notes.ready, folders.ready]);

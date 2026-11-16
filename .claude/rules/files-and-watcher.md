@@ -10,10 +10,11 @@
   file; pending edits go back. `outside-delete.spec.ts`.
 - **The phone's bin**: one place through a crash; sync is told of a restore.
   `recentlyDeleted.test.ts`.
-- **Phone notes in a picked folder**: saves journalled; a taken name fails; lost is
-  `FolderLost`, never empty or app storage; outside changes looked for (`checkOutside`).
-  `phoneVaultFolder.test.ts`. **App storage moves to an empty one at a start**: copied
-  whole, then chosen, then cleared. `moveToFolder.test.ts`.
+- **Phone notes in a picked folder**: saves journalled, the newest per path; a taken name
+  fails; lost is `FolderLost`, never empty or app storage; chosen again, sync merges
+  (`forgetSync`); outside changes found (`checkOutside`). `phoneVaultFolder.test.ts`. **App
+  storage moves to an empty one at a start**: copied whole, then chosen, then cleared.
+  `moveToFolder.test.ts`.
 - **Phone storage locations**: the first in place, others in `locations/`, opened by
   restart, notes read ahead (`readAhead`); no shared folder. `locations.test.ts`.
 - **Phone sync is optional, the binding its connection**: no pass till accounts match; folder asked at connect. `phoneSync.test.ts`.
@@ -55,7 +56,7 @@ identity. `external-rename.spec.ts`.
   changed block closes. `outside-edit-view.spec.ts`.
 - **Pending edits: keep both.** The local version is written first as `Title (conflicted copy
   YYYY-MM-DD)`; the disk version is adopted only once that succeeds.
-- **`write-note` refuses a stale save** (bytes not the last seen: `{ stale: true, note }`);
+- **`write-note` refuses a stale save** (bytes not the last seen);
   refusal and watcher both land in `takeOutsideVersion`.
 - **Once conflicted, the local version never goes over the outside path**: every flush writes
   the copy until one succeeds (`copyInFlight`). No merging. `external-edit.spec.ts`.
@@ -92,7 +93,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   and answers every write; `useResolvedTitle` adopts it. **Don't add a sanitiser to an input.**
 - A name the app makes is sanitised; a name the disk holds is kept (`Why?.md` stays).
   `disk-names.spec.ts`.
-- A note's own file is never its own collision (`ensureUniqueFilePath(target, ownPath)`).
+- A note's own file is never its own collision (`ensureUniqueFilePath`).
 - **The name field is the user's while focused**: answers are adopted on blur (`settleTitle`).
   `title-is-filename.spec.ts`.
 - A save keeps the mode, on macOS xattrs and birthtime (`cp -p`); a symlink is written
@@ -112,7 +113,7 @@ never the host** (Chromium refuses spaces there). `attachment-names.spec.ts`.
 ## Version history keeps what the file held
 
 - **A version is the file's text, taken where it is written or read** (`history.ts`), never the editor's state: a restore can only bring
-  back what the file was. Kept outside the vault (`userData/history/`).
+  back what the file was. Kept outside the vault.
 - **What makes one**: a session's end, a note's text before its first edit, and before a large
   delete, an outside change, Replace All, a restore or moving footnotes; `⌘S` a save point. Nothing
   unchanged is kept twice.

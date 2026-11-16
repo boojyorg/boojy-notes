@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixes
+
+- **Android: a save that failed no longer comes back over newer text** — With notes in a folder you picked, a save that failed left a safety copy behind, and the next start wrote it over whatever you had typed since. It could also bring back a note you had renamed or deleted. The copy is now dropped as soon as the note is saved again, renamed or deleted.
+- **Android: choosing the notes folder again never empties Dropbox** — After "Boojy Notes can't reach your notes folder", choosing an empty or different folder made sync treat every note as deleted and remove them all from Dropbox. Sync now starts afresh after that screen: notes missing from the folder are downloaded again, and nothing is deleted.
+- **Android: Move to a folder refuses a folder another storage location uses** — A location added since the app was opened was missed, so two locations could end up sharing one folder.
+
 ## v0.23.0 — 2026-11-15
 
 ### Improvements
