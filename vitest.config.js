@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    // One jsdom per worker, each file still in a context of its own. Making
+    // one per file was over half the run (measured 2026-11-16: 37 s to 9 s).
+    pool: "vmThreads",
     include: ["tests/**/*.test.{js,jsx,ts,tsx}"],
     setupFiles: ["./tests/setup.js"],
     coverage: {

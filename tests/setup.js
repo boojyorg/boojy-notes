@@ -1,5 +1,12 @@
 import "@testing-library/jest-dom/vitest";
+import { webcrypto } from "node:crypto";
 import { afterEach, beforeEach } from "vitest";
+
+// The shared environment (`pool: "vmThreads"`) has jsdom's `crypto`, which
+// hashes nothing. Node's is the Web Crypto the phone and a browser have.
+if (!globalThis.crypto?.subtle) {
+  Object.defineProperty(globalThis.crypto, "subtle", { value: webcrypto.subtle });
+}
 
 // A closing surface leaves a fading copy in <body> for ~150ms (useExitGhost);
 // one test's must never answer the next test's queries.
