@@ -1,6 +1,6 @@
 import type { Block, BlockType } from "../types/notes";
 import { SOFT_BREAK_TYPES } from "./crossBlockEdit";
-import { markdownToBlocks } from "./markdown";
+import { blocksToMarkdown, markdownToBlocks } from "./markdown";
 
 /**
  * Block-level paste: where pasted blocks land around the caret, and when the
@@ -113,6 +113,26 @@ function materialise(pasted: PastedBlock, id: string): Block {
   }
   const { fullBlock: _fullBlock, ...rest } = pasted;
   return { ...rest, id } as Block;
+}
+
+/**
+ * A note's properties are the `---` lines at the very top of its file, so a
+ * pasted Properties block is one only when it lands there: `atNoteStart`, the
+ * empty first block of a note. Anywhere else those lines are what a reader
+ * would make of them mid-file (a divider, text, a divider), or the file
+ * would hold a Properties block that is gone at the next open.
+ */
+export function withoutStrayFrontmatter(
+  pasted: readonly PastedBlock[],
+  atNoteStart: boolean,
+): PastedBlock[] {
+  return pasted.flatMap((block, i) =>
+    block.type !== "frontmatter" || (i === 0 && atNoteStart)
+      ? [block]
+      : (markdownToBlocks(blocksToMarkdown([{ ...block, id: "pasted" } as Block]), {
+          fragment: true,
+        }) as PastedBlock[]),
+  );
 }
 
 /**

@@ -30,6 +30,7 @@ import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
 import { SCRIM } from "./settings/SettingsPrimitives";
 import { fromTouch } from "../utils/touch";
 import { baseName } from "../utils/vaultPath";
+import { BREAKS_WIKILINK } from "../utils/wikilinkTarget";
 
 /**
  * The desktop search, as a palette (Cmd+P): a field over a dimmed window,
@@ -176,7 +177,15 @@ export default function SearchPalette({
     const ordered: Row[] = orderResults(results, folders, files).map((r) =>
       r.kind === "note" ? { kind: "result", result: r.result } : r,
     );
-    if (ordered.length === 0 && typed && applied === typed && !tagFilter && onCreateNote)
+    if (
+      ordered.length === 0 &&
+      typed &&
+      applied === typed &&
+      !tagFilter &&
+      onCreateNote &&
+      // A name a link cannot hold would be made under another name.
+      !BREAKS_WIKILINK.test(typed)
+    )
       return [{ kind: "create", title: typed }];
     return ordered;
   };
@@ -464,6 +473,17 @@ export default function SearchPalette({
         aria-modal="true"
         aria-label="Search"
         onClick={(e) => e.stopPropagation()}
+        // A press on the panel's own ground (a label, the padding) would
+        // drop focus on the page, where no key reaches the palette.
+        onMouseDown={(e) => {
+          if (!(e.target as HTMLElement).closest("button, input, a")) e.preventDefault();
+        }}
+        // Escape closes from anywhere inside, not only from the field.
+        onKeyDown={(e) => {
+          if (e.key !== "Escape" || e.defaultPrevented) return;
+          e.preventDefault();
+          onClose();
+        }}
         style={{
           ...(isPhone
             ? // Its own ground behind Android's status bar, its field below it.
@@ -563,9 +583,6 @@ export default function SearchPalette({
                 e.preventDefault();
                 if (tagFilter) removeChip(true);
                 else removeFolderChip(true);
-              } else if (e.key === "Escape") {
-                e.preventDefault();
-                onClose();
               }
             }}
             style={{

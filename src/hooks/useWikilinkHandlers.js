@@ -4,7 +4,10 @@ import {
   missingBlockMessage,
   missingHeadingMessage,
   noteLinkKeys,
+  nearestRoot,
+  noteNamed,
   parseWikilinkTarget,
+  pathTarget,
   unresolvedWikilinkMessage,
   wikilinkStatus,
 } from "../utils/wikilinkTarget";
@@ -12,7 +15,7 @@ import { blockSubpath, findBlockTarget } from "../utils/blockTarget";
 import { findHeadingSection, headingSegments } from "../utils/headingTarget";
 import { editBlocks } from "../utils/editBlocks";
 import { fileForTarget, linkedPage } from "../utils/fileView";
-import { vaultLinkTargets } from "../utils/vaultLinkTarget";
+import { vaultLinkPlaces } from "../utils/vaultLinkTarget";
 import { baseName } from "../utils/vaultPath";
 import { vaultNotes } from "../utils/vaultNotes";
 
@@ -74,12 +77,18 @@ export function useWikilinkHandlers({
       return lastTitlesKey.current;
     }
     // Titles and `folder/title`s alike, so the renderer judges an explicit
-    // path by the path (utils/wikilinkTarget). A title two notes share is
-    // left out, so a plain `[[Goals]]` draws as unresolved: the click asks.
+    // path by the path (utils/wikilinkTarget). A title notes share names
+    // the one nearest the root; a tie there is left out, so a plain
+    // `[[Goals]]` draws as unresolved: the click asks.
     const counts = new Map();
-    for (const n of Object.values(vaultNotes(noteData))) {
+    const sharing = new Map();
+    const notes = vaultNotes(noteData);
+    for (const [id, n] of Object.entries(notes)) {
       if (n._draft) continue;
-      for (const k of noteLinkKeys(n)) counts.set(k, (counts.get(k) || 0) + 1);
+      const [bare, ...paths] = noteLinkKeys(n);
+      if (bare === undefined) continue;
+      sharing.set(bare, [...(sharing.get(bare) ?? []), id]);
+      for (const k of [bare, ...paths]) counts.set(k, (counts.get(k) || 0) + 1);
     }
     // A file answers to its name and its path, as a note does.
     for (const f of otherFiles) {
@@ -87,7 +96,7 @@ export function useWikilinkHandlers({
         counts.set(k, (counts.get(k) || 0) + 1);
     }
     const key = [...counts.entries()]
-      .filter(([k, c]) => c === 1 || k.includes("/"))
+      .filter(([k, c]) => c === 1 || k.includes("/") || nearestRoot(sharing.get(k), notes))
       .map(([k]) => k)
       .sort()
       .join("\0");
@@ -178,35 +187,36 @@ export function useWikilinkHandlers({
       const source = el?.closest?.("[data-embed-source]")?.getAttribute("data-embed-source");
       const embedded = source ? wikilinkStatus(source, notes) : null;
       const here = embedded?.kind === "note" ? embedded.id : activeNote;
-      const targets = vaultLinkTargets(dest, notes[here]?.folder ?? null);
-      if (targets === null) return false;
-      for (const target of targets) {
-        const parsed = parseWikilinkTarget(target);
-        if (!parsed.name) {
-          if (here && notes[here]) followNoteLink(here, parsed.subpath);
+      // The path and its `#…` apart: a name may hold a `#` of its own.
+      const places = vaultLinkPlaces(dest, notes[here]?.folder ?? null);
+      if (places === null) return false;
+      const sub = (place) => place.subpath.slice(1).trim() || null;
+      for (const place of places) {
+        if (!place.path) {
+          if (here && notes[here]) followNoteLink(here, sub(place));
           return true;
         }
-        const path = target.split("#")[0].toLowerCase();
+        const path = place.path.toLowerCase();
         const file = showFile && otherFiles?.find((f) => f.path.toLowerCase() === path);
         if (file) {
-          showFile(file.path, linkedPage(parsed.subpath));
+          showFile(file.path, linkedPage(sub(place)));
           return true;
         }
-        const id = noteAtPath(parsed, notes);
+        const id = noteAtPath(pathTarget(place.path), notes);
         if (id) {
-          followNoteLink(id, parsed.subpath);
+          followNoteLink(id, sub(place));
           return true;
         }
       }
-      for (const target of targets.filter((t) => !t.split("#")[0].includes("/"))) {
-        if (openFileInPlace(target)) return true;
-        const status = wikilinkStatus(target, notes);
-        if (status.kind === "note") {
-          followNoteLink(status.id, parseWikilinkTarget(target).subpath);
+      for (const place of places.filter((p) => p.path && !p.path.includes("/"))) {
+        if (openFileInPlace(`${place.path}${place.subpath}`)) return true;
+        const id = noteNamed(pathTarget(place.path), notes);
+        if (id) {
+          followNoteLink(id, sub(place));
           return true;
         }
       }
-      showToast?.(`No note or file at "${(targets.at(-1) ?? dest).split("#")[0]}".`, "info");
+      showToast?.(`No note or file at "${places.at(-1)?.path ?? dest}".`, "info");
       return true;
     },
     [noteDataRef, activeNote, openFileInPlace, followNoteLink, showToast, showFile, otherFiles],
@@ -214,7 +224,8 @@ export function useWikilinkHandlers({
 
   // Wikilink autocomplete select handler
   const handleWikilinkSelect = useCallback(
-    (title) => {
+    // `source`: the link as written, for a note no `[[…]]` can name.
+    (title, source = `[[${title}]]`) => {
       const menu = wikilinkMenuRef.current;
       if (!menu) return;
       const { noteId, blockIndex } = menu;
@@ -223,7 +234,7 @@ export function useWikilinkHandlers({
       const oldText = blocks[blockIndex].text || "";
       const match = oldText.match(/\[\[([^\]]*)$/);
       if (match) {
-        const newText = oldText.slice(0, match.index) + `[[${title}]]`;
+        const newText = oldText.slice(0, match.index) + source;
         // Update state for persistence.
         syncGeneration.current++;
         commitNoteData(

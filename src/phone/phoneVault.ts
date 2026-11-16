@@ -104,7 +104,7 @@ function capBytes(name: string) {
 }
 
 export function sanitizeFilename(name: string) {
-  let safe = capBytes(name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")).trim() || "Untitled";
+  let safe = capBytes(name.replace(/[<>:"/\\|?*#^[\]\x00-\x1f]/g, "_")).trim() || "Untitled";
   if (safe.startsWith(".")) safe = `_${safe.slice(1)}`;
   const dot = safe.indexOf(".");
   const stem = (dot === -1 ? safe : safe.slice(0, dot)).trimEnd();

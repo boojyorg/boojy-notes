@@ -135,6 +135,25 @@ describe("useAppKeyboard", () => {
     expect(deps.toggleSidebar).toHaveBeenCalledTimes(2);
   });
 
+  it("AltGr types its character: a backslash on a German layout is no shortcut", () => {
+    // Windows reports AltGr as Ctrl+Alt, so AltGr+ß (`\\`) read as Ctrl+\\ and
+    // toggled the sidebar instead of typing.
+    const deps = makeDeps();
+    renderHook(() => useAppKeyboard(deps));
+    const e = new KeyboardEvent("keydown", {
+      key: "\\",
+      code: "Minus",
+      ctrlKey: true,
+      altKey: true,
+      modifierAltGraph: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(e);
+    expect(deps.toggleSidebar).not.toHaveBeenCalled();
+    expect(e.defaultPrevented).toBe(false);
+  });
+
   it("Ctrl+Cmd+S goes to the sidebar's tree, showing the sidebar first if hidden", () => {
     mount(
       '<div role="tree"><button tabindex="-1">a</button><button tabindex="0" id="stop">b</button></div>',

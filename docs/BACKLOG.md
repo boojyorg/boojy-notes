@@ -333,22 +333,8 @@ none blocks a stage.
 ### From the November 2026 review, queued
 
 Found by the whole-repo review of 2026-11-08 and not fixed since (judged by which files
-changed, not each re-run). The first four bullets are one batch of keys and focus (seven
-faults); the next two are Tyr's calls of 2026-11-09.
+changed, not each re-run).
 
-- [ ] **Search palette**: Tab leaves it (and the path popup), as the focus trap counts buttons
-  that are not Tab stops; Escape closes it only while its field has focus; closed with Escape,
-  focus does not go back to the note.
-- [ ] **Code blocks**: Shift+Tab turns the caret into a selection, so the next key overwrites
-  the line; ↑ and ↓ leave a code or maths source from a wrapped line.
-- [ ] **The caret after a cross-block delete, type-over or block paste** is placed by Markdown
-  length, so it lands too far right on a line with formatting, links or footnote references.
-- [ ] **Pasted Markdown that starts with `---` … `---`** puts a Properties block in the middle
-  of the note.
-- [ ] **A root note with a namesake in a folder** gets an ambiguous link from the picker (call:
-  a bare `[[Name]]` is the shortest clear path).
-- [ ] **A title holding `#`, `^`, `[`, `]` or `|`** gets a link from the picker that points
-  nowhere (call: in a new name `#`, `^`, `[` and `]` become `_`; `|` was not asked).
 - [ ] **Save point, Restore and Version History report success** when the pending edits could
   not be written first.
 - [ ] **A phone note whose file ends `.MD`** is renamed `Name.MD.md` at its first save.

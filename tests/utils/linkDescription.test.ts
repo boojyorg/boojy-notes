@@ -14,7 +14,8 @@ const notes = {
     { type: "p", text: "Has an ID. ^first-block" },
   ]),
   guide: note("Guide", [{ type: "h2", text: "**Tables**" }], "Docs"),
-  a: note("Twin", []),
+  // Two at one depth: a bare name means neither (`nearestRoot`).
+  a: note("Twin", [], "One"),
   b: note("Twin", [], "Other"),
 } as unknown as NoteData;
 

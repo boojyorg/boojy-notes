@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { vaultLinkTargets } from "../../src/utils/vaultLinkTarget";
+import { vaultLinkPlaces, vaultLinkTargets } from "../../src/utils/vaultLinkTarget";
 
 describe("vaultLinkTargets", () => {
   it("names nothing for an address", () => {
@@ -59,5 +59,15 @@ describe("vaultLinkTargets", () => {
 
   it("names nothing, as a path and not as an address, when it only climbs out of the vault", () => {
     expect(vaultLinkTargets("../Shared/Note.md", null)).toEqual([]);
+  });
+
+  it("keeps a decoded # in the name apart from the heading after it", () => {
+    // Joined into one target, `C# notes.md` read as the note `C` at a heading.
+    expect(vaultLinkPlaces("C%23%20notes.md#Intro", "Work")).toEqual([
+      { path: "Work/C# notes.md", subpath: "#Intro" },
+      { path: "C# notes.md", subpath: "#Intro" },
+    ]);
+    expect(vaultLinkPlaces("#Intro", null)).toEqual([{ path: "", subpath: "#Intro" }]);
+    expect(vaultLinkPlaces("https://example.com", null)).toBeNull();
   });
 });

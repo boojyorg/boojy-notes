@@ -671,7 +671,13 @@ function readMathBlock(lines, i) {
   return { block, next: end + 1 };
 }
 
-export function markdownToBlocks(md) {
+/**
+ * `fragment`: the text is a piece of a note (a paste), never a whole file,
+ * so a `---` on its first line is a divider: frontmatter exists only on a
+ * file's line 1.
+ */
+export function markdownToBlocks(md, options) {
+  const fragment = options?.fragment === true;
   // Blocks are always LF-internal; the file's EOL style is handled at the
   // read/write boundary (detectEol/applyEol). Normalising up front also keeps
   // CRLF fragments out of code-block text (which would mix EOLs).
@@ -692,7 +698,8 @@ export function markdownToBlocks(md) {
     // as Obsidian reads it. An opener with no closer is a divider, and the
     // rest of the note is the note. The closer's spelling and an empty
     // block's missing line are kept (`frontmatterSource`).
-    const closer = raw === "---" && blocks.length === 0 ? frontmatterCloser(lines) : -1;
+    const closer =
+      raw === "---" && blocks.length === 0 && !fragment ? frontmatterCloser(lines) : -1;
     if (closer !== -1) {
       const fmLines = lines.slice(1, closer);
       const block = {

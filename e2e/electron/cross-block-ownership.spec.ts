@@ -84,6 +84,94 @@ test.describe("edits that reach across block roots are owned by the app", () => 
     }
   });
 
+  test("after a delete or type-over across blocks the caret sits at the seam, formatting before it or not", async () => {
+    // The caret was placed by the Markdown's length, so `**`, a link's
+    // address or a footnote reference before the seam pushed it that far
+    // right, into the text that followed.
+    const h = await launchApp({
+      [NOTE]: "**Bold** and [a link](https://example.com) then plain\n\nSecond paragraph\n\nlast\n",
+    });
+    try {
+      await h.openNote("Note");
+      await h.page.locator("[data-block-id]").first().click();
+      /** Select from just after `then` in the first block to after `Second` in the next. */
+      const select = () =>
+        h.page.evaluate(() => {
+          const find = (root: Element, word: string) => {
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+            let node: Node | null;
+            while ((node = walker.nextNode())) {
+              const at = (node as Text).data.indexOf(word);
+              if (at !== -1) return [node, at + word.length] as const;
+            }
+            throw new Error(`no ${word}`);
+          };
+          const roots = document.querySelectorAll("[data-block-id]");
+          const range = document.createRange();
+          range.setStart(...find(roots[0], "then"));
+          range.setEnd(...find(roots[1], "Second"));
+          const sel = window.getSelection()!;
+          sel.removeAllRanges();
+          sel.addRange(range);
+        });
+      await select();
+      await h.page.keyboard.press("Delete");
+      await h.page.keyboard.type("1");
+      await waitForFile(h.vault.file(NOTE), (t) => t.includes("1"));
+      await sleep(SETTLE_MS);
+      expect(h.vault.read(NOTE)).toBe(
+        "**Bold** and [a link](https://example.com) then1 paragraph\n\nlast\n",
+      );
+      expect(h.pageErrors).toEqual([]);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("a formatted line pasted across blocks leaves the caret after what went in", async () => {
+    const h = await launchApp({ [NOTE]: THREE });
+    try {
+      await h.openNote("Note");
+      await h.page.locator("[data-block-id]").first().click();
+      // A formatted line over a selection across two blocks: the caret counts
+      // what is drawn of it, not its Markdown.
+      await selectAcross(h.page, 0, 2, 1, 3);
+      await h.page.evaluate(() => {
+        const dt = new DataTransfer();
+        dt.setData("text/plain", "bold link");
+        dt.setData("text/html", '<b>bold</b> <a href="https://example.com">link</a>');
+        document.activeElement!.dispatchEvent(
+          new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }),
+        );
+      });
+      await h.page.keyboard.type("1");
+      await waitForFile(h.vault.file(NOTE), (t) => t.includes("1"));
+      await sleep(SETTLE_MS);
+      expect(h.vault.read(NOTE)).toBe("fi**bold** [link](https://example.com)1ond\n\nthird\n");
+
+      expect(h.pageErrors).toEqual([]);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("letters typed over Select All come out in order", async () => {
+    // Select All starts on the editor, outside any block's own root.
+    const h = await launchApp({ [NOTE]: THREE });
+    try {
+      await h.openNote("Note");
+      await h.page.locator("[data-block-id]").first().click();
+      await h.page.keyboard.press(`${MOD}+a`);
+      await h.page.keyboard.type("xyz");
+      await waitForFile(h.vault.file(NOTE), (t) => t.includes("x"));
+      await sleep(SETTLE_MS);
+      expect(h.vault.read(NOTE).trimEnd()).toBe("xyz");
+      expect(h.pageErrors).toEqual([]);
+    } finally {
+      await h.close();
+    }
+  });
+
   test("Cut over a selection spanning two blocks leaves one block; Enter afterwards splits, no crash", async () => {
     const h = await launchApp({ [NOTE]: THREE });
     try {

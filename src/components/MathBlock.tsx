@@ -11,6 +11,7 @@ import { MENU_RADIUS } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { isMac } from "../utils/platform";
 import { cssZoom, revealInNote } from "../utils/domHelpers";
+import { caretOnEdgeRow } from "../utils/textareaRows";
 import { useLatexCompletion } from "../hooks/useLatexCompletion";
 import LatexMenu from "./LatexMenu";
 import RenderFailure from "./RenderFailure";
@@ -295,20 +296,10 @@ function SourcePanel({
     if (e.key === "Escape" || (e.key === "Enter" && e.shiftKey)) {
       e.preventDefault();
       onFinish();
-    } else if (
-      e.key === "ArrowUp" &&
-      collapsed &&
-      !e.shiftKey &&
-      !ta.value.slice(0, ta.selectionStart).includes("\n")
-    ) {
+    } else if (e.key === "ArrowUp" && collapsed && !e.shiftKey && caretOnEdgeRow(ta, "first")) {
       e.preventDefault();
       onLeave("prev");
-    } else if (
-      e.key === "ArrowDown" &&
-      collapsed &&
-      !e.shiftKey &&
-      !ta.value.slice(ta.selectionEnd).includes("\n")
-    ) {
+    } else if (e.key === "ArrowDown" && collapsed && !e.shiftKey && caretOnEdgeRow(ta, "last")) {
       e.preventDefault();
       onLeave("next");
     } else if (e.key === "Backspace" && ta.value === "") {

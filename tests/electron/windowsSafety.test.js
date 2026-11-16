@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { BREAKS_WIKILINK } from "../../src/utils/wikilinkTarget";
+import { sanitizeFilename as phoneSanitize } from "../../src/phone/phoneVault";
 
 // A vault moves between machines, so a name the app makes must be one every
 // system can hold (2026-10-05). Windows refuses its device names (`CON`,
@@ -60,6 +62,18 @@ describe("sanitizeFilename — Windows device names", () => {
 
   it("keeps a note title's trailing dots: `.md` follows them", () => {
     expect(sanitizeFilename("Wait...")).toBe("Wait...");
+    // What a link's own syntax is made of: `[[C# notes]]` is the note `C`.
+    expect(sanitizeFilename("C# notes")).toBe("C_ notes");
+    expect(sanitizeFilename("x^2 [draft]")).toBe("x_2 _draft_");
+    expect(sanitizeFilename("Pros | Cons")).toBe("Pros _ Cons");
+    // The three spellings of that set agree: what `BREAKS_WIKILINK` names,
+    // the desktop's sanitiser and the phone's both write as `_`.
+    for (const ch of "#^[]|") {
+      expect(BREAKS_WIKILINK.test(ch)).toBe(true);
+      expect(sanitizeFilename(`a${ch}b`)).toBe("a_b");
+      expect(phoneSanitize(`a${ch}b`)).toBe("a_b");
+    }
+    expect(BREAKS_WIKILINK.test(sanitizeFilename("C# [x] ^2 | y"))).toBe(false);
   });
 });
 

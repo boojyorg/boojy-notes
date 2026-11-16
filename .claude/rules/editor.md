@@ -43,15 +43,14 @@ through state.**
   Enter and Shift+Enter, done in state.
 - **`execCommand` fires no `beforeinput`**, so script mutations ask `scopeOf` first.
 - **Bold, italic and code are structural wraps** (`toggleWrappingTag`), never
-  `execCommand("bold")` (computed style). What is selected decides on or off;
+  `execCommand("bold")`. What is selected decides on or off;
   edge spaces stay outside, typed ones too (`liftTypedSpace`). `heading-bold.spec.ts`,
   `format-edge-spaces.spec.ts`.
 - **A block with its own field owns its edits and its keys** (table cell, callout, code
   textarea): `handleEditorKeyDown` returns in a field, whose document selection is stale there;
   only inline-format shortcuts in a `data-inline-field` go to `applyFormat`.
 - A collapsed Delete/Backspace into a neighbour merges only with text; it selects a divider,
-  image or table (`reachAcross`). **Backspace in the only empty block is prevented** (Chromium deletes the
-  `<p>`). `cross-block-ownership.spec.ts`.
+  image or table (`reachAcross`). **Backspace in the only empty block is prevented**. `cross-block-ownership.spec.ts`.
 
 ## Keys and focus: the closest active surface owns them
 
@@ -63,16 +62,16 @@ through state.**
 - **An open modal, or a focused menu, owns every key beneath it** (`focusOwner()`). Each
   surface closes itself on Escape; Escape never hides the sidebar. A native text field outside
   the editor owns its editing keys.
-- **A closing surface hands focus back only while it holds it, unscrolled, ringed only if it
-  was.** `useFocusTrap`.
+- **A closing surface hands focus and the selection back only while it holds it,
+  unscrolled, ringed only if it was; Tab walks its Tab stops.** `useFocusTrap`.
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
   completion. The `[[` picker is a dialog and takes focus.
 - A completion from a native listener commits at once. A triple-click selects the block or its
-  field, by the app (`selectClickedBlock`). A caret rescue never takes focus back, nor
+  field (`selectClickedBlock`). A caret rescue never takes focus back, nor
   follows a link's click.
 - ArrowUp with nothing above reaches the note's name, ArrowDown comes back; Shift+Arrow is
   always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
-- **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), on screen.
+- **⌥↑/↓ jump to a block's start** (`isBlockJump`).
   `block-jump.spec.ts`.
 - **A line command takes a line only if the selection holds some of it** (`selectedLines`);
   ⌘Enter ticks those to-dos one way (`todoFlip`), else is Enter. `selected-lines.spec.ts`.
@@ -92,17 +91,17 @@ through state.**
   byte. Never strip it by value.
 - **The browser's caret is fixed at the keystroke** (`caretOutOfLinkEnd`/`Start`), never on
   `selectionchange`, which would trap ArrowLeft.
-- **A wikilink click opens the note its target names; it never guesses or creates**
-  (`wikilinkTarget.ts`). A name two notes share, or none, draws dashed and opens the
+- **A wikilink click opens the note its target names; it never guesses or creates.**
+  A shared bare name is the note nearest the root (`nearestRoot`); a tie, or none, is dashed and opens the
   picker to fix; a file opens (`fileForTarget`); a heading or `^id` is found as Obsidian finds
   it (`headingTarget.ts`, a child only in its parent; `blockTarget.ts`), as a visit
   (`historyJump`); a missing one is said. An ID is
   drawn quietly only while it ends its block. `link-resolution.spec.ts`,
   `heading-links.spec.ts`, `block-links.spec.ts`.
 - **A footnote reference is one sealed character showing `[n]`** over its source
-  (`numberFootnotes`, first reference first), which copies and saves.
+  (`numberFootnotes`), which copies and saves.
   A caret anchor follows; ←/→ take it whole, Backspace its `]` (`footnoteRefKey`). A click goes to
-  its definition (its label's last), a visit; with none, the panel writes one. `footnotes.spec.ts`.
+  its definition, a visit; with none, the panel writes one. `footnotes.spec.ts`.
 - **A footnote is made in its panel** (`useFootnoteDraft`): `[^` shows a faint `n]`,
   Enter/Tab types it; a typed new label (not line-first) or Insert footnote too. A draft
   till Done or a leave (`flushAll`, not a blur); refused, its text waits in a notice.
@@ -113,7 +112,8 @@ through state.**
 - **Move footnotes to bottom waits for its safety save** (`useMoveFootnotes`).
   `footnote-move.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for every way in, writing the shortest clear target
-  (`linkTargetFor`). `link-picker.spec.ts`.
+  (`linkTargetFor`); a kept name with `# ^ [ ] |` gets a Markdown link (`pathLinkTo`).
+  `link-picker.spec.ts`, `link-names.spec.ts`.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE`, for renderer,
   completion, search and filter; `extractAllTags` skips code, URLs and link addresses, and
   reads frontmatter only as its `tags:` property (`frontmatterTags`). Punctuation typed at its
@@ -164,23 +164,22 @@ through state.**
 - **On the desktop text never starts a block drag; a picture does.** One floating grip
   (`BlockDragHandle`) in the gutter; nested (`data-indent`), on its parent's marker
   (`gripX`), clear of a wide number; on hover, `aria-hidden`.
-- A key hides the grip (not a lone modifier: Shift-click). **Blur always cancels
+- A key hides the grip (not a lone modifier). **Blur always cancels
   a press**. `grip-reveal.spec.ts`.
 - **On the phone a still finger holds the block** (`useHoldToGrab`): moved, it drags; let go,
   `BlockMenu` (on a tag, the tag's menu). A scroll, double-tap or text selection is the browser's. A lone new finger ends
-  a lost hold (Android reuses ids). `hold-to-grab.spec.ts`.
+  a lost hold. `hold-to-grab.spec.ts`.
 - **Commits on drop**, one entry, only if order changed; Escape, blur or the sidebar
   cancel. A selection drags as one run. `motion.spec.ts`.
 - **`⌘⇧↑/↓` steps a block and its nested items past the neighbour's group** (`moveStep`).
   `list-move.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style**.
 - **Every root the grip shows beside is in `blockRefs`**; media, code and callout register via
-  `wholeRef`, not `elRef` (its repaint covers the wrapper).
+  `wholeRef`, not `elRef`.
 
 ## Menus
 
-- **The slash menu is tiered**: `advanced: true` rows stay off the opening screen, one rule for
-  menu and keys (`filterSlashCommands()`).
+- **The slash menu is tiered**: `advanced: true` rows stay off the opening screen (`filterSlashCommands()`).
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
 - **Every menu's keys are one rule** (`useMenuKeys`); a caret suggestion (`suggestion: true`)
   is a `listbox`. `menuKeys.test.ts`, `callout-picker.spec.ts`.
@@ -192,7 +191,7 @@ through state.**
 ## Maths
 
 - **A `$$` formula never moves; its source opens underneath** (`MathBlock`; ⌘Z is the
-  note's); ↑/↓ at its edges walk out. `math-block.spec.ts`.
+  note's); ↑/↓ leave it, or a code field, only from an edge row (`caretOnEdgeRow`). `math-block.spec.ts`, `wrapped-rows.spec.ts`.
 - **`$x$` in a sentence is one sealed element** (`data-math`): one caret character; its closing
   `$` converts it, a press opens its source (`InlineMathPanel`). `inline-math.spec.ts`.
 - **`\` completes the `\word` the caret ends**; a choice is one undo entry
@@ -201,7 +200,7 @@ through state.**
 ## Headings
 
 **Every editor spacing value lives in `DEFAULT_RHYTHM`.** New headings are ATX; an empty one
-shows `Heading N` (CSS). `heading-placeholder.spec.ts`.
+shows `Heading N`. `heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file
 
@@ -212,15 +211,14 @@ keeps its own view, saved** (`useSourceView`).
   (`markdownToBlocks`) and committed (`commitTextChange`).
 - **It repaints only when the blocks aren't the ones it committed** (by identity). The caret
   crosses by block (`sourceView.ts`). `source-view.spec.ts`.
-- **Colour says what each part is; nothing may change a character's width**:
-  no ligatures. `sourceView.test.ts`.
+- **Colour says what each part is; nothing may change a character's width**. `sourceView.test.ts`.
 
 ## Lists
 
 - **The caret, and a selection's ends, never rest beside a marker** (`caretIntoTextRoot`,
   `selectionIntoTextRoots`). `list-caret.spec.ts`.
 - **Tab moves an item with its nested items; over several, all of them** (`indentRun`): in is
-  all or nothing, out each that can; one undo. `multi-item-indent.spec.ts`.
+  all or nothing, out each that can. `multi-item-indent.spec.ts`.
 - `listLayout` owns numbers and prefixes; authored spellings stay; a text edit never renumbers
   an imported list (`reconcileListEdit`).
 
@@ -286,9 +284,9 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 - **Ragged on disk, ragged forever**: a row holds exactly its line's cells; only an explicit
   column operation pads (`tableShape.ts`).
 - **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
-  (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, and an edited
+ ; otherwise unchanged rows keep their lines, and an edited
   one fitting a lined-up header takes its columns. `table-preservation.spec.ts`.
-- **Rows and columns move by grips on the edges** (`TableHandles`) or a cell's keys; one write, on drop. `table-handles.spec.ts`.
+- **Rows and columns move by grips on the edges** (`TableHandles`) or a cell's keys. `table-handles.spec.ts`.
 
 ## Whole-block selection
 
@@ -310,16 +308,17 @@ view** (`paintMarkdownCode`); a callout's `[!type]` only where the parser opens 
 ## Embeds: read-only copies
 
 - **An embed is drawn by `ReadOnlyBlocks`**, found as its
-  link's click finds it (`embedTarget`); a link inside reads as in its source; a self-embed is said.
+  link's click finds it (`embedTarget`); a link inside reads as in its source.
 - **The copy is fenced by the selection, never the target**:
   `useEmbedFence` cancels an edit in it and its chip says where to edit.
-- **A click opens its `![[…]]` underneath** (keys: Edit link), saved once; closing leaves it picked. `embeds.spec.ts`.
+- **A click opens its `![[…]]` underneath**, saved once; closing leaves it picked. `embeds.spec.ts`.
 
 ## Paste and copy
 
 - **A block holding text never changes type on paste.** Plain lines stay soft breaks; a blank
   line starts a block; only an empty block is taken over by structure. Gboard's clipboard is a
-  paste (`typedPaste`).
+  paste (`typedPaste`). **A paste is a fragment**: `---` opens Properties only in a
+  note's empty first block. `paste-fragment.spec.ts`.
 - **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`); an app's
   picture of copied text yields to it (`pasteIsText`). `file-drop.spec.ts`.
 - **Copy**: structure travels only for whole blocks (`fullBlock`); a partial selection writes
