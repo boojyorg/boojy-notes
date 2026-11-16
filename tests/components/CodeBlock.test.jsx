@@ -242,6 +242,55 @@ describe("CodeBlock", () => {
     expect(defaultProps.onUpdateCode).toHaveBeenCalled();
   });
 
+  /** The field holding `text` with the selection set, after one key. */
+  const afterKey = (text, start, end, key) => {
+    const onUpdateCode = vi.fn();
+    const { container } = render(
+      <CodeBlock
+        {...defaultProps}
+        block={{ ...defaultProps.block, text }}
+        onUpdateCode={onUpdateCode}
+      />,
+    );
+    const ta = container.querySelector("textarea.code-textarea");
+    ta.value = text;
+    ta.setSelectionRange(start, end);
+    fireEvent.keyDown(ta, key);
+    return { value: ta.value, start: ta.selectionStart, end: ta.selectionEnd };
+  };
+
+  it("Shift+Tab with a caret dedents the whole line and leaves a caret", () => {
+    // The caret after `foo`: the line was dedented only up to the caret, and
+    // the caret became a selection the next key overwrote.
+    expect(afterKey("    foo", 7, 7, { key: "Tab", shiftKey: true })).toEqual({
+      value: "foo",
+      start: 3,
+      end: 3,
+    });
+    // At the line's start it did nothing.
+    expect(afterKey("a\n    foo", 2, 2, { key: "Tab", shiftKey: true })).toEqual({
+      value: "a\nfoo",
+      start: 2,
+      end: 2,
+    });
+  });
+
+  it("Shift+Tab over a selection dedents each line and keeps them selected", () => {
+    expect(afterKey("    a\n    b", 2, 11, { key: "Tab", shiftKey: true })).toEqual({
+      value: "a\nb",
+      start: 0,
+      end: 3,
+    });
+  });
+
+  it("Tab over a selection ending at a line's start leaves that line alone", () => {
+    expect(afterKey("a\nb\nc", 0, 4, { key: "Tab" })).toEqual({
+      value: "    a\n    b\nc",
+      start: 0,
+      end: 12,
+    });
+  });
+
   it("lets undo and redo reach the shell whichever case Shift gives the key", () => {
     const seen = vi.fn();
     const { container } = render(

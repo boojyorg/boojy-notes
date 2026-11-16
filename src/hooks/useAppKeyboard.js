@@ -183,6 +183,9 @@ export function useAppKeyboard({
         }
       }
       if (owner === "modal") return;
+      // AltGr types a character (a German `\\` is AltGr+ß) and Windows reports
+      // it as Ctrl+Alt: never a shortcut, or the character is never typed.
+      if (e.getModifierState?.("AltGraph")) return;
       // Escape never reaches the sidebar: a panel the user can see sitting in
       // the layout is hidden by its toggle and by nothing else.
       const mod = e.ctrlKey || e.metaKey;
