@@ -4,6 +4,7 @@ import { onCommand } from "./commands";
 import { capacitorFiles, type FileOps, fileAddress } from "./files";
 import {
   FolderAccess,
+  JOURNAL,
   folderAddress,
   folderFiles,
   folderLabel,
@@ -61,6 +62,10 @@ async function finishMove(
   } catch (error) {
     console.warn("[folder] move failed:", error);
     await writeChoice(priv, "app");
+    // Copies cut short were this folder's: left, a later move would write them into its own.
+    for (const { name } of await priv.list(JOURNAL).catch(() => [])) {
+      await priv.remove(`${JOURNAL}/${name}`).catch(() => {});
+    }
     await FolderAccess.release({ tree: to.tree }).catch(() => {});
     screen.close();
     await sayNotMoved((error as Error)?.message ?? String(error));
@@ -244,8 +249,12 @@ async function moveToFolder(
   const got = await FolderAccess.pick({ initial });
   if (got.refused) return "refused";
   if (!got.picked || !got.tree || !got.root) return "cancelled";
-  // Another location's folder: its grant is that location's, so it is not given back.
-  if ((await others()).some((tree) => treesOverlap(tree, got.tree as string))) return "in-use";
+  const held = await others();
+  if (held.some((tree) => treesOverlap(tree, got.tree as string))) {
+    // Another location's own grant is kept; one over or under it is given back.
+    if (!held.includes(got.tree)) await FolderAccess.release({ tree: got.tree });
+    return "in-use";
+  }
   const to = { tree: got.tree, root: got.root };
   const { entries } = await FolderAccess.list({ tree: to.tree, id: to.root });
   if (entries.some((e) => !e.name.startsWith("."))) {

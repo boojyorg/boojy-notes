@@ -120,10 +120,12 @@ const readRecord = (raw: Uint8Array): { intent: Intent; bytes: Uint8Array } => {
  * goes; `recover` writes again whatever a crash left in the journal. Nothing
  * temporary is ever put in the folder, where other apps would see and sync it.
  *
- * **The journal holds a path's newest save alone.** A save that failed
- * keeps its entry (the file may be cut short), until the path is saved
- * again, renamed, removed or taken by another file: finished at the next
- * start, an entry older than that would undo it.
+ * **A save that failed keeps its entry** (the file may be cut short) only
+ * until something newer is true of its path: saved again, removed, or taken
+ * by another file. Finished at the next start, an entry older than that
+ * would undo it. A file about to be renamed is made whole first, so its
+ * entry never stays behind under the old name. What the folder cannot know
+ * (the note was saved under another path) the vault says: `forgetSave`.
  *
  * Android never refuses a name that is taken: it makes `b (1).md`. A create
  * or rename that got another name is undone and thrown.
@@ -136,20 +138,42 @@ export function folderFiles(
   const dirs = new Map<string, Map<string, FolderEntry>>();
   let serial = 0;
   const journalName = () => `${JOURNAL}/${Date.now().toString(36)}-${(serial++).toString(36)}`;
-  /** The saves still in the journal, by path as the folder tells names apart (without case). */
+  /**
+   * The saves still in the journal, oldest first, by path as the folder tells
+   * names apart (without case). Several only after saves that failed: a
+   * start finishes them in order, so the newest is what the file ends with.
+   */
   const unfinished = new Map<string, string[]>();
-
-  /** Drops the journal's saves at and under `path`, but `keep`: what they held is no longer wanted. */
-  const dropSaves = async (path: string, keep?: string) => {
+  const under = (path: string) => {
     const at = path.toLowerCase();
-    for (const [key, names] of [...unfinished]) {
-      if (key !== at && !key.startsWith(`${at}/`)) continue;
-      for (const name of names.filter((n) => n !== keep)) {
-        await journal.remove(name);
-        names.splice(names.indexOf(name), 1);
+    return [...unfinished].filter(([key]) => key === at || key.startsWith(`${at}/`));
+  };
+
+  /** Drops the journal's saves at and under `path`: what they held is no longer wanted. */
+  const dropSaves = async (path: string) => {
+    for (const [key, names] of under(path)) {
+      while (names.length) {
+        try {
+          await journal.remove(names[0]);
+        } catch (error) {
+          // Already gone is done; anything else is a save that cannot be called finished.
+          if (await journal.exists(names[0])) throw error;
+        }
+        names.shift();
       }
-      if (!names.length) unfinished.delete(key);
+      unfinished.delete(key);
     }
+  };
+
+  /** Writes the newest save left at and under `path` over its file, so the file is whole. */
+  const finishSaves = async (path: string) => {
+    for (const [, names] of under(path)) {
+      const raw = await journal.read(names[names.length - 1]);
+      if (!raw) continue;
+      const { intent, bytes } = readRecord(raw);
+      if (intent.op === "write") await put(intent.path, bytes);
+    }
+    await dropSaves(path);
   };
 
   const find = (map: Map<string, FolderEntry>, name: string) => {
@@ -352,8 +376,6 @@ export function folderFiles(
       await journal.write(name, record({ op: "write", path }, bytes));
       const key = path.toLowerCase();
       unfinished.set(key, [...(unfinished.get(key) ?? []), name]);
-      // These bytes are whole in the journal: an older save of the path is done with.
-      await dropSaves(path, name);
       try {
         await put(path, bytes);
       } catch (error) {
@@ -366,11 +388,14 @@ export function folderFiles(
     },
 
     async rename(from, to) {
+      // A file a failed save may have cut short is whole before it moves.
+      await finishSaves(from);
       await renamed(from, to);
-      // A save left for either name is not this file's any more.
-      await dropSaves(from);
+      // A save left for the name it took is not this file's.
       await dropSaves(to);
     },
+
+    forgetSave: dropSaves,
 
     remove: removeEntry,
     mkdir,

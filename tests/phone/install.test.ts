@@ -30,7 +30,12 @@ vi.mock("../../src/phone/files", () => ({
           ? new TextEncoder().encode(disk.files[path])
           : null,
     list: async (dir: string) =>
-      dir === "state" ? disk.state.map((name) => ({ name, kind: "file", mtime: 0, size: 1 })) : [],
+      (dir === "state"
+        ? disk.state
+        : Object.keys(disk.files)
+            .filter((path) => path.startsWith(`${dir}/`))
+            .map((path) => path.slice(dir.length + 1))
+      ).map((name) => ({ name, kind: "file", mtime: 0, size: 1 })),
     write: async (path: string, bytes: Uint8Array) => {
       disk.written.push([path, new TextDecoder().decode(bytes)]);
       disk.order.push(`write ${path}`);
@@ -129,7 +134,8 @@ vi.mock("../../src/phone/folderFiles", () => ({
   },
   reachableFolder: reachable,
   folderReached: reached,
-  treesOverlap: (a: string, b: string) => a === b,
+  JOURNAL: "journal",
+  treesOverlap: (a: string, b: string) => a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`),
   folderFiles: () => ({ recover: async () => {} }),
   folderAddress: () => (rel: string) => rel,
   folderLabel: ({ root }: { root: string }) => root.slice(root.indexOf(":") + 1),
@@ -757,6 +763,21 @@ describe("where a start keeps the notes", () => {
       expect(device.stateChange).toBeNull();
     });
 
+    // Copies cut short stay in the journal for the same move to finish. Given up, they
+    // would be written into whichever folder a later move chose.
+    it("failed, leaves no copy in the journal for a later move to write", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: { moving: TO },
+        files: { "journal/a-0": "x", "journal/a-1": "y" },
+      });
+      move.copyNotes.mockRejectedValueOnce(new Error("No space left"));
+      await startOf(true);
+      disk.files = {};
+      expect(disk.removed).toEqual(["journal/a-0", "journal/a-1"]);
+    });
+
     it("killed while clearing, clears at the next start", async () => {
       Object.assign(disk, { state: ["ids.json"], choice: "folder", under: { clearing: true } });
       move.copyNotes.mockClear();
@@ -848,6 +869,31 @@ describe("where a start keeps the notes", () => {
       disk.files = {};
       expect(released).toEqual([]);
       expect(storage()).toEqual([]);
+    });
+
+    // A folder over or under another location's is refused too, and its own grant given back.
+    it("gives back a folder inside another location's, which no location would hold", async () => {
+      Object.assign(disk, {
+        state: ["ids.json"],
+        choice: "app",
+        under: {},
+        files: {
+          "state/locations.json": JSON.stringify({
+            open: "main",
+            list: [{ id: "main" }, { id: "w" }],
+          }),
+          "locations/w/state/storage.json": JSON.stringify({ kind: "folder", folder: TO }),
+        },
+      });
+      await startOf(true);
+      released.length = 0;
+      Object.assign(picker, {
+        answer: { picked: true, tree: "to/Sub", root: "primary:Documents/Boojy Notes/Sub" },
+        holds: [],
+      });
+      expect(await (offered() as Move)(async () => {})).toBe("in-use");
+      disk.files = {};
+      expect(released).toEqual(["to/Sub"]);
     });
 
     // The folders other locations hold are read at the press: one added since the start counts.

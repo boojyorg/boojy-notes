@@ -259,6 +259,18 @@ export function createPhoneVault(
   const changedAt = new Map<string, number>();
   /** When the engine last renamed a note, and the name it had before. */
   const movedAt = new Map<string, { at: number; title: string; folder: string | null }>();
+  /**
+   * Where a note's last save failed. A picked folder keeps that save to
+   * finish at the next start; once the note is saved at another path, or
+   * deleted, finishing it would make a note nobody has.
+   */
+  const failedAt = new Map<string, string>();
+  const forgetFailedSave = async (id: string, savedAt?: string) => {
+    const rel = failedAt.get(id);
+    if (rel === undefined) return;
+    if (rel !== savedAt) await files.forgetSave?.(abs(rel));
+    failedAt.delete(id);
+  };
   /** Saves asked for and not yet done, per note. */
   const waiting = new Map<string, number>();
 
@@ -661,7 +673,15 @@ export function createPhoneVault(
           }
           const body = applyEol(blocksToMarkdown(note.content?.blocks || []), note.content?.eol);
           // A rename with unchanged text is the rename alone (PR #350's rule).
-          if (!(renaming && onDisk === body)) await files.write(abs(target), encoder.encode(body));
+          if (!(renaming && onDisk === body)) {
+            try {
+              await files.write(abs(target), encoder.encode(body));
+            } catch (error) {
+              failedAt.set(id, target);
+              throw error;
+            }
+          }
+          await forgetFailedSave(id, target);
           idx[id] = target;
           seen.set(id, body);
           await saveIndex();
@@ -679,8 +699,12 @@ export function createPhoneVault(
       lock(async () => {
         const idx = await loadIndex();
         const rel = idx[id];
-        if (!rel || !(await files.exists(abs(rel)))) return { missing: true as const };
+        if (!rel || !(await files.exists(abs(rel)))) {
+          await forgetFailedSave(id);
+          return { missing: true as const };
+        }
         await moveToDeleted(rel, id);
+        await forgetFailedSave(id);
         delete idx[id];
         seen.delete(id);
         await saveIndex();

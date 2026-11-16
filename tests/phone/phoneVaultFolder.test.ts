@@ -264,3 +264,48 @@ describe("a notes folder chosen again, as sync sees it", () => {
     expect(dropbox.paths()).toEqual([...Object.keys(NOTES), "Old.md"].sort());
   });
 });
+
+/**
+ * A save that failed stays in the folder's journal under the path it was
+ * for. Saved next under another path, or deleted with no file yet, that
+ * entry would make a note nobody has at the next start.
+ */
+describe("a note whose save failed, saved or deleted elsewhere", () => {
+  /** A new note whose first save Android refused; `again` is the next start. */
+  const failedFirstSave = async () => {
+    const { files, fake, vault } = open();
+    const create = fake.plugin.create;
+    fake.plugin.create = async () => {
+      throw new Error("no room");
+    };
+    await expect(vault.api.writeNote(note("n1", "Untitled", "first words"))).rejects.toThrow();
+    fake.plugin.create = create;
+    const again = () =>
+      routedFiles(
+        files.priv,
+        folderFiles({ tree: "tree", root: "root" }, files.priv, fake.plugin),
+        "vault",
+      ).recover("vault");
+    return { fake, vault, again };
+  };
+
+  it("leaves no second note when it is saved next under another name", async () => {
+    const { fake, vault, again } = await failedFirstSave();
+    await vault.api.writeNote(note("n1", "Trip", "first words, and more"));
+    await again();
+    expect([...fake.snapshot().keys()]).toEqual(["Trip.md"]);
+  });
+
+  it("does not come back when it is deleted before it has a file", async () => {
+    const { fake, vault, again } = await failedFirstSave();
+    expect(await vault.api.trashNote("n1")).toEqual({ missing: true });
+    await again();
+    expect([...fake.snapshot().keys()]).toEqual([]);
+  });
+
+  it("is still finished at the next start when nothing else happened to it", async () => {
+    const { fake, again } = await failedFirstSave();
+    await again();
+    expect([...fake.snapshot().keys()]).toEqual(["Untitled.md"]);
+  });
+});
