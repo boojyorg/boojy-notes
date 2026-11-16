@@ -22,7 +22,8 @@ const notes = {
     { type: "p", text: "N. ^n-id" },
   ]),
   host: note("Host", [{ type: "p", text: "Mine ^here" }]),
-  a: note("Twin", []),
+  // Two at one depth: a bare name means neither (`nearestRoot`).
+  a: note("Twin", [], "One"),
   b: note("Twin", [], "Other"),
 } as unknown as NoteData;
 

@@ -60,6 +60,10 @@ describe("sanitizeFilename — Windows device names", () => {
 
   it("keeps a note title's trailing dots: `.md` follows them", () => {
     expect(sanitizeFilename("Wait...")).toBe("Wait...");
+    // What a link's own syntax is made of: `[[C# notes]]` is the note `C`.
+    expect(sanitizeFilename("C# notes")).toBe("C_ notes");
+    expect(sanitizeFilename("x^2 [draft]")).toBe("x_2 _draft_");
+    expect(sanitizeFilename("Pros | Cons")).toBe("Pros _ Cons");
   });
 });
 

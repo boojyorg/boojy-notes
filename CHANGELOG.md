@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Improvements
+
+- **A note that shares its name can be linked** — With `Gamma` at the top of your notes and another `Gamma` in a folder, a link to the first was written `[[Gamma]]`, drawn dashed, and could never be fixed. A plain `[[Name]]` that several notes share now means the one nearest the top, as in Obsidian; the others are linked by their folder, as before. Two namesakes equally deep are still a tie: the link is dashed and a click asks which. Renaming or moving a note now also updates these links.
+- **New names can always be linked** — `#`, `^`, `[` and `]` in the name of a new note, folder or attachment are now written `_`, as `|` already was, because a link cannot hold them: `[[C# notes]]` means a heading in a note called `C`. A file that already has such a name keeps it until you edit its name. Search and the link picker no longer offer to create a note under a name they could not keep.
+- **Notes with `#`, `^`, `[`, `]` or `|` in their name can be linked** — For a file that already has such a name (made in Finder, or before this version), the link picker now writes a Markdown link, `[C# notes](C%23%20notes.md)`, which works here, in Obsidian and elsewhere. It used to write a link that pointed nowhere.
+
+### Fixes
+
+- **A Markdown link to a name holding `#` opens its note** — `[text](C%23%20notes.md)` did nothing when clicked.
+
 ## v0.23.1 — 2026-11-16
 
 ### Fixes

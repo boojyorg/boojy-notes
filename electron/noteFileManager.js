@@ -16,7 +16,9 @@ import { applyEol, blocksToMarkdown, detectEol, markdownToBlocks } from "../src/
 
 /**
  * The one place a name the app creates is made safe for the vault. Invalid
- * characters become `_`, the edges are trimmed, a blank name is `Untitled`,
+ * characters become `_`: those a file system refuses, and `#`, `^`, `[`, `]`,
+ * which a link's own syntax is made of (`[[C# notes]]` is the note `C` at a
+ * heading), so a name the app makes can always be linked. The edges are trimmed, a blank name is `Untitled`,
  * and a leading dot becomes `_`: the vault walk, the folder walk and the
  * watcher all skip dot-entries, so `.env.md` or a `.archive/` directory was
  * written fine and then vanished at the next restart, notes and all. The
@@ -26,7 +28,7 @@ import { applyEol, blocksToMarkdown, detectEol, markdownToBlocks } from "../src/
  * folder by that name, whatever follows its first dot.
  */
 function sanitizeFilename(name) {
-  let sanitized = capBytes(name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")).trim() || "Untitled";
+  let sanitized = capBytes(name.replace(/[<>:"/\\|?*#^[\]\x00-\x1f]/g, "_")).trim() || "Untitled";
   if (sanitized.startsWith(".")) sanitized = `_${sanitized.slice(1)}`;
   const dot = sanitized.indexOf(".");
   const stem = (dot === -1 ? sanitized : sanitized.slice(0, dot)).trimEnd();

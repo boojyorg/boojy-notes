@@ -16,6 +16,7 @@ import { MENU_PAD, MENU_ROW_RADIUS } from "../constants/layout";
 import { readAddress, shownAddress } from "../utils/linkDestination";
 import { LinkIcon, PlusIcon } from "./Icons";
 import { fromTouch } from "../utils/touch";
+import { BREAKS_WIKILINK } from "../utils/wikilinkTarget";
 import { menuSurface } from "./Menu";
 
 /**
@@ -147,7 +148,13 @@ export default function LinkPicker({
     for (const note of exact) out.push({ kind: "note", note });
     if (address) out.push({ kind: "url", url: address });
     for (const note of matches) if (!exact.includes(note)) out.push({ kind: "note", note });
-    if (q !== "" && !matches.some((n) => n.title.toLowerCase() === ql)) {
+    // No Create for a name a link cannot hold: the note made would be
+    // called something else (`write-note`), and the link would miss it.
+    if (
+      q !== "" &&
+      !BREAKS_WIKILINK.test(q) &&
+      !matches.some((n) => n.title.toLowerCase() === ql)
+    ) {
       out.push({ kind: "create", title: q });
     }
     return out;

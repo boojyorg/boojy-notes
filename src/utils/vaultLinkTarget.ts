@@ -16,14 +16,36 @@
  * (`Note.md "A title"`, `Notes (2024)`) is tried whole first and then without it.
  */
 export function vaultLinkTargets(dest: string, fromFolder: string | null): string[] | null {
+  return vaultLinkPlaces(dest, fromFolder)?.map((p) => `${p.path}${p.subpath}`) ?? null;
+}
+
+/** One place a destination may mean: a vault path, and the `#…` after it ("" for none). */
+export interface VaultLinkPlace {
+  path: string;
+  subpath: string;
+}
+
+/**
+ * `vaultLinkTargets` with the path and what follows it kept apart. A decoded
+ * path may itself hold a `#` (`C%23%20notes.md`), which read again as a
+ * wikilink's target would cut the name at it: the click reads these.
+ */
+export function vaultLinkPlaces(dest: string, fromFolder: string | null): VaultLinkPlace[] | null {
   const read = vaultLinkForms(dest);
   if (!read) return null;
-  const targets = read.forms.flatMap((form) => {
-    if (!form.path) return form.subpath ? [form.subpath] : [];
-    const { fromNote, fromRoot } = vaultPathsOf(form.path, fromFolder);
-    return [fromNote, fromRoot].filter((p): p is string => !!p).map((p) => `${p}${form.subpath}`);
-  });
-  return [...new Set(targets)];
+  const seen = new Set<string>();
+  return read.forms
+    .flatMap((form): VaultLinkPlace[] => {
+      if (!form.path) return form.subpath ? [{ path: "", subpath: form.subpath }] : [];
+      const { fromNote, fromRoot } = vaultPathsOf(form.path, fromFolder);
+      return [fromNote, fromRoot]
+        .filter((p): p is string => !!p)
+        .map((path) => ({ path, subpath: form.subpath }));
+    })
+    .filter((p) => {
+      const key = `${p.path}${p.subpath}`;
+      return seen.has(key) ? false : !!seen.add(key);
+    });
 }
 
 /** One reading of a destination: its path, and everything written after it. */
