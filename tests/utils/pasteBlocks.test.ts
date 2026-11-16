@@ -6,6 +6,7 @@ import {
   typedPaste,
   type PastedBlock,
   pasteIsText,
+  withoutStrayFrontmatter,
 } from "../../src/utils/pasteBlocks";
 import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown";
 import type { Block } from "../../src/types/notes";
@@ -299,5 +300,37 @@ describe("pasteIsText", () => {
     // Apple Notes, TextEdit and Pages: the picture's text is U+FFFC.
     expect(pasteIsText(generated, "\uFFFC")).toBe(false);
     expect(pasteIsText([{ name: "image.png", type: "application/pdf" }], "text")).toBe(false);
+  });
+});
+
+describe("a pasted Properties block", () => {
+  const NOTE = "---\ntitle: Pasted\n---\nBody";
+
+  it("is never read from a fragment: a first-line --- is a divider", () => {
+    const types = markdownToBlocks(NOTE, { fragment: true }).map((b: Block) => b.type);
+    expect(types).not.toContain("frontmatter");
+    expect(types[0]).toBe("spacer");
+    // The whole file still opens with its properties.
+    expect(markdownToBlocks(NOTE)[0].type).toBe("frontmatter");
+  });
+
+  it("from the app's own clipboard stays one only at the top of a note", () => {
+    const copied = pasted(NOTE);
+    expect(copied[0].type).toBe("frontmatter");
+    expect(withoutStrayFrontmatter(copied, true)[0].type).toBe("frontmatter");
+    const mid = withoutStrayFrontmatter(copied, false);
+    expect(mid.map((b) => b.type)).not.toContain("frontmatter");
+    // What lands is what the file would read as with those lines mid-note,
+    // so the save and the next open agree.
+    const landed = buildPastedBlocks({ id: "d", type: "p", text: "" }, mid, "", "", genId).blocks;
+    const md = blocksToMarkdown([{ id: "a", type: "p", text: "Above" } as Block, ...landed]);
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+    expect(markdownToBlocks(md).map((b: Block) => b.type)).not.toContain("frontmatter");
+  });
+
+  it("is never a second one: only the first pasted block can be the note's", () => {
+    const two = [...pasted(NOTE), ...pasted(NOTE)];
+    const out = withoutStrayFrontmatter(two, true);
+    expect(out.filter((b) => b.type === "frontmatter")).toHaveLength(1);
   });
 });
